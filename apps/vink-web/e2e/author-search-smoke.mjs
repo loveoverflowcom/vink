@@ -1,4 +1,6 @@
-// #295, #354, #566 and #621: real SSR, Chrome and native Identity against disposable PostgreSQL databases.
+// #295, #354, #566, #621 and #622: real SSR, Chrome and native Identity against disposable PostgreSQL databases.
+import { writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { searchR5 } from './discovery-smoke.mjs';
 import { fill, HYDRATED, mailedCode, q, registrationProof, STANDING } from './auth-smoke.mjs';
 import { authorFixtureSql } from './author-fixtures.mjs';
@@ -15,17 +17,16 @@ const ERROR = '#author-search-error';
 const LOADING = '#author-search-loading';
 const NOTICE = '#author-search-notice';
 const SELF = '.vk-author-search__self';
+const SHIFT = 8; // CDP Input modifier bit
 const COPY = {
-  suggestions: 'Gợi ý tác giả',
+  suggestions: 'Tác giả đề xuất',
   matches: query => `Tác giả khớp “${query}”`,
-  note: 'Ai cũng thấy cùng danh sách gợi ý này.',
   empty: query => `Chưa có tác giả khớp “${query}”.`,
-  emptySuggestions: 'Chưa có gợi ý tác giả.',
+  emptySuggestions: 'Chưa có tác giả đề xuất.',
   hint: 'Thử bút danh khác, hoặc nhập chính xác @handle.',
   inWorks: 'Tìm trong tác phẩm',
   clear: 'Xóa tìm kiếm',
-  unavailable: 'Chưa tìm được lúc này',
-  unavailableDetail: 'Kết quả chưa tải xong – chưa thể nói là không có tác giả.',
+  unavailable: 'Chưa tải được danh sách tác giả',
   retry: 'Thử lại',
   loading: 'Đang tìm tác giả…',
   notice: 'Một hồ sơ không còn truy cập được; danh sách đã cập nhật.',
@@ -505,7 +506,7 @@ async function initialOutage(page, base, check, presentation) {
       'initial author search outage is distinct from a successful empty result');
     const error = await page.eval(textOf(ERROR));
     presentation(await page.eval(`${q(ERROR)}.getAttribute('role') === 'alert'`)
-        && error.includes(COPY.unavailable) && error.includes(COPY.unavailableDetail),
+      && error.includes(COPY.unavailable),
       `S3 initial outage explains that results are unavailable (found ${JSON.stringify(error)})`);
   } finally {
     await release();
@@ -538,12 +539,79 @@ async function openOwnRow(page, base) {
   return { url, handle };
 }
 
-async function longHandleReflow(page, base, presentation) {
+async function authorRowInteraction(page, theme, check) {
+  const link = q(row(currentAuthor));
+  const follow = q('#search-follow-' + currentAuthor);
+  await page.eval(`${link}.scrollIntoView({ block: 'center' }); ${link}.focus()`);
+  await page.key('Tab');
+  check(await page.eval(`document.activeElement === ${follow}`), 'R5 Tab reaches the separate Follow action');
+  await page.key('Tab', SHIFT);
+  const focus = await page.eval(`(() => {
+    const link = ${link};
+    const style = getComputedStyle(link);
+    const [r, g, b] = style.outlineColor.match(/[0-9.]+/g).map(Number);
+    const luminance = channels => channels.map(value => value / 255)
+      .map(value => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4)
+      .reduce((sum, value, i) => sum + value * [0.2126, 0.7152, 0.0722][i], 0);
+    let bg = link.parentElement;
+    while (bg && getComputedStyle(bg).backgroundColor === 'rgba(0, 0, 0, 0)') bg = bg.parentElement;
+    const color = getComputedStyle(bg).backgroundColor.match(/[0-9.]+/g).map(Number).slice(0, 3);
+    const values = [luminance([r, g, b]), luminance(color)].sort((a, b) => b - a);
+    const {left, right} = link.getBoundingClientRect();
+    const outset = parseFloat(style.outlineWidth) + parseFloat(style.outlineOffset);
+    return {
+      shown: document.activeElement === link && link.matches(':focus-visible') && style.outlineStyle === 'solid',
+      ratio: (values[0] + 0.05) / (values[1] + 0.05),
+      fits: left >= outset && right + outset <= document.documentElement.clientWidth,
+    };
+  })()`);
+  check(focus.shown && focus.fits && focus.ratio >= 3, `R5 ${theme} focus stays visible at 3:1 or higher (${JSON.stringify(focus)})`);
+  const point = await page.eval(`(() => {
+    const { x, y, height } = ${link}.getBoundingClientRect();
+    return { x: x + 22, y: y + height / 2 };
+  })()`);
+  const state = () => page.eval(`(async () => {
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const link = ${link};
+    const style = getComputedStyle(link);
+    return {
+      color: style.backgroundColor,
+      hovered: link.matches(':hover'),
+      pressed: link.matches(':active'),
+      motion: style.transitionDuration,
+    };
+  })()`);
+  const outside = { x: 0, y: 0 };
+  let idle, hover, pressed;
+  await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+  try {
+    check(await page.eval("matchMedia('(hover: hover)').matches && matchMedia('(prefers-reduced-motion: reduce)').matches"),
+      'R5 pointer probe uses a hover-capable pointer and reduced motion');
+    await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...outside });
+    idle = await state();
+    await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...point });
+    hover = await state();
+    await page.send('Input.dispatchMouseEvent', { type: 'mousePressed', button: 'left', clickCount: 1, ...point });
+    pressed = await state();
+  } finally {
+    // Release outside the link so navigation remains covered by the profile round trips.
+    await page.send('Input.dispatchMouseEvent', { type: 'mouseReleased', button: 'left', clickCount: 1, ...outside });
+    await page.send('Emulation.setEmulatedMedia', { features: [] });
+  }
+  check(!idle.hovered && hover.hovered && !hover.pressed && pressed.pressed
+    && new Set([idle.color, hover.color, pressed.color]).size === 3
+    && idle.motion.split(',').every(duration => parseFloat(duration) <= 0.001),
+    `R5 ${theme} idle, hover and pressed are distinct under reduced motion (${JSON.stringify({ idle, hover, pressed })})`);
+  return { theme, focus, idle, hover, pressed };
+}
+
+async function longHandleReflow(page, base, args, presentation) {
   const handle = 'zzztacgiakiemthudongtieudevaketqua0123';
   const id = 'f211b8b0-31d4-4393-8203-25c1c4bd08cf';
+  const name = 'Người viết những lá thư dài qua bốn mùa và những đêm mưa trên cửa sổ';
   // Add this author after pagination and retirement checks so their fixture counts stay stable.
   authorFixtureSql(`BEGIN;
-    INSERT INTO principals (id, display_name) VALUES ('${id}', 'Tác giả kiểm tra reflow');
+    INSERT INTO principals (id, display_name) VALUES ('${id}', '${name}');
     INSERT INTO principal_bindings (principal_id, authority, subject_id)
       VALUES ('${id}', 'vink-identity', '${id}');
     INSERT INTO author_handle_names (principal_id, handle) VALUES ('${id}', '${handle}');
@@ -554,7 +622,8 @@ async function longHandleReflow(page, base, presentation) {
   const link = q(row(handle));
   await page.goto(base + queryUrl(query));
   await page.waitFor(`${HYDRATED} && ${link} && ${HAS_ROWS} === 1`, 'exact unbroken Handle fixture');
-  for (const [width, theme, scale] of [[320, 'dark', 200], [390, 'light', 100]]) {
+  const evidence = [];
+  for (const [width, theme, scale] of [[320, 'dark', 200], [390, 'light', 100], [390, 'light', 200]]) {
     await page.viewport(width);
     const layout = await page.eval(`(async () => {
       const root = document.documentElement;
@@ -565,6 +634,8 @@ async function longHandleReflow(page, base, presentation) {
       const heading = ${q(HEADING)};
       const row = ${link}.closest('li');
       const handle = row.querySelector('.vk-ui-byline__handle');
+      const name = row.querySelector('.vk-ui-identity-name');
+      const nameStyle = getComputedStyle(name);
       const handleStyle = getComputedStyle(handle);
       const edges = ({ left, right }) => [left, right];
       const textEdges = node => {
@@ -580,6 +651,11 @@ async function longHandleReflow(page, base, presentation) {
         handleBounds: edges(handle.getBoundingClientRect()),
         singleHandleLine: handleStyle.textOverflow === 'ellipsis' && handleStyle.whiteSpace === 'nowrap'
           && handle.clientHeight <= parseFloat(handleStyle.lineHeight) + 1,
+        twoNameLines: nameStyle.webkitLineClamp === '2'
+          && name.clientHeight <= 2 * parseFloat(nameStyle.lineHeight) + 1,
+        fullName: name.textContent.trim() === ${JSON.stringify(name)}
+          && ${link}.getAttribute('aria-label') === ${JSON.stringify('Mở hồ sơ ' + name + ' (' + query + ')')},
+        exactMark: handle.querySelector('mark')?.textContent === ${JSON.stringify(query)},
         fullText: heading.textContent.includes(${JSON.stringify(query)})
           && handle.textContent.trim() === ${JSON.stringify(query)}
           && ${link}.getAttribute('aria-label').includes(${JSON.stringify(query)}),
@@ -587,9 +663,25 @@ async function longHandleReflow(page, base, presentation) {
     })()`);
     const inside = ([left, right]) => right > left && left >= -1 && right <= layout.clientWidth + 1;
     const bounds = [layout.heading, layout.row, ...layout.headingText, layout.handleBounds];
-    presentation(layout.fullText && layout.singleHandleLine && layout.scrollWidth <= layout.clientWidth + 1 && bounds.every(inside),
+    evidence.push({ width, theme, scale, ...layout });
+    presentation(layout.fullText && layout.fullName && layout.exactMark && layout.twoNameLines
+      && layout.singleHandleLine && layout.scrollWidth <= layout.clientWidth + 1 && bounds.every(inside),
       `S6 exact long @handle fits the heading and row at ${width}px/${theme}/${scale}% (${JSON.stringify(layout)})`);
+    if (width === 320) {
+      await page.capture('author-search-exact-long-320-dark-200', {
+        boundary: 'Chrome + native Identity + scratch App PG', scenario: 'authors-exact', textScale: scale,
+        requiredTargets: [HEADING, row(handle)],
+      });
+    }
   }
+  const { nodes } = await page.send('Accessibility.getFullAXTree');
+  const profile = nodes.find(node => node.role?.value === 'link' && node.name?.value === `Mở hồ sơ ${name} (${query})`);
+  const listed = nodes.filter(node => ['list', 'listitem'].includes(node.role?.value));
+  writeFileSync(join(dirname(args.state), 'author-search-exact-evidence.json'), JSON.stringify({
+    geometry: evidence, profile, listed,
+  }, null, 2));
+  presentation(profile && listed.some(node => node.role.value === 'listitem'),
+    'R5 AX retains list semantics and the complete accessible identity for a clipped name');
 }
 
 export async function authorSearch(page, { args, check, openPage, textContrast }) {
@@ -656,8 +748,20 @@ export async function authorSearch(page, { args, check, openPage, textContrast }
   await page.click(entry);
   await page.waitFor(`${HYDRATED} && ${HAS_ROWS} === 12`, 'guest author suggestions');
   presentation(await page.eval(`${hasCopy(HEADING, COPY.suggestions)}
-    && ${q(NOTE)}?.tagName === 'P' && ${hasCopy(NOTE, COPY.note)}`),
-    'S1 suggestions have their own heading and public-list note');
+    && !${q(NOTE)} && !${textOf('.vk-author-search')}.includes('Ai cũng thấy')`),
+    'S1 suggestions use the exact heading without a public-list note');
+  check(await page.eval(`!${q('#author-search-list button, #author-search-list ' + SELF)}`),
+    'R5 guest suggestions display public identities without viewer actions');
+  for (const [width, height, theme] of [[390, 844, 'light'], [834, 1112, 'light'], [834, 1112, 'dark']]) {
+    await page.viewport(width, height);
+    await page.eval(`document.documentElement.dataset.theme = '${theme}'`);
+    await page.capture(`author-suggestions-guest-${width}x${height}-${theme}-100`, {
+      boundary: 'Chrome guest + scratch App PG', scenario: 'authors-suggestions', textScale: 100,
+      requiredTargets: [HEADING, row(currentAuthor)],
+    });
+  }
+  await page.viewport(1280);
+  await page.eval("delete document.documentElement.dataset.theme");
   const guest = await fetch(base + SEARCH + '?q=' + encodeURIComponent(pen)).then(r => r.text());
   await page.click('#open-public-search');
   await page.waitFor(`document.activeElement === ${q(INPUT)}`, 'author search launcher focuses its field');
@@ -822,10 +926,13 @@ export async function authorSearch(page, { args, check, openPage, textContrast }
       && node.description?.value?.includes('@' + currentAuthor)),
     'AX describes Follow in the context of its author');
 
-  for (const width of [320, 390, 834, 1024, 1440]) {
+  const rowGeometry = [];
+  const rowInteractions = [];
+  for (const width of [320, 390, 834, 1440]) {
     for (const theme of ['light', 'dark']) {
-      for (const scale of [100, 200]) {
+      for (const scale of width <= 390 ? [100, 150, 200] : [100, 150]) {
         await page.viewport(width);
+        await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 0, y: 0 });
         const layout = await page.eval(`(async () => {
           const root = document.documentElement;
           root.dataset.theme = '${theme}';
@@ -838,34 +945,65 @@ export async function authorSearch(page, { args, check, openPage, textContrast }
           const link = ${q(row(currentAuthor))};
           const list = document.querySelector('#author-search-list');
           const rowEl = link.closest('li');
+          const avatar = link.querySelector('.vk-ui-avatar');
+          const name = link.querySelector('.vk-ui-identity-name');
+          const handle = link.querySelector('.vk-ui-identity-handle');
+          const heading = ${q(HEADING)};
+          const button = ${action};
+          const rect = element => {
+            const {x, y, width, height} = element.getBoundingClientRect();
+            return {x, y, width, height};
+          };
+          const listStyle = getComputedStyle(list);
           const rowStyle = getComputedStyle(rowEl);
-          const probe = document.createElement('span');
-          probe.style.background = 'var(--vk-bg-content)';
-          document.body.append(probe);
-          const bgContent = getComputedStyle(probe).backgroundColor;
-          probe.remove();
-          const cardOk = rowStyle.borderTopLeftRadius === '20px' && rowStyle.backgroundColor === bgContent
-            && rowStyle.borderBottomWidth === '0px' && getComputedStyle(list).rowGap === '8px';
-          const targets = [link, ${q(INPUT)}, ${action}];
-          return cardOk && root.scrollWidth <= root.clientWidth + 1 && targets.every(element => {
-            const rect = element.getBoundingClientRect();
-            return rect.width > 0 && rect.left >= -1 && rect.right <= root.clientWidth + 1;
-          });
+          const linkRect = rect(link);
+          const buttonRect = rect(button);
+          const nameStyle = getComputedStyle(name);
+          return {
+            width: root.clientWidth, scrollWidth: root.scrollWidth,
+            heading: rect(heading), list: rect(list), row: rect(rowEl), avatar: rect(avatar),
+            link: linkRect, button: buttonRect, name: rect(name), handle: rect(handle),
+            separation: buttonRect.y >= linkRect.y + linkRect.height - 1
+              || buttonRect.x >= linkRect.x + linkRect.width - 1,
+            flat: list.matches('ul[role="list"]') && rowEl.parentElement === list
+              && listStyle.paddingInlineStart === '0px' && listStyle.marginBlockStart === '0px'
+              && rowStyle.listStyleType === 'none' && rowStyle.borderTopLeftRadius === '0px'
+              && [rowStyle.borderTopWidth, rowStyle.borderRightWidth, rowStyle.borderBottomWidth,
+                rowStyle.borderLeftWidth].every(width => width === '0px')
+              && rowStyle.backgroundColor === 'rgba(0, 0, 0, 0)' && rowStyle.boxShadow === 'none'
+              && getComputedStyle(link).backgroundColor === 'rgba(0, 0, 0, 0)',
+            type: { clamp: nameStyle.webkitLineClamp, weight: nameStyle.fontWeight,
+              name: nameStyle.fontSize, handle: getComputedStyle(handle).fontSize },
+          };
         })()`);
-        check(layout, `author search reflow ${width}px / ${theme} / ${scale}%`);
+        rowGeometry.push({ viewport: width, theme, scale, ...layout });
+        const inside = rect => rect.width > 0 && rect.x >= -1 && rect.x + rect.width <= layout.width + 1;
+        check(layout.flat && layout.scrollWidth <= layout.width + 1 && layout.separation
+          && [layout.row, layout.link, layout.button, layout.name, layout.handle].every(inside)
+          && Math.abs(layout.heading.x - layout.avatar.x) <= 1
+          && layout.avatar.width === 44 && layout.avatar.height === 44 && layout.row.height >= 68
+          && layout.link.height >= 44 && layout.button.height >= 44 && layout.button.width >= 44
+          && layout.type.clamp === '2' && Number(layout.type.weight) >= 600,
+          `R5 flat rows and targets ${width}px / ${theme} / ${scale}% (${JSON.stringify(layout)})`);
         if (width === 390 && scale === 100) {
-          await textContrast(page, theme, 'author-search', [INPUT, '#author-search-results-heading',
-            row(currentAuthor) + ' .vk-ui-byline__name', '#search-follow-' + currentAuthor]);
+          await textContrast(page, theme, 'author-search', [INPUT, HEADING,
+            row(currentAuthor) + ' .vk-ui-byline__name', row(currentAuthor) + ' .vk-ui-byline__handle',
+            '#search-follow-' + currentAuthor]);
+          rowInteractions.push(await authorRowInteraction(page, theme, check));
         }
-        if (width === 320 && theme === 'dark' && scale === 200
-            || width === 1440 && theme === 'light' && scale === 100) {
+        if ((width === 320 && theme === 'dark' && scale === 200)
+            || (width === 1440 && theme === 'light' && scale === 100)) {
           await page.capture(`author-search-${width}-${theme}-${scale}`, {
             boundary: 'Chrome + native Identity + scratch App PG', scenario: 'authors', textScale: scale,
+            requiredTargets: [HEADING, row(currentAuthor), '#search-follow-' + currentAuthor],
           });
         }
       }
     }
   }
+  writeFileSync(join(dirname(args.state), 'author-search-r5-evidence.json'), JSON.stringify({
+    geometry: rowGeometry, interactions: rowInteractions, ax: nodes.filter(node => ['list', 'listitem', 'link', 'button'].includes(node.role?.value)),
+  }, null, 2));
   await page.viewport(1280);
   await page.click('#explore-mode-following');
   const emptyFeedLink = '[data-feed-state=no-follows] a[href="/?mode=authors"]';
@@ -935,11 +1073,11 @@ export async function authorSearch(page, { args, check, openPage, textContrast }
   const unavailableHtml = await unavailable.text();
   check(unavailable.status === 503 && !unavailableHtml.includes(COPY.emptySuggestions),
     'SSR unavailable and legitimate empty stay distinct');
-  presentation(unavailableHtml.includes(COPY.unavailable) && unavailableHtml.includes(COPY.unavailableDetail),
+  presentation(unavailableHtml.includes(COPY.unavailable),
     'S3 SSR unavailable uses the same heading and explanation as hydrated search');
   authorFixtureSql('UPDATE author_handle_rollout SET ready = true');
 
-  await longHandleReflow(page, base, presentation);
+  await longHandleReflow(page, base, args, presentation);
   if (failures.length) {
     check(page.errors.length === 0, `no console errors or exceptions: ${page.errors.join(' | ')}`);
     throw new Error(`author search presentation: ${failures.length} failed assertions (see S1–S7 above)`);

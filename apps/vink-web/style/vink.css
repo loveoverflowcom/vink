@@ -1972,12 +1972,6 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index) { scrollbar-gut
 @media (min-width: 760px) {
   .vk-public-row__title { font-size: calc(var(--vk-type-title-size) + 0.125rem); }
 }
-.vk-search-mark {
-  background: var(--vk-secondary-container);
-  color: var(--vk-on-secondary-container);
-  border-radius: 3px;
-  padding-inline: 2px;
-}
 .vk-public-pagination { display: flex; }
 /* Reader tag display and margins share a layer with their 759px overrides below. */
 .vk-reader-tags { display: flex; margin-block: var(--vk-space-3) var(--vk-space-6); }
@@ -2522,7 +2516,7 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
 .vk-author-search__results p {
   margin: 0;
 }
-.vk-author-search__note,
+.vk-author-search__notice,
 .vk-author-search__self {
   color: var(--vk-on-surface-variant);
 }
@@ -2531,11 +2525,41 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
   font-size: var(--vk-type-label-size);
   font-weight: var(--vk-type-label-weight);
 }
-.vk-author-search__row .vk-ui-byline,
-.vk-author-search__follow {
-  min-inline-size: 0;
+.vk-author-search__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.vk-author-search__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--vk-space-3);
+}
+.vk-author-search__row > .vk-ui-byline {
+  flex: 1 1 12rem;
+}
+.vk-author-search__row .vk-ui-avatar {
+  --vk-ui-avatar-size: 44px;
+}
+.vk-author-search__row .vk-ui-byline__name:not([data-blank]) {
+  font-weight: var(--vk-type-section-weight);
+}
+.vk-author-search__row .vk-ui-byline__identity {
+  inline-size: 100%;
+  min-block-size: 68px;
+  padding-block: var(--vk-space-2);
+}
+@media (hover: hover) {
+  .vk-author-search__row a.vk-ui-byline__identity:hover {
+    background-color: var(--vk-state-hover);
+  }
+}
+.vk-author-search__row a.vk-ui-byline__identity:active {
+  background-color: var(--vk-state-pressed);
 }
 .vk-author-search__follow {
+  min-inline-size: 0;
   margin-inline-start: auto;
   max-inline-size: 100%;
 }

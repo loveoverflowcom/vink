@@ -2,14 +2,14 @@
 use leptos::prelude::*;
 use leptos_meta::{Link, Meta, Title};
 use leptos_router::hooks::use_navigate;
-use vink_ui::{Avatar, AvatarSize, Heading, HeadingLevel, TypeRole};
+use vink_ui::{Heading, HeadingLevel, TypeRole};
 
 use super::{ResponseStatus, focus_recovery};
 use crate::api::{self, InvalidRead, LoadError};
 use crate::contract::{PublicAuthorPage, PublicAuthorRef};
 use crate::discovery::{ExploreContext, ExploreQuery, author_search_href};
 use crate::ui::empty_state::{EmptyArtwork, EmptyState};
-use crate::ui::patterns::{Author, AuthorIdentity, ProfileLink, profile_label};
+use crate::ui::patterns::{Author, AuthorIdentity, ProfileLink};
 
 #[cfg(feature = "browser")]
 mod browser;
@@ -72,7 +72,7 @@ pub(super) fn AuthorSearch(
         <section aria-labelledby=RESULTS_HEADING class="vk-author-search vk-author-search__results grid [grid-template-columns:minmax(0,1fr)] gap-vk-3 [min-inline-size:0] wrap-anywhere">
             {q.with_value(|q| results_heading(q))}
             <Show when=move || return_notice.get()>
-                <p id="author-search-notice" role="status" class="vk-author-search__note">
+                <p id="author-search-notice" role="status" class="vk-author-search__notice">
                     "Một hồ sơ không còn truy cập được; danh sách đã cập nhật."
                 </p>
             </Show>
@@ -104,7 +104,7 @@ pub(super) fn AuthorSearch(
 fn results_heading(q: &str) -> impl IntoView + use<> {
     let suggestions = q.trim().is_empty();
     let title = if suggestions {
-        "Gợi ý tác giả".into()
+        "Tác giả đề xuất".into()
     } else {
         format!("Tác giả khớp “{q}”")
     };
@@ -112,16 +112,13 @@ fn results_heading(q: &str) -> impl IntoView + use<> {
         <Heading id=RESULTS_HEADING level=HeadingLevel::H2 role=TypeRole::Title attr:tabindex="-1">
             {title}
         </Heading>
-        {suggestions.then(|| view! {
-            <p id="author-search-note" class="vk-author-search__note">"Ai cũng thấy cùng danh sách gợi ý này."</p>
-        })}
     }
 }
 
 fn search_loading(suggestions: bool) -> impl IntoView {
     view! {
         <p role="status" id="author-search-loading">
-            {if suggestions { "Đang tải gợi ý tác giả…" } else { "Đang tìm tác giả…" }}
+            {if suggestions { "Đang tải tác giả đề xuất…" } else { "Đang tìm tác giả…" }}
         </p>
     }
 }
@@ -149,7 +146,7 @@ fn SearchError(
             false,
         ),
         LoadError::Unavailable | LoadError::NotFound => (
-            "Chưa tìm được lúc này",
+            "Chưa tải được danh sách tác giả",
             "Thử lại",
             q.with_value(|q| author_search_href(q, cursor.as_deref())),
             true,
@@ -160,7 +157,6 @@ fn SearchError(
             {if can_retry {
                 view! {
                     <Heading level=HeadingLevel::H3 role=TypeRole::Title>{message}</Heading>
-                    <p>"Kết quả chưa tải xong – chưa thể nói là không có tác giả."</p>
                 }.into_any()
             } else {
                 view! { <p>{message}</p> }.into_any()
@@ -184,7 +180,7 @@ fn SearchEmpty(q: StoredValue<String>, clear: Callback<()>) -> impl IntoView {
     let q = q.get_value();
     if q.trim().is_empty() {
         return view! { <div id="author-search-empty" role="status">
-            <EmptyState artwork=EmptyArtwork::NoResults message="Chưa có gợi ý tác giả." />
+            <EmptyState artwork=EmptyArtwork::NoResults message="Chưa có tác giả đề xuất." />
         </div> }
         .into_any();
     }
@@ -256,8 +252,7 @@ fn AuthorResults(
         <Show when=move || results.with(|state| state.rows.is_empty())>
             <SearchEmpty q clear />
         </Show>
-        // R4.2 (#405): separate author cards use bg-content and the card gap.
-        <ul class="vk-rel-list vk-author-search__list gap-vk-card-gap" id="author-search-list" role="list">
+        <ul class="vk-author-search__list" id="author-search-list" role="list">
             <For each=move || results.with(|state| state.rows.clone())
                 key=|row| (row.author.handle.clone(), row.author.pen_name.clone())
                 children=move |row| {
@@ -266,7 +261,7 @@ fn AuthorResults(
                     let id = format!("search-author-{handle}");
                     let identity = q.with_value(|q| search_author_identity(author, id, q));
                     view! {
-                        <li class="vk-rel-item vk-author-search__row [background:var(--vk-bg-content)] [border:0] rounded-vk-card [padding:min(var(--vk-space-3),14px)_clamp(16px,4vw,20px)]" data-author-cursor=row.cursor>
+                        <li class="vk-author-search__row" data-author-cursor=row.cursor>
                             {identity}
                             {
                                 #[cfg(feature = "browser")]
@@ -279,7 +274,7 @@ fn AuthorResults(
                 }
             />
         </ul>
-        <div class="vk-rel-pagination">
+        <div class="grid justify-items-start gap-vk-2">
             {move || results.with(|state| state.append_error.as_ref().map(|error| {
                 let (message, restart) = match error {
                     LoadError::Invalid(InvalidRead::RestartCursor) =>
@@ -326,37 +321,11 @@ fn search_author_identity(author: PublicAuthorRef, id: String, q: &str) -> AnyVi
         href: href.into(),
         handle: author.handle.clone(),
     });
-    if let Some(profile) = &profile
-        && let Some(requested) = q.strip_prefix('@')
-        && profile.handle.eq_ignore_ascii_case(requested)
-    {
-        // AuthorIdentity supports highlighted names. Only an exact Handle hit needs this
-        // rendering of the verified link with the mark in the Handle slot.
-        let label = profile_label(&author.pen_name, &profile.handle);
-        let handle = format!("@{}", profile.handle);
-        let blank = author.pen_name.trim().is_empty();
-        let name = if blank {
-            "Chưa có tên tác giả".into()
-        } else {
-            author.pen_name.clone()
-        };
-        let avatar_name = if blank {
-            String::new()
-        } else {
-            author.pen_name
-        };
-        return view! {
-            <div class="vk-ui-byline vk-ui-byline--feed">
-                <a class="vk-ui-byline__identity" id=id aria-label=label data-profile-return="true" href=profile.href.clone()>
-                    <Avatar name=avatar_name size=AvatarSize::Feed decorative=true />
-                    <span class="vk-ui-byline__text">
-                        <span class="vk-ui-byline__name vk-ui-identity-name" data-blank=blank.then_some("true")>{name}</span>
-                        <span class="vk-ui-byline__handle vk-ui-identity-handle"><mark class="vk-search-mark">{handle}</mark></span>
-                    </span>
-                </a>
-            </div>
-        }.into_any();
-    }
+    let highlight_handle = q.strip_prefix('@').is_some_and(|requested| {
+        profile
+            .as_ref()
+            .is_some_and(|profile| profile.handle.eq_ignore_ascii_case(requested))
+    });
     let name_view =
         (!handle_query).then(|| super::discovery::highlighted_text(&author.pen_name, q));
     let author = Author {
@@ -366,7 +335,7 @@ fn search_author_identity(author: PublicAuthorRef, id: String, q: &str) -> AnyVi
         published_at: String::new(),
         neutral: false,
     };
-    view! { <AuthorIdentity author id=Some(id) name_view /> }.into_any()
+    view! { <AuthorIdentity author id=Some(id) name_view highlight_handle /> }.into_any()
 }
 
 #[component]
@@ -401,9 +370,9 @@ mod tests {
     fn headings_and_loading_labels_follow_the_query() {
         Owner::new().with(|| {
             let suggestions = results_heading("").to_html();
-            assert!(suggestions.contains("Gợi ý tác giả"));
-            assert!(suggestions.contains("id=\"author-search-note\""));
-            assert!(suggestions.contains("Ai cũng thấy cùng danh sách gợi ý này."));
+            assert!(suggestions.contains("Tác giả đề xuất"));
+            assert!(!suggestions.contains("author-search-note"));
+            assert!(!suggestions.contains("Ai cũng thấy"));
 
             let matching = results_heading("Bút danh Đỗ").to_html();
             assert!(matching.contains("id=\"author-search-results-heading\""));
@@ -414,7 +383,7 @@ mod tests {
             assert!(
                 search_loading(true)
                     .to_html()
-                    .contains("Đang tải gợi ý tác giả…")
+                    .contains("Đang tải tác giả đề xuất…")
             );
             assert!(
                 search_loading(false)
@@ -438,7 +407,7 @@ mod tests {
 
             q.set_value("  ".into());
             let suggestions = view! { <SearchEmpty q clear /> }.to_html();
-            assert!(suggestions.contains("Chưa có gợi ý tác giả."));
+            assert!(suggestions.contains("Chưa có tác giả đề xuất."));
             assert!(!suggestions.contains("author-search-clear"));
             assert!(!suggestions.contains("author-search-in-works"));
         });
@@ -456,8 +425,7 @@ mod tests {
             for error in [LoadError::Unavailable, LoadError::NotFound] {
                 let retry = render(error);
                 assert!(retry.contains("id=\"author-search-error\" role=\"alert\""));
-                assert!(retry.contains("Chưa tìm được lúc này"));
-                assert!(retry.contains("Kết quả chưa tải xong – chưa thể nói là không có tác giả."));
+                assert!(retry.contains("Chưa tải được danh sách tác giả"));
                 assert!(retry.contains("Thử lại"));
                 assert!(retry.contains("&amp;cursor=page-2\""));
                 assert!(!retry.contains("author-search-empty"));

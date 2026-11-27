@@ -77,6 +77,7 @@ pub fn AuthorIdentity(
     #[prop(optional_no_strip)] id: Option<String>,
     #[prop(default = AvatarSize::Feed)] size: AvatarSize,
     #[prop(optional_no_strip)] name_view: Option<AnyView>,
+    #[prop(optional)] highlight_handle: bool,
 ) -> impl IntoView {
     let profile = author.profile.filter(|_| !author.neutral);
     let label = profile
@@ -88,7 +89,7 @@ pub fn AuthorIdentity(
     };
     view! {
         <AuthorByline name=author.name identity_key=author.key.unwrap_or_default() size
-            neutral=author.neutral href handle link_id=id link_label=label name_view />
+            neutral=author.neutral href handle link_id=id link_label=label name_view highlight_handle />
     }
 }
 

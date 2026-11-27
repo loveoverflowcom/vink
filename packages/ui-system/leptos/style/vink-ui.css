@@ -1174,6 +1174,13 @@ a.vk-ui-byline__identity:focus-visible {
   overflow-wrap: anywhere;
 }
 
+.vk-search-mark {
+  background: var(--vk-secondary-container);
+  color: var(--vk-on-secondary-container);
+  border-radius: 3px;
+  padding-inline: 2px;
+}
+
 .vk-ui-byline__meta {
   margin-inline-start: auto;
   font-family: var(--vk-type-caption-font);
