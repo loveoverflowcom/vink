@@ -522,6 +522,28 @@ async function selectChevron(page) {
     await page.emulate('forced-colors','none');
   }
   await page.choose('scale','100%');await page.viewport(1440);
+  await page.open('field.select');
+  const audience = 'document.querySelector("#audience-select")';
+  await page.eval(`${audience}.scrollIntoView({block:"center"}); ${audience}.focus()`);
+  await page.key('Space');
+  await page.waitFor(`${audience}.matches(":open")`, 'shared Preview icon picker opens with Space');
+  check(await page.eval(`${audience}.querySelector("option:checked [data-icon=public]") !== null &&
+    ${audience}.querySelector("option[value=self] [data-icon=lock]") !== null`), 'Preview icon options use catalog glyphs');
+  await page.key('ArrowDown');
+  await page.key('Enter');
+  await page.waitFor(`${audience}.value === "self" &&
+    ${audience}.parentElement.querySelector(".vk-ui-select__value-icon [data-icon=lock]")`,
+    'Preview value icon follows the native keyboard choice');
+  await page.viewport(390);
+  check(await page.eval(`(() => {
+    const a = document.querySelector('.vk-ui-back-link'), r = a.getBoundingClientRect();
+    const glyph = a.querySelector('svg').getBoundingClientRect();
+    return a.getAttribute('href') === '/' && a.getAttribute('aria-label') === 'Về Danh mục' &&
+      r.width >= 48 && r.height >= 48 &&
+      Math.abs(r.x + r.width / 2 - glyph.x - glyph.width / 2) <= 1 &&
+      Math.abs(r.y + r.height / 2 - glyph.y - glyph.height / 2) <= 1;
+  })()`), 'Preview shared Back is a named mobile link with a 48px target');
+  await page.viewport(1440);
 }
 
 // #262 presentation fixture only. Expected numbers come from the issue's LayoutSpec;

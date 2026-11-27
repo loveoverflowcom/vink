@@ -1,7 +1,7 @@
 use leptos::{prelude::*, task::spawn_local};
 use vink_ui::{
-    ActionState, Button, ButtonVariant, Dialog, DismissPolicy, FieldMode, Link, TextField,
-    TextInput,
+    ActionState, Button, ButtonVariant, Dialog, DismissPolicy, FieldMode, IconName, Link,
+    TextField, TextInput,
 };
 
 use crate::{
@@ -468,7 +468,7 @@ pub(super) fn HandleRow(controller: Controller) -> impl IntoView {
     };
     view! {
         <section id=ROW node_ref=row tabindex="-1" aria-labelledby="author-handle-heading"
-            class="grid min-w-0 gap-vk-2 p-vk-4 rounded-vk-card bg-vk-bg-content wrap-anywhere focus-visible:[outline:var(--vk-size-focus-ring)_solid_var(--vk-focus-ring)]">
+            class="grid min-w-0 gap-vk-2 rounded-vk-md border border-vk-outline-variant p-vk-3 wrap-anywhere focus-visible:[outline:var(--vk-size-focus-ring)_solid_var(--vk-focus-ring)]">
             <div class="flex flex-wrap items-center justify-between gap-vk-3 min-w-0">
                 <div class="grid min-w-0 gap-vk-1">
                     <h2 id="author-handle-heading" class="m-0 text-[length:var(--vk-type-body-size)] font-vk-role-label">"Địa chỉ tác giả"</h2>
@@ -476,7 +476,7 @@ pub(super) fn HandleRow(controller: Controller) -> impl IntoView {
                         <p class="m-0" id="handle-saved"
                             data-setup=own.setup_complete.to_string()>{format!("@{}", own.handle)}</p>
                         <p class="m-0 vk-muted">{if !own.setup_complete {
-                            "Địa chỉ gợi ý. Thiết lập lần đầu không trừ lượt đổi.".to_string()
+                            "Địa chỉ gợi ý".to_string()
                         } else if own.remaining_changes == 0 {
                             "Đã hết lượt đổi.".to_string()
                         } else {
@@ -485,7 +485,7 @@ pub(super) fn HandleRow(controller: Controller) -> impl IntoView {
                     })}
                 </div>
                 <Show when=can_open>
-                    <Button id="author-handle-open" variant=ButtonVariant::Tonal
+                    <Button id="author-handle-open" variant=ButtonVariant::Tonal leading=IconName::EditOutline
                         state=Signal::derive(move || button_state(controller.busy.get()))
                         on_press=Callback::new(move |()| controller.open())>
                         {move || if controller.pending.with(Option::is_some) {
@@ -493,7 +493,7 @@ pub(super) fn HandleRow(controller: Controller) -> impl IntoView {
                         } else if controller.confirmed.with(|own| own.as_ref().is_some_and(|own| own.setup_complete)) {
                             "Đổi địa chỉ"
                         } else {
-                            "Thiết lập địa chỉ"
+                            "Thiết lập"
                         }}
                     </Button>
                 </Show>

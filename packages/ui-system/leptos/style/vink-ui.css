@@ -754,6 +754,45 @@
   inset-inline: auto 16px;
 }
 
+/* The closed control keeps one native focus target. Its decorative leading icon is
+ * outside the select so it also works with a platform picker. The top-layer menu
+ * is opt-in and uses the browser's placement, keyboard, and dismiss behavior. */
+.vk-ui-select--icon-tonal { padding-inline: var(--vk-space-3) 38px; }
+.vk-ui-field__control--select[data-value-icon] > .vk-ui-select--icon-tonal {
+  padding-inline-start: calc(var(--vk-space-3) + var(--vk-size-icon-sm) + var(--vk-space-2));
+}
+
+@supports (appearance: base-select) and selector(::picker(select)) {
+  .vk-ui-select--icon-tonal, .vk-ui-select--icon-tonal::picker(select) { appearance: base-select; }
+  .vk-ui-select--icon-tonal > option[value=""]:disabled { display: none; }
+  .vk-ui-select--icon-tonal::picker-icon { content: none; }
+  .vk-ui-select--icon-tonal::picker(select) {
+    background: var(--vk-surface-container-high);
+    color: var(--vk-on-surface);
+    border: 1px solid var(--vk-outline-variant);
+    border-radius: var(--vk-radius-md);
+    box-shadow: var(--vk-shadow);
+    margin-block: var(--vk-space-1);
+    max-inline-size: calc(100vw - 2 * var(--vk-space-2));
+    padding: var(--vk-space-1);
+  }
+  .vk-ui-select--icon-tonal option {
+    min-block-size: 48px;
+    padding: var(--vk-space-2) var(--vk-space-3);
+    gap: var(--vk-space-2);
+    border-radius: var(--vk-radius-sm);
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .vk-ui-select--icon-tonal option > .vk-ui-icon { flex: none; }
+  .vk-ui-select--icon-tonal option:checked { background: var(--vk-primary-container); color: var(--vk-on-primary-container); }
+  .vk-ui-select--icon-tonal option:focus-visible { outline: 2px solid var(--vk-focus-ring); outline-offset: -2px; }
+  .vk-ui-select--icon-tonal option::checkmark { order: 1; margin-inline-start: auto; }
+  /* Selected option contents are also rendered in the closed control. Its live
+   * icon is already supplied by the wrapper using the same ChoiceOption. */
+  .vk-ui-select--icon-tonal:not(:open) > option > .vk-ui-icon { display: none; }
+}
+
 /* Floating labels share an intrinsic grid with the input: long Vietnamese labels
  * grow the first row at 200% text instead of overlapping or clipping input text. */
 .vk-ui-field--floating .vk-ui-field__control {
@@ -777,7 +816,7 @@
   line-height: var(--vk-type-caption-line-height);
   color: var(--vk-on-surface-variant);
 }
-.vk-ui-field--floating .vk-ui-input:placeholder-shown:not(:focus):not(:autofill) + .vk-ui-field__label {
+.vk-ui-field--floating input.vk-ui-input:placeholder-shown:not(:focus):not(:autofill) + .vk-ui-field__label {
   grid-row: 1 / 3;
   align-self: center;
   margin-block: var(--vk-space-2);
@@ -802,6 +841,9 @@
   outline: 0;
   border: 0;
   border-radius: 0 0 var(--vk-radius-md) var(--vk-radius-md);
+}
+.vk-ui-field--floating[data-mode="read-only"] .vk-ui-field__control {
+  background: var(--vk-surface-container);
 }
 .vk-ui-field--floating[data-mode="disabled"] .vk-ui-field__control { background: var(--vk-disabled-container); }
 

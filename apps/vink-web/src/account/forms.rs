@@ -862,13 +862,14 @@ pub(super) fn SignedInSettings(epoch: u64, fixture: bool) -> impl IntoView {
     let changed = Callback::new(move |()| binding_changed.notify());
     let now = use_clock();
     view! {
-        <section class="vk-account-settings grid gap-vk-2 w-full min-w-0" aria-labelledby="account-settings-title">
+        <section class="vk-account-settings grid w-full min-w-0 gap-vk-2" aria-labelledby="account-settings-title">
             <Heading id="account-settings-title" level=HeadingLevel::H2 role=vink_ui::TypeRole::Title>"Cài đặt"</Heading>
             <Show when=move || session.profile_scope.with(Option::is_some)>
-                <Link attr:id="profile-privacy-link" attr:data-profile-return="true" attr:class="vk-account-link vk-account-setting"
+                <Link attr:id="profile-privacy-link" attr:data-profile-return="true" attr:class="vk-account-setting vk-account-setting-link flex min-h-[48px] min-w-0 items-center gap-vk-2 rounded-vk-md px-vk-3 no-underline hover:bg-vk-surface-container-high"
                     variant=LinkVariant::Standalone href=crate::pages::profile::PRIVACY_PATH>
                     <Icon name=IconName::Visibility />
-                    "Quyền riêng tư"
+                    <span class="min-w-0 flex-1 wrap-anywhere">"Quyền riêng tư"</span>
+                    <span class="inline-flex shrink-0 -rotate-90"><Icon name=IconName::ExpandMore /></span>
                 </Link>
             </Show>
             {if fixture {
@@ -877,6 +878,7 @@ pub(super) fn SignedInSettings(epoch: u64, fixture: bool) -> impl IntoView {
                 view! {
                     <div class="vk-account-setting">
                         <Button id="password-credential" variant=ButtonVariant::Text leading=IconName::Lock
+                            attr:class="w-full [&>button]:w-full [&>button]:justify-start [&>button]:text-start"
                             expanded=Signal::derive(move || opened.get())
                             state=Signal::derive(move || if !opened.get() && session.auth.with(|g| g.needs_check() || g.active().is_some()) {
                                 ActionState::Disabled { reason: None }

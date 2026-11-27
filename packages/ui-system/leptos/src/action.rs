@@ -361,6 +361,27 @@ pub fn Link(
     .into_any()
 }
 
+/// A single native link to a host-provided parent route, including on direct entry.
+#[component]
+pub fn BackLink(#[prop(into)] href: Signal<String>, #[prop(into)] label: String) -> impl IntoView {
+    let href = Signal::derive(move || {
+        href.with(|value| {
+            safe_href(value)
+                .filter(|value| value.starts_with('/') && !value.contains('\\'))
+                .unwrap_or_default()
+                .to_owned()
+        })
+    });
+    let name = format!("Về {label}");
+    view! {
+        <Link href variant=LinkVariant::Standalone attr:aria-label=name
+            attr:class="vk-ui-back-link box-border inline-flex min-h-[48px] min-w-[48px] max-w-full shrink-0 items-center justify-center gap-vk-2 rounded-vk-full bg-vk-primary-container px-vk-3 text-vk-on-primary-container no-underline hover:bg-vk-surface-container-highest hover:underline active:bg-vk-surface-container-high forced-colors:border forced-colors:border-[ButtonText] max-[759px]:size-[48px] max-[759px]:p-0">
+            <span class="inline-flex shrink-0 [&>svg]:m-0"><Icon name=IconName::ArrowBack /></span>
+            <span class="min-w-0 wrap-anywhere max-[759px]:sr-only">{label}</span>
+        </Link>
+    }
+}
+
 /// A toggle chip: `aria-pressed`, a check mark when selected, never colour alone. A disabled
 /// reason is shown under it and linked when the caller gives an `id`.
 #[component]

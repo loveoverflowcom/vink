@@ -78,6 +78,8 @@ pub enum IconName {
     PersonAdd,
     /// Tôi chưa chọn
     PersonOutline,
+    /// Công khai, mọi người có thể xem
+    Public,
     /// Thử lại, làm mới
     Refresh,
     /// Trả lời nhận xét
@@ -101,7 +103,7 @@ pub enum IconName {
 }
 
 impl IconName {
-    pub const ALL: [IconName; 44] = [Self::Add, Self::ArrowBack, Self::Block, Self::Bookmark, Self::BookmarkBorder, Self::Cancel, Self::ChatBubbleOutline, Self::Check, Self::Close, Self::ContentCopy, Self::Download, Self::Edit, Self::EditOutline, Self::Error, Self::ExpandMore, Self::Explore, Self::ExploreOutline, Self::FilterList, Self::Heart, Self::HeartOutline, Self::Help, Self::Image, Self::Info, Self::Lock, Self::Mail, Self::Menu, Self::MenuOpen, Self::Notifications, Self::NotificationsNone, Self::OpenInNew, Self::PenFlight, Self::Person, Self::PersonAdd, Self::PersonOutline, Self::Refresh, Self::Reply, Self::Schedule, Self::Search, Self::Send, Self::VerifiedUser, Self::Visibility, Self::VisibilityOff, Self::VisibilityOutline, Self::Warning];
+    pub const ALL: [IconName; 45] = [Self::Add, Self::ArrowBack, Self::Block, Self::Bookmark, Self::BookmarkBorder, Self::Cancel, Self::ChatBubbleOutline, Self::Check, Self::Close, Self::ContentCopy, Self::Download, Self::Edit, Self::EditOutline, Self::Error, Self::ExpandMore, Self::Explore, Self::ExploreOutline, Self::FilterList, Self::Heart, Self::HeartOutline, Self::Help, Self::Image, Self::Info, Self::Lock, Self::Mail, Self::Menu, Self::MenuOpen, Self::Notifications, Self::NotificationsNone, Self::OpenInNew, Self::PenFlight, Self::Person, Self::PersonAdd, Self::PersonOutline, Self::Public, Self::Refresh, Self::Reply, Self::Schedule, Self::Search, Self::Send, Self::VerifiedUser, Self::Visibility, Self::VisibilityOff, Self::VisibilityOutline, Self::Warning];
 
     pub const fn id(self) -> &'static str {
         match self {
@@ -139,6 +141,7 @@ impl IconName {
             Self::Person => "person",
             Self::PersonAdd => "person-add",
             Self::PersonOutline => "person-outline",
+            Self::Public => "public",
             Self::Refresh => "refresh",
             Self::Reply => "reply",
             Self::Schedule => "schedule",
@@ -188,6 +191,7 @@ impl IconName {
             Self::Person => "M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z",
             Self::PersonAdd => "M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z",
             Self::PersonOutline => "M12 6c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2m0 10c2.7 0 5.8 1.29 6 2H6c.23-.72 3.31-2 6-2m0-12C9.79 4 8 5.79 8 8s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 10c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z",
+            Self::Public => "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z",
             Self::Refresh => "M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z",
             Self::Reply => "M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z",
             Self::Schedule => "M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z",
@@ -237,6 +241,7 @@ impl IconName {
             Self::Person => "src/social/person/materialicons/24px.svg",
             Self::PersonAdd => "src/social/person_add/materialicons/24px.svg",
             Self::PersonOutline => "src/social/person/materialiconsoutlined/24px.svg",
+            Self::Public => "src/social/public/materialicons/24px.svg",
             Self::Refresh => "src/navigation/refresh/materialicons/24px.svg",
             Self::Reply => "src/content/reply/materialicons/24px.svg",
             Self::Schedule => "src/action/schedule/materialiconsoutlined/24px.svg",

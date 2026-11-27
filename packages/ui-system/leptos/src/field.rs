@@ -74,6 +74,7 @@ pub struct ChoiceOption {
     pub value: String,
     pub label: String,
     pub disabled: bool,
+    pub icon: Option<IconName>,
 }
 
 impl ChoiceOption {
@@ -82,7 +83,14 @@ impl ChoiceOption {
             value: value.into(),
             label: label.into(),
             disabled: false,
+            icon: None,
         }
+    }
+
+    /// Decorative icon for a renderer that presents the option's value visually.
+    pub fn with_icon(mut self, icon: IconName) -> Self {
+        self.icon = Some(icon);
+        self
     }
 }
 
@@ -126,7 +134,7 @@ fn messages(
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum TextControl {
     Field(TextKind),
-    Area(u16),
+    Area { rows: u16, grow: bool },
     Search,
 }
 
@@ -171,10 +179,13 @@ fn text_control(control: TextControl, p: TextProps, node: NodeRef<leptos::html::
     let disabled = move || mode.get() == FieldMode::Disabled;
     let on_submit = p.on_submit;
     match control {
-        TextControl::Area(rows) => view! {
+        TextControl::Area { rows, grow } => view! {
             <textarea
                 id=p.id
                 class="vk-ui-input vk-ui-input--area"
+                class=("[field-sizing:content]", grow)
+                class=("min-h-[3lh]", grow)
+                class=("max-h-[8lh]", grow)
                 rows=rows
                 prop:value=move || value.get()
                 readonly=readonly
@@ -459,13 +470,16 @@ pub fn TextArea(
     #[prop(optional, into)] mode: Signal<FieldMode>,
     #[prop(optional)] variant: FieldVariant,
     #[prop(default = 4)] rows: u16,
+    /// Fit the content between three and eight line heights where field sizing is supported.
+    #[prop(optional)]
+    grow: bool,
     #[prop(optional, into)] placeholder: Option<String>,
     /// An existing context element, read before inline help and errors.
     #[prop(optional_no_strip)]
     described_by: Option<String>,
 ) -> impl IntoView {
     text_field(
-        TextControl::Area(rows),
+        TextControl::Area { rows, grow },
         id,
         label,
         value,
@@ -862,6 +876,9 @@ pub enum SelectVariant {
     Standard,
     /// Fixed CSS pixels: 16px icon, 16px inline-end inset, 52px reserved for trailing content.
     Inset16,
+    /// Tonal control with a leading value icon and a progressively enhanced native picker.
+    /// Browsers without customizable selects retain their native text options and behavior.
+    IconTonal,
 }
 
 /// A native `<select>`. The empty placeholder option means "no value" (`None`); it cannot be
@@ -879,6 +896,9 @@ pub fn Select(
     #[prop(optional)] required: bool,
     #[prop(optional)] variant: SelectVariant,
     #[prop(optional, into)] disabled: Signal<bool>,
+    /// Lay out the label and control on one row when their contents fit.
+    #[prop(optional)]
+    inline: bool,
 ) -> impl IntoView {
     let invalid = Signal::derive(move || present(error.get()).is_some());
     let has_help = help.is_some();
@@ -887,20 +907,53 @@ pub fn Select(
         move || described_by(&id, has_help, invalid.get())
     };
     let initial = value.get_untracked();
+    let icon_tonal = variant == SelectVariant::IconTonal;
+    let show_placeholder = !icon_tonal || initial.is_none() || placeholder.is_some();
+    let icons = StoredValue::new(
+        options
+            .iter()
+            .filter_map(|option| option.icon.map(|icon| (option.value.clone(), icon)))
+            .collect::<Vec<_>>(),
+    );
+    let selected_icon = move || {
+        icons.with_value(|icons| {
+            value.with(|current| {
+                icons
+                    .iter()
+                    .find_map(|(key, icon)| (current.as_ref() == Some(key)).then_some(*icon))
+            })
+        })
+    };
+    // Render text-only options in SSR. Browsers with the legacy select parser can hydrate
+    // that same tree. Once mounted, supported pickers can display DOM children in each option.
+    let mounted = RwSignal::new(false);
+    if icon_tonal {
+        Effect::new(move |_| mounted.set(true));
+    }
     view! {
-        <div class="vk-ui-field" data-invalid=move || invalid.get().then_some("true")>
-            <label class="vk-ui-field__label" for=id.clone() id=format!("{id}-label")>
+        <div class="vk-ui-field" class=("flex-row", inline) class=("flex-wrap", inline)
+            class=("items-center", inline) class=("gap-x-vk-3", inline)
+            data-invalid=move || invalid.get().then_some("true")>
+            <label class="vk-ui-field__label" class=("flex-[1_1_10rem]", inline)
+                for=id.clone() id=format!("{id}-label")>
                 {label}
                 {required_mark(required)}
             </label>
             <div class="vk-ui-field__control vk-ui-field__control--select"
-                data-select-variant=(variant == SelectVariant::Inset16).then_some("inset-16")
+                class=("flex-[0_1_11rem]", inline) class=("min-w-[min(11rem,100%)]", inline)
+                data-select-variant=match variant {
+                    SelectVariant::Standard => None,
+                    SelectVariant::Inset16 => Some("inset-16"),
+                    SelectVariant::IconTonal => Some("icon-tonal"),
+                }
+                data-value-icon=move || (icon_tonal && selected_icon().is_some()).then_some("true")
             >
                 <select
                     id=id.clone()
                     class=match variant {
                         SelectVariant::Standard => "vk-ui-input vk-ui-select [padding-inline:12px_38px]",
                         SelectVariant::Inset16 => "vk-ui-input vk-ui-select [padding-inline:12px_52px]",
+                        SelectVariant::IconTonal => "vk-ui-input vk-ui-select vk-ui-select--icon-tonal min-h-[48px]",
                     }
                     prop:value=move || value.get().unwrap_or_default()
                     disabled=move || disabled.get()
@@ -912,24 +965,36 @@ pub fn Select(
                         on_change.run((!picked.is_empty()).then_some(picked));
                     }
                 >
-                    <option value="" disabled=required selected=initial.is_none()>
-                        {placeholder.unwrap_or_else(|| "Chọn…".into())}
-                    </option>
+                    {show_placeholder.then(|| view! {
+                        <option value="" disabled=required selected=initial.is_none()>
+                            {placeholder.unwrap_or_else(|| "Chọn…".into())}
+                        </option>
+                    })}
                     {options
                         .into_iter()
                         .map(|o| {
                             let selected = initial.as_deref() == Some(o.value.as_str());
+                            let icon = o.icon.filter(|_| icon_tonal);
                             view! {
                                 <option value=o.value disabled=o.disabled selected=selected>
+                                    {move || icon.filter(|_| mounted.get()).map(|name| view! {
+                                        <Icon name size=IconSize::Small />
+                                    })}
                                     {o.label}
                                 </option>
                             }
                         })
                         .collect_view()}
                 </select>
+                {move || if icon_tonal { selected_icon() } else { None }.map(|name| view! {
+                    <span class="vk-ui-select__value-icon pointer-events-none absolute start-vk-3 inline-flex"
+                        aria-hidden="true"><Icon name size=IconSize::Small /></span>
+                })}
                 <Icon name=IconName::ExpandMore />
             </div>
-            {messages(id, Signal::stored(help), error)}
+            <div class=("basis-full", inline) class=("contents", !inline) class="empty:hidden">
+                {messages(id, Signal::stored(help), error)}
+            </div>
         </div>
     }
 }

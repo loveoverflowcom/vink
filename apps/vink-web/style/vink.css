@@ -102,13 +102,6 @@ a {
 :root[data-text="150"] { font-size: 150%; }
 :root[data-text="200"] { font-size: 200%; }
 
-.vk-appearance-card {
-  padding: clamp(var(--vk-space-3), 8vw, min(32px, var(--vk-space-6)));
-  border-radius: var(--vk-radius-xl);
-  background: var(--vk-surface-container-high);
-  color: var(--vk-on-surface);
-}
-
 .vk-appearance-title {
   display: flex; align-items: center; gap: var(--vk-space-3);
   margin: 0; font: var(--vk-type-title-weight) var(--vk-type-title-size)/var(--vk-type-title-line-height) var(--vk-font-ui);
@@ -118,7 +111,6 @@ a {
   border-radius: var(--vk-radius-md); color: var(--vk-on-primary-container);
   background: var(--vk-primary-container);
 }
-.vk-appearance-card { display: grid; gap: var(--vk-space-6); min-inline-size: 0; }
 .vk-appearance-region { display: grid; gap: var(--vk-space-6); min-inline-size: 0; }
 .vk-appearance-row { display: grid; gap: var(--vk-space-2); min-inline-size: 0; }
 .vk-appearance-row h3 {
@@ -187,6 +179,21 @@ a {
 }
 /* The Tôi viewport removes this inset while the full-height auth entry is mounted. */
 .vk-me { padding-block-start: var(--vk-space-8); }
+.vk-account-hero { container-type: inline-size; }
+.vk-account-status {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "avatar identity bell";
+}
+.vk-account-status > .vk-account-avatar { grid-area: avatar; }
+.vk-account-identity { grid-area: identity; }
+.vk-account-status > .vk-notif-mobile-bell { grid-area: bell; justify-self: end; }
+@container (max-width: 24rem) {
+  .vk-account-status {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "avatar bell" "identity identity";
+  }
+  .vk-account-status > .vk-account-avatar { justify-self: start; }
+}
 .vk-account-status :is(h1, p) { margin: 0; }
 .vk-account-avatar { display: inline-grid; place-items: center; }
 #page-account:has(#account-session[data-standing="active"]) .vk-account-avatar .vk-ui-avatar {
@@ -206,10 +213,12 @@ a {
 .vk-account-link:hover { text-decoration: underline; }
 .vk-account-link .vk-ui-icon { flex: none; }
 .vk-account-setting {
-  border-radius: var(--vk-radius-lg); background: var(--vk-surface-container-low);
-  padding: var(--vk-space-2) var(--vk-space-3); min-inline-size: 0;
+  border-block-start: 1px solid var(--vk-outline-variant);
+  padding-block: var(--vk-space-2);
+  min-inline-size: 0;
 }
-a.vk-account-setting { padding-block: var(--vk-space-2); }
+.vk-account-setting-link > .vk-ui-icon { flex: none; }
+#recovery-email-settings { padding-inline: var(--vk-space-3); }
 .vk-account-setting .vk-account-form { margin-block-start: var(--vk-space-2); }
 .vk-account-settings :is(h2, h3) { margin: 0; }
 /* Centre the 32px avatar on the shared icon axis, including in the expanded rail. */
@@ -2307,52 +2316,6 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index) { scrollbar-gut
   .vk-author-bio { margin-inline-start: calc(5.5rem + var(--vk-space-6)); }
 }
 
-.vk-profile-edit { max-inline-size: 42rem; }
-.vk-profile-edit > .vk-ui-heading {
-  margin-block: var(--vk-space-2) 0;
-  font: var(--vk-type-section-weight) var(--vk-text-profile-edit-heading)/var(--vk-type-headline-line-height) var(--vk-type-section-font);
-  letter-spacing: 0;
-}
-.vk-profile-form legend {
-  padding: 0;
-  margin-block-end: var(--vk-space-2);
-  font: var(--vk-type-section-weight) var(--vk-type-section-size)/var(--vk-type-section-line-height) var(--vk-type-section-font);
-}
-.vk-profile-form .vk-ui-field__label { font-weight: var(--vk-type-label-weight); }
-.vk-profile-form .vk-ui-input { min-block-size: 3.5rem; font-size: var(--vk-text-profile-input); }
-.vk-profile-form .vk-ui-input--area { min-block-size: 0; font-size: var(--vk-type-body-size); line-height: var(--vk-type-body-line-height); }
-/* Policy rows: the label reads on the left and the value on the right; at a narrow measure or
- * larger text the value moves under its label at full width instead of truncating. */
-.vk-profile-policy > .vk-ui-field {
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: center;
-  column-gap: var(--vk-space-3);
-  row-gap: var(--vk-space-1);
-  min-block-size: 3.5rem;
-}
-.vk-profile-policy > .vk-ui-field > .vk-ui-field__label {
-  flex: 1 1 10rem;
-  min-inline-size: 0;
-  font-size: var(--vk-type-body-size);
-  font-weight: var(--vk-type-body-weight);
-}
-.vk-profile-policy > .vk-ui-field > .vk-ui-field__control,
-.vk-profile-policy__value { flex: 0 1 10rem; min-inline-size: min(10rem, 100%); }
-.vk-profile-policy__value {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--vk-space-2);
-  box-sizing: border-box;
-  min-block-size: var(--vk-density-control-height);
-  margin: 0;
-  padding-inline: 12px;
-  color: var(--vk-on-surface-variant);
-  font-size: var(--vk-type-body-size);
-  line-height: var(--vk-type-label-line-height);
-}
-.vk-profile-policy__value .vk-ui-icon { flex: none; inline-size: 18px; block-size: 18px; }
-.vk-profile-note { margin: 0; font-size: var(--vk-type-caption-size); line-height: var(--vk-type-caption-line-height); }
 .vk-profile-actions p { margin: 0; }
 .vk-profile-actions {
   position: sticky;

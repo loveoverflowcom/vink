@@ -1,7 +1,7 @@
 //! Own fields are hydrated into a single session generation; the public route is actor-free.
 use leptos::prelude::*;
 use leptos_meta::{Meta, Title};
-use vink_ui::{Heading, HeadingLevel, Link};
+use vink_ui::{BackLink, Heading, HeadingLevel, Link, TypeRole};
 
 use crate::account::Session;
 
@@ -137,11 +137,15 @@ pub(crate) fn EditProfile() -> impl IntoView {
     view! {
         <Title text="Chỉnh hồ sơ · Vink" />
         <Meta name="robots" content="noindex" />
-        <section class="vk-me vk-profile-edit grid gap-vk-6" aria-labelledby="edit-profile-heading">
-            <Link href="/toi#edit-profile-link">"Tôi"</Link>
-            <Heading id="edit-profile-heading" level=HeadingLevel::H1 attr:tabindex="-1">
-                "Chỉnh hồ sơ"
-            </Heading>
+        <section class="vk-me vk-profile-edit grid max-w-[42rem] min-w-0 gap-vk-4" aria-labelledby="edit-profile-heading">
+            <header class="flex min-w-0 flex-wrap items-center gap-vk-3">
+                <BackLink href="/toi#edit-profile-link" label="Tài khoản"
+                    attr:id="profile-back" attr:data-profile-return="true" />
+                <Heading id="edit-profile-heading" level=HeadingLevel::H1 role=TypeRole::Title
+                    attr:class="m-0 min-w-0 flex-[1_1_8rem] wrap-anywhere" attr:tabindex="-1">
+                    "Chỉnh hồ sơ"
+                </Heading>
+            </header>
             <For each={move || session.profile_scope.get().into_iter().collect::<Vec<_>>()}
                 key=Clone::clone
                 children=move |scope| view! { <OwnProfileHost scope /> }
@@ -150,7 +154,7 @@ pub(crate) fn EditProfile() -> impl IntoView {
                 {move || if session.checking() || matches!(session.standing.get(), crate::session::Standing::Unknown) {
                     view! { <p role="status">"Đang kiểm tra phiên…"</p> }.into_any()
                 } else {
-                    view! { <p><Link href="/toi">"Mở Tài khoản trong Tôi"</Link></p> }.into_any()
+                    view! { <p><Link href="/toi">"Mở Tài khoản"</Link></p> }.into_any()
                 }}
             </Show>
         </section>
@@ -192,3 +196,5 @@ pub(crate) fn observe_changes(on_change: impl Fn() + 'static) {
 
 #[cfg(feature = "browser")]
 pub(crate) mod browser;
+#[cfg(feature = "browser")]
+pub(crate) mod privacy;

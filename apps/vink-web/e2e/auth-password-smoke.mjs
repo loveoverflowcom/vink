@@ -1098,6 +1098,13 @@ export async function standalone(page, {args, check, openPage}) {
     document.documentElement.dataset.text === '150'`, 'CSR applies saved choices after mount and confirmation');
   const author = await read(page, '/api/v1/me/profile');
   check(author.status === 200 && Boolean(author.data?.handle), 'new author has a public handle');
+  await page.click('#profile-privacy-link');
+  await page.waitFor("document.activeElement?.id === 'quyen-rieng-tu'", 'CSR opens and focuses the privacy deep link');
+  check(await page.eval("document.querySelector('#profile-back')?.getAttribute('href') === '/toi#edit-profile-link' && " +
+    "Boolean(document.querySelector('.vk-profile-form select.vk-ui-select--icon-tonal'))"),
+    'CSR mounts the profile and its actual icon-capable select');
+  await page.click('#profile-back');
+  await page.waitFor("document.activeElement?.id === 'edit-profile-link'", 'CSR Back restores the account entry');
   await page.goto(base + '/?mode=following');
   const discoveryLink = q('[data-feed-state="no-follows"] a[href="/?mode=authors"]');
   await page.waitFor(`${discoveryLink}?.textContent.trim() === 'Khám phá tác giả'`, 'signed-in CSR shows the empty Following CTA');

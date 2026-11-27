@@ -3,11 +3,12 @@ mod handle;
 use leptos::{prelude::*, task::spawn_local};
 use unicode_normalization::UnicodeNormalization;
 use vink_ui::{
-    ActionState, Button, ButtonKind, ButtonVariant, ChoiceOption, Icon, IconName, Link, Select,
-    TextArea, TextField, TextInput,
+    ActionState, Button, ButtonKind, ButtonVariant, FieldMode, FieldVariant, Heading, HeadingLevel,
+    TextArea, TextField, TextInput, TypeRole,
 };
 use wasm_bindgen::JsCast;
 
+use super::privacy::{PrivacySelect, visibility_choice};
 use crate::account::Session;
 use crate::api;
 use crate::contract::{
@@ -168,7 +169,7 @@ impl Form {
                         Some("pen_name") => {
                             ("profile-pen-name", "Nhập bút danh hợp lệ, tối đa 80 ký tự.")
                         }
-                        Some("bio") => ("profile-bio", "Nhập Bio hợp lệ, tối đa 500 ký tự."),
+                        Some("bio") => ("profile-bio", "Nhập Giới thiệu hợp lệ, tối đa 500 ký tự."),
                         _ => ("edit-profile-heading", "Có trường hồ sơ chưa hợp lệ."),
                     };
                     self.bad_field.set(Some(id));
@@ -299,16 +300,26 @@ fn ProfileForm(scope: StoredValue<String>, initial: OwnProfile) -> impl IntoView
     });
     super::observe_changes(move || handle.refresh());
     let blocked = move || form.busy.get() || form.reconcile.with(Option::is_some);
-    // Shared fields keep a stable native control; the in-flight lock is applied to it here so
-    // the text that is being saved cannot change under the request.
-    Effect::new(move |_| {
-        let readonly = blocked();
-        for id in ["profile-pen-name", "profile-bio"] {
-            if let Some(element) = document().get_element_by_id(id) {
-                let _ = element.toggle_attribute_with_force("readonly", readonly);
-            }
+    let field_mode = Signal::derive(move || {
+        if blocked() {
+            FieldMode::ReadOnly
+        } else {
+            FieldMode::Editable
         }
     });
+    let narrows_privacy = move || {
+        let mut baseline = form.base.with(|base| base.policies);
+        let mut draft = form.policies.get();
+        POLICY_FIELDS.iter().any(|field| {
+            *field(&mut baseline) == Visibility::Everyone && *field(&mut draft) == Visibility::Owner
+        })
+    };
+    let has_locked_privacy = move || {
+        let mut stored = form.base.with(|base| base.policies);
+        POLICY_FIELDS
+            .iter()
+            .any(|field| *field(&mut stored) == Visibility::Owner)
+    };
     let error_for = move |id: &'static str| {
         Signal::derive(move || {
             (form.bad_field.get() == Some(id)).then(|| form.message.get().to_string())
@@ -350,31 +361,47 @@ fn ProfileForm(scope: StoredValue<String>, initial: OwnProfile) -> impl IntoView
         }
     });
     view! {
-        <form class="vk-profile-form grid [min-inline-size:0] gap-vk-6 [margin-block-start:var(--vk-space-6)]" autocomplete="off" novalidate
+        <form class="vk-profile-form grid min-w-0 gap-vk-4" autocomplete="off" novalidate
             on:compositionstart=move |_| form.composing.set(true)
             on:compositionend=move |_| form.composing.set(false)
             on:submit=move |event| { event.prevent_default(); form.save(session); }>
-            <TextField id="profile-pen-name" label="Bút danh" value=form.name
-                on_input=typed(form.name) error=error_for("profile-pen-name")
-                help="Luôn công khai. Bút danh có thể trùng với người khác." />
-            <handle::HandleRow controller=handle />
-            <div id="quyen-rieng-tu" node_ref=privacy tabindex="-1" role="group" aria-label="Quyền riêng tư"
-                class="grid min-w-0 gap-vk-6">
-                <PolicyField form label="Quyền xem ảnh đại diện" id="profile-avatar-policy" access=|p| &mut p.avatar />
-                <div class="vk-profile-field grid [min-inline-size:0] gap-vk-3">
-                    <TextArea id="profile-bio" label="Bio" value=form.bio rows=4
-                        on_input=typed(form.bio) error=error_for("profile-bio") />
-                    <PolicyField form label="Quyền xem Bio" id="profile-bio-policy" access=|p| &mut p.bio />
+            <div class="flex min-w-0 items-start gap-vk-3">
+                <div class="shrink-0"><crate::appearance::AccountAvatar /></div>
+                <div class="min-w-0 flex-1">
+                    <TextField id="profile-pen-name" label="Bút danh" value=form.name
+                        variant=FieldVariant::FloatingTonal mode=field_mode
+                        on_input=typed(form.name) error=error_for("profile-pen-name")
+                        help="Luôn công khai, có thể trùng tên." />
                 </div>
-                <fieldset class="grid [min-inline-size:0] gap-vk-1 m-0 p-0 [border:0]">
-                    <legend>"Quyền xem quan hệ"</legend>
-                    <PolicyField form label="Danh sách người theo dõi" id="profile-followers-list" access=|p| &mut p.followers_list />
-                    <PolicyField form label="Số người theo dõi" id="profile-followers-count" access=|p| &mut p.followers_count />
-                    <PolicyField form label="Danh sách đang theo dõi" id="profile-following-list" access=|p| &mut p.following_list />
-                    <PolicyField form label="Số người đang theo dõi" id="profile-following-count" access=|p| &mut p.following_count />
-                </fieldset>
             </div>
-            <p class="vk-muted vk-profile-note">"Trường đã đặt Chỉ mình tôi hiện chưa thể công khai lại."</p>
+            <handle::HandleRow controller=handle />
+            <TextArea id="profile-bio" label="Giới thiệu" value=form.bio rows=3 grow=true
+                variant=FieldVariant::FloatingTonal mode=field_mode
+                on_input=typed(form.bio) error=error_for("profile-bio") />
+            <div id="quyen-rieng-tu" node_ref=privacy tabindex="-1" role="group"
+                aria-labelledby="profile-privacy-heading"
+                class="grid min-w-0 gap-vk-2 rounded-vk-lg focus-visible:outline-2 focus-visible:[outline-color:var(--vk-focus-ring)]">
+                <Heading id="profile-privacy-heading" level=HeadingLevel::H2 role=TypeRole::Title
+                    attr:class="m-0">"Quyền riêng tư"</Heading>
+                <PolicyField form label="Ảnh đại diện" id="profile-avatar-policy" access=|p| &mut p.avatar />
+                <PolicyField form label="Giới thiệu" id="profile-bio-policy" access=|p| &mut p.bio />
+                <PolicyField form label="Danh sách người theo dõi" id="profile-followers-list" access=|p| &mut p.followers_list />
+                <PolicyField form label="Số người theo dõi" id="profile-followers-count" access=|p| &mut p.followers_count />
+                <PolicyField form label="Danh sách đang theo dõi" id="profile-following-list" access=|p| &mut p.following_list />
+                <PolicyField form label="Số người đang theo dõi" id="profile-following-count" access=|p| &mut p.following_count />
+                <Show when=has_locked_privacy>
+                    <p id="profile-privacy-lock-note" class="m-0 text-vk-caption text-vk-on-surface-variant">
+                        "Trường đã đặt Chỉ mình tôi hiện chưa thể công khai lại."
+                    </p>
+                </Show>
+                <div role="status" aria-atomic="true">
+                    {move || narrows_privacy().then(|| view! {
+                        <p id="profile-privacy-change-note" class="m-0 rounded-vk-md bg-vk-warning-container p-vk-3 text-vk-caption text-vk-on-warning-container">
+                            "Sau khi lưu ở chế độ Chỉ mình tôi, trường vừa đổi hiện chưa thể công khai lại."
+                        </p>
+                    })}
+                </div>
+            </div>
             {move || form.conflict.get().map(|current| view! {
                 <Conflict form current />
             })}
@@ -382,12 +409,11 @@ fn ProfileForm(scope: StoredValue<String>, initial: OwnProfile) -> impl IntoView
                 <p id="profile-message" role="status" aria-atomic="true">{move || form.message.get()}</p>
                 <div class="flex flex-wrap items-center gap-vk-3">
                     <Button id="profile-save" kind=ButtonKind::Submit state=save_state
-                        described_by="profile-message">"Lưu hồ sơ"</Button>
+                        described_by="profile-message">"Lưu"</Button>
                     <Show when=move || form.reconcile.with(Option::is_some) && !form.busy.get()>
                         <Button variant=ButtonVariant::Tonal
                             on_press=Callback::new(move |()| form.read_back(session))>"Đối chiếu lại"</Button>
                     </Show>
-                    <Link attr:id="cancel-profile-edit" attr:data-profile-return="true" href="/toi#edit-profile-link">"Về Tôi"</Link>
                 </div>
             </div>
         </form>
@@ -397,12 +423,14 @@ fn ProfileForm(scope: StoredValue<String>, initial: OwnProfile) -> impl IntoView
 
 type PolicyAccess = fn(&mut Policies) -> &mut Visibility;
 
-fn policy_text(policy: Visibility) -> &'static str {
-    match policy {
-        Visibility::Everyone => "Công khai",
-        Visibility::Owner => "Chỉ mình tôi",
-    }
-}
+const POLICY_FIELDS: [PolicyAccess; 6] = [
+    |p| &mut p.avatar,
+    |p| &mut p.bio,
+    |p| &mut p.followers_list,
+    |p| &mut p.followers_count,
+    |p| &mut p.following_list,
+    |p| &mut p.following_count,
+];
 
 #[component]
 fn PolicyField(
@@ -411,52 +439,19 @@ fn PolicyField(
     id: &'static str,
     access: PolicyAccess,
 ) -> impl IntoView {
-    // While SOC-OPEN-01 is open a stored "Chỉ mình tôi" cannot be widened again.
-    let stored_private =
-        Memo::new(move |_| *access(&mut form.base.get().policies) == Visibility::Owner);
-    let value = Signal::derive(move || {
-        Some(
-            match *access(&mut form.policies.get()) {
-                Visibility::Everyone => "everyone",
-                Visibility::Owner => "self",
-            }
-            .to_string(),
-        )
-    });
+    // SOC-OPEN-01: the stored policy determines whether the field can be widened.
+    let locked =
+        Signal::derive(move || *access(&mut form.base.get().policies) == Visibility::Owner);
+    let value = Signal::derive(move || *access(&mut form.policies.get()));
     let disabled = Signal::derive(move || form.busy.get() || form.reconcile.with(Option::is_some));
-    let on_change = Callback::new(move |picked: Option<String>| {
-        let visibility = match picked.as_deref() {
-            Some("everyone") => Visibility::Everyone,
-            Some("self") => Visibility::Owner,
-            _ => return,
-        };
-        form.policies
-            .update(|policies| *access(policies) = visibility);
-    });
-    move || {
-        // AC-02 (#336): a locked value is a fact, not a control with a dead option.
-        if stored_private.get() {
-            let label_id = format!("{id}-label");
-            let group_label = label_id.clone();
-            return view! {
-                <div class="vk-profile-policy vk-profile-policy--locked" role="group" aria-labelledby=group_label>
-                    <div class="vk-ui-field">
-                        <span class="vk-ui-field__label" id=label_id>{label}</span>
-                        <p class="vk-profile-policy__value" id=id>
-                            <Icon name=IconName::Lock />
-                            <span>{policy_text(Visibility::Owner)}</span>
-                        </p>
-                    </div>
-                </div>
-            }
-            .into_any();
+    let on_change = move |picked| {
+        if !locked.get_untracked() && !disabled.get_untracked() {
+            form.policies.update(|policies| *access(policies) = picked);
         }
-        let options = vec![
-            ChoiceOption::new("everyone", "Công khai"),
-            ChoiceOption::new("self", "Chỉ mình tôi"),
-        ];
-        view! { <div class="vk-profile-policy"><Select id label options value on_change disabled /></div> }
-            .into_any()
+    };
+    view! {
+        <PrivacySelect id label value locked disabled on_change
+            lock_description_id="profile-privacy-lock-note" />
     }
 }
 
@@ -469,13 +464,13 @@ fn Conflict(form: Form, current: OwnProfile) -> impl IntoView {
             <h2 id="profile-conflict-heading">"Bản đang lưu trên Vink"</h2>
             <dl>
                 <dt>"Bút danh"</dt><dd>{current.pen_name}</dd>
-                <dt>"Bio"</dt><dd>{current.bio.unwrap_or_else(|| "Chưa điền".into())}</dd>
-                <dt>"Ảnh đại diện"</dt><dd>{policy_text(p.avatar)}</dd>
-                <dt>"Bio hiển thị"</dt><dd>{policy_text(p.bio)}</dd>
-                <dt>"Danh sách người theo dõi"</dt><dd>{policy_text(p.followers_list)}</dd>
-                <dt>"Số người theo dõi"</dt><dd>{policy_text(p.followers_count)}</dd>
-                <dt>"Danh sách đang theo dõi"</dt><dd>{policy_text(p.following_list)}</dd>
-                <dt>"Số người đang theo dõi"</dt><dd>{policy_text(p.following_count)}</dd>
+                <dt>"Giới thiệu"</dt><dd>{current.bio.unwrap_or_else(|| "Chưa điền".into())}</dd>
+                <dt>"Ảnh đại diện"</dt><dd>{visibility_choice(p.avatar).label}</dd>
+                <dt>"Quyền xem giới thiệu"</dt><dd>{visibility_choice(p.bio).label}</dd>
+                <dt>"Danh sách người theo dõi"</dt><dd>{visibility_choice(p.followers_list).label}</dd>
+                <dt>"Số người theo dõi"</dt><dd>{visibility_choice(p.followers_count).label}</dd>
+                <dt>"Danh sách đang theo dõi"</dt><dd>{visibility_choice(p.following_list).label}</dd>
+                <dt>"Số người đang theo dõi"</dt><dd>{visibility_choice(p.following_count).label}</dd>
             </dl>
             <Button variant=ButtonVariant::Tonal on_press=Callback::new(move |()| {
                 form.adopt(stored.clone());
@@ -487,12 +482,9 @@ fn Conflict(form: Form, current: OwnProfile) -> impl IntoView {
                 if let Some(current) = form.conflict.get_untracked() {
                     // Keep the draft text. Adopt any newer policy that already narrowed.
                     form.policies.update(|draft| {
-                        for field in [
-                            (|p: &mut Policies| &mut p.avatar) as PolicyAccess,
-                            |p| &mut p.bio, |p| &mut p.followers_list, |p| &mut p.followers_count,
-                            |p| &mut p.following_list, |p| &mut p.following_count,
-                        ] {
-                            if *field(&mut current.policies.clone()) == Visibility::Owner {
+                        let mut stored = current.policies;
+                        for field in POLICY_FIELDS {
+                            if *field(&mut stored) == Visibility::Owner {
                                 *field(draft) = Visibility::Owner;
                             }
                         }
