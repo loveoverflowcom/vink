@@ -37,7 +37,16 @@ Không cấp quyền hay xếp hạng tác phẩm bằng score.
   invalidation đã xác minh hoặc account deletion theo DEL-05 thu hồi đúng authority, không restore
   tương tác vô hiệu vĩnh viễn khi hết đình chỉ.
 - Q11: member chỉ đóng góp nhận xét có thể có score và tham gia thống kê, không đòi có bài công khai.
-  Điều kiện profile/standing, evidence hợp lệ và ngưỡng thống kê còn phải đặc tả; không tự thêm work gate.
+  Q17: profile đủ quyền có thể đọc baseline thật nếu ready; top rating chỉ member có đóng góp hợp lệ,
+  fast growth chỉ growth dương. Historical top theo facts as-of kỳ, current privacy/standing thắng;
+  filter trước limit/cursor. Precision cho positivity và tie-breaker còn review; không thêm work gate.
+- Q16: thêm eligibility gate tuổi tài khoản hoặc mức hoạt động của actor, chỉ cho reputation, không
+  đổi capability/source count Thấm/Ưng. Chưa chọn ngưỡng hoặc time basis, không dùng tuổi từ lần tạo
+  profile nếu khác account authority. Audit durable authoritative account facts, original accepted
+  event-time vs worker processing time, unknown legacy evidence, maturity/reclassification và
+  versioned eligibility; không suy tuổi/hoạt động từ handle, không network trong write transaction.
+  Interaction chưa đủ eligibility không được coi là contribution hợp lệ. Policy cho interaction trước
+  ngưỡng và lịch sử backfill còn OPEN; không tạo credit tự động khi retry/maturation.
 - Follow, saved, private views, content counts không đi vào rating hoặc growth.
 
 ## Period growth — không lấy đơn giản score cuối kỳ trừ đầu kỳ
@@ -83,13 +92,14 @@ một cách máy móc: đặc tả minimization, nguồn rebuild/anti-replay và
 Chỉ lưu dữ liệu cần thiết, không suy quyền lưu raw history/PII vô hạn; đánh giá storage, WAL
 và khả năng dựng lại khi compact/purge, kể cả đối với entitlement cũ vẫn hiệu lực.
 
-## Scientific review (NOT_RUN)
+## Scientific review (initial synthetic comparison, chưa hiệu chỉnh)
 
-So sánh weighted log, căn bậc hai, piecewise diminishing returns; baseline 1000, scale, k,
-weight I/C chỉ candidate. Test monotonicity, precision/rounding, extreme/saturation, skew,
-sensitivity, nhóm chỉ viết/chỉ nhận xét/người mới, lợi thế người mới trong growth, tương quan
-và abuse. Dữ liệu synthetic/authorized aggregate. Không gọi log là anti-abuse, không tuyên bố
-khoa học hoặc benchmark chưa chạy. Owner duyệt formula và eligibility trước kích hoạt.
+Xem [scientific review SR-01](../development/reputation-science.md): so sánh synthetic có cùng mốc
+chuẩn hóa giữa log, căn bậc hai và hàm từng đoạn; weights 50:50, 60:40, 70:30, 80:20; marginal growth,
+fixed-unit growth, age/activity gate trade-offs. Candidate log và fixed reference chưa duyệt.
+Cần calibration/skew/correlation, privacy inference, concentrated voting/abuse, precision/extremes,
+versioning, realistic source coverage, Quint/Kani và benchmark. Không gọi log là anti-abuse.
+Owner duyệt formula/growth semantics và eligibility threshold/maturity trước kích hoạt.
 
 ## How (candidate, không khóa schema)
 
@@ -100,8 +110,10 @@ Không mặc định dùng stream Notifications (coverage/retention khác); khô
 cho V1. Không external infra nếu chưa có evidence. Audit source owners Endorsement, publication,
 discussion, principal standing/deletion, outbox; giữ lock order, fencing, idempotency và bounded
 batch. Version policy/formula/schema độc lập; đổi formula không tự tạo growth; replay không
-double count. Backfill consistent watermark/catch-up nếu đủ source, nếu thiếu lịch sử thì
-unavailable/coverage rõ, không tạo số giả. Giữ projection theo kỳ thưa nếu phù hợp, không mặc định
+double count. Q18: backfill current score từ toàn bộ facts hiện có đủ eligibility; consistent watermark/catch-up,
+kiểm source completeness và event-time/age/standing provenance. Chỉ dựng kỳ lịch sử nếu chứng minh
+coverage; nếu thiếu evidence thì chưa đủ dữ kiện/coverage rõ, không fabricate baseline/growth.
+Không lấy timestamp worker hoặc updated_at ghi đè làm proof lần tương tác đầu nếu chưa audit. Giữ projection theo kỳ thưa nếu phù hợp, không mặc định
 snapshot mọi thành viên mỗi ngày. Cần chứng minh reconstruct/close kỳ với cả member không đổi điểm,
 không sao chép điểm hiện tại vào kỳ cũ, tránh global scan trên request; chọn sparse change history hoặc
 materialized close theo benchmark. Retention kỳ đã chọn; retention nguồn/ledger/fence, correction, purge/checkpoint và version compatibility
@@ -128,6 +140,9 @@ SOC-PRIV, DEL, LVE, RANK, TOP, SAV. Không quyền mới từ rating.
 | REP-INV-09 | Top rating theo current khi kỳ mở, rating as-of end khi đóng; không dùng peak, không đổi theo score hiện tại sau close; late/privacy correction theo policy. Member đủ điều kiện chỉ nhận Ưng không bị loại vì không có bài. |
 | REP-INV-10 | Lifecycle remove nội dung đổi current eligibility, không tự ghi âm community growth; correction/privacy/deletion có thẩm quyền thắng lịch sử. Đình chỉ actor không cascade thu hồi endorsement trước đó còn hợp lệ; DEL-05/invalidation vẫn áp dụng. |
 | REP-INV-11 | Chỉ phục vụ kỳ mở và 52 tuần/12 tháng đã đóng gần nhất có coverage; expiry/purge/replay không hồi sinh kỳ hết hạn, không phá current facts hoặc anti-replay; không giữ PII trái deletion. |
+| REP-INV-12 | Q16 eligibility gate versioned, chỉ facts đủ điều kiện tạo reputation, không đổi source Thấm/Ưng; event-time/unknown/maturity theo policy, retry/replay không biến thành new credit. |
+| REP-INV-13 | Q17 top rating loại baseline-only; growth list chỉ dương; filter authority/eligibility trước limit/cursor, kể cả kỳ đóng. |
+| REP-INV-14 | Q18 backfill current từ valid existing facts; thiếu provenance không được giả eligible/0; historical coverage được chứng minh, không growth giả, concurrent snapshot+catch-up không mất/nhân effect. |
 
 Các chi tiết API ở [contract](../../services/vink-app/contracts/http/v1/reputation.md), trạng thái
 và evidence ở [registry](../development/reputation.md).

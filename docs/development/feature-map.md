@@ -2,7 +2,7 @@
 
 ## Điểm Vink — Reputation (#600)
 
-[PRD §19](../../prd/requirements.md#19-điểm-vink-reputation-v1) · [đặc tả](../architecture/reputation.md) · [registry và evidence](reputation.md) · [API draft](../../services/vink-app/contracts/http/v1/reputation.md). Hai thành phần Thấm/Ưng, current rating và calendar-period growth (current/closed), thu hồi/bù trừ cùng kỳ, top rating as-of cuối kỳ, member chỉ nhận Ưng không cần bài công khai, full suspension ẩn public, không cascade endorsement hợp lệ, lifecycle remove tách growth, retention 52 tuần/12 tháng đã đóng + kỳ mở; proposal PENDING, runtime UNKNOWN chưa audit đầy đủ, evidence NOT_RUN. Backend-only, không đổi Discovery/Top 100; design/Web tách epic.
+[PRD §19](../../prd/requirements.md#19-điểm-vink-reputation-v1) · [đặc tả](../architecture/reputation.md) · [registry và evidence](reputation.md) · [API draft](../../services/vink-app/contracts/http/v1/reputation.md). Hai thành phần Thấm/Ưng, current rating và calendar-period growth (current/closed), thu hồi/bù trừ cùng kỳ, top rating as-of cuối kỳ, member chỉ nhận Ưng không cần bài công khai, full suspension ẩn public, không cascade endorsement hợp lệ, lifecycle remove tách growth, retention 52 tuần/12 tháng đã đóng + kỳ mở, actor eligibility bổ sung (ngưỡng OPEN), top valid-only/growth dương, backfill current valid facts; [scientific review](reputation-science.md); proposal PENDING, runtime UNKNOWN chưa audit đầy đủ, evidence NOT_RUN. Backend-only, không đổi Discovery/Top 100; design/Web tách epic.
 
 ## Semantic UI trên Web
 

@@ -559,7 +559,7 @@ Quan hệ lưu giữ định danh và thời điểm lưu, không sao chép nhan
 
 ## 19. Điểm Vink (Reputation V1)
 
-[EPIC #600](https://github.com/loveoverflowcom/vink/issues/600) · Backend only. Năm lượt lựa chọn
+[EPIC #600](https://github.com/loveoverflowcom/vink/issues/600) · Backend only. Sáu lượt lựa chọn
 nghiệp vụ 27/11/2026 được ghi tại [proposal VDR-REPUTATION@r1](../decisions/proposals/VDR-REPUTATION.r1.toml).
 Lời chọn đã có; revision TOML còn `PENDING` (chưa signoff đúng payload/hash). Không đánh dấu active
 hay kích hoạt public runtime. [Đặc tả](../docs/architecture/reputation.md) ·
@@ -576,11 +576,14 @@ hay kích hoạt public runtime. [Đặc tả](../docs/architecture/reputation.m
 | REP-06 · REP-Q06/Q08 | Tổng điểm và thống kê đủ điều kiện công khai kể cả khách; thành phần chưa công khai. Full suspension của người nhận điểm tạm ẩn điểm và loại khỏi mọi thống kê công khai, cả kỳ cũ. Giữ dữ liệu còn hợp lệ; khôi phục khi standing/eligibility cho phép, không reset hoặc tạo growth. | Guest có quyền xem dữ liệu đủ điều kiện; đình chỉ/ẩn/xóa trong khi worker lag không làm lộ projection cũ; hết đình chỉ có thể khôi phục số hợp lệ. |
 | REP-07 · scope #600 | Độc lập Đề xuất, Top 100 tác phẩm, Thấm/Ưng nguồn, Follow, Lưu, AI, moderation và auth/ACL. Không ưu tiên tác phẩm hay mở quyền theo uy tín. | Thay đổi score/rollout không đổi kết quả RANK-04, TOP, SAV-03 và quyền. |
 | REP-08 · scope #600 | Backend-only, projection/read API versioned; không tính lại toàn hệ thống mỗi read hoặc đưa phép tính nặng vào mutation nguồn. Mục tiêu hiệu suất phải đo trước khi public. | Score chưa sẵn sàng khác điểm 0/baseline; đọc có giới hạn, no N+1; benchmark baseline/candidate và kiểm rebuild/rollback. |
-| REP-09 · REP-Q11 | Thành viên chỉ đóng góp nhận xét có score và được tham gia thống kê khi đủ eligibility; không bắt buộc có tác phẩm công khai. Ngưỡng eligibility khác còn OPEN. | Hai member đủ điều kiện có điểm tương đương, một người không có bài nhưng có Ưng: không loại vì không có WorkId công khai. |
+| REP-09 · REP-Q11 | Thành viên chỉ đóng góp nhận xét có score và được tham gia thống kê khi đủ eligibility; không bắt buộc có tác phẩm công khai. Điều kiện thống kê theo REP-12; gate tương tác theo REP-11. | Hai member đủ điều kiện có điểm tương đương, một người không có bài nhưng có Ưng: không loại vì không có WorkId công khai. |
 | REP-10 · REP-Q15 | Retain kỳ đang diễn ra và 52 tuần/12 tháng lịch đã kết thúc gần nhất theo Q04; không phục vụ ngoài phạm vi, cleanup bounded. Không hứa đủ coverage trước activation. Retention thống kê không quyết định TTL của current facts/ledger/fence/audit; privacy/deletion bắt buộc. | Khi sang tuần mới, tuần cũ nhất ngoài 52 kỳ hết hạn; tháng xử lý độc lập. Replay không hồi sinh kỳ hết hạn, purge không phá current rating hoặc dedup. |
+| REP-11 · REP-Q16 | Thêm gate tuổi tài khoản hoặc mức hoạt động của actor cho contribution reputation, không sửa quyền Thấm/Ưng nguồn. Ngưỡng/căn cứ/maturity/legacy còn OPEN. | Tương tác accepted tại source nhưng không đạt gate không tự cộng reputation; worker chạy trễ/retry không tự biến thành credit. |
+| REP-12 · REP-Q17 | Profile đủ quyền có thể đọc total ready kể cả baseline thật; top rating chỉ người có đóng góp hợp lệ; fast growth chỉ tăng trưởng dương. Eligibility và current visibility trước limit/cursor. | Member baseline-only không vào top, growth 0/âm không vào fast growth; member chỉ nhận Ưng đủ điều kiện vẫn được xếp. |
+| REP-13 · REP-Q18 | Backfill current rating từ toàn bộ facts hiện có còn hợp lệ theo policy; lịch sử chỉ dựng nếu đủ evidence nguồn/eligibility/event-time; không fake baseline hay tăng trưởng kỳ phát hành. | Accepted source trước activation đủ evidence được tính vào current, không cộng growth launch; thiếu provenance đánh dấu coverage/unavailable; snapshot+caught-up chống mất/nhân effect. |
 
-**OPEN:** công thức/trọng số/thang/rounding; eligibility mới, anti-abuse, lifecycle chi tiết
+**OPEN:** công thức/trọng số/thang/rounding/growth unit; ngưỡng/căn cứ/maturity/legacy eligibility Q16, anti-abuse, lifecycle chi tiết
 (comment edit/tombstone, account-deletion attribution, verified correction kỳ đóng,
-attribution re-like); ngưỡng vào nhóm thống kê ngoài Q11, tie-breaker, retention nguồn/ledger/fence; backfill, freshness và rollout.
+attribution re-like); positivity precision/tie-breaker, retention nguồn/ledger/fence; backfill coverage/missing evidence, freshness và rollout. [Scientific review SR-01](../docs/development/reputation-science.md) là so sánh candidate, không phải signoff.
 Các lựa chọn kỹ thuật có evidence thuộc từng slice. Không mặc định có leaderboard UI,
 UI lịch sử hoặc API trả raw component. Backend historical statistics đã chọn theo Q09. Không decay trong phạm vi đề xuất V1.

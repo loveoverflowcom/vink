@@ -7,7 +7,7 @@ kind = "product"
 domain = "reputation"
 title = "Điểm Vink V1 — hai thành phần, uy tín hiện hành và thống kê theo kỳ"
 resolution = """
-Phạm vi nghiệp vụ được chủ sản phẩm lựa chọn trong năm lượt review #600 ngày 27/11/2026 (REP-Q01..15):
+Phạm vi nghiệp vụ được chủ sản phẩm lựa chọn trong sáu lượt review #600 ngày 27/11/2026 (REP-Q01..18):
 - REP-Q01 = A: Impact từ Thấm nhận được trên tác phẩm; Contribution từ Ưng nhận được trên nhận xét. Không tính Follow. Một tổng điểm kiểu rating, không phải Elo đối đầu; công khai điểm tổng, chưa công khai thành phần.
 - REP-Q02 = A: ghi nhận Impact theo WorkId, cùng người Thấm nhiều revision chỉ tính một đơn vị hợp lệ; không sửa semantics endorsement neo RevisionId. Sửa thông thường không tự làm mất uy tín đã ghi nhận hợp lệ.
 - REP-Q03 = B: uy tín hiện hành; loại phần điểm không còn đủ điều kiện khi tác phẩm chuyển riêng tư, khôi phục khi công khai lại nếu còn hợp lệ. Quy tắc thu hồi chi tiết cho từng nguồn và vòng đời vẫn phải review, không hợp thức hóa dữ liệu bị xóa hoặc riêng tư.
@@ -18,13 +18,16 @@ Phạm vi nghiệp vụ được chủ sản phẩm lựa chọn trong năm lư�
 - REP-Q08 = A: đình chỉ toàn bộ tài khoản nhận điểm thì ẩn điểm công khai và loại khỏi mọi thống kê công khai trong thời gian đình chỉ, kể cả kỳ cũ. Giữ facts còn hợp lệ và đánh giá lại eligibility khi hết đình chỉ; không reset điểm hoặc tạo growth từ phục hồi standing. Hạn chế riêng đăng/bình luận không đồng nhất với đình chỉ toàn bộ; tương tác hợp lệ trước đình chỉ của actor theo Q14.
 - REP-Q09 = A: backend hỗ trợ thống kê tuần/tháng đã kết thúc trong phạm vi retention theo Q15; tôn trọng privacy/standing/deletion hiện hành. Không giả dữ liệu lịch sử; top rating theo Q10; correction và UI history còn review.
 - REP-Q10 = A: top rating của kỳ đã kết thúc theo điểm tại thời điểm kết thúc kỳ (as-of boundary, không lấy đỉnh); kỳ đang diễn ra theo current rating. Kỳ đã đóng không được cập nhật bằng điểm hiện tại; correction có thẩm quyền, privacy/deletion và standing hiện hành vẫn thắng. Version/coverage/cutover và correction chi tiết cần review.
-- REP-Q11 = A: người chỉ đóng góp nhận xét vẫn có điểm và được tham gia thống kê nếu đủ eligibility; không bắt buộc có tác phẩm công khai. Không suy rằng tài khoản không có đóng góp hoặc growth không dương luôn đủ điều kiện; ngưỡng/eligibility chi tiết còn OPEN.
+- REP-Q11 = A: người chỉ đóng góp nhận xét vẫn có điểm và được tham gia thống kê nếu đủ eligibility; không bắt buộc có tác phẩm công khai. Điều kiện vào bảng theo Q17; eligibility của tương tác theo Q16.
 - REP-Q12 = A: bỏ rồi Thấm/Ưng lại cùng entitlement đủ điều kiện trong cùng kỳ thì bù trừ khoản giảm, không tạo credit mới; nếu ở kỳ khác, giữ khoản giảm kỳ trước, chỉ khôi phục current rating, không cộng tăng trưởng mới hoặc viết lại kỳ đã đóng vì re-like. Tuần và tháng áp dụng độc lập theo boundary của từng kỳ; không suy monthly growth bằng cộng weekly growth. Privacy/deletion/correction có thẩm quyền là vấn đề khác với re-like thông thường. Attribution phi tuyến và chống vòng lặp tạo giảm/tăng giả còn review.
 - REP-Q13 = A: private/withdrawn, xóa hoặc admin gỡ nội dung làm mất eligibility liên quan trong current rating, không tự ghi khoản giảm đó vào community growth kỳ hiện tại. Restore hợp lệ không tạo growth mới. Đây không phải miễn trừ privacy/deletion hoặc gian lận: public historical data phải được sửa/ẩn nếu authority yêu cầu; gian lận đã xác minh có thể correction quá khứ. Không tự coi report là bằng chứng. Chi tiết correction và xử lý comment edit/tombstone còn review theo luật nguồn.
 - REP-Q14 = A: đình chỉ actor không tự thu hồi các Thấm/Ưng hợp lệ họ đã tạo trước đó; không gây cascade điểm người nhận chỉ vì standing thay đổi. Source authority vẫn kiểm standing khi tạo tương tác mới. Tương tác xác minh không hợp lệ hoặc account deletion theo DEL-05 phải được thu hồi; không restore điểm từ tương tác đã bị vô hiệu vĩnh viễn. Tác giả bị đình chỉ vẫn bị ẩn theo Q08. Không coi thu hồi do account deletion mặc nhiên là unlike thông thường; attribution/correction chi tiết còn OPEN, privacy/deletion là bắt buộc.
 - REP-Q15 = A: retention thống kê gồm kỳ hiện tại + 52 tuần đã kết thúc gần nhất và 12 tháng lịch đã kết thúc gần nhất (theo Q04). Hết phạm vi không phục vụ lịch sử và phải có bounded cleanup; không giả 0 khi expired/unknown. Không cam kết có đủ các kỳ trước activation nếu không có nguồn chứng minh. Retention aggregate khác entitlement/ledger/fence/audit/checkpoint cần cho current rating, dedup/replay/rebuild; purge tối thiểu và DEL/privacy thắng retention. Không suy quyền giữ PII hoặc lịch sử thô vô hạn.
+- REP-Q16 = B: có additional eligibility gate về tuổi tài khoản hoặc mức hoạt động của actor trước khi tương tác có thể đóng góp reputation cho người khác. Gate chỉ thuộc reputation, không tự đổi capability/semantics Thấm/Ưng nguồn. Ngưỡng, căn cứ thời gian/hoạt động, cách xử lý tương tác trước khi đủ điều kiện, maturity và dữ liệu legacy/backfill vẫn OPEN. Không coi age là chứng minh người thật; không chốt ngầm ngưỡng hay tự cấp credit vì worker chạy trễ.
+- REP-Q17 = A: profile đủ visibility có thể đọc total khi ready kể cả baseline thật; top rating chỉ gồm member có đóng góp được ghi nhận hợp lệ, không bắt buộc có tác phẩm; bảng fast growth chỉ gồm member tăng trưởng dương. Áp dụng eligibility/visibility trước limit/cursor, không đưa baseline-only vào top; historical eligibility as-of kỳ và current privacy/standing cùng được kiểm. Tie-breaker và precision ngưỡng dương cần review.
+- REP-Q18 = A: backfill current rating từ toàn bộ facts hiện có còn hợp lệ theo policy, không cold-start mọi member. Chỉ dựng kỳ lịch sử khi đủ bằng chứng nguồn và eligibility/event-time; không fake history hoặc biến backfill/maturity thiếu căn cứ thành growth kỳ phát hành. Audit nguồn timestamp, age gate, provenance và coverage; thiếu evidence không suy thành đủ điều kiện hoặc số 0/baseline thật. Snapshot/watermark/catch-up, missing-data treatment và rollout cần review.
 Backend-only: PRD, Rust Domain/App, PostgreSQL, worker, read API, qualification. Design/Leptos Web/CMP tách epic. Không công khai runtime trước signoff và privacy/performance gate.
-OPEN: công thức/thang điểm/trọng số/precision; eligibility và anti-abuse; lifecycle chi tiết (comment edit/tombstone, account-deletion attribution, verified invalidation/correction), re-like attribution/anti-abuse; điều kiện tham gia bảng ngoài Q11, closed-period correction, tie/range, retention nguồn/audit/fence; backfill, freshness, rollout. Các lựa chọn kỹ thuật giao owner có evidence; không xem proposal này là phê duyệt các phương án còn mở.
+OPEN: công thức/thang điểm/trọng số/precision; ngưỡng/căn cứ/cutover eligibility Q16, anti-abuse; lifecycle chi tiết (comment edit/tombstone, account-deletion attribution, verified invalidation/correction), re-like attribution/anti-abuse; closed-period correction, tie/range, retention nguồn/audit/fence; backfill coverage/missing evidence, freshness, rollout. Candidate scientific review ở docs/development/reputation-science.md, không signoff công thức. Các lựa chọn kỹ thuật giao owner có evidence; không xem proposal này là phê duyệt các phương án còn mở.
 """
 rationale = """
 Nguồn: https://github.com/loveoverflowcom/vink/issues/600; lời chủ sản phẩm trong phiên review 27/11/2026:
@@ -33,7 +36,8 @@ Nguồn: https://github.com/loveoverflowcom/vink/issues/600; lời chủ sản p
 “EPIC #600 — Chốt sản phẩm lượt 3: Câu 7 = A, Câu 8 = A, Câu 9 = A. Ý kiến bổ sung: Không có. Tiếp tục review và cập nhật SSOT trong PR #601.”
 “EPIC #600 — Chốt sản phẩm lượt 4: Câu 10 = A, Câu 11 = A, Câu 12 = A. Ý kiến bổ sung: Không có. Tiếp tục review và cập nhật SSOT trong PR #601.”
 “EPIC #600 — Chốt sản phẩm lượt 5: Câu 13 = A, Câu 14 = A, Câu 15 = A. Ý kiến bổ sung: Không có. Tiếp tục review và cập nhật SSOT trong PR #601.”
-Năm lượt là phê duyệt lựa chọn nghiệp vụ, không phải signoff payload TOML exact revision/SHA-256; giữ PENDING đến khi review đúng payload.
+“EPIC #600 — Chốt sản phẩm lượt 6: Câu 16 = B, Câu 17 = A, Câu 18 = A. Ý kiến bổ sung: Không có. Cập nhật SSOT trong PR #601 và chuyển sang review khoa học, công thức tính điểm.”
+Sáu lượt là phê duyệt lựa chọn nghiệp vụ, không phải signoff payload TOML exact revision/SHA-256; giữ PENDING đến khi review đúng payload.
 """
 requires = ["VDR-DECISION-SIGNOFF@r1"]
 related_ids = [
@@ -52,6 +56,9 @@ related_ids = [
     "REP-08",
     "REP-09",
     "REP-10",
+    "REP-11",
+    "REP-12",
+    "REP-13",
     "SAV-03",
     "SOC-PRIV-01",
 ]
