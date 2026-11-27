@@ -392,8 +392,8 @@ pub(super) fn ProfileIdentity(
         <div class="vk-author-identity">
             <span class="vk-author-seal" aria-hidden="true">{initials}</span>
             <header>
-                <h1 id="author-profile-heading" tabindex="-1">{pen_name}</h1>
-                <p>{format!("@{handle}")}</p>
+                <h1 id="author-profile-heading" class="vk-ui-identity-name" tabindex="-1">{pen_name}</h1>
+                <p class="vk-ui-identity-handle">{format!("@{handle}")}</p>
             </header>
             <div class="vk-author-social">{children()}</div>
         </div>

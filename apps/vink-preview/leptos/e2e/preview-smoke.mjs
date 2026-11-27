@@ -729,7 +729,10 @@ async function components(page) {
   check(await page.eval(`(() => {
     const input = document.getElementById('contact'), shell = input.parentElement;
     const icon = shell.querySelector('svg[data-icon=mail][aria-hidden=true]');
-    return icon && input.labels.length === 1 && input.labels[0].textContent === 'Email liên hệ' &&
+    const paint = getComputedStyle(shell);
+    return icon && input.labels.length === 1 && input.labels[0].textContent === 'Email đăng nhập' &&
+      shell.closest('.vk-ui-field--auth') && paint.borderTopLeftRadius === '16px' &&
+      paint.borderTopWidth === '0px' && paint.outlineStyle === 'none' &&
       icon.getBoundingClientRect().right < input.getBoundingClientRect().left + parseFloat(getComputedStyle(input).paddingInlineStart);
   })()`), 'TextField: an opted-in leading icon reserves space and keeps the native accessible label');
   const fieldPaint = () => page.eval(`(() => {

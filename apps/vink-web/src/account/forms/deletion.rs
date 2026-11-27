@@ -250,7 +250,7 @@ fn DeletionForm(
                     }>
                         <p role="status">"Nếu email đã được xác minh trên tài khoản, Vink sẽ gửi mã đến địa chỉ đó."</p>
                         <TextField id="account-delete-code" name="code" label="Mã 6 chữ số" required=true
-                            autocomplete="one-time-code" variant=FieldVariant::FloatingTonal
+                            autocomplete="one-time-code" variant=FieldVariant::AuthTonal
                             input_ref=code.node value=empty_value() on_input=code.edit()
                             error=field_error(error, |e| matches!(e, AuthError::CodeRejected | AuthError::InvalidCode)) />
                         <div class="vk-account-actions">
@@ -267,7 +267,7 @@ fn DeletionForm(
                     <form class="vk-account-form" method="post" on:submit=move |event| { event.prevent_default(); send(); }>
                         <TextField id="account-delete-email" name="email" label="Email đã xác minh"
                             kind=TextKind::Email required=true autocomplete="email" max_length=254
-                            variant=FieldVariant::FloatingTonal input_ref=email.node value=empty_value()
+                            variant=FieldVariant::AuthTonal input_ref=email.node value=empty_value()
                             on_input=email.edit() error=field_error(error, |e| *e == AuthError::InvalidEmail) />
                         <Button id="send-account-deletion-code" variant=ButtonVariant::Tonal kind=ButtonKind::Submit
                             state=challenge_action>"Gửi mã xác minh"</Button>

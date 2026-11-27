@@ -29,7 +29,7 @@ Trang `/toi` giữ rail/thanh dưới. Thứ tự đọc cũng là thứ tự fo
 ```
 
 **Responsive.** Cột form căn giữa phần nội dung, tối đa 24rem, lề mobile 20px tại 390px.
-Logo và tiêu đề Literata căn giữa. Trường FloatingTonal cao ít nhất 56 px, góc `radius-xl`.
+Logo và tiêu đề Literata căn giữa. Trường `AuthTonal` cao ít nhất 56 px, dùng `radius.control-56` (16 px).
 Nút Filled và Tonal cùng trục, mỗi nút một hàng toàn chiều rộng, cao ít nhất 48 px. Nhóm hành
 động chính dùng khe `space-2` (8 px ở cỡ chữ mặc định). Hàng chuyển tài khoản cách nhóm
 `space-4` (16 px), căn giữa, có thể xuống dòng và giữ đích bấm tối thiểu 48 px chiều cao.
@@ -39,11 +39,14 @@ Từ [#576](https://github.com/loveoverflowcom/vink/issues/576), vùng Auth ch�
 đăng nhập, tạo tài khoản và bút danh hiện có. Bút danh giữ thao tác thoát phiên ngoài form.
 Cuộn theo trang; ở 200% ưu tiên reflow, lỗi và hành động tới được bằng bàn phím.
 
-**Màu và trạng thái.** Form dùng `surface-container-highest` cho trường trên nền trang `bg-page`
-hoặc nền dialog `surface-container`. Alias `field-container` được đặt trong form Auth. Độ chênh
-hai nền tonal cần thêm một đường nhận biết 1 px màu `field-outline`. Trường dùng chính đường đó
-cho focus 2 px, lỗi 1 px và lỗi có focus 2 px. Nút hiện/ẩn có focus riêng. Forced colors dùng màu
-hệ thống trên cùng đường nét. Filled và Tonal dùng màu và lớp phản hồi của Button.
+**Màu và trạng thái.** [R5 #605](https://github.com/loveoverflowcom/vink/issues/605) thay góc
+`radius-xl` và viền lúc nghỉ của R3.1. Biến thể chung `AuthTonal` dùng hai token theo theme,
+`color.auth-field-fill` và `color.on-auth-field`. Nền field cần đạt 3:1 với cả trang `bg-page`
+và dialog `surface-container`.
+Nhãn và nội dung nhập đạt 4,5:1 trên nền field. Field lúc nghỉ không có viền ở theme thường.
+Vành ngoài báo focus 2 px, lỗi 1 px hoặc lỗi đang focus 2 px. Nút hiện/ẩn có focus riêng.
+Forced colors dùng màu hệ thống để nhận biết field và focus. Filled và Tonal giữ trạng thái của Button.
+Điểm vào xóa thuộc [luồng quản lý tài khoản chuyên biệt](account-deletion.md).
 Spinner giữ chỗ trong nút đang gửi, có trạng thái truy cập. Lỗi tên đăng nhập, mật khẩu
 hoặc mã nằm tại trường; sai thông tin đăng nhập dùng một câu chung trong form. Thao tác chưa rõ
 kết quả có đường kiểm tra phiên/trạng thái. `Retry-After` có một dòng đếm ngược dưới nút, hết giờ không tự gửi.

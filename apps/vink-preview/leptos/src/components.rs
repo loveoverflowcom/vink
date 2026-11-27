@@ -558,8 +558,9 @@ fn field_text(scenario: &str) -> AnyView {
             />
             <TextField
                 id="contact"
-                label="Email liên hệ"
+                label="Email đăng nhập"
                 kind=TextKind::Email
+                variant=FieldVariant::AuthTonal
                 value=email
                 on_input=text_logger("contact", email)
                 autocomplete="email"

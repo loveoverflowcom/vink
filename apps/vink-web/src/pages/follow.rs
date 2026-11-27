@@ -512,7 +512,6 @@ fn RelationshipResults(
     on_first: Callback<()>,
 ) -> impl IntoView {
     let heading = format!("{pen_name} · {}", direction_label(direction));
-    let back_label = format!("Hồ sơ {pen_name}");
     let public_handle = href.as_ref().map(|_| format!("@{handle}"));
     let list_url = StoredValue::new(format!("/@{handle}/{}", direction.web_segment()));
     let canonical = crate::canonical_url(&list_url.get_value());
@@ -584,17 +583,17 @@ fn RelationshipResults(
             aria-labelledby="relationship-title">
             <header class="flex min-w-0 items-start gap-vk-3 min-[760px]:flex-col [&>.vk-ui-back-link:hover]:no-underline">
                 {href.map(|href| view! {
-                    <BackLink href label=back_label
+                    <BackLink href label="Hồ sơ"
                         attr:id="rel-back-profile" attr:data-profile-return="true" />
                 })}
                 <div class="grid min-w-0 gap-vk-1 self-center min-[760px]:self-start">
                     <Heading id="relationship-title" level=HeadingLevel::H1 role=TypeRole::Title
                         attr:tabindex="-1" attr:aria-label=heading
-                        attr:class="m-0 font-vk-ui text-vk-page-title max-[759px]:text-vk-size-page-title-narrow wrap-anywhere">
+                        attr:class="m-0 font-vk-ui text-vk-page-title max-[759px]:text-vk-size-page-title-narrow vk-ui-identity-name">
                         {pen_name}
                     </Heading>
                     {public_handle.map(|handle| view! {
-                        <p class="m-0 font-vk-ui text-vk-caption text-vk-on-surface-variant wrap-anywhere">{handle}</p>
+                        <p class="m-0 font-vk-ui text-vk-caption text-vk-on-surface-variant vk-ui-identity-handle">{handle}</p>
                     })}
                 </div>
             </header>

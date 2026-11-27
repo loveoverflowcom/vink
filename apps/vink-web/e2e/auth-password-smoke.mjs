@@ -318,8 +318,8 @@ async function authR3Login(page, check, openPage) {
   })()`), '#559 login renders one R3 form without the guest status card, premature pen-name step, duplicate actions or autofocus');
   await matrix(page, 'login', LOGIN, check);
   await page.eval(`${q(LOGIN + '-username')}.focus()`);
-  const utilities = await page.eval(`${q('#open-account-deletion')}?.checkVisibility()`) ? ['#open-account-deletion'] : [];
-  for (const id of [LOGIN + '-password', LOGIN + '-password-reveal', LOGIN + '-submit', '#use-email-code', '#use-registration', ...utilities]) {
+  check(await page.eval(`${q('#account-management-help')}?.getAttribute('href') === '/toi?quan-ly=xoa'`), 'Guest can find account support outside the login form');
+  for (const id of [LOGIN + '-password', LOGIN + '-password-reveal', LOGIN + '-submit', '#use-email-code', '#use-registration', '#account-management-help']) {
     await page.key('Tab');
     check(await page.eval(`document.activeElement === ${q(id)} && document.activeElement.matches(':focus-visible')`), `#327 keyboard order and focus-visible: ${id}`);
   }
@@ -497,6 +497,13 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   const registrationEmail = 'nhap-da-luu@vi-du.vn';
   await registrationProof(page, args.outbox, registrationEmail, ctx.seen);
   check(await page.eval(`!${q(LOGIN)} && ${q(REGISTER + '-password')}.autocomplete === 'new-password'`), 'proof completion accepts new credentials');
+  await page.viewport(834, 1112);
+  await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] });
+  await page.waitFor(APPEARANCE_SETTLED, 'Registration screenshot appearance ready');
+  await page.capture('auth-r5-register-credentials-834-light-100', {
+    scenario: 'register-credentials', textScale: 100, requiredTargets: [REGISTER, REGISTER + '-username'],
+  });
+  await page.viewport(1280);
   // DOM autofill simulation: set the actual values, without input events.
   await page.eval(`(() => {
     ${q(REGISTER + '-username')}.value = ${JSON.stringify(userA.toUpperCase())};
@@ -912,8 +919,30 @@ export async function accountDeletion(page, { args, check, openPage }) {
   const db = accountDeletionFixtureSql;
   const username = 'tacgia.xoa';
   const pen = 'Bút danh cần thu hồi';
+  const deletePath = '/toi?quan-ly=xoa';
+  const ordinary = async label => check(await page.eval(
+    "!document.querySelector('#open-account-deletion, #delete-account-form')"), label);
+  const goToDeletion = async selector => {
+    await page.click(selector);
+    await page.waitFor(`${q('#page-account-deletion')} && ${q('#open-account-deletion')} && !${q('.vk-auth-entry')}`, 'dedicated account deletion view');
+  };
   await openAccount(page, base, 'anonymous');
+  await ordinary('guest Login has no destructive control');
+  const direct = await fetch(base + deletePath);
+  const html = await direct.text();
+  check(direct.ok && html.includes('id="page-account-deletion"') && !html.includes('id="password-login"'),
+    'signed-out SSR deep link renders the dedicated page');
+  await goToDeletion('#account-management-help');
+  await page.click('#open-account-deletion');
+  await page.waitFor("document.activeElement?.id === 'account-deletion-title'", 'deletion warning owns focus');
+  await page.eval(`${q('#delete-account-form')}.querySelectorAll('button').forEach(button => { if (button.textContent.trim() === 'Hủy') button.focus(); })`);
+  await page.key('Enter');
+  await page.waitFor(`!${q('#delete-account-form')} && document.activeElement?.id === 'open-account-deletion'`, 'Cancel dismisses proof and restores focus');
+  check((await read(page, '/api/v1/auth/session')).data.state === 'anonymous', 'dedicated guest page grants no session');
+  await page.click('#page-account-deletion .vk-ui-back-link');
+  await page.waitFor(`${q(LOGIN)} && !location.search`, 'dedicated Back returns to Auth');
   await page.click('#use-registration');
+  await ordinary('guest Registration has no destructive control');
   await registrationProof(page, args.outbox, randomUUID() + '@example.test');
   await credentials(page, REGISTER, username, SECRET_A);
   await page.click(REGISTER + '-submit');
@@ -953,6 +982,10 @@ export async function accountDeletion(page, { args, check, openPage }) {
     await page.goto(`${base}/tac-pham/${work}`);
     await page.waitFor(q('.vk-document'), 'Reader before deletion');
     await openAccount(page, base, 'active');
+    await ordinary('Active settings shows a link, without mounting proof controls');
+    check(await page.eval("Boolean(document.querySelector('#account-settings-title').parentElement.querySelector('#account-deletion-settings-link'))"),
+      'Active deletion entry belongs to the settings section');
+    await goToDeletion('#account-deletion-settings-link');
     await page.click('#open-account-deletion');
     await page.waitFor(`document.activeElement?.id === 'account-deletion-title'`, 'explicit opening focuses the warning');
     for (const width of [320, 1440]) {
@@ -982,6 +1015,8 @@ export async function accountDeletion(page, { args, check, openPage }) {
   await page.click('#check-account-deletion');
   await page.waitFor(contains('Tài khoản đã được xóa vĩnh viễn'), 'background retry committed on the App and status reconciled');
   await page.eval('history.back()');
+  await page.waitFor(q(LOGIN), 'Browser Back returns from the dedicated mode to Account');
+  await page.eval('history.back()');
   await page.waitFor(q('[data-testid=reader-author-deleted]'), 'Back from Account loads the neutral Reader replacement');
   check(await page.eval(`!document.querySelector('.vk-document') && !document.body.innerText.includes(${JSON.stringify(pen)})`),
     'the replacement has no original text or author name');
@@ -1006,14 +1041,25 @@ export async function accountDeletion(page, { args, check, openPage }) {
   db(`INSERT INTO principal_suspensions (id, principal_id, reason)
         VALUES ('${randomUUID()}', '${suspended}', 'Đình chỉ trong kiểm thử')`);
   await openAccount(page, base, 'suspended');
+  await ordinary('Suspended Account has an account support link only');
+  await goToDeletion('#account-management-help');
   await page.click('#open-account-deletion');
   await page.click('#account-delete-with-email');
   await fill(page, '#account-delete-email', email);
   await page.click('#send-account-deletion-code');
   await page.waitFor(q('#account-delete-code'), 'dedicated email OTP step');
   await fill(page, '#account-delete-code', await mailedCode(args.outbox, email, seen));
+  const answer = await holdAnswer(page, 'POST', '/api/v1/auth/account-deletion/confirm');
   await page.click('#confirm-account-deletion-code');
-  await page.waitFor(`${STANDING} === 'anonymous' && ${contains('Tài khoản đã được xóa vĩnh viễn')}`, 'real email OTP retires the suspended account without issuing a session');
+  check([200, 202].includes(await answer.held()), 'real email OTP was accepted for the suspended account');
+  await answer.finish(true);
+  await page.waitFor(`${STANDING} === 'anonymous' && ${contains('Chưa nhận được kết quả xóa tài khoản')}`,
+    'lost confirmation ACK keeps a status receipt on the dedicated page after sign-out');
+  await page.click('#check-account-deletion');
+  await page.waitFor(contains('Tài khoản đã được xóa vĩnh viễn'), 'status resolves the real OTP deletion without issuing a session');
+  check((await read(page, '/api/v1/auth/session')).data.state === 'anonymous', 'status check did not mint a session');
+  await page.click('#page-account-deletion .vk-ui-back-link');
+  await page.waitFor(q(LOGIN), 'return to ordinary Auth to register a new principal');
   await signIn(page, { args, seen }, email);
   await setPenName(page, 'Người dùng email mới');
   check((await read(page, '/api/v1/auth/session')).data.principal_id !== suspended,
@@ -1023,6 +1069,15 @@ export async function accountDeletion(page, { args, check, openPage }) {
 // Same Chrome driver and real password/editor journeys against the standalone host.
 export async function standalone(page, {args, check, openPage}) {
   const base = args.base;
+  await page.goto(base + '/toi?quan-ly=xoa');
+  await page.waitFor(`${STANDING} === 'anonymous' && ${q('#open-account-deletion')}`,
+    'CSR resolves the dedicated deletion deep link as a guest');
+  check(await page.eval(`!${q('.vk-auth-entry')} && !${q('#delete-account-form')}`),
+    'CSR dedicated entry waits for explicit consent before showing the form');
+  await page.click('#page-account-deletion .vk-ui-back-link');
+  await page.waitFor(`${q(LOGIN)} && !location.search`, 'CSR Back reaches ordinary Auth');
+  check(await page.eval(`!${q('#open-account-deletion')} && !${q('#delete-account-form')}`),
+    'CSR ordinary Auth contains no deletion UI');
   const work = '33333333-3333-4333-8333-333333333333';
   const reader = base + '/tac-pham/' + work;
   const line = 'Phố cũ mưa giăng sợi mỏng,';

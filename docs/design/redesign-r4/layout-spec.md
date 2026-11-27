@@ -198,3 +198,12 @@ kiểm duyệt mở từ thẻ.
 Ghi kết quả Functional, Geometry, Visual, Accessibility–Responsive và Interaction theo từng
 scenario, viewport, theme, app scale, browser zoom và SHA. Source và ảnh lịch sử chưa chứng minh
 các mục này tại SHA mới. Chi tiết lý do và câu hỏi còn mở ở [WHY R4](why-r4.md).
+
+### Tóm tắt danh tính R5 (#605)
+
+Tên hiển thị ở header Tài khoản, hồ sơ, danh sách theo dõi và cụm tác giả dùng tối đa hai
+dòng, dấu ba chấm khi tràn. Handle tóm tắt dùng một dòng. Giữ cả tên và handle thật ở DOM,
+tên truy cập của liên kết, H1 và title theo ngữ cảnh. Cho phép ngắt chuỗi dài và giữ nguyên
+cỡ chữ. Nội dung bài, câu thông báo hoàn chỉnh và form nhập/chỉnh/sao chép giữ nguyên dữ liệu
+hiển thị. Header danh sách theo dõi dùng Back **Hồ sơ** (icon-only ở mobile), kế tiếp là H1,
+handle, hướng danh sách và các hàng. [Issue #605](https://github.com/loveoverflowcom/vink/issues/605)

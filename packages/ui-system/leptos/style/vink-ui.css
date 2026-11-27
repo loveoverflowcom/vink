@@ -847,7 +847,41 @@
 }
 .vk-ui-field--floating[data-mode="disabled"] .vk-ui-field__control { background: var(--vk-disabled-container); }
 
+/* The Auth pair is tuned for a visible control against both the page and Reader
+ * dialog. Keep the input/error perimeter outside the fill against the host. */
+.vk-ui-field--auth .vk-ui-field__control {
+  grid-template-columns: minmax(0, 1fr);
+  min-block-size: 56px;
+  border-radius: var(--vk-radius-control-56);
+  outline-width: 0;
+}
+.vk-ui-field--auth[data-mode="editable"] .vk-ui-field__control {
+  background: var(--vk-auth-field-fill);
+}
+.vk-ui-field--auth.vk-ui-field--floating .vk-ui-field__control > .vk-ui-input {
+  min-block-size: 0;
+  padding-block: 0 var(--vk-space-2);
+  border-radius: 0 0 var(--vk-radius-control-56) var(--vk-radius-control-56);
+}
+.vk-ui-field--auth[data-mode="editable"] :is(.vk-ui-input, .vk-ui-field__label, .vk-ui-icon-button, .vk-ui-field__control > .vk-ui-icon) {
+  color: var(--vk-on-auth-field);
+}
+.vk-ui-field--auth[data-mode="editable"] .vk-ui-input::placeholder {
+  color: var(--vk-on-auth-field);
+}
+.vk-ui-field--auth.vk-ui-field--floating .vk-ui-field__control {
+  outline-offset: 0;
+}
+.vk-ui-field--auth .vk-ui-field__reveal { inset-block: 0; inset-inline-end: var(--vk-space-1); }
+.vk-ui-field--auth .vk-ui-field__reveal .vk-ui-icon-button:focus-visible {
+  outline-color: var(--vk-on-auth-field);
+  outline-offset: -2px;
+}
+
 @media (forced-colors: active) {
+  .vk-ui-field--auth .vk-ui-field__reveal .vk-ui-icon-button:focus-visible { outline-color: Highlight; }
+  .vk-ui-field--auth .vk-ui-field__control:has(> .vk-ui-input:focus),
+  .vk-ui-field--auth[data-invalid] .vk-ui-field__control { border-color: transparent; }
   .vk-ui-field__control--select > .vk-ui-icon { color: ButtonText; }
   .vk-ui-field__control--select:has(> select:disabled) > .vk-ui-icon { color: GrayText; }
   .vk-ui-input:not(:focus):not([aria-invalid="true"]),
@@ -1079,6 +1113,23 @@ a.vk-ui-byline__identity:focus-visible {
   display: flex;
   flex-direction: column;
   min-inline-size: 0;
+}
+
+/* Summary only: CSS clips the visual lines while keeping the whole DOM/AX name. */
+.vk-ui-identity-name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+.vk-ui-identity-handle {
+  display: block;
+  min-inline-size: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .vk-ui-byline__name {

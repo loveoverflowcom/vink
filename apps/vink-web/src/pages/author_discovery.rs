@@ -350,8 +350,8 @@ fn search_author_identity(author: PublicAuthorRef, id: String, q: &str) -> AnyVi
                 <a class="vk-ui-byline__identity" id=id aria-label=label data-profile-return="true" href=profile.href.clone()>
                     <Avatar name=avatar_name size=AvatarSize::Feed decorative=true />
                     <span class="vk-ui-byline__text">
-                        <span class="vk-ui-byline__name" data-blank=blank.then_some("true")>{name}</span>
-                        <span class="vk-ui-byline__handle"><mark class="vk-search-mark">{handle}</mark></span>
+                        <span class="vk-ui-byline__name vk-ui-identity-name" data-blank=blank.then_some("true")>{name}</span>
+                        <span class="vk-ui-byline__handle vk-ui-identity-handle"><mark class="vk-search-mark">{handle}</mark></span>
                     </span>
                 </a>
             </div>
@@ -491,13 +491,13 @@ mod tests {
             };
             let matching = render(" @DO-ANH ");
             let plain = render("");
-            assert!(plain.contains("<span class=\"vk-ui-byline__handle\">@do-anh</span>"));
-            assert!(matching.contains("<span class=\"vk-ui-byline__name\">Đỗ Ánh</span>"));
-            let marked = "<span class=\"vk-ui-byline__handle\"><mark class=\"vk-search-mark\">@do-anh</mark></span>";
+            assert!(plain.contains("<span class=\"vk-ui-byline__handle vk-ui-identity-handle\">@do-anh</span>"));
+            assert!(matching.contains("<span class=\"vk-ui-byline__name vk-ui-identity-name\">Đỗ Ánh</span>"));
+            let marked = "<span class=\"vk-ui-byline__handle vk-ui-identity-handle\"><mark class=\"vk-search-mark\">@do-anh</mark></span>";
             assert!(matching.contains(marked));
             assert_eq!(matching.matches("<mark").count(), 1);
             for html in [&plain, &matching] {
-                assert_eq!(html.matches("class=\"vk-ui-byline__handle\"").count(), 1);
+                assert_eq!(html.matches("class=\"vk-ui-byline__handle vk-ui-identity-handle\"").count(), 1);
                 assert_eq!(html.matches("<a ").count(), 1);
                 assert!(html.contains("aria-label=\"Mở hồ sơ Đỗ Ánh (@do-anh)\""));
                 assert!(html.contains("href=\"/@do-anh\""));

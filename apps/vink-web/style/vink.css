@@ -302,9 +302,8 @@ a {
   }
 }
 
-/* Auth R3 uses the shared input and action states in both Reader and Tôi. */
+/* Auth R5 uses the shared input and action states in both Reader and Tôi. */
 .vk-auth-entry {
-  --vk-auth-field-edge: var(--vk-field-outline);
   gap: var(--vk-space-6);
   inline-size: min(100%, 24rem);
 }
@@ -314,30 +313,7 @@ a {
   margin: 0; font: var(--vk-type-display-weight) var(--vk-text-auth-heading)/var(--vk-type-display-line-height) var(--vk-font-reading);
   letter-spacing: var(--vk-type-display-tracking);
 }
-.vk-auth-entry .vk-account-form {
-  --vk-field-container: var(--vk-surface-container-highest);
-  inline-size: 100%;
-}
-.vk-auth-entry .vk-ui-field--floating .vk-ui-field__control {
-  grid-template-columns: minmax(0, 1fr);
-  min-block-size: 56px;
-  border-radius: var(--vk-radius-xl);
-}
-.vk-auth-entry .vk-ui-field--floating .vk-ui-field__control > .vk-ui-input {
-  min-block-size: 0;
-  padding-block: 0 var(--vk-space-2);
-  border-end-start-radius: var(--vk-radius-xl);
-  border-end-end-radius: var(--vk-radius-xl);
-}
-/* The tonal fill does not reach 3:1 against either host on its own.
- * One inset edge identifies an idle field until the shared focus/error perimeter takes over. */
-.vk-auth-entry .vk-ui-field--floating[data-mode="editable"]:not([data-invalid])
-  .vk-ui-field__control:not(:has(> .vk-ui-input:focus)) {
-  outline: 1px solid var(--vk-auth-field-edge);
-  outline-offset: -1px;
-}
-.vk-auth-entry .vk-ui-field__reveal { inset-block: 0; inset-inline-end: var(--vk-space-1); }
-.vk-auth-entry .vk-ui-field__reveal .vk-ui-icon-button:focus-visible { outline-offset: -2px; }
+.vk-auth-entry .vk-account-form { inline-size: 100%; }
 .vk-auth-entry .vk-account-actions { display: grid; gap: var(--vk-space-3); margin-block-start: var(--vk-space-1); }
 .vk-auth-entry .vk-account-actions > .vk-ui-action {
   min-inline-size: 0;
@@ -348,8 +324,6 @@ a {
   .vk-auth-entry :is(.vk-account-actions, .vk-auth-account-switch) .vk-ui-button { border-width: 0; }
 }
 @media (forced-colors: active) {
-  .vk-auth-entry { --vk-auth-field-edge: ButtonText; }
-  .vk-auth-entry .vk-ui-field--floating .vk-ui-field__control { border: 0; }
   :is(.vk-auth-entry, .vk-reader-auth) .vk-ui-icon-button:focus-visible,
   .vk-auth-entry .vk-ui-button:focus-visible { outline-color: Highlight; }
 }
@@ -449,6 +423,8 @@ a {
 .vk-public-row { scroll-margin-block: var(--vk-space-4); }
 
 .vk-public-list {
+  /* Let an unbroken byline Handle ellipsize inside the work row. */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--vk-space-3);
   margin: 0;
 }

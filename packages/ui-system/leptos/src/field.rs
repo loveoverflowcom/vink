@@ -19,12 +19,14 @@ pub enum FieldMode {
     Disabled,
 }
 
-/// Short-field presentation; both variants keep one stable native input.
+/// Short-field presentation; every variant keeps one stable native input.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum FieldVariant {
     #[default]
     ExternalLabel,
     FloatingTonal,
+    /// Filled Auth field for the page and Reader dialog surfaces.
+    AuthTonal,
 }
 
 /// `Bar` composes a native form submit and an optional clear target in one tonal surface.
@@ -295,7 +297,7 @@ fn text_field(
             }
         })
     };
-    let floating = variant == FieldVariant::FloatingTonal;
+    let floating = variant != FieldVariant::ExternalLabel;
     let node = input_ref.unwrap_or_default();
     let password_toggle = reveal_password && control == TextControl::Field(TextKind::Password);
     let reveal = move || password_toggle && mode.get() != FieldMode::Disabled;
@@ -347,7 +349,11 @@ fn text_field(
     };
     view! {
         <div
-            class=if floating { "vk-ui-field vk-ui-field--floating" } else { "vk-ui-field" }
+            class=match variant {
+                FieldVariant::ExternalLabel => "vk-ui-field",
+                FieldVariant::FloatingTonal => "vk-ui-field vk-ui-field--floating",
+                FieldVariant::AuthTonal => "vk-ui-field vk-ui-field--floating vk-ui-field--auth",
+            }
             data-mode=move || match mode.get() {
                 FieldMode::Editable => "editable",
                 FieldMode::ReadOnly => "read-only",

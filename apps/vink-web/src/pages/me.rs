@@ -1,7 +1,7 @@
 use leptos::prelude::*;
 use leptos_meta::{Meta, Title};
 
-use crate::account::AccountHub;
+use crate::account::{AccountDeletionPage, AccountHub, account_deletion_available};
 #[cfg(feature = "browser")]
 use crate::session::Standing;
 
@@ -9,12 +9,19 @@ use crate::session::Standing;
 pub fn Me() -> impl IntoView {
     let query = leptos_router::hooks::use_query_map();
     let session = crate::account::Session::current();
+    let deletion = Memo::new(move |_| {
+        account_deletion_available() && query.with(|query| query.get_str("quan-ly") == Some("xoa"))
+    });
     let feed_enabled = crate::api::following_feed_enabled();
     #[cfg(feature = "browser")]
     {
         let navigation = crate::navigation::use_navigation_guard();
         let desk_auth_entry = StoredValue::new(false);
         Effect::new(move |_| {
+            if deletion.get() {
+                desk_auth_entry.set_value(false);
+                return;
+            }
             let next = query.with(|query| {
                 query
                     .get_str("next")
@@ -51,22 +58,26 @@ pub fn Me() -> impl IntoView {
         })
     });
     view! {
-        <Title text="Tài khoản — Vink" />
+        <Title text=move || if deletion.get() { "Quản lý xóa tài khoản — Vink" } else { "Tài khoản — Vink" } />
         <Meta name="robots" content="noindex" />
         <section id="me" class="vk-me grid gap-vk-6" aria-labelledby="me-title">
-            <AccountHub>
-                {move || (session.profile_scope.get().is_some())
-                    .then(|| return_href.get())
-                    .flatten()
-                    .map(|(href, label)| view! {
-                        <vink_ui::Link
-                            variant=vink_ui::LinkVariant::Standalone
-                            attr:id="me-return-link"
-                            href=href>
-                            {label}
-                        </vink_ui::Link>
-                    })}
-            </AccountHub>
+            <Show when=move || deletion.get() fallback=move || view! {
+                <AccountHub>
+                    {move || (session.profile_scope.get().is_some())
+                        .then(|| return_href.get())
+                        .flatten()
+                        .map(|(href, label)| view! {
+                            <vink_ui::Link
+                                variant=vink_ui::LinkVariant::Standalone
+                                attr:id="me-return-link"
+                                href=href>
+                                {label}
+                            </vink_ui::Link>
+                        })}
+                </AccountHub>
+            }>
+                <AccountDeletionPage />
+            </Show>
         </section>
     }
 }

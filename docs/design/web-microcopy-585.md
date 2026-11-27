@@ -21,7 +21,7 @@
 ### Auth và email
 
 Owner: [forms.rs](../../apps/vink-web/src/account/forms.rs),
-[attachment.rs](../../apps/vink-web/src/account/forms/attachment.rs),
+[email.rs](../../apps/vink-web/src/account/forms/email.rs),
 [session.rs](../../apps/vink-web/src/session.rs).
 
 | Vị trí / trước | Sau | Quyết định và lý do |
@@ -35,7 +35,7 @@ Owner: [forms.rs](../../apps/vink-web/src/account/forms.rs),
 | Email trong Cài đặt | Địa chỉ thật và trạng thái “Đã xác minh” | #607 thay dòng trống bằng thông tin riêng tư của phiên hiện tại. |
 
 Rà thêm và giữ: helper Chọn bút danh; acknowledgement yêu cầu gửi mã mới được ghi nhận;
-expiry/retry; cảnh báo enrollment; email đang liên kết khác email nhập; pending, kết quả chưa
+expiry/retry; cảnh báo enrollment; pending, kết quả chưa
 xác nhận và hướng đối soát phiên. Không thay IDs, labels của field, autocomplete, ARIA,
 validation, focus hoặc session owner. Không chuyển helper bị bỏ vào hidden metadata.
 
