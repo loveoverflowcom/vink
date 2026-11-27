@@ -18,12 +18,14 @@ Trang `/toi` giữ rail/thanh dưới. Thứ tự đọc cũng là thứ tự fo
     V-pen → tiêu đề          Đăng nhập / Tạo tài khoản / Đăng nhập bằng email / Chọn bút danh
     #password-login          Tên đăng nhập → Mật khẩu (hiện/ẩn) → Đăng nhập (Filled)
                              Dùng mã email (Tonal, thư) → Chưa có tài khoản? Tạo tài khoản (Text)
-    #password-register       hai trường và hướng dẫn → Tạo tài khoản (Filled)
+    #registration-email      Email → Gửi mã xác minh (Filled)
+    #password-register       Mã xác minh → Tên đăng nhập → Mật khẩu → Tạo tài khoản (Filled)
+                             Gửi lại mã / Dùng email khác
                              Đã có tài khoản? Đăng nhập (Text)
     #sign-in-email           Email → Gửi mã đăng nhập (Filled) → Dùng mật khẩu (Tonal, khóa)
     #sign-in-code            Mã → Đăng nhập → Gửi lại mã / Dùng email khác → Dùng mật khẩu
     #pen-name-form           chỉ khi máy chủ yêu cầu: Bút danh + trợ giúp → Lưu bút danh
-  Đã hoạt động               trạng thái, Bàn viết, thêm mật khẩu, đăng xuất như trước
+  Đã hoạt động               Email riêng tư chỉ đọc, mật khẩu, Bàn viết, đăng xuất
 ```
 
 **Responsive.** Cột form căn giữa phần nội dung, tối đa 24rem, lề mobile 20px tại 390px.

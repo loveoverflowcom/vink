@@ -24,7 +24,7 @@ use vink_identity::mail::{LocalOutbox, Message, Purpose, Resend, Transport};
 use vink_identity::server::{self, SocketError};
 use vink_identity::{persistence, runtime};
 
-const USAGE: &str = "usage: vink-identity [serve|migrate]\n       vink-identity account disable <subject-uuid>\n       vink-identity account enable <subject-uuid>\n       vink-identity maintenance prune\n       vink-identity mail status\n       vink-identity mail test <address>";
+const USAGE: &str = "usage: vink-identity [serve|migrate]\n       vink-identity account disable <subject-uuid>\n       vink-identity account enable <subject-uuid>\n       vink-identity maintenance prune\n       vink-identity maintenance verified-email inventory|retire\n       vink-identity mail status\n       vink-identity mail test <address>";
 
 /// How often `serve` prunes closed records.
 const PRUNE_INTERVAL: Duration = Duration::from_secs(3600);
@@ -52,6 +52,9 @@ fn parse_account(args: &[String]) -> Result<AccountCommand, String> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Maintenance {
     Prune,
+    ReviewLegacyEmail {
+        apply: bool,
+    },
     MailStatus,
     /// Sends one transport-check message (no code) through the configured sender.
     MailTest(EmailAddress),
@@ -60,11 +63,20 @@ enum Maintenance {
 fn parse_maintenance(command: &str, args: &[String]) -> Result<Maintenance, String> {
     match (command, args.first().map(String::as_str), args.len()) {
         ("maintenance", Some("prune"), 1) => Ok(Maintenance::Prune),
+        ("maintenance", Some("verified-email"), 2)
+            if args[1] == "inventory" || args[1] == "retire" =>
+        {
+            Ok(Maintenance::ReviewLegacyEmail {
+                apply: args[1] == "retire",
+            })
+        }
         ("mail", Some("status"), 1) => Ok(Maintenance::MailStatus),
         ("mail", Some("test"), 2) => EmailAddress::parse(&args[1])
             .map(Maintenance::MailTest)
             .ok_or_else(|| "`mail test` needs a mailbox address".into()),
-        ("maintenance", ..) => Err("expected `maintenance prune`".into()),
+        ("maintenance", ..) => Err(
+            "expected `maintenance prune` or `maintenance verified-email inventory|retire`".into(),
+        ),
         _ => Err("expected `mail status` or `mail test <address>`".into()),
     }
 }
@@ -208,6 +220,14 @@ async fn maintenance(config: &OperatorConfig, task: Maintenance) -> Result<(), F
                 );
             })
             .map_err(|_| Failure::Runtime("prune failed".into())),
+        Maintenance::ReviewLegacyEmail { apply } => {
+            accounts::review_legacy_email_accounts(&pool, apply)
+                .await
+                .map(|(examined, invalid)| {
+                    println!("examined={examined} invalid={invalid} apply={apply}")
+                })
+                .map_err(|_| Failure::Runtime("legacy email review failed".into()))
+        }
         Maintenance::MailStatus => delivery::backlog(&pool)
             .await
             .map(|queue| {

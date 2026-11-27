@@ -166,21 +166,9 @@ async fn send(command: Command) -> Result<Reply, AuthError> {
                 Err(AuthError::Unexpected { status: 200 })
             }
         }
-        Command::RequestEmailAttachment(input) => {
-            let challenge = api::request_email_attachment(input).await?;
-            let at = js_sys::Date::parse(&challenge.expires_at);
-            if !at.is_finite() || challenge.challenge_id.is_empty() || challenge.email.is_empty() {
-                return Err(AuthError::Unexpected { status: 202 });
-            }
-            Ok(Reply::AttachmentChallenge {
-                id: challenge.challenge_id,
-                email: challenge.email,
-                expires: at as Millis,
-            })
+        Command::RequestRegistrationCode(email) => {
+            challenge_expiry(api::registration_code(email).await?)
         }
-        Command::CompleteEmailAttachment(input) => api::complete_email_attachment(input)
-            .await
-            .map(|()| Reply::Done),
         Command::PenName(name) => api::provision_principal(name).await.map(|_| Reply::Done),
         Command::StartDeletion(email) => {
             let sent: api::DeletionChallenge =
@@ -216,12 +204,10 @@ pub(super) fn dispatch(
     let allowed = session.standing.with_untracked(|standing| match operation {
         Operation::PasswordLogin
         | Operation::PasswordRegister
+        | Operation::RegistrationChallenge
         | Operation::EmailChallenge
         | Operation::EmailCode => matches!(standing, Standing::Anonymous),
-        Operation::Enrollment
-        | Operation::EnrollmentChallenge
-        | Operation::AttachmentChallenge
-        | Operation::AttachmentComplete => {
+        Operation::Enrollment | Operation::EnrollmentChallenge => {
             matches!(standing, Standing::Active(_))
         }
         Operation::PenName => matches!(standing, Standing::NeedsPrincipal),
@@ -294,11 +280,11 @@ pub(super) fn dispatch(
     });
 }
 
-pub(super) fn attachment_status(
+pub(super) fn verified_email(
     session: Session,
     epoch: u64,
     live: impl Fn() -> bool + 'static,
-    complete: impl FnOnce(Result<crate::contract::EmailAttachmentStatus, AuthError>) + 'static,
+    complete: impl FnOnce(Result<crate::contract::VerifiedEmail, AuthError>) + 'static,
 ) {
     let owns = move || {
         session
@@ -309,11 +295,11 @@ pub(super) fn attachment_status(
         return;
     };
     spawn_local(async move {
-        let outcome = api::email_attachment_status().await.and_then(|status| {
+        let outcome = api::verified_email().await.and_then(|status| {
             if status.principal_id == principal {
                 Ok(status)
             } else {
-                Err(AuthError::AttachmentContextChanged)
+                Err(AuthError::Unauthenticated)
             }
         });
         if !owns()

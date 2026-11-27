@@ -11,8 +11,7 @@ pub(super) enum Operation {
     EmailCode,
     EnrollmentChallenge,
     Enrollment,
-    AttachmentChallenge,
-    AttachmentComplete,
+    RegistrationChallenge,
     PenName,
     DeletionChallenge,
     ConfirmDeletion,
@@ -26,11 +25,10 @@ impl Operation {
         match self {
             Self::PasswordLogin => "Đang đăng nhập…",
             Self::PasswordRegister => "Đang tạo tài khoản…",
-            Self::EmailChallenge | Self::EnrollmentChallenge | Self::AttachmentChallenge => {
+            Self::EmailChallenge | Self::EnrollmentChallenge | Self::RegistrationChallenge => {
                 "Đang xin mã…"
             }
             Self::EmailCode => "Đang kiểm tra mã…",
-            Self::AttachmentComplete => "Đang xác minh mã…",
             Self::Enrollment => "Đang thêm mật khẩu…",
             Self::PenName => "Đang lưu bút danh…",
             Self::DeletionChallenge => "Đang xin mã…",
@@ -51,9 +49,7 @@ impl Operation {
             Self::EnrollmentChallenge | Self::Enrollment => {
                 "Vink chưa hỗ trợ thêm mật khẩu trên hệ thống này."
             }
-            Self::AttachmentChallenge | Self::AttachmentComplete => {
-                "Vink chưa hỗ trợ thêm email trên hệ thống này."
-            }
+            Self::RegistrationChallenge => "Vink chưa mở đăng ký bằng email trên hệ thống này.",
             Self::DeletionChallenge | Self::ConfirmDeletion | Self::DeletionStatus => {
                 "Tính năng xóa tài khoản hiện chưa khả dụng."
             }
@@ -110,7 +106,7 @@ pub(super) struct AuthGate {
     // Retry-After is indexed by App endpoint. The local resend hint belongs to the
     // current flow, so a different account doesn't inherit it; server cooldowns do.
     retry_until: [Millis; Operation::SignOut as usize + 1],
-    resend_until: [Millis; 2],
+    resend_until: [Millis; 3],
     needs_check: bool,
 }
 
@@ -130,7 +126,7 @@ impl AuthGate {
 
     pub(super) fn invalidate(&mut self, needs_check: bool) {
         self.epoch += 1;
-        self.resend_until = [0; 2];
+        self.resend_until = [0; 3];
         self.needs_check |= needs_check;
     }
 
@@ -146,6 +142,7 @@ impl AuthGate {
         let hint = match op {
             Operation::EmailChallenge => self.resend_until[0],
             Operation::EnrollmentChallenge => self.resend_until[1],
+            Operation::RegistrationChallenge => self.resend_until[2],
             _ => 0,
         };
         let remaining = self.retry_until[op as usize].max(hint) - now;
@@ -191,6 +188,9 @@ impl AuthGate {
                 retry_after_seconds: Some(seconds),
             }) => {
                 self.retry_until[operation as usize] = now + Millis::from(*seconds) * 1_000;
+            }
+            None if self.epoch == ticket.epoch && operation == RegistrationChallenge => {
+                self.resend_until[2] = now + RESEND_COOLDOWN_MS;
             }
             None if self.epoch == ticket.epoch && operation == EmailChallenge => {
                 self.resend_until[0] = now + RESEND_COOLDOWN_MS;

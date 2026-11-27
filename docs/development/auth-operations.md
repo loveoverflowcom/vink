@@ -181,10 +181,14 @@ mail mới; đợi delivery hiện có xử lý xong hoặc hết hạn, dừng 
 Không chạy lẫn worker SMTP cũ và worker Resend mới: worker cũ không hiểu ràng buộc payload,
 có thể gửi trùng; không rollback cả outbox hay chỉnh tài khoản chỉ để tắt auth.
 
-## Recovery #181/#329: gắn email đã có, reset chưa có
+## Cutover email bắt buộc (#607)
 
-Gắn email lần đầu, đăng nhập mã email và thêm mật khẩu có proof riêng; không phải reset.
-[Đặc tả recovery](../architecture/password-recovery.md) đề xuất purpose/receipt/retention riêng,
-chống dò account, xử lý thư gửi lại và revoke phiên. Chưa có route, migration hoặc quyền vận hành
-reset; không dùng lệnh disable/enable hay sửa trực tiếp password hash để giả lập recovery đã nghiệm
-thu. Các mục vận hành và retention ở trên là hiện trạng, không tự bao phủ bảng/route đề xuất.
+Thực hiện riêng trên từng bộ Identity, App và Notifications của cùng môi trường. Đối chiếu định danh cluster, DB và role qua inventory triển khai. Ghi số đếm và checkpoint vào evidence riêng tư. [Vòng đời xóa](../architecture/account-deletion.md) quy định các dấu vết cần bảo toàn.
+
+1. Đóng intake Auth và mọi writer Identity cũ, đợi transaction đang xử lý kết thúc. Chụp bộ backup nhất quán và ghi mốc receipt để có thể khôi phục đồng bộ. Giữ App reconciler, Identity RPC đọc receipt và relay sẵn sàng trên đúng bộ DB. Dùng CLI bản mới trên schema Identity có migration xóa tài khoản #550.
+2. Chạy `vink-identity maintenance verified-email inventory` với cấu hình Identity của bộ này. Kết quả gồm số account chưa retired đã xét và số vi phạm. Schema nguồn có primary key theo account, UNIQUE address và NOT NULL cho address/verified_at. Nếu schema thực tế lệch lịch sử migration, dừng để đối soát trước khi phân loại.
+3. Đối chiếu preflight với inventory của đúng bộ DB rồi chạy `vink-identity maintenance verified-email retire`. Mỗi batch lấy khóa và kiểm lại mailbox bằng parser Identity. Giao dịch sử dụng cùng owner retirement và outbox của DEL-01..08. Nếu bị gián đoạn, chạy lại. Receipt đã commit giữ operation ban đầu và được App xử lý tiếp. Nếu ràng buộc PK, UNIQUE hoặc NOT NULL của schema cũ bị thay đổi ngoài migration, lệnh dừng trước khi thu hồi. Đối soát schema và ownership trước lần chạy tiếp theo.
+4. Inventory lại phải trả `invalid=0`. Trong Identity đợi `SELECT count(*) FROM account_deletions WHERE applied_at IS NULL` về 0. Đối chiếu receipt theo account, operation và accepted_at với App cùng bộ. Kiểm checkpoint purged và trạng thái relay theo [quy trình deletion](../architecture/account-deletion.md). Giữ binding, tombstone và bằng chứng kiểm duyệt.
+5. Chạy migration Identity bằng role migration. Khóa và ràng buộc cuối cùng từ chối mở schema mới khi vẫn có subject thiếu hoặc sai mailbox. Kiểm zero vi phạm, đăng ký, OTP, đăng nhập và đọc email riêng tư bằng binary mới trước khi mở lại intake. Recovery sau lỗi cần giữ mọi receipt mới hơn backup. Giữ cổng đóng nếu không thể xác minh đã replay đủ receipt ở cả hai DB.
+
+Khôi phục mật khẩu là luồng riêng của #181 và còn chờ quyết định về phiên sau reset.

@@ -10,7 +10,7 @@ import { followingFeed } from './following-feed-smoke.mjs';
 import { authorFollows } from './author-follow-smoke.mjs';
 import { authorHandles } from './author-handle-smoke.mjs';
 import { authorProfiles } from './author-profile-smoke.mjs';
-import { EDITOR_READY, HYDRATED, STANDING, account, cookies, fabricate, fill, mailedCode, openAccount, q, signIn, signOut } from './auth-smoke.mjs';
+import { EDITOR_READY, HYDRATED, STANDING, account, cookies, fabricate, fill, mailedCode, openAccount, q, registrationProof, signIn, signOut } from './auth-smoke.mjs';
 import { deskGuest } from './desk-empty-smoke.mjs';
 import { captureRequest, holdAnswer } from './auth-browser-network.mjs';
 import { APPEARANCE_SETTLED } from './visual-evidence.mjs';
@@ -71,99 +71,6 @@ async function createDraft(page, title) {
   return id;
 }
 
-async function attachVerifiedEmail(page, { args, check, accountBefore, draft, seen }) {
-  const path = '/api/v1/auth/email/attachment';
-  const email = 'nhap-da-luu@vi-du.vn';
-  const field = (suffix) => `#email-attach-${suffix}`;
-  const cookie = (await cookies(page, args.base))[sessionCookie];
-  await page.waitFor(q(field('missing')), '#329 password account has no verified email');
-  check(await page.eval(`${q(field('missing'))}.textContent.trim() === 'Chưa có email xác minh.'`),
-    '#585 attachment status identifies the missing verified email');
-  const initial = await read(page, path);
-  check(initial.status === 200 && initial.data.password_account && initial.data.verified_email === null &&
-    initial.data.principal_id === accountBefore.principal_id && initial.cache?.includes('no-store'),
-    '#329 private initial binding read is missing and identifies the current principal');
-
-  await page.click(field('add'));
-  await page.waitFor(`document.activeElement?.id === 'email-attach-address'`, '#329 explicit open focuses email');
-  await page.eval(`${q(field('cancel'))}.focus()`);
-  await page.key('Enter');
-  await page.waitFor(`document.activeElement?.id === 'email-attach-add'`, '#329 keyboard cancel returns focus to Add');
-  await page.click(field('add'));
-  await page.waitFor(q(field('address')), '#329 attachment form reopens');
-  await page.viewport(320);
-  await page.eval("document.documentElement.style.fontSize = '200%'");
-  check(await page.eval(`(async () => {
-    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    const viewport = document.documentElement.clientWidth;
-    const section = ${q('#recovery-email-settings')};
-    return document.documentElement.scrollWidth <= viewport + 1 &&
-      Array.from(section.querySelectorAll('input, button')).every(el => {
-        const r = el.getBoundingClientRect();
-        return r.width > 0 && r.left >= -1 && r.right <= viewport + 1;
-      });
-  })()`), '#329 email form has no horizontal overflow at 320px / 200% root text');
-  await page.eval("document.documentElement.style.fontSize = ''");
-  await page.viewport(1280);
-  await fill(page, field('address'), email.toUpperCase());
-  await fill(page, field('password'), 'wrong current password');
-  await page.click(field('send'));
-  await page.waitFor(contains('Hãy nhập đúng mật khẩu hiện tại'), '#329 current password verified on server');
-  check(await page.eval(`!${q(field('code'))} && ${q(field('password'))}.value === ''`),
-    '#329 bad current password does not advance and the password is cleared');
-  await fill(page, field('password'), SECRET_A);
-  const pending = await holdAnswer(page, 'POST', path + '/challenges');
-  await page.click(field('send'));
-  check(await pending.held() === 202, '#329 holds a real issued challenge before delivery');
-  await page.eval(`${q('#password-credential')}.focus()`);
-  await pending.finish(false, true);
-  await page.waitFor(q(field('code')), '#329 code is available after the delayed response');
-  check(await page.eval(`document.activeElement === ${q('#password-credential')}`),
-    '#329 receipt does not steal focus back from another account setting');
-  await mailedCode(args.outbox, email, seen);
-  await page.click(field('new-code'));
-  await page.waitFor(q(field('add')), '#329 start again reads the still-missing binding');
-  await page.click(field('add'));
-  await fill(page, field('address'), email);
-  await fill(page, field('password'), SECRET_A);
-  await page.click(field('send'));
-  await page.waitFor(`document.activeElement?.id === 'email-attach-code'`, '#329 accepted request focuses code when the form still owns focus');
-  const handle = (await cookies(page, args.base))['__Host-vink_attach'];
-  check(handle?.httpOnly && handle.secure && handle.sameSite === 'Strict' &&
-    await page.eval(`!${q(field('password'))} && ${q(field('code'))}.autocomplete === 'one-time-code'`),
-    '#329 secure strict Handle is browser-owned, password is removed, and code supports autofill');
-  const otp = await mailedCode(args.outbox, email, seen);
-  const wrong = String((Number(otp) + 1) % 1000000).padStart(6, '0');
-  await fill(page, field('code'), wrong);
-  await page.click(field('confirm'));
-  await page.waitFor(contains('Mã chưa đúng'), '#329 wrong code rejected without advancing');
-  check((await read(page, path)).data.verified_email === null, '#329 wrong code did not write the binding');
-
-  await fill(page, field('code'), otp);
-  const writes = captureRequest(page, 'POST', `${path}/complete`);
-  const reads = captureRequest(page, 'GET', path);
-  const lost = await holdAnswer(page, 'POST', `${path}/complete`);
-  await page.eval(`${q(field('confirm'))}.focus()`);
-  await page.key('Enter');
-  check(await lost.held() === 204, '#329 real server committed before the ACK was dropped');
-  check(await page.eval(`!${q(field('verified'))}`), '#329 no optimistic verified result');
-  await lost.finish(true);
-  await page.waitFor(`${q(field('verified'))}?.textContent.includes(${JSON.stringify(email)})`, '#329 lost ACK reconciled from real binding');
-  await page.waitFor(`document.activeElement?.id === 'email-attach-verified'`, '#329 keyboard focus follows confirmed readback');
-  check(writes.count() === 1 && reads.count() === 1, '#329 uncertain completion reads once and never replays');
-  writes.close();
-  reads.close();
-  const bound = await read(page, path);
-  check(bound.data.verified_email === email && bound.data.session_id === initial.data.session_id &&
-    (await cookies(page, args.base))[sessionCookie]?.value === cookie.value &&
-    (await account(page)).body.principal_id === accountBefore.principal_id &&
-    (await account(page)).body.display_name === accountBefore.display_name &&
-    bodyText(await page.draft(draft)) === DRAFT_TEXT &&
-    await page.eval(`!${q(field('code'))} && !${q(field('add'))}`),
-    '#329 canonical email binds to the same session, principal, pen name and existing draft; no second attach control');
-  return email;
-}
-
 async function expiredDesk(page, {base, check, openPage}) {
   const cookie = (await cookies(page, base))[sessionCookie];
   const { browserContextId } = await page.cdp.send('Target.createBrowserContext');
@@ -205,7 +112,7 @@ async function matrix(page, scenario, anchor, check) {
   const authMode = ['login', 'registration', 'email'].includes(scenario);
   const actions = ({
     login: ['#password-login-submit', '#use-email-code', '#use-registration'],
-    registration: ['#password-register-submit', '#use-password'],
+    registration: ['#registration-send', '#use-password'],
     email: ['#sign-in-send', '#use-password'],
     'pen-name': ['#pen-name-save'],
     closed: [],
@@ -585,9 +492,11 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   guestReview.close();
   await page.eval(`${q('#use-registration')}.focus()`);
   await page.key('Enter');
-  await page.waitFor(`document.activeElement?.id === 'password-register-username'`, 'explicit mode switch focuses first field');
-  check(await page.eval(`!${q(LOGIN)} && ${q(REGISTER + '-password')}.autocomplete === 'new-password'`), 'registration asks for username and password without email');
-  await matrix(page, 'registration', REGISTER, check);
+  await page.waitFor(`document.activeElement?.id === 'registration-address'`, 'registration focuses the email field');
+  await matrix(page, 'registration', '#registration-email', check);
+  const registrationEmail = 'nhap-da-luu@vi-du.vn';
+  await registrationProof(page, args.outbox, registrationEmail, ctx.seen);
+  check(await page.eval(`!${q(LOGIN)} && ${q(REGISTER + '-password')}.autocomplete === 'new-password'`), 'proof completion accepts new credentials');
   // DOM autofill simulation: set the actual values, without input events.
   await page.eval(`(() => {
     ${q(REGISTER + '-username')}.value = ${JSON.stringify(userA.toUpperCase())};
@@ -681,9 +590,9 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   await chooseAppearance(page, 'rail', 'compact');
   await page.waitFor(DARK_LARGE_COMPACT, 'real A account applies theme, text and rail from Tôi');
   const accountSettings = '.vk-account-settings';
-  await page.waitFor(`${q('#profile-privacy-link')} && ${q('#email-attach-missing')}`, '#602 real account settings and email state');
-  for (const [width, scale] of [[320, 200], [390, 100], [834, 150], [1440, 100]]) {
-    await page.viewport(width);
+  await page.waitFor(`${q('#profile-privacy-link')} && ${q('#account-email')}`, '#602 real account settings and email state');
+  for (const [width, scale] of [[320, 200], [390, 100], [390, 150], [834, 150], [1440, 100]]) {
+    await page.viewport(width, width === 390 ? 844 : 900);
     for (const theme of ['light', 'dark']) {
       await chooseAppearance(page, 'theme', theme);
       await chooseAppearance(page, 'text', scale === 150 ? 150 : 100);
@@ -694,7 +603,7 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
       await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 1, y: 1 });
       const settings = await page.eval(`(() => {
         const region = document.querySelector('${accountSettings}'), edge = region.getBoundingClientRect();
-        const rows = ['#profile-privacy-link', '#password-credential', '#email-attach-heading', '#page-appearance-title', '#sign-out']
+        const rows = ['#profile-privacy-link', '#password-credential', '#account-email', '#page-appearance-title', '#sign-out']
           .map(selector => region.querySelector(selector));
         const axes = rows.map(row => row.querySelector('svg, [data-appearance-icon]').getBoundingClientRect().left);
         const transparent = 'rgba(0, 0, 0, 0)';
@@ -811,13 +720,16 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   check(returnedA.principal_id === A.principal_id && returnedA.display_name === penA &&
     bodyText(await page.draft(draftA)) === DRAFT_TEXT, 'password returns to the same principal, pen name and stored draft');
 
-  console.log('Auth password: first verified email, wrong code and lost completion ACK:');
+  console.log('Auth password: read-only verified email and OTP continuity:');
   await openAccount(page, base, 'active');
-  const attachedEmail = await attachVerifiedEmail(page, { args, check, accountBefore: A, draft: draftA, seen: ctx.seen });
+  await page.waitFor(`${q('#account-email')}?.textContent.includes(${JSON.stringify(registrationEmail)})`, 'settings show the verified email');
+  const binding = await read(page, '/api/v1/auth/email');
+  check(binding.status === 200 && binding.cache === 'no-store' && binding.data.verified_email === registrationEmail &&
+    binding.data.principal_id === A.principal_id, 'private email is bound to the signed-in principal');
   await signOut(page, base);
-  await signIn(page, ctx, attachedEmail);
+  await signIn(page, ctx, registrationEmail);
   check((await account(page)).body.principal_id === A.principal_id && bodyText(await page.draft(draftA)) === DRAFT_TEXT &&
-    await page.eval(`!${q('#pen-name-form')}`), '#327/#329 sign-in with the newly attached mailbox returns to the same writer and saved draft, without onboarding');
+    await page.eval(`!${q('#pen-name-form')}`), '#327/#329 sign-in with the registration mailbox returns to the same writer and saved draft, without onboarding');
 
   console.log('Auth password: email account adds a credential without changing its session:');
   const { browserContextId } = await page.cdp.send('Target.createBrowserContext', { disposeOnDetach: false });
@@ -874,9 +786,9 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   check(await lostEnroll.held() === 200, 'real server committed the enrollment before the ACK is dropped');
   await lostEnroll.finish(true);
   await other.waitFor(contains('đã có thông tin đăng nhập'), 'enrolled status read after lost ACK');
-  await other.waitFor(`${q('#email-attach-verified')}?.textContent.includes(${JSON.stringify(email)})`,
-    '#329 eligibility changes after confirmed enrollment: email already bound is shown without reloading Tôi');
-  check(await other.eval(`!${q('#email-attach-add')}`), '#329 the newly enrolled account cannot attach its verified email again');
+  await other.waitFor(`${q('#account-email')}?.textContent.includes(${JSON.stringify(email)})`,
+    'email-only and enrolled accounts show the same verified mailbox');
+  check(await other.eval(`!${q('#account-email button')}`), 'the enrolled account shows a read-only address');
   check(enrollment.count() === 1 && (await cookies(other, base))[sessionCookie]?.value === cookieBefore.value &&
     (await account(other)).body.principal_id === B.principal_id &&
     await other.eval(`!${q(ENROLL + '-password')} && !${contains(userB)}`),
@@ -951,6 +863,7 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   loginLoss.close();
   if (actual.state === 'active') await signOut(page, base);
   await page.click('#use-registration');
+  await registrationProof(page, args.outbox, 'collision@example.test', ctx.seen);
   await credentials(page, REGISTER, userA.toUpperCase(), SECRET_A);
   await page.click(REGISTER + '-submit');
   await page.waitFor(`${q(REGISTER + '-username')}.getAttribute('aria-invalid') === 'true' && ${contains('Tên đăng nhập này đã được dùng')}`, 'registration collision is a field error');
@@ -1001,6 +914,7 @@ export async function accountDeletion(page, { args, check, openPage }) {
   const pen = 'Bút danh cần thu hồi';
   await openAccount(page, base, 'anonymous');
   await page.click('#use-registration');
+  await registrationProof(page, args.outbox, randomUUID() + '@example.test');
   await credentials(page, REGISTER, username, SECRET_A);
   await page.click(REGISTER + '-submit');
   await setPenName(page, pen);
@@ -1076,6 +990,7 @@ export async function accountDeletion(page, { args, check, openPage }) {
 
   await openAccount(page, base, 'anonymous');
   await page.click('#use-registration');
+  await registrationProof(page, args.outbox, randomUUID() + '@example.test');
   await credentials(page, REGISTER, username, SECRET_A);
   await page.click(REGISTER + '-submit');
   await setPenName(page, 'Tác giả mới');
@@ -1164,7 +1079,25 @@ export async function standalone(page, {args, check, openPage}) {
   await checkAuthR31(page, check, 'standalone /toi');
   await checkModeSwitches(page, check, 'standalone /toi');
   await page.click('#use-registration');
+  // Hold a real resend after the server queues it. Going back keeps the new address step
+  // even when the previous mailbox's response reaches the still-mounted registration form.
+  await registrationProof(page, args.outbox, randomUUID() + '@example.test');
+  await page.waitFor("document.querySelector('#registration-resend')?.getAttribute('aria-disabled') !== 'true' && !document.querySelector('#registration-resend')?.disabled",
+    'registration resend cooldown elapsed', 75000);
+  const resend = await holdAnswer(page, 'POST', API + '/register/challenges');
+  await page.click('#registration-resend');
+  check(await resend.held() === 202, 'Identity accepted a second registration mail request');
+  await page.click('#registration-back');
+  await page.waitFor(q('#registration-address'), 'choose another mailbox while resend is pending');
+  await resend.finish();
+  await page.eval('new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))');
+  check(await page.eval("Boolean(document.querySelector('#registration-address')) && !document.querySelector('#registration-code')"),
+    'the delayed answer cannot reopen the abandoned mailbox');
+  await page.goto(base + '/toi');
+  await page.waitFor(q('#use-registration'), 'reload leaves the unverified browser a guest');
+  await page.click('#use-registration');
   const username = 'spa' + Date.now().toString(36);
+  await registrationProof(page, args.outbox, randomUUID() + '@example.test');
   await credentials(page, REGISTER, username, SECRET_A);
   await page.click(REGISTER + '-submit');
   await setPenName(page, 'Người viết SPA');
@@ -1251,6 +1184,7 @@ export async function standalone(page, {args, check, openPage}) {
   await expectDefaultAppearance(page, check, 'CSR logout');
   await page.waitFor(q('#use-registration'), 'account switch');
   await page.click('#use-registration');
+  await registrationProof(page, args.outbox, randomUUID() + '@example.test');
   await credentials(page, REGISTER, username + 'b', SECRET_B);
   await page.click(REGISTER + '-submit');
   await setPenName(page, 'Bạn đọc SPA');

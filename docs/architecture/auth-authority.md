@@ -353,9 +353,7 @@ cùng tài khoản** (Argon2id, chuỗi PHC, rehash khi tham số đổi): đó 
    username; đổi mật khẩu thu hồi phiên khác.
 3. Khôi phục tài khoản (O-11): ngày 13/11/2026 chủ sản phẩm xác nhận email và luồng riêng
    ([#181](https://github.com/loveoverflowcom/vink/issues/181)). [Đặc tả recovery](password-recovery.md)
-   tách hiện trạng khỏi đích, có dependency gắn email cho account password-only, proof riêng và
-   concurrency/ACK. [O-11@r2](../../decisions/proposals/O-11.r2.toml) vẫn `PENDING`: email tùy chọn
-   và thu hồi mọi phiên chưa được signoff; `O-11@r1 OPEN` và D-05 Provisional giữ nguyên.
+   giữ proof reset riêng. Phần email tùy chọn trong O-11@r2 đã được #607 thay thế. Chính sách thu hồi phiên khi reset vẫn chờ signoff.
 4. Tài khoản mã email hiện có có thể thêm username và mật khẩu qua luồng triển khai bên dưới.
 5. Danh sách blocker §9 đổi trọng tâm: deliverability không còn chặn đăng nhập; thêm review lưu trữ
    mật khẩu, chống credential stuffing, và (sau) kiểm mật khẩu đã lộ.
@@ -373,6 +371,12 @@ khai trên Identity (`vink-identity`) và App (`vink-app`):
 - App HTTP v1 edge: `POST /api/v1/auth/register` và `POST /api/v1/auth/login`, rate limit theo mạng nguồn (`PASSWORD_REGISTER` 5/giờ, `PASSWORD_LOGIN` 15/15 phút) trong PostgreSQL, phát cookie `__Host-vink_session`, thu hồi phiên cũ.
 - `VINK_AUTH_SIGN_IN` vẫn mặc định `disabled` trong production. [Auth Web](../development/auth-web.md)
   đã có form mật khẩu. CMP và khôi phục mật khẩu (`O-11`, `OPEN`) còn thiếu.
+
+### Xác minh email khi tạo tài khoản (#607)
+
+Identity cấp challenge riêng cho đăng ký bằng mật khẩu khi có cả password và mail. App chỉ giữ handle trong cookie Strict/HttpOnly. Identity so khớp purpose, địa chỉ chuẩn hóa, handle, mã và thời hạn. Một transaction tiêu thụ mã và ghi subject mới, email, password và session. Unique username hoặc email ngăn gộp hai chủ thể. Mã đăng nhập email vẫn tìm hoặc tạo subject theo địa chỉ đã chứng minh. App chỉ tạo binding khi người dùng hoàn tất bút danh.
+
+PostgreSQL giữ bảng một-một `account_emails`. Khóa ngoại hoãn đến commit yêu cầu mỗi subject đang tồn tại có địa chỉ và mỗi subject retired có receipt. Khóa ngoại ngược chặn gắn lại email cho tombstone. Đình chỉ và disable không phải retirement. [Quy trình cutover](../development/auth-operations.md#cutover-email-bắt-buộc-607).
 
 ### Thêm mật khẩu vào tài khoản mã email
 

@@ -140,8 +140,6 @@ pub struct Operations {
     pub sign_in_password: Availability,
     /// Added within v1 (challenge, completion and status): needs both native methods.
     pub enroll_password: Availability,
-    /// First verified email for an existing password account; requires both methods.
-    pub attach_email: Availability,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -177,9 +175,6 @@ pub enum ContractError {
     InvalidCredentials,
     InvalidCode,
     ChallengeClosed,
-    AttachmentContextChanged,
-    AlreadyAttached,
-    NoPassword,
     AccountDisabled,
 }
 
@@ -206,9 +201,6 @@ impl ContractError {
             Self::InvalidCredentials => "invalid_credentials",
             Self::InvalidCode => "invalid_code",
             Self::ChallengeClosed => "challenge_closed",
-            Self::AttachmentContextChanged => "attachment_context_changed",
-            Self::AlreadyAttached => "already_attached",
-            Self::NoPassword => "no_password",
             Self::AccountDisabled => "account_disabled",
         }
     }
@@ -241,11 +233,6 @@ impl ContractError {
             Self::InvalidCredentials => "the current password was not verified",
             Self::InvalidCode => "the code did not verify",
             Self::ChallengeClosed => "the challenge is no longer usable",
-            Self::AttachmentContextChanged => {
-                "the request no longer matches the session or challenge"
-            }
-            Self::AlreadyAttached => "the account already has a verified address",
-            Self::NoPassword => "the account does not have a password credential",
             Self::AccountDisabled => "the account is disabled; nothing was changed",
         }
     }
@@ -391,6 +378,9 @@ pub enum EmailChangeResponse {
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RegisterPasswordRequest {
+    pub email: Bounded<254>,
+    pub challenge: Bounded<256>,
+    pub code: Bounded<16>,
     pub username: Bounded<64>,
     pub password: Bounded<MAX_PASSWORD_FIELD_BYTES>,
 }
@@ -444,40 +434,10 @@ pub enum SignInPasswordRejection {
     AccountDisabled,
 }
 
-// --- First verified email on an existing password account (v1, #329). ---
-
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct StartEmailAttachmentRequest {
-    pub credential: Credential,
-    pub session_id: Uuid,
-    pub email: Bounded<254>,
-    pub password: Bounded<MAX_PASSWORD_FIELD_BYTES>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct CompleteEmailAttachmentRequest {
-    pub credential: Credential,
-    pub challenge: Bounded<256>,
-    pub challenge_id: Uuid,
-    pub code: Bounded<16>,
-}
-
 #[derive(Serialize)]
-pub struct EmailAttachmentStatus {
+pub struct VerifiedEmail {
     pub session_id: Uuid,
-    pub password_account: bool,
-    pub verified_email: Option<String>,
-}
-
-#[derive(Serialize)]
-pub struct EmailAttachmentIssued {
-    pub challenge: String,
-    pub challenge_id: Uuid,
-    pub email: String,
-    #[serde(with = "time::serde::rfc3339")]
-    pub expires_at: OffsetDateTime,
+    pub verified_email: String,
 }
 
 // --- Credential enrollment (added within v1; ACC-03, O-12@r2). ---

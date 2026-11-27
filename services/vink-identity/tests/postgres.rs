@@ -16,8 +16,6 @@ use vink_identity::persistence::{SchemaState, migrate, schema_state};
 
 const CALLER: u32 = 501;
 
-#[path = "postgres/attachment.rs"]
-mod attachment;
 #[path = "postgres/delivery.rs"]
 mod delivery;
 #[path = "postgres/email_code.rs"]
@@ -26,6 +24,8 @@ mod email_code;
 mod enrollment;
 #[path = "postgres/password.rs"]
 mod password;
+#[path = "postgres/registration.rs"]
+mod registration;
 
 fn app(pool: PgPool, caller: Option<u32>) -> Router {
     router(IdentityState::new(pool, Authority::NotConfigured, caller))
@@ -62,7 +62,8 @@ async fn serve_is_not_ready_until_identity_migrates_and_migrating_twice_is_a_no_
             20261114000000,
             20261119000000,
             20261120000000,
-            20261205000000
+            20261205000000,
+            20261206000000
         ]
     );
     assert!(migrate(&pool).await.unwrap().applied.is_empty());
@@ -104,7 +105,6 @@ async fn identity_owns_only_credential_and_session_tables(pool: PgPool) {
             "account_emails",
             "account_passwords",
             "accounts",
-            "email_attachment_reauth_attempts",
             "email_challenges",
             "mail_deliveries",
             "password_login_attempts",

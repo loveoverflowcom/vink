@@ -32,7 +32,7 @@ Owner: [forms.rs](../../apps/vink-web/src/account/forms.rs),
 | Email: “Dùng mã email” ở heading | “Đăng nhập bằng email” | Gọi đúng phương thức đang dùng. CTA chuyển từ password vẫn là “Dùng mã email” theo Auth R3. |
 | Email: “Nhập email để nhận mã đăng nhập gồm 6 chữ số.” | Bỏ đoạn mở đầu | Field Email và “Gửi mã đăng nhập” đã đủ. Field “Mã 6 chữ số” vẫn xuất hiện ở bước nhập mã. |
 | Email: “Quay lại đăng nhập” | “Dùng mật khẩu” | Nêu rõ đổi phương thức, tránh hai CTA “Đăng nhập” có nghĩa khác nhau ở bước nhập mã. |
-| Email settings: “Tài khoản chưa có email xác minh.” | “Chưa có email xác minh.” | Bỏ chủ thể đã rõ trong tài khoản. |
+| Email trong Cài đặt | Địa chỉ thật và trạng thái “Đã xác minh” | #607 thay dòng trống bằng thông tin riêng tư của phiên hiện tại. |
 
 Rà thêm và giữ: helper Chọn bút danh; acknowledgement yêu cầu gửi mã mới được ghi nhận;
 expiry/retry; cảnh báo enrollment; email đang liên kết khác email nhập; pending, kết quả chưa

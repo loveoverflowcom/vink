@@ -19,21 +19,19 @@ use serde_json::{Value, json};
 use sqlx::PgPool;
 
 use crate::accounts::{
-    AttachmentRejection, ChallengeOutcome, EmailChangeOutcome, EmailChangeStart, EnrollmentOutcome,
-    EnrollmentRejection, EnrollmentStart, PasswordRegistrationError, PasswordSignInRejection,
-    SignInOutcome,
+    ChallengeOutcome, EmailChangeOutcome, EmailChangeStart, EnrollmentOutcome, EnrollmentRejection,
+    EnrollmentStart, PasswordRegistrationError, PasswordSignInRejection, SignInOutcome,
 };
 use crate::authority::{self, Authority, AuthorityError};
 use crate::contract::{
-    CONTRACT, Capabilities, ChallengeIssued, ChallengeRejection, CompleteEmailAttachmentRequest,
-    ContractError, CredentialRejection, EmailAttachmentIssued, EmailAttachmentStatus,
-    EmailChangeChallengeRequest, EmailChangeCompleteRequest, EmailChangeResponse,
-    EnrollPasswordRejection, EnrollPasswordRequest, EnrollPasswordResponse, IssuedSession,
-    MAX_BODY_BYTES, MAX_PASSWORD_BODY_BYTES, Operations, PasswordEnrollmentSessionRequest,
-    PasswordEnrollmentStatus, RegisterPasswordRejection, RegisterPasswordRequest,
-    RegisterPasswordResponse, RevokeSessionRequest, RevokeSessionResponse, SignInChallengeRequest,
-    SignInCompleteRequest, SignInPasswordRejection, SignInPasswordRequest, SignInPasswordResponse,
-    SignInResponse, StartEmailAttachmentRequest, VerifyCredentialRequest,
+    CONTRACT, Capabilities, ChallengeIssued, ChallengeRejection, ContractError,
+    CredentialRejection, EmailChangeChallengeRequest, EmailChangeCompleteRequest,
+    EmailChangeResponse, EnrollPasswordRejection, EnrollPasswordRequest, EnrollPasswordResponse,
+    IssuedSession, MAX_BODY_BYTES, MAX_PASSWORD_BODY_BYTES, Operations,
+    PasswordEnrollmentSessionRequest, PasswordEnrollmentStatus, RegisterPasswordRejection,
+    RegisterPasswordRequest, RegisterPasswordResponse, RevokeSessionRequest, RevokeSessionResponse,
+    SignInChallengeRequest, SignInCompleteRequest, SignInPasswordRejection, SignInPasswordRequest,
+    SignInPasswordResponse, SignInResponse, VerifiedEmail, VerifyCredentialRequest,
 };
 use crate::delivery;
 use crate::email_code::{ChallengeHandle, Code, EmailAddress};
@@ -52,7 +50,7 @@ pub const WRITE_DEADLINE: Duration = Duration::from_secs(5);
 fn writes(path: &str) -> bool {
     if matches!(
         path,
-        "/identity/v1/password/enroll/status" | "/identity/v1/email/attachment/status"
+        "/identity/v1/password/enroll/status" | "/identity/v1/email/verified"
     ) {
         return false;
     }
@@ -60,7 +58,6 @@ fn writes(path: &str) -> bool {
         "/identity/v1/sign-in/",
         "/identity/v1/sessions/",
         "/identity/v1/email-change/",
-        "/identity/v1/email/attachment/",
         "/identity/v1/password/",
         "/identity/v1/account-deletion/",
     ]
@@ -148,10 +145,7 @@ impl IntoResponse for ContractError {
             Self::AddressUnavailable
             | Self::UsernameTaken
             | Self::AlreadyEnrolled
-            | Self::ChallengeClosed
-            | Self::AttachmentContextChanged
-            | Self::AlreadyAttached
-            | Self::NoPassword => StatusCode::CONFLICT,
+            | Self::ChallengeClosed => StatusCode::CONFLICT,
             Self::AccountDisabled => StatusCode::FORBIDDEN,
         };
         (status, Json(self.envelope())).into_response()
@@ -173,17 +167,10 @@ pub fn router(state: IdentityState) -> Router {
             "/identity/v1/email-change/complete",
             post(email_change_complete),
         )
+        .route("/identity/v1/email/verified", post(verified_email))
         .route(
-            "/identity/v1/email/attachment/status",
-            post(email_attachment_status),
-        )
-        .route(
-            "/identity/v1/email/attachment/challenges",
-            post(start_email_attachment),
-        )
-        .route(
-            "/identity/v1/email/attachment/complete",
-            post(complete_email_attachment),
+            "/identity/v1/password/register/challenges",
+            post(registration_challenge),
         )
         .route("/identity/v1/password/register", post(register_password))
         .route("/identity/v1/password/sign-in", post(sign_in_password))
@@ -289,10 +276,9 @@ async fn capabilities(State(state): State<IdentityState>) -> Json<Capabilities> 
             sign_in: email_code,
             revoke_session: availability,
             email_change: email_code,
-            register_password: password,
+            register_password: state.inner.authority.enrollment_availability(),
             sign_in_password: password,
             enroll_password: state.inner.authority.enrollment_availability(),
-            attach_email: state.inner.authority.enrollment_availability(),
         },
     })
 }
@@ -475,81 +461,37 @@ async fn email_change_complete(
     }
 }
 
-impl From<AttachmentRejection> for ContractError {
-    fn from(rejection: AttachmentRejection) -> Self {
-        match rejection {
-            AttachmentRejection::CredentialRejected => Self::CredentialRejected,
-            AttachmentRejection::AccountDisabled => Self::AccountDisabled,
-            AttachmentRejection::ContextChanged => Self::AttachmentContextChanged,
-            AttachmentRejection::NoPassword => Self::NoPassword,
-            AttachmentRejection::AlreadyAttached => Self::AlreadyAttached,
-            AttachmentRejection::InvalidCredentials => Self::InvalidCredentials,
-            AttachmentRejection::RateLimited => Self::RateLimited,
-            AttachmentRejection::ChallengeClosed => Self::ChallengeClosed,
-            AttachmentRejection::InvalidCode => Self::InvalidCode,
-            AttachmentRejection::AddressUnavailable => Self::AddressUnavailable,
-        }
-    }
-}
-
-async fn email_attachment_status(
+async fn verified_email(
     State(state): State<IdentityState>,
     body: Body,
-) -> Result<Json<EmailAttachmentStatus>, ContractError> {
+) -> Result<Json<VerifiedEmail>, ContractError> {
     let request: VerifyCredentialRequest = read_json(body).await?;
-    let store = state.inner.authority.enrollment()?;
     Ok(Json(
-        store
-            .email_attachment_status(request.credential.expose())
-            .await??,
+        state
+            .inner
+            .authority
+            .store()?
+            .verified_email(request.credential.expose())
+            .await?,
     ))
 }
 
-async fn start_email_attachment(
+async fn registration_challenge(
     State(state): State<IdentityState>,
     body: Body,
 ) -> Result<Response, ContractError> {
-    let request: StartEmailAttachmentRequest =
-        read_json_with_limit(body, MAX_PASSWORD_BODY_BYTES).await?;
-    let store = state.inner.authority.enrollment()?;
+    let request: SignInChallengeRequest = read_json(body).await?;
     let address = EmailAddress::parse(request.email.expose()).ok_or(ContractError::InvalidEmail)?;
-    match store
-        .start_email_attachment(
-            request.credential.expose(),
-            request.session_id,
-            &address,
-            request.password.expose(),
-        )
-        .await??
+    match state
+        .inner
+        .authority
+        .enrollment()?
+        .start_registration(&address)
+        .await?
     {
-        ChallengeOutcome::Issued { handle, expires_at } => Ok((
-            StatusCode::ACCEPTED,
-            Json(EmailAttachmentIssued {
-                challenge: handle.encode(),
-                challenge_id: handle.id,
-                email: address.as_str().to_owned(),
-                expires_at,
-            }),
-        )
-            .into_response()),
+        ChallengeOutcome::Issued { handle, expires_at } => Ok(issued(&handle, expires_at)),
         ChallengeOutcome::RateLimited(_) => Err(ContractError::RateLimited),
     }
-}
-
-async fn complete_email_attachment(
-    State(state): State<IdentityState>,
-    body: Body,
-) -> Result<StatusCode, ContractError> {
-    let request: CompleteEmailAttachmentRequest = read_json(body).await?;
-    let store = state.inner.authority.enrollment()?;
-    let handle = ChallengeHandle::parse(request.challenge.expose())
-        .filter(|handle| handle.id == request.challenge_id)
-        .ok_or(ContractError::AttachmentContextChanged)?;
-    let code = Code::parse(request.code.expose()).ok_or(ContractError::InvalidCode)?;
-    store
-        .complete_email_attachment(request.credential.expose(), &handle, &code)
-        .await??;
-    Ok(StatusCode::NO_CONTENT)
 }
 
 async fn register_password(
@@ -558,13 +500,20 @@ async fn register_password(
 ) -> Result<Response, ContractError> {
     let request: RegisterPasswordRequest =
         read_json_with_limit(body, MAX_PASSWORD_BODY_BYTES).await?;
-    let store = state.inner.authority.password()?;
+    let store = state.inner.authority.enrollment()?;
+    let address = EmailAddress::parse(request.email.expose()).ok_or(ContractError::InvalidEmail)?;
+    let handle =
+        ChallengeHandle::parse(request.challenge.expose()).ok_or(ContractError::ChallengeClosed)?;
+    let code = Code::parse(request.code.expose()).ok_or(ContractError::InvalidCode)?;
     let username =
         Username::parse(request.username.expose()).map_err(|_| ContractError::InvalidUsername)?;
     let password =
         Password::parse(request.password.expose()).map_err(|_| ContractError::InvalidPassword)?;
 
-    match store.register_password(&username, &password).await? {
+    match store
+        .register_password(&address, &handle, &code, &username, &password)
+        .await?
+    {
         Ok(session) => {
             tracing::info!(
                 session = %session.session_id,
@@ -582,6 +531,8 @@ async fn register_password(
             })
             .into_response())
         }
+        Err(PasswordRegistrationError::InvalidCode) => Err(ContractError::InvalidCode),
+        Err(PasswordRegistrationError::ChallengeClosed) => Err(ContractError::ChallengeClosed),
         Err(PasswordRegistrationError::UsernameTaken) => {
             Ok(Json(RegisterPasswordResponse::Rejected {
                 reason: RegisterPasswordRejection::UsernameTaken,
@@ -1191,7 +1142,7 @@ mod tests {
                 ),
                 (
                     "/identity/v1/password/register",
-                    r#"{"username":"test_user","password":"valid_pass_123"}"#,
+                    r#"{"email":"a@example.test","challenge":"proof","code":"123456","username":"test_user","password":"valid_pass_123"}"#,
                 ),
                 (
                     "/identity/v1/password/sign-in",
@@ -1496,10 +1447,9 @@ mod tests {
                         sign_in: Availability::NotConfigured,
                         revoke_session: Availability::Available,
                         email_change: Availability::NotConfigured,
-                        register_password: Availability::Available,
+                        register_password: Availability::NotConfigured,
                         sign_in_password: Availability::Available,
                         enroll_password: Availability::NotConfigured,
-                        attach_email: Availability::NotConfigured,
                     },
                 })
                 .unwrap(),
@@ -1563,7 +1513,6 @@ mod tests {
                         register_password: Availability::Available,
                         sign_in_password: Availability::Available,
                         enroll_password: Availability::Available,
-                        attach_email: Availability::Available,
                     },
                 })
                 .unwrap(),
@@ -1606,14 +1555,27 @@ mod tests {
         use crate::contract::*;
         // 4096 bytes is what Password::parse accepts before NFKC; the transport must not refuse
         // a field the policy still decides on, and must refuse one byte more.
+        let registration = |mut value: serde_json::Value| {
+            value["email"] = "author@example.test".into();
+            value["code"] = "123456".into();
+            value["challenge"] = "test-handle".into();
+            value
+        };
         let at_bound = serde_json::json!({"username": "author_01", "password": "a".repeat(4096)});
-        assert!(serde_json::from_value::<RegisterPasswordRequest>(at_bound.clone()).is_ok());
+        assert!(
+            serde_json::from_value::<RegisterPasswordRequest>(registration(at_bound.clone()))
+                .is_ok()
+        );
         assert!(serde_json::from_value::<SignInPasswordRequest>(at_bound).is_ok());
         let over = serde_json::json!({"username": "author_01", "password": "a".repeat(4097)});
-        assert!(serde_json::from_value::<RegisterPasswordRequest>(over.clone()).is_err());
+        assert!(
+            serde_json::from_value::<RegisterPasswordRequest>(registration(over.clone())).is_err()
+        );
         assert!(serde_json::from_value::<SignInPasswordRequest>(over).is_err());
         // Vietnamese letters: 128 precomposed ones are 384 bytes, far above the old 256.
         let vietnamese = serde_json::json!({"username": "author_01", "password": "ệ".repeat(128)});
-        assert!(serde_json::from_value::<RegisterPasswordRequest>(vietnamese).is_ok());
+        assert!(
+            serde_json::from_value::<RegisterPasswordRequest>(registration(vietnamese)).is_ok()
+        );
     }
 }

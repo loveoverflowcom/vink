@@ -769,35 +769,19 @@ pub struct EnrollPasswordRequest {
     pub password: String,
 }
 
-// The App sets the secret challenge handle as a cookie. These IDs are context, not credentials.
 #[derive(Serialize)]
 #[cfg_attr(test, derive(Deserialize))]
-pub struct StartEmailAttachment {
+pub struct Registration {
     pub email: String,
-    pub password: String,
-    pub session_id: String,
-}
-
-#[derive(Deserialize)]
-pub struct EmailAttachmentChallenge {
-    pub challenge_id: String,
-    pub email: String,
-    pub expires_at: String,
-}
-
-#[derive(Serialize)]
-#[cfg_attr(test, derive(Deserialize))]
-pub struct CompleteEmailAttachment {
-    pub challenge_id: String,
     pub code: String,
+    #[serde(flatten)]
+    pub credentials: PasswordCredentials,
 }
 
 #[derive(Deserialize)]
-pub struct EmailAttachmentStatus {
-    pub session_id: String,
+pub struct VerifiedEmail {
     pub principal_id: String,
-    pub password_account: bool,
-    pub verified_email: Option<String>,
+    pub verified_email: String,
 }
 
 /// Account status, never a receipt naming the credentials that were entered.
@@ -1458,7 +1442,7 @@ mod tests {
         let sent: ChallengeSent = round_trip("auth.challenge.response.json");
         assert_eq!(sent.expires_at, "2026-11-07T10:10:00Z");
         let _: CompleteSignInRequest = round_trip("auth.complete.request.json");
-        let _: PasswordCredentials = round_trip("auth.register.request.json");
+        let _: Registration = round_trip("auth.register.request.json");
         let _: PasswordCredentials = round_trip("auth.login.request.json");
         let _: EnrollPasswordRequest = round_trip("auth.enroll.request.json");
         assert!(round_trip::<PasswordEnrollmentStatus>("auth.enroll.response.json").enrolled);

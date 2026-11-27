@@ -1,9 +1,6 @@
 # Khôi phục mật khẩu qua email — đặc tả #181
 
-> **Cập nhật #329:** Gắn email xác minh lần đầu đã có trên Web → App → Identity; xem
-> [runtime và bằng chứng](../development/auth-web.md#gắn-email-xác-minh-lần-đầu-329).
-> Phần còn lại bên dưới mô tả đặc tả #181 tại thời điểm viết. Reset, đổi email đã gắn và
-> kích hoạt production không nằm trong lát #329 này. O-11@r2 vẫn chưa có signoff.
+> **#607.** Email bắt buộc ngay khi tạo tài khoản. Các thiết kế gắn email cho tài khoản cũ bên dưới là lịch sử của #181/#329. Reset và chính sách phiên sau reset vẫn chờ quyết định riêng. [ADR Auth](auth-authority.md#xác-minh-email-khi-tạo-tài-khoản-607).
 
 ## 1. Phạm vi, trạng thái và nguồn
 
@@ -32,7 +29,7 @@ Proposal r2 SHA `af0838ef8909a38ebebfd2c459c693ae9b08dabd965e27b790e442c1d151550
 snapshot sau proposal `2027159b784ae787aac547c71a70bc6190a541411f9dda2ce9958747422dc10a`.
 Chỉ `decision signoff` với lời chủ sản phẩm cho đúng revision/hash mới đổi hiệu lực.
 
-## 2. HOW/WHY: đường có thật và khoảng trống
+## 2. Hiện trạng tại snapshot lịch sử của #181
 
 - [`AccountStore::register_password`](../../services/vink-identity/src/accounts.rs) tạo `accounts`
   + `account_passwords` + session cùng transaction, **không tạo `account_emails`**. Đăng ký không
@@ -63,11 +60,10 @@ Chọn tái dùng hạ tầng thay vì provider mới là suy luận kỹ thuậ
 | Điểm | Phương án và lựa chọn đề xuất | Trạng thái |
 | --- | --- | --- |
 | Chứng minh hộp thư | **A: code một lần + secret handle trong cookie**. Tái dùng outbox/throttles nhưng purpose riêng, không secret trong URL. B: link một lần dễ mở từ thư nhưng cần chống link scanner, referrer/history và truy cập chéo trình duyệt; không chọn cho lát đầu | Kỹ thuật `DESIGN_PROPOSED` |
-| Có email trước khi quên | **A: email khôi phục tùy chọn**, thêm sau đăng nhập và nhắc rõ khi chưa gắn. B: bắt buộc xác minh lúc đăng ký, cải thiện coverage nhưng đổi điều kiện gia nhập. Đề xuất A, không tự sửa đăng ký | `open_product`, chờ duyệt O-11@r2 |
+| Email khi tạo tài khoản | Bắt buộc đúng một địa chỉ đã xác minh trước khi cấp subject hoặc session. | Chủ sản phẩm xác nhận tại #607 |
 | Phiên sau reset | **A: thu hồi tất cả phiên và đăng nhập lại**. B: giữ phiên hiện tại hoặc tự đăng nhập mới, ít gián đoạn nhưng khó phân biệt phiên bị chiếm. Đề xuất A; không gỡ đình chỉ/disable | `open_product`, chờ duyệt O-11@r2 |
 
-Hai câu cần chốt trước khi triển khai reset, không chặn gắn email lần đầu: có giữ email **tùy chọn** và cho gắn sau đăng ký không? Sau reset
-có **đăng xuất mọi thiết bị, đăng nhập lại** không? Các mục này không ngăn việc giao đặc tả/proposal.
+Chính sách xử lý phiên sau reset còn chờ duyệt.
 Không suy quyền thực hiện từ việc merge PR tài liệu. Không hứa admin giúp lấy lại account khi mất
 hộp thư; quy trình phục hồi thủ công nếu cần phải được thiết kế riêng.
 

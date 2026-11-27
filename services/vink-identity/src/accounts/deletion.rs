@@ -207,7 +207,6 @@ async fn retire(
            FROM account_emails WHERE account_id = $1",
         "DELETE FROM email_challenges WHERE account_id = $1 OR address IN
            (SELECT address FROM account_emails WHERE account_id = $1)",
-        "DELETE FROM email_attachment_reauth_attempts WHERE account_id = $1",
         "DELETE FROM sessions WHERE account_id = $1",
         "DELETE FROM password_login_attempts WHERE username IN
            (SELECT username FROM account_passwords WHERE account_id = $1)",
@@ -221,4 +220,68 @@ async fn retire(
             .map_err(StoreError::from)?;
     }
     Ok(operation)
+}
+
+/// Offline cutover on the previous schema. Inspect the address using the same Rust policy
+/// as issuance. Keep the legacy primary key, NOT NULL and unique constraints as prerequisites.
+/// A batch locks both writers before reading, so ownership cannot change between inventory
+/// and retirement. Each committed receipt is independently replayable by the App deletion reconciler.
+pub async fn review_legacy_email_accounts(
+    pool: &sqlx::PgPool,
+    apply: bool,
+) -> Result<(u64, u64), ContractError> {
+    let mut cursor: Option<Uuid> = None;
+    let mut examined = 0;
+    let mut invalid = 0;
+    loop {
+        let mut tx = pool.begin().await.map_err(StoreError::from)?;
+        if apply {
+            sqlx::query("LOCK TABLE accounts, account_emails, account_deletions IN SHARE ROW EXCLUSIVE MODE")
+                .execute(&mut *tx).await.map_err(StoreError::from)?;
+        }
+        // A divergent schema can make deleting by address ambiguous. Never run retirement
+        // against such a database. The baseline also proves every binding has a verification time.
+        let expected: bool = sqlx::query_scalar(
+            "SELECT EXISTS (SELECT FROM pg_constraint WHERE conrelid='account_emails'::regclass
+                 AND contype='p' AND pg_get_constraintdef(oid)='PRIMARY KEY (account_id)')
+             AND EXISTS (SELECT FROM pg_constraint WHERE conrelid='account_emails'::regclass
+                 AND contype='u' AND pg_get_constraintdef(oid)='UNIQUE (address)')
+             AND 2=(SELECT count(*) FROM pg_attribute WHERE attrelid='account_emails'::regclass
+                 AND attname IN ('address','verified_at') AND attnotnull AND NOT attisdropped)",
+        )
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(StoreError::from)?;
+        if !expected {
+            return Err(ContractError::DependencyUnavailable);
+        }
+        let rows: Vec<(Uuid, Option<String>)> = sqlx::query_as(
+            "SELECT a.id, e.address FROM accounts a
+             LEFT JOIN account_emails e ON e.account_id = a.id
+             WHERE NOT EXISTS (SELECT 1 FROM account_deletions d WHERE d.account_id = a.id)
+               AND ($1::uuid IS NULL OR a.id > $1)
+             ORDER BY a.id LIMIT 128",
+        )
+        .bind(cursor)
+        .fetch_all(&mut *tx)
+        .await
+        .map_err(StoreError::from)?;
+        if rows.is_empty() {
+            return Ok((examined, invalid));
+        }
+        for (account, address) in rows {
+            cursor = Some(account);
+            examined += 1;
+            if address.as_deref().is_some_and(|raw| {
+                EmailAddress::parse(raw).is_some_and(|parsed| parsed.as_str() == raw)
+            }) {
+                continue;
+            }
+            invalid += 1;
+            if apply {
+                retire(&mut tx, account, Uuid::now_v7()).await?;
+            }
+        }
+        tx.commit().await.map_err(StoreError::from)?;
+    }
 }

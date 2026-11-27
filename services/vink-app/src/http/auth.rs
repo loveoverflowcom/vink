@@ -35,17 +35,16 @@ use crate::application::Vink;
 use crate::application::account::AccountError;
 use crate::application::ports::{RateLimitStore, StoreError};
 use crate::domain::abuse::{
-    Admission, EMAIL_ATTACH_CHALLENGE, EMAIL_ATTACH_COMPLETE, Network, PASSWORD_ENROLL,
-    PASSWORD_ENROLL_CHALLENGE, PASSWORD_LOGIN, PASSWORD_REGISTER, RateLimit, SIGN_IN_CHALLENGE,
-    SIGN_IN_COMPLETE,
+    Admission, Network, PASSWORD_ENROLL, PASSWORD_ENROLL_CHALLENGE, PASSWORD_LOGIN,
+    PASSWORD_REGISTER, REGISTER_CHALLENGE, RateLimit, SIGN_IN_CHALLENGE, SIGN_IN_COMPLETE,
 };
 use crate::domain::ids::PrincipalId;
 use crate::domain::principal::{Standing, SubjectKey};
 use crate::identity::client::{
-    AttachmentError, CallError, ChallengeRefusal, EmailAttachmentStatus, EnrollError,
-    EnrollOutcome, EnrollRefusal, EnrollStartError, EnrollStatusError, IssuedSession,
-    MAX_CREDENTIAL_BYTES, PasswordLoginError, PasswordLoginOutcome, PasswordRegisterError,
-    PasswordRegisterOutcome, SignIn, StartError, Verification, attachment_handle_id,
+    CallError, ChallengeRefusal, EnrollError, EnrollOutcome, EnrollRefusal, EnrollStartError,
+    EnrollStatusError, IssuedSession, MAX_CREDENTIAL_BYTES, PasswordLoginError,
+    PasswordLoginOutcome, PasswordRegisterError, PasswordRegisterOutcome, SignIn, StartError,
+    Verification, VerifiedEmail, challenge_handle_id,
 };
 use crate::identity::{IdentityClient, Resolution, SESSION_COOKIE, bind, presented_credential};
 
@@ -60,9 +59,8 @@ pub const CHALLENGE_COOKIE: &str = "__Host-vink_sign_in";
 /// enrollment proof can never be presented as a sign-in, nor the reverse.
 pub const ENROLL_COOKIE: &str = "__Host-vink_enroll";
 
-/// First-email attachment proof; never accepted as an enrollment or sign-in cookie.
-pub const ATTACH_COOKIE: &str = "__Host-vink_attach";
-
+/// Registration proof is scoped independently of login, enrollment and deletion.
+pub const REGISTER_COOKIE: &str = "__Host-vink_register";
 // Allows a 4096-byte password even when JSON uses six bytes per byte of input.
 const AUTH_BODY_LIMIT: usize = 32 * 1024;
 
@@ -82,14 +80,10 @@ pub fn routes() -> Router<AppState> {
             "/auth/password/enroll",
             get(password_enrollment_status).post(enroll_password),
         )
-        .route("/auth/email/attachment", get(email_attachment_status))
+        .route("/auth/email", get(verified_email))
         .route(
-            "/auth/email/attachment/challenges",
-            post(start_email_attachment),
-        )
-        .route(
-            "/auth/email/attachment/complete",
-            post(complete_email_attachment),
+            "/auth/password/register/challenges",
+            post(start_registration),
         )
         .route("/auth/account-deletion/challenges", post(deletion::start))
         .route("/auth/account-deletion/confirm", post(deletion::confirm))
@@ -125,6 +119,8 @@ pub struct CompleteSignInRequest {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RegisterRequest {
+    pub email: String,
+    pub code: String,
     pub username: String,
     pub password: String,
 }
@@ -336,11 +332,42 @@ async fn start_sign_in(
     State(state): State<AppState>,
     request: axum::extract::Request,
 ) -> Result<Response, ApiError> {
+    start_guest_challenge(state, request, false).await
+}
+
+async fn start_registration(
+    State(state): State<AppState>,
+    request: axum::extract::Request,
+) -> Result<Response, ApiError> {
+    start_guest_challenge(state, request, true).await
+}
+
+async fn start_guest_challenge(
+    state: AppState,
+    request: axum::extract::Request,
+    registration: bool,
+) -> Result<Response, ApiError> {
     let client = sign_in_client(&state)?;
     let (parts, body) = request.into_parts();
-    admit(&state, &parts, &SIGN_IN_CHALLENGE).await?;
+    admit(
+        &state,
+        &parts,
+        if registration {
+            &REGISTER_CHALLENGE
+        } else {
+            &SIGN_IN_CHALLENGE
+        },
+    )
+    .await?;
+    if registration {
+        require_registration_guest(client, &parts).await?;
+    }
     let request: StartSignInRequest = json(parts, body).await?;
-    let challenge = match client.start_sign_in(request.email.trim()).await {
+    let challenge = match if registration {
+        client.start_registration(request.email.trim()).await
+    } else {
+        client.start_sign_in(request.email.trim()).await
+    } {
         Ok(challenge) => challenge,
         Err(StartError::InvalidEmail) => {
             return Err(ApiError::Validation {
@@ -356,7 +383,11 @@ async fn start_sign_in(
         Err(StartError::Call(error)) => return Err(unavailable(error)),
     };
     let set = cookie(
-        CHALLENGE_COOKIE,
+        if registration {
+            REGISTER_COOKIE
+        } else {
+            CHALLENGE_COOKIE
+        },
         &challenge.handle,
         "Strict",
         seconds_until(challenge.expires_at),
@@ -422,13 +453,34 @@ async fn register(
     let (parts, body) = request.into_parts();
     admit(&state, &parts, &PASSWORD_REGISTER).await?;
     require_registration_guest(client, &parts).await?;
+    let handle = single_cookie(&parts.headers, REGISTER_COOKIE).map(str::to_owned);
     let request: RegisterRequest = json(parts, body).await?;
+    let handle = handle.ok_or(ApiError::ChallengeClosed)?;
+    let code: String = request
+        .code
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .collect();
     let session = match client
-        .register_password(request.username.trim(), &request.password)
+        .register_password(
+            &request.email,
+            &handle,
+            &code,
+            request.username.trim(),
+            &request.password,
+        )
         .await
     {
         Ok(PasswordRegisterOutcome::Authenticated(session)) => session,
         Ok(PasswordRegisterOutcome::UsernameTaken) => return Err(ApiError::UsernameTaken),
+        Err(PasswordRegisterError::InvalidCode) => return Err(ApiError::CodeRejected),
+        Err(PasswordRegisterError::ChallengeClosed) => return Err(ApiError::ChallengeClosed),
+        Err(PasswordRegisterError::InvalidEmail) => {
+            return Err(ApiError::Validation {
+                field: "email",
+                message: "email must be a mailbox address".into(),
+            });
+        }
         Err(PasswordRegisterError::InvalidUsername) => {
             return Err(ApiError::Validation {
                 field: "username",
@@ -450,7 +502,11 @@ async fn register(
         }
         Err(PasswordRegisterError::Call(error)) => return Err(unavailable(error)),
     };
-    establish_session(&state, client, session, None, false).await
+    let mut response = establish_session(&state, client, session, None, false).await?;
+    response
+        .headers_mut()
+        .append(header::SET_COOKIE, clear(REGISTER_COOKIE));
+    Ok(response)
 }
 
 /// A Bearer header may take precedence for reads, but cannot make registration ignore a valid
@@ -511,39 +567,15 @@ async fn login(
     establish_session(&state, client, session, previous, false).await
 }
 
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct StartEmailAttachment {
-    email: String,
-    password: String,
-    session_id: Uuid,
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct CompleteEmailAttachment {
-    challenge_id: Uuid,
-    code: String,
-}
-
 #[derive(Serialize)]
-struct AttachmentChallengeSent {
-    challenge_id: Uuid,
-    email: String,
-    #[serde(with = "time::serde::rfc3339")]
-    expires_at: OffsetDateTime,
-}
-
-#[derive(Serialize)]
-struct AttachmentStatus {
+struct EmailStatus {
     principal_id: String,
     #[serde(flatten)]
-    binding: EmailAttachmentStatus,
+    binding: VerifiedEmail,
 }
 
-/// Only a browser session with an active Vink principal may act on the attachment facade.
-/// Identity independently rechecks the same session and owns all mailbox mutations.
-async fn attaching_credential<'a>(
+/// Read only the presenting browser session’s private email.
+async fn email_read_credential<'a>(
     state: &AppState,
     parts: &'a Parts,
 ) -> Result<(&'a str, PrincipalId), ApiError> {
@@ -560,119 +592,27 @@ async fn attaching_credential<'a>(
     }
 }
 
-fn public_attachment_error(error: AttachmentError) -> ApiError {
-    match error {
-        AttachmentError::InvalidEmail => ApiError::Validation {
-            field: "email",
-            message: "email must be a mailbox address".into(),
-        },
-        AttachmentError::InvalidCredentials => ApiError::AttachmentPasswordRejected,
-        AttachmentError::InvalidCode => ApiError::AttachmentCodeRejected,
-        AttachmentError::ChallengeClosed => ApiError::ChallengeClosed,
-        AttachmentError::ContextChanged => ApiError::AttachmentContextChanged,
-        AttachmentError::AlreadyAttached => ApiError::EmailAlreadyAttached,
-        AttachmentError::NoPassword => ApiError::AttachmentRequiresPassword,
-        AttachmentError::AddressUnavailable => ApiError::AttachmentEmailUnavailable,
-        AttachmentError::RateLimited => ApiError::RateLimited {
-            retry_after_seconds: None,
-        },
-        AttachmentError::CredentialRejected => ApiError::Unauthenticated,
-        AttachmentError::AccountDisabled => ApiError::AccountDisabled,
-        AttachmentError::Call(error) => unavailable(error),
-    }
-}
-
-/// Read the durable binding after an interrupted completion, without an OTP or mutation.
-async fn email_attachment_status(
+async fn verified_email(
     State(state): State<AppState>,
     request: axum::extract::Request,
-) -> Result<Json<AttachmentStatus>, ApiError> {
+) -> Result<Json<EmailStatus>, ApiError> {
     let client = sign_in_client(&state)?;
     let (parts, _) = request.into_parts();
-    let (credential, principal_id) = attaching_credential(&state, &parts).await?;
+    let (credential, principal_id) = email_read_credential(&state, &parts).await?;
     let binding = client
-        .email_attachment_status(credential)
+        .verified_email(credential)
         .await
-        .map_err(public_attachment_error)?;
-    Ok(Json(AttachmentStatus {
+        .map_err(|err| match err {
+            EnrollStatusError::CredentialRejected => ApiError::Unauthenticated,
+            EnrollStatusError::AccountDisabled => ApiError::AccountDisabled,
+            EnrollStatusError::Call(error) => unavailable(error),
+        })?;
+    Ok(Json(EmailStatus {
         principal_id: principal_id.to_string(),
         binding,
     }))
 }
 
-async fn start_email_attachment(
-    State(state): State<AppState>,
-    request: axum::extract::Request,
-) -> Result<Response, ApiError> {
-    let client = sign_in_client(&state)?;
-    let (parts, body) = request.into_parts();
-    admit(&state, &parts, &EMAIL_ATTACH_CHALLENGE).await?;
-    let (credential, _) = attaching_credential(&state, &parts).await?;
-    let credential = credential.to_owned();
-    let input: StartEmailAttachment = json(parts, body).await?;
-    let issued = client
-        .start_email_attachment(
-            &credential,
-            input.email.trim(),
-            &input.password,
-            input.session_id,
-        )
-        .await
-        .map_err(public_attachment_error)?;
-    let cookie = cookie(
-        ATTACH_COOKIE,
-        &issued.challenge,
-        "Strict",
-        seconds_until(issued.expires_at),
-    )
-    .ok_or(ApiError::DependencyUnavailable)?;
-    Ok((
-        StatusCode::ACCEPTED,
-        [(header::SET_COOKIE, cookie)],
-        Json(AttachmentChallengeSent {
-            challenge_id: issued.challenge_id,
-            email: issued.email,
-            expires_at: issued.expires_at,
-        }),
-    )
-        .into_response())
-}
-
-async fn complete_email_attachment(
-    State(state): State<AppState>,
-    request: axum::extract::Request,
-) -> Result<StatusCode, ApiError> {
-    let client = sign_in_client(&state)?;
-    let (parts, body) = request.into_parts();
-    admit(&state, &parts, &EMAIL_ATTACH_COMPLETE).await?;
-    let (credential, _) = attaching_credential(&state, &parts).await?;
-    let credential = credential.to_owned();
-    let proof = single_cookie(&parts.headers, ATTACH_COOKIE)
-        .ok_or(ApiError::AttachmentContextChanged)?
-        .to_owned();
-    let input: CompleteEmailAttachment = json(parts, body).await?;
-    if attachment_handle_id(&proof) != Some(input.challenge_id) {
-        return Err(ApiError::AttachmentContextChanged);
-    }
-    let code: String = input.code.chars().filter(|c| !c.is_whitespace()).collect();
-    if code.len() != 6 || !code.bytes().all(|b| b.is_ascii_digit()) {
-        return Err(ApiError::Validation {
-            field: "code",
-            message: "code must be the six digits from the email".into(),
-        });
-    }
-    client
-        .complete_email_attachment(&credential, &proof, input.challenge_id, &code)
-        .await
-        .map_err(public_attachment_error)?;
-    // The consumed proof is inert. Clearing the shared cookie in a delayed response could
-    // delete a newer challenge created in another tab, so let it expire on its own.
-    Ok(StatusCode::NO_CONTENT)
-}
-
-/// Who may add a credential: any account Identity authenticates now, with or without a Vink
-/// principal (the credential is Identity's; it grants no Vink permission). A suspended principal
-/// is refused. Returns the presented session credential for Identity to name the account.
 async fn enrolling_credential(state: &AppState, parts: &Parts) -> Result<String, ApiError> {
     match resolve(state, parts).await {
         Resolution::Principal(_) | Resolution::Unbound(_) => {}
@@ -1204,77 +1144,6 @@ mod tests {
                 fixture(name),
                 "{name}"
             );
-        }
-    }
-
-    #[test]
-    fn email_attachment_contract_exposes_only_context_and_binding() {
-        use time::macros::datetime;
-        let request: StartEmailAttachment =
-            serde_json::from_value(fixture("auth.attachment.challenge.request.json")).unwrap();
-        let complete: CompleteEmailAttachment =
-            serde_json::from_value(fixture("auth.attachment.complete.request.json")).unwrap();
-        let status = AttachmentStatus {
-            principal_id: "018f3c2e-0000-7000-8000-00000000b001".into(),
-            binding: EmailAttachmentStatus {
-                session_id: request.session_id,
-                password_account: true,
-                verified_email: Some(request.email.clone()),
-            },
-        };
-        assert_eq!(
-            serde_json::to_value(&status).unwrap(),
-            fixture("auth.attachment.status.verified.json")
-        );
-        assert_eq!(
-            serde_json::to_value(AttachmentChallengeSent {
-                challenge_id: complete.challenge_id,
-                email: request.email,
-                expires_at: datetime!(2026-11-19 10:10:00 UTC),
-            })
-            .unwrap(),
-            fixture("auth.attachment.challenge.response.json")
-        );
-        assert_eq!(complete.code.len(), 6);
-        assert!(!request.password.is_empty());
-        for (cause, status, code, field) in [
-            (
-                AttachmentError::InvalidCredentials,
-                422,
-                "invalid_credentials",
-                Some("password"),
-            ),
-            (
-                AttachmentError::InvalidCode,
-                422,
-                "invalid_code",
-                Some("code"),
-            ),
-            (
-                AttachmentError::ContextChanged,
-                409,
-                "attachment_context_changed",
-                None,
-            ),
-            (
-                AttachmentError::AlreadyAttached,
-                409,
-                "already_attached",
-                None,
-            ),
-            (AttachmentError::NoPassword, 409, "no_password", None),
-            (
-                AttachmentError::AddressUnavailable,
-                409,
-                "email_unavailable",
-                Some("email"),
-            ),
-        ] {
-            let error = public_attachment_error(cause);
-            assert_eq!(error.status().as_u16(), status);
-            let envelope = serde_json::to_value(error.envelope()).unwrap();
-            assert_eq!(envelope["error"]["code"], code);
-            assert_eq!(envelope["error"]["field"].as_str(), field);
         }
     }
 

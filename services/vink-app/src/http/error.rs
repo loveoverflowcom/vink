@@ -82,12 +82,6 @@ pub enum ApiError {
     /// The account already has a username/password; credential enrollment adds nothing.
     AlreadyEnrolled,
     /// Fresh password reauthentication failed, without invalidating the active session.
-    AttachmentPasswordRejected,
-    AttachmentCodeRejected,
-    AttachmentContextChanged,
-    EmailAlreadyAttached,
-    AttachmentRequiresPassword,
-    AttachmentEmailUnavailable,
     /// Registration was attempted with a session that is still valid. It would create a second
     /// account beside the signed-in one; credential enrollment is the operation for that.
     AlreadySignedIn,
@@ -192,10 +186,6 @@ impl ApiError {
             | Self::CommentRemoved
             | Self::ModerationConflict { .. }
             | Self::EndorsementConflict { .. }
-            | Self::AttachmentContextChanged
-            | Self::EmailAlreadyAttached
-            | Self::AttachmentRequiresPassword
-            | Self::AttachmentEmailUnavailable
             | Self::AlreadyEnrolled
             | Self::AlreadySignedIn
             | Self::CaseConflict(_)
@@ -206,9 +196,7 @@ impl ApiError {
             Self::UnknownRevision => StatusCode::NOT_FOUND,
             Self::AuthorityNotConfigured => StatusCode::NOT_IMPLEMENTED,
             Self::RateLimited { .. } => StatusCode::TOO_MANY_REQUESTS,
-            Self::CodeRejected
-            | Self::AttachmentPasswordRejected
-            | Self::AttachmentCodeRejected => StatusCode::UNPROCESSABLE_ENTITY,
+            Self::CodeRejected => StatusCode::UNPROCESSABLE_ENTITY,
             Self::InvalidCredentials => StatusCode::UNAUTHORIZED,
             Self::UsernameTaken => StatusCode::CONFLICT,
             Self::ChallengeClosed => StatusCode::CONFLICT,
@@ -367,42 +355,6 @@ impl ApiError {
                 "the code is not correct; try again".to_string(),
                 None,
                 Some("code"),
-            ),
-            Self::AttachmentPasswordRejected => (
-                "invalid_credentials",
-                "current password is not correct".to_string(),
-                None,
-                Some("password"),
-            ),
-            Self::AttachmentCodeRejected => (
-                "invalid_code",
-                "the code is not correct; try again".to_string(),
-                None,
-                Some("code"),
-            ),
-            Self::AttachmentContextChanged => (
-                "attachment_context_changed",
-                "the attachment request changed; start again".to_string(),
-                None,
-                None,
-            ),
-            Self::EmailAlreadyAttached => (
-                "already_attached",
-                "this account already has a verified email".to_string(),
-                None,
-                None,
-            ),
-            Self::AttachmentRequiresPassword => (
-                "no_password",
-                "this account does not have a password".to_string(),
-                None,
-                None,
-            ),
-            Self::AttachmentEmailUnavailable => (
-                "email_unavailable",
-                "this email cannot be attached".to_string(),
-                None,
-                Some("email"),
             ),
             Self::InvalidCredentials => (
                 "invalid_credentials",

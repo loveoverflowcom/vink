@@ -8,7 +8,6 @@
     "email_change": "available",
     "register_password": "available",
     "sign_in_password": "available",
-    "enroll_password": "available",
-    "attach_email": "available"
+    "enroll_password": "available"
   }
 }

@@ -690,8 +690,12 @@ async fn prune_deletes_only_closed_records(pool: PgPool) {
     assert_eq!((again.challenges, again.sessions), (0, 0));
 }
 
-#[sqlx::test(migrator = "vink_identity::persistence::MIGRATOR")]
+#[sqlx::test(migrations = false)]
 async fn the_rollback_script_drops_only_the_outbox(pool: PgPool) {
+    vink_identity::persistence::MIGRATOR
+        .run_to(20261120000000, &pool)
+        .await
+        .unwrap();
     let rig = Rig::new(&pool, Policy::default(), Ok(()));
     let handle = rig.challenge("giu.lai@vi-du.vn").await;
     rig.worker().run_once().await.unwrap();

@@ -5,8 +5,8 @@ const modes = {
     icons: ['person-outline', 'lock'], primary: ['#password-login-submit', 'Đăng nhập'],
     method: ['#use-email-code', 'Dùng mã email', 'mail'],
     account: ['#use-registration', 'Tạo tài khoản', 'Chưa có tài khoản?'] },
-  registration: { form: '#password-register', inputs: ['#password-register-username', '#password-register-password'],
-    icons: ['person-outline', 'lock'], primary: ['#password-register-submit', 'Tạo tài khoản'],
+  registration: { form: '#registration-email', inputs: ['#registration-address'],
+    icons: [null], primary: ['#registration-send', 'Gửi mã xác minh'],
     account: ['#use-password', 'Đăng nhập', 'Đã có tài khoản?'] },
   email: { form: '#sign-in-email', inputs: ['#sign-in-address'], icons: [null],
     primary: ['#sign-in-send', 'Gửi mã đăng nhập'], method: ['#use-password', 'Dùng mật khẩu', 'lock'] },
@@ -62,7 +62,7 @@ function inspectAuth(mode) {
     ))),
     noBackOrDivider: !find('.vk-auth-divider, .vk-ui-back-link, [data-icon="arrow-back"]') &&
       !entry.innerText.includes('Quay lại đăng nhập') && ![...entry.querySelectorAll('p')].some(p => p.textContent.trim() === 'Hoặc'),
-    noRegistrationEmailShortcut: mode.form !== '#password-register' || !find('#use-email-code'),
+    noRegistrationEmailShortcut: mode.form !== '#registration-email' || !find('#use-email-code'),
     fits: entry.scrollWidth <= entry.clientWidth + 1 && document.documentElement.scrollWidth <= innerWidth + 1,
     actionGap: !mode.method || Math.abs(gap(buttons[0], buttons[1]) - unit / 2) <= 1,
     account: account && accountRow ? {
@@ -146,7 +146,7 @@ export async function checkModeSwitches(page, check, scene) {
   page.cdp.listeners.push(listener);
   try {
     for (const [control, firstField] of [
-      ['use-registration', 'password-register-username'],
+      ['use-registration', 'registration-address'],
       ['use-password', 'password-login-username'],
       ['use-email-code', 'sign-in-address'],
       ['use-password', 'password-login-username'],

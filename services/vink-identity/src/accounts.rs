@@ -24,12 +24,13 @@ use crate::email_code::{
 use crate::mail::Purpose;
 use crate::password::{Password, Username};
 
-mod attachment;
 mod deletion;
-pub use attachment::AttachmentRejection;
+pub use deletion::review_legacy_email_accounts;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PasswordRegistrationError {
+    InvalidCode,
+    ChallengeClosed,
     UsernameTaken,
 }
 
@@ -79,15 +80,8 @@ enum ChallengeScope {
     SignIn,
     DeleteAccount(Option<Uuid>),
     ChangeEmail(Uuid),
-    EnrollPassword {
-        account: Uuid,
-        session: Uuid,
-    },
-    AttachEmail {
-        account: Uuid,
-        session: Uuid,
-        version: i32,
-    },
+    EnrollPassword { account: Uuid, session: Uuid },
+    RegisterPassword,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -196,12 +190,12 @@ impl AccountStore {
         &self.policy
     }
 
-    /// Registers a new account with username and password.
-    /// Hashes the password outside of database transactions (CPU-bound).
-    /// Inserts account and account_passwords, then issues an active session.
-    /// If the username is already taken, rolls back without leaving orphan rows.
+    /// Consume a registration-only mailbox proof and create the complete credential set atomically.
     pub async fn register_password(
         &self,
+        address: &EmailAddress,
+        handle: &ChallengeHandle,
+        code: &Code,
         username: &Username,
         password: &Password,
     ) -> Result<Result<NewSession, PasswordRegistrationError>, StoreError> {
@@ -209,11 +203,46 @@ impl AccountStore {
             .await
             .map_err(|_| StoreError::Unavailable)?;
         let mut tx = self.pool.begin().await?;
+        let closed = Ok(Err(PasswordRegistrationError::ChallengeClosed));
+        // Take the same account-before-challenge lock order as deletion and OTP sign-in.
+        deletion::lock_email_owner(&mut tx, address.as_str()).await?;
+        let row = sqlx::query(
+            "SELECT code_hash, failed_attempts, consumed_at IS NOT NULL AS consumed,
+                    expires_at <= clock_timestamp() AS expired
+               FROM email_challenges WHERE id = $1 AND address = $2 AND purpose = 'register_password'
+               FOR UPDATE")
+            .bind(handle.id).bind(address.as_str()).fetch_optional(&mut *tx).await?;
+        let Some(row) = row else { return closed };
+        if let Some(rejection) = self.attempt(&mut tx, handle, code, &row).await? {
+            tx.commit().await?;
+            return Ok(Err(if rejection == ChallengeRejection::InvalidCode {
+                PasswordRegistrationError::InvalidCode
+            } else {
+                PasswordRegistrationError::ChallengeClosed
+            }));
+        }
         let account_id = Uuid::now_v7();
         sqlx::query("INSERT INTO accounts (id) VALUES ($1)")
             .bind(account_id)
             .execute(&mut *tx)
             .await?;
+        let email = sqlx::query(
+            "INSERT INTO account_emails (account_id, address, verified_at)
+             VALUES ($1, $2, clock_timestamp()) ON CONFLICT (address) DO NOTHING",
+        )
+        .bind(account_id)
+        .bind(address.as_str())
+        .execute(&mut *tx)
+        .await?;
+        if email.rows_affected() == 0 {
+            // This transaction created the candidate. Keep the existing owner and spend the proof.
+            sqlx::query("DELETE FROM accounts WHERE id = $1")
+                .bind(account_id)
+                .execute(&mut *tx)
+                .await?;
+            tx.commit().await?;
+            return closed;
+        }
         let insert_result = sqlx::query(
             "INSERT INTO account_passwords (account_id, username, password_hash)
              VALUES ($1, $2, $3)",
@@ -233,6 +262,16 @@ impl AccountStore {
             Err(error) => return Err(error.into()),
         }
 
+        // Either unique index may have waited on another writer after the proof check.
+        let still_valid: bool = sqlx::query_scalar(
+            "SELECT expires_at > clock_timestamp() FROM email_challenges WHERE id = $1",
+        )
+        .bind(handle.id)
+        .fetch_one(&mut *tx)
+        .await?;
+        if !still_valid {
+            return closed;
+        }
         let session = self.issue_session(&mut tx, account_id).await?;
         tx.commit().await?;
         Ok(Ok(session))
@@ -526,6 +565,37 @@ impl AccountStore {
         if matches!(outcome, ChallengeOutcome::Issued { .. }) {
             self.wake.notify_one();
         }
+    }
+
+    pub async fn verified_email(
+        &self,
+        credential: &str,
+    ) -> Result<crate::contract::VerifiedEmail, crate::contract::ContractError> {
+        use crate::contract::ContractError;
+        let credential =
+            SessionCredential::parse(credential).ok_or(ContractError::CredentialRejected)?;
+        let (session_id, verified_email) = sqlx::query_as("SELECT s.id, e.address FROM sessions s
+            JOIN accounts a ON a.id = s.account_id JOIN account_emails e ON e.account_id = a.id
+            WHERE s.token_hash = $1 AND s.revoked_at IS NULL AND s.expires_at > clock_timestamp() AND a.disabled_at IS NULL")
+            .bind(credential.hash().as_slice()).fetch_optional(&self.pool).await.map_err(StoreError::from)?
+            .ok_or(ContractError::CredentialRejected)?;
+        Ok(crate::contract::VerifiedEmail {
+            session_id,
+            verified_email,
+        })
+    }
+
+    pub async fn start_registration(
+        &self,
+        address: &EmailAddress,
+    ) -> Result<ChallengeOutcome, StoreError> {
+        let mut tx = self.pool.begin().await?;
+        let outcome = self
+            .issue_challenge(&mut tx, address, ChallengeScope::RegisterPassword, true)
+            .await?;
+        tx.commit().await?;
+        self.issued(&outcome);
+        Ok(outcome)
     }
 
     /// Issues a sign-in challenge for `address`. The account table is not read: the answer and
@@ -827,36 +897,15 @@ impl AccountStore {
         scope: ChallengeScope,
         deliver: bool,
     ) -> Result<ChallengeOutcome, StoreError> {
-        let (purpose, account, enrollment_session, attachment_session, attachment_version) =
-            match scope {
-                ChallengeScope::SignIn => (Purpose::SignIn, None, None, None, None),
-                ChallengeScope::DeleteAccount(account) => {
-                    (Purpose::DeleteAccount, account, None, None, None)
-                }
-                ChallengeScope::ChangeEmail(account) => {
-                    (Purpose::ChangeEmail, Some(account), None, None, None)
-                }
-                ChallengeScope::EnrollPassword { account, session } => (
-                    Purpose::EnrollPassword,
-                    Some(account),
-                    Some(session),
-                    None,
-                    None,
-                ),
-                ChallengeScope::AttachEmail {
-                    account,
-                    session,
-                    version,
-                } => (
-                    Purpose::AttachEmail,
-                    Some(account),
-                    None,
-                    Some(session),
-                    Some(version),
-                ),
-            };
-        // The common order is account before address. Enrollment and attachment already hold
-        // this lock while checking the issuing session; an address-first caller could deadlock.
+        let (purpose, account, enrollment_session) = match scope {
+            ChallengeScope::SignIn => (Purpose::SignIn, None, None),
+            ChallengeScope::RegisterPassword => (Purpose::RegisterPassword, None, None),
+            ChallengeScope::DeleteAccount(account) => (Purpose::DeleteAccount, account, None),
+            ChallengeScope::ChangeEmail(account) => (Purpose::ChangeEmail, Some(account), None),
+            ChallengeScope::EnrollPassword { account, session } => {
+                (Purpose::EnrollPassword, Some(account), Some(session))
+            }
+        };
         if let Some(account) = account {
             sqlx::query("SELECT 1 FROM accounts WHERE id = $1 FOR NO KEY UPDATE")
                 .bind(account)
@@ -904,15 +953,11 @@ impl AccountStore {
         }
         let handle = ChallengeHandle::generate(Uuid::now_v7())?;
         let code = Code::generate()?;
-        let mut verifier = handle.code_hash(&code);
-        if matches!(purpose, Purpose::AttachEmail) && !deliver {
-            crate::email_code::random(&mut verifier)?;
-        }
+        let verifier = handle.code_hash(&code);
         let expires_at: OffsetDateTime = sqlx::query_scalar(
             "INSERT INTO email_challenges (id, purpose, address, account_id, code_hash, expires_at,
-                                           enrollment_session_id, attachment_session_id,
-                                           attachment_password_version)
-             VALUES ($1, $2, $3, $4, $5, clock_timestamp() + make_interval(secs => $6), $7, $8, $9)
+                                           enrollment_session_id)
+             VALUES ($1, $2, $3, $4, $5, clock_timestamp() + make_interval(secs => $6), $7)
              RETURNING expires_at",
         )
         .bind(handle.id)
@@ -922,8 +967,6 @@ impl AccountStore {
         .bind(verifier.as_slice())
         .bind(self.policy.challenge_ttl.as_seconds_f64())
         .bind(enrollment_session)
-        .bind(attachment_session)
-        .bind(attachment_version)
         .fetch_one(&mut **tx)
         .await?;
         if deliver {
@@ -1166,11 +1209,6 @@ pub async fn prune(pool: &PgPool, retention: Retention) -> Result<Pruned, StoreE
     )
     .execute(pool)
     .await;
-    sqlx::query(
-        "DELETE FROM email_attachment_reauth_attempts WHERE created_at < now() - INTERVAL '1 day'",
-    )
-    .execute(pool)
-    .await?;
     Ok(Pruned {
         challenges,
         sessions,

@@ -1,0 +1,15 @@
+version = 1
+id = "VDR-AUTH-VERIFIED-EMAIL"
+revision = 1
+
+[content]
+kind = "product"
+domain = "account"
+title = "Tạo tài khoản với đúng một email đã xác minh"
+resolution = """
+Mỗi tài khoản chưa retired có đúng một email chuẩn hóa đã xác minh. Người dùng chứng minh quyền hộp thư trước khi được cấp tài khoản và phiên. Tài khoản chỉ dùng mã email vẫn hợp lệ. Người dùng xem địa chỉ trong cài đặt riêng tư. Bỏ luồng gắn email lần đầu sau đăng ký của #329.
+Tại cutover, thu hồi tài khoản legacy vi phạm qua lifecycle deletion hiện hành, bảo toàn user hợp lệ, binding và receipt. Phần đề xuất email tùy chọn trong O-11@r2 đã được thay thế. Quyết định về phiên sau reset vẫn độc lập.
+"""
+rationale = "Chủ sản phẩm xác nhận phạm vi nghiệp vụ tại https://github.com/loveoverflowcom/vink/issues/607 ngày 27/11/2026. Lời xác nhận nguồn có trước revision TOML này."
+requires = ["USER-08@r2", "O-12@r2"]
+related_ids = ["ACC-03", "DEL-02", "O-11", "D-05"]

@@ -110,40 +110,14 @@ pub enum StartError {
 /// Current Identity mailbox binding, scoped to the presenting session. The session ID is
 /// public context, not a credential. The address is private to the authenticated account.
 #[derive(Serialize, Deserialize)]
-pub struct EmailAttachmentStatus {
+pub struct VerifiedEmail {
     pub session_id: Uuid,
-    pub password_account: bool,
-    pub verified_email: Option<String>,
-}
-
-#[derive(Deserialize)]
-pub struct IssuedAttachmentChallenge {
-    pub challenge: String,
-    pub challenge_id: Uuid,
-    pub email: String,
-    #[serde(with = "time::serde::rfc3339")]
-    pub expires_at: OffsetDateTime,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AttachmentError {
-    InvalidEmail,
-    InvalidCredentials,
-    InvalidCode,
-    ChallengeClosed,
-    ContextChanged,
-    AlreadyAttached,
-    NoPassword,
-    AddressUnavailable,
-    RateLimited,
-    CredentialRejected,
-    AccountDisabled,
-    Call(CallError),
+    pub verified_email: String,
 }
 
 /// Read only the public ID of the private wire handle. Identity owns secret decoding and
 /// verification; App rejects a form from another tab before forwarding an OTP.
-pub fn attachment_handle_id(handle: &str) -> Option<Uuid> {
+pub fn challenge_handle_id(handle: &str) -> Option<Uuid> {
     let (id, secret) = handle.strip_prefix("vink_c1.")?.split_once('.')?;
     if id.len() != 32
         || secret.len() != 43
@@ -200,6 +174,9 @@ pub enum PasswordRegisterOutcome {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PasswordRegisterError {
+    InvalidCode,
+    ChallengeClosed,
+    InvalidEmail,
     InvalidUsername,
     InvalidPassword,
     RateLimited,
@@ -443,15 +420,24 @@ impl IdentityClient {
     /// `POST /identity/v1/sign-in/challenges`. Identity sends the code; the answer never says
     /// whether an account exists.
     pub async fn start_sign_in(&self, email: &str) -> Result<IssuedChallenge, StartError> {
+        self.start_email_challenge("/identity/v1/sign-in/challenges", email)
+            .await
+    }
+
+    pub async fn start_registration(&self, email: &str) -> Result<IssuedChallenge, StartError> {
+        self.start_email_challenge("/identity/v1/password/register/challenges", email)
+            .await
+    }
+
+    async fn start_email_challenge(
+        &self,
+        path: &str,
+        email: &str,
+    ) -> Result<IssuedChallenge, StartError> {
         let body = serde_json::to_vec(&serde_json::json!({ "email": email }))
             .map_err(|_| StartError::Call(CallError::Unavailable(Failure::Transport)))?;
         let (status, bytes) = self
-            .call_within(
-                self.write_timeout,
-                Method::POST,
-                "/identity/v1/sign-in/challenges",
-                body,
-            )
+            .call_within(self.write_timeout, Method::POST, path, body)
             .await
             .map_err(StartError::Call)?;
         match (status.as_u16(), error_code(&bytes).as_str()) {
@@ -505,6 +491,9 @@ impl IdentityClient {
     /// `POST /identity/v1/password/register`.
     pub async fn register_password(
         &self,
+        email: &str,
+        challenge: &str,
+        code: &str,
         username: &str,
         password: &str,
     ) -> Result<PasswordRegisterOutcome, PasswordRegisterError> {
@@ -515,6 +504,7 @@ impl IdentityClient {
             return Err(PasswordRegisterError::InvalidPassword);
         }
         let body = serde_json::to_vec(&serde_json::json!({
+            "email": email, "challenge": challenge, "code": code,
             "username": username,
             "password": password,
         }))
@@ -549,6 +539,9 @@ impl IdentityClient {
                     _ => Err(malformed),
                 }
             }
+            (422, "invalid_code") => Err(PasswordRegisterError::InvalidCode),
+            (422, "invalid_email") => Err(PasswordRegisterError::InvalidEmail),
+            (409, "challenge_closed") => Err(PasswordRegisterError::ChallengeClosed),
             (422, "invalid_username") => Err(PasswordRegisterError::InvalidUsername),
             (422, "invalid_password") => Err(PasswordRegisterError::InvalidPassword),
             (409, "username_taken") => Ok(PasswordRegisterOutcome::UsernameTaken),
@@ -730,103 +723,26 @@ impl IdentityClient {
         }
     }
 
-    pub async fn email_attachment_status(
+    pub async fn verified_email(
         &self,
         credential: &str,
-    ) -> Result<EmailAttachmentStatus, AttachmentError> {
+    ) -> Result<VerifiedEmail, EnrollStatusError> {
+        let body = serde_json::to_vec(&serde_json::json!({ "credential": credential }))
+            .map_err(|_| EnrollStatusError::Call(CallError::Unavailable(Failure::Transport)))?;
         let (status, bytes) = self
-            .call_attachment(
-                self.timeout,
-                "status",
-                serde_json::json!({ "credential": credential }),
-            )
-            .await?;
-        if status == StatusCode::OK {
-            return serde_json::from_slice(&bytes).map_err(|_| malformed_attachment());
+            .call(Method::POST, "/identity/v1/email/verified", body)
+            .await
+            .map_err(EnrollStatusError::Call)?;
+        match (status.as_u16(), error_code(&bytes).as_str()) {
+            (200, _) => serde_json::from_slice(&bytes).map_err(|_| {
+                EnrollStatusError::Call(CallError::Unavailable(Failure::MalformedResponse))
+            }),
+            (403, "credential_rejected") => Err(EnrollStatusError::CredentialRejected),
+            (403, "account_disabled") => Err(EnrollStatusError::AccountDisabled),
+            _ => Err(EnrollStatusError::Call(error_for(status, &bytes))),
         }
-        Err(attachment_error(status, &bytes))
     }
 
-    pub async fn start_email_attachment(
-        &self,
-        credential: &str,
-        email: &str,
-        password: &str,
-        session_id: Uuid,
-    ) -> Result<IssuedAttachmentChallenge, AttachmentError> {
-        if !fits_wire_field(password, MAX_PASSWORD_FIELD_BYTES) {
-            return Err(AttachmentError::InvalidCredentials);
-        }
-        let (status, bytes) = self
-            .call_attachment(
-                self.write_timeout,
-                "challenges",
-                serde_json::json!({
-                    "credential": credential, "email": email,
-                    "password": password, "session_id": session_id,
-                }),
-            )
-            .await?;
-        if status != StatusCode::ACCEPTED {
-            return Err(attachment_error(status, &bytes));
-        }
-        let challenge: IssuedAttachmentChallenge =
-            serde_json::from_slice(&bytes).map_err(|_| malformed_attachment())?;
-        if attachment_handle_id(&challenge.challenge) != Some(challenge.challenge_id) {
-            return Err(malformed_attachment());
-        }
-        Ok(challenge)
-    }
-
-    pub async fn complete_email_attachment(
-        &self,
-        credential: &str,
-        challenge: &str,
-        challenge_id: Uuid,
-        code: &str,
-    ) -> Result<(), AttachmentError> {
-        if attachment_handle_id(challenge) != Some(challenge_id) {
-            return Err(AttachmentError::ContextChanged);
-        }
-        let (status, bytes) = self
-            .call_attachment(
-                self.write_timeout,
-                "complete",
-                serde_json::json!({
-                    "credential": credential, "challenge": challenge,
-                    "challenge_id": challenge_id, "code": code,
-                }),
-            )
-            .await?;
-        if status == StatusCode::NO_CONTENT {
-            return if bytes.is_empty() {
-                Ok(())
-            } else {
-                Err(malformed_attachment())
-            };
-        }
-        Err(attachment_error(status, &bytes))
-    }
-
-    async fn call_attachment(
-        &self,
-        timeout: Duration,
-        operation: &str,
-        body: serde_json::Value,
-    ) -> Result<(StatusCode, Bytes), AttachmentError> {
-        let body = serde_json::to_vec(&body)
-            .map_err(|_| AttachmentError::Call(CallError::Unavailable(Failure::Transport)))?;
-        self.call_within(
-            timeout,
-            Method::POST,
-            &format!("/identity/v1/email/attachment/{operation}"),
-            body,
-        )
-        .await
-        .map_err(AttachmentError::Call)
-    }
-
-    /// `POST /identity/v1/sessions/revoke` (logout). `false`: nothing active was revoked.
     pub async fn revoke(&self, credential: &str) -> Result<bool, CallError> {
         let body = serde_json::to_vec(&serde_json::json!({ "credential": credential }))
             .map_err(|_| CallError::Unavailable(Failure::Transport))?;
@@ -926,27 +842,6 @@ impl IdentityClient {
         drop(sender);
         driver.abort();
         result
-    }
-}
-
-fn malformed_attachment() -> AttachmentError {
-    AttachmentError::Call(CallError::Unavailable(Failure::MalformedResponse))
-}
-
-fn attachment_error(status: StatusCode, bytes: &[u8]) -> AttachmentError {
-    match (status.as_u16(), error_code(bytes).as_str()) {
-        (403, "credential_rejected") => AttachmentError::CredentialRejected,
-        (403, "account_disabled") => AttachmentError::AccountDisabled,
-        (422, "invalid_email") => AttachmentError::InvalidEmail,
-        (422, "invalid_credentials") => AttachmentError::InvalidCredentials,
-        (422, "invalid_code") => AttachmentError::InvalidCode,
-        (409, "challenge_closed") => AttachmentError::ChallengeClosed,
-        (409, "attachment_context_changed") => AttachmentError::ContextChanged,
-        (409, "already_attached") => AttachmentError::AlreadyAttached,
-        (409, "no_password") => AttachmentError::NoPassword,
-        (409, "address_unavailable") => AttachmentError::AddressUnavailable,
-        (429, "rate_limited") => AttachmentError::RateLimited,
-        _ => AttachmentError::Call(error_for(status, bytes)),
     }
 }
 

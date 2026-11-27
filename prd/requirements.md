@@ -360,16 +360,16 @@ Hành vi chi tiết: [hashtag](../docs/architecture/hashtags.md),
 
 | ID | Luật | Nghiệm thu tiêu biểu | Đề xuất UX/dữ liệu |
 | --- | --- | --- | --- |
-| ACC-03 | **Username + mật khẩu** là đăng nhập chính; mã email có thể bổ sung sau, chưa ưu tiên. Username đăng nhập **khác** bút danh công khai; không yêu cầu trùng nhau. Đổi hướng không được bỏ session/rate-limit/security guard hiện có | Đăng nhập bằng username + mật khẩu tạo cùng loại phiên như hiện nay; bút danh đổi không đổi username; lỗi đăng nhập không tiết lộ username có tồn tại | Username: ASCII thường `a–z 0–9 _ .`, 3–30 ký tự, duy nhất không phân biệt hoa thường, không hiển thị công khai. Mật khẩu: ≥ 10 ký tự, không luật ký tự bắt buộc, Argon2id. **11/11/2026 (`O-12@r2`, `PRODUCT_CONFIRMED`):** chuẩn hóa NFKC rồi đếm 10–128 ký tự, mỗi Unicode code point là một ký tự; `Password::parse` đã theo (trước đó kiểm 10–128 byte UTF-8). Ngày 13/11/2026 chủ sản phẩm xác nhận khôi phục qua email trong luồng riêng (#181); chi tiết [O-11@r2](../decisions/proposals/O-11.r2.toml) còn `PENDING`, hiệu lực kho vẫn `O-11@r1 OPEN` |
+| ACC-03 | **Username + mật khẩu** là đăng nhập chính. Mọi tài khoản chưa retired có đúng một email đã xác minh. Đăng nhập chỉ bằng mã email vẫn được hỗ trợ. Username đăng nhập **khác** bút danh công khai; không yêu cầu trùng nhau. Đổi hướng không được bỏ session/rate-limit/security guard hiện có | Đăng nhập bằng username + mật khẩu tạo cùng loại phiên như hiện nay; bút danh đổi không đổi username; lỗi đăng nhập không tiết lộ username có tồn tại | Username: ASCII thường `a–z 0–9 _ .`, 3–30 ký tự, duy nhất không phân biệt hoa thường, không hiển thị công khai. Mật khẩu: ≥ 10 ký tự, không luật ký tự bắt buộc, Argon2id. **11/11/2026 (`O-12@r2`, `PRODUCT_CONFIRMED`):** chuẩn hóa NFKC rồi đếm 10–128 ký tự, mỗi Unicode code point là một ký tự; `Password::parse` đã theo (trước đó kiểm 10–128 byte UTF-8). Ngày 13/11/2026 chủ sản phẩm xác nhận khôi phục qua email trong luồng riêng (#181); chi tiết [O-11@r2](../decisions/proposals/O-11.r2.toml) còn `PENDING`, hiệu lực kho vẫn `O-11@r1 OPEN` |
 
 **Hiện trạng `persistence-api`.** Backend native có đăng ký và đăng nhập bằng username/mật khẩu
 (#152). Người đã đăng nhập bằng mã email có thể thêm mật khẩu sau khi xác nhận mã mới gửi đến
 địa chỉ đã xác minh. Cả hai phương thức tiếp tục đăng nhập vào cùng tài khoản và dùng chung
-principal, bút danh và quyền với nội dung. Đăng ký mới yêu cầu phiên khách.
+principal, bút danh và quyền với nội dung. Đăng ký mới yêu cầu phiên khách và đúng một địa chỉ email chuẩn hóa đã được xác minh trước khi tạo tài khoản. Mã chờ xác minh chưa cấp subject, principal hoặc phiên. Tài khoản chỉ dùng mã email vẫn hợp lệ.
 [ADR D-05 §12](../docs/architecture/auth-authority.md#12-đổi-hướng-10112026-username--mật-khẩu-là-chính)
 
 Web `/toi` dùng mật khẩu làm lựa chọn đầu, vẫn có mã email và hỗ trợ thêm mật khẩu trên cùng
-tài khoản ([Auth Web](../docs/development/auth-web.md)). CMP và runtime khôi phục còn thiếu. [Đặc tả recovery #181](../docs/architecture/password-recovery.md) và [LayoutSpec](../docs/design/password-recovery.md) chuẩn bị luồng riêng, cùng account/principal/dữ liệu; email tùy chọn và thu hồi mọi phiên là đề xuất chờ duyệt, không đổi đăng ký hiện tại. `O-11@r1` vẫn `OPEN`, proposal r2 chưa có signoff. Production mặc định `VINK_AUTH_SIGN_IN=disabled` và D-05 vẫn `PROVISIONAL`.
+tài khoản ([Auth Web](../docs/development/auth-web.md)). CMP và runtime khôi phục còn thiếu. [Đặc tả recovery #181](../docs/architecture/password-recovery.md) và [LayoutSpec](../docs/design/password-recovery.md) chuẩn bị luồng riêng, cùng account/principal/dữ liệu; #607 đã thay thế đề xuất email tùy chọn. Cách xử lý phiên sau reset vẫn chờ duyệt. `O-11@r1` vẫn `OPEN`, proposal r2 chưa có signoff. Production mặc định `VINK_AUTH_SIGN_IN=disabled` và D-05 vẫn `PROVISIONAL`.
 
 ### 14.7. Xóa tài khoản
 
@@ -378,7 +378,7 @@ Chủ sản phẩm xác nhận ngày 26/11/2026. [Quyết định nguồn #297](
 | ID | Yêu cầu |
 | --- | --- |
 | DEL-01 | Xóa vĩnh viễn sau khi xác minh và xác nhận, thu hồi quyền và phiên ngay. |
-| DEL-02 | Xác minh lại với mật khẩu hiện tại hoặc mã từ email đã xác minh của tài khoản. Tài khoản chỉ dùng mật khẩu không cần gắn email. |
+| DEL-02 | Xác minh lại với mật khẩu hiện tại hoặc mã từ email đã xác minh của tài khoản. Mọi tài khoản chưa retired đều đã có email xác minh, kể cả khi bị đình chỉ. |
 | DEL-03 | Username và email có thể được dùng cho đăng ký mới, với account/subject/PrincipalId mới. Handle và alias đã dùng giữ tombstone vĩnh viễn. |
 | DEL-04 | Xóa tác phẩm, bản nháp, lịch sử chỉnh sửa và nội dung/ảnh thuộc sở hữu. Bài công khai về trang thay thế theo Publication. Bài bị kiểm duyệt gỡ giữ disposition chặt hơn. |
 | DEL-05 | Thu hồi Thấm và Ưng do tài khoản thực hiện, đối soát số đếm và danh sách. |

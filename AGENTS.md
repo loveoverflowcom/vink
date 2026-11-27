@@ -102,7 +102,7 @@ those registries rather than duplicating long status narratives across skills.
   implement native email-code sign-in (with `mail_deliveries` outbox and Web `/toi` consumer) and,
   since `#152`, native **backend** username/password credentials (Argon2id, O-12 policy in
   `services/vink-identity/src/password.rs`, `account_passwords`, throttling and App password
-  registration/sign-in with the `__Host-vink_session` cookie). Native accounts with verified
+  registration/sign-in with the `__Host-vink_session` cookie). Registration requires proof of exactly one canonical mailbox before creating any account or session (#607). Native accounts with verified
   email can add a password on the same subject using a fresh code and read back enrollment
   ([App auth contract](services/vink-app/contracts/http/v1/README.md#sign-in-d-05)). [Web Auth](docs/development/auth-web.md)
   offers password registration, sign-in and enrollment alongside email codes. CMP auth, account recovery (`O-11`) and production sign-in unlock (`VINK_AUTH_SIGN_IN`

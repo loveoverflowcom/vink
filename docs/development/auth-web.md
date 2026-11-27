@@ -89,7 +89,7 @@ trong overlay đọc lại phần riêng và quyền, không tự làm rơi tran
 
 ## 2. Luồng
 
-1. **Tạo tài khoản** bằng tên đăng nhập và mật khẩu, hoặc **Đăng nhập** bằng mật khẩu. Cả hai đọc lại
+1. **Tạo tài khoản** yêu cầu email, sau đó nhập mã đã nhận cùng tên đăng nhập và mật khẩu. **Đăng nhập** bằng mật khẩu dùng credential hiện có. Cả hai đọc lại
    phiên bằng `SessionOwner`. `already_signed_in` đọc lại phiên hiện có; `username_taken` gắn lỗi
    tại ô tên. `invalid_credentials` là lỗi chung của form, không yêu cầu làm mới phiên.
 2. **Dùng mã email** giữ hai bước xin mã (`202`: yêu cầu được ghi nhận) và nhập mã. Hạn lấy từ
@@ -212,40 +212,15 @@ password; trình duyệt chưa có phase riêng cho mode đó.
   sách thuộc scope cũ bị gỡ. Thảo luận đã có cơ chế bỏ lượt đọc riêng cũ khi đổi scope
   ([Reader reads](discussion-web-reads.md)).
 
-## Gắn email xác minh lần đầu (#329)
+## Email tài khoản (#607)
 
-`AUTH-EMAIL-ATTACH-01` · Implementation: Web/App/Identity. Base:
-`4cac8373dddd4169d4aca7bbe86ad74d46941438` (sau #330 và #332). Không đổi đăng ký, `/toi` khi chưa
-đăng nhập, Reader, phiên đăng nhập, tài khoản, authority, bút danh hay nháp. Chỉ principal đang
-hoạt động và tài khoản có mật khẩu nhưng chưa gắn email được gửi yêu cầu. Phiên xác thực hoạt động
-cùng mật khẩu hiện tại là điều kiện mới cho chính thao tác gắn, không phải tăng yêu cầu đăng ký.
-Khi cả hai phương thức đã được cấu hình, đăng nhập bằng email đã gắn tìm lại cùng subject.
+[Đối chiếu AC, ảnh và lệnh xác minh](evidence/auth-verified-email-607/README.md).
 
-- **CHOICE-01:** chọn mã sáu số, 10 phút, secret handle trong cookie HttpOnly riêng, không chọn
-  link. Giữ outbox, TTL, giới hạn thử và vận hành hiện có; không có token trong URL, không phụ thuộc
-  cách ứng dụng email/quét link xử lý và không cần cho phép tiếp tục khác trình duyệt. Người dùng
-  nhập mật khẩu hiện tại và mã trên trình duyệt đã yêu cầu. Mỗi lần gửi lại thành công đóng mã cũ của
-  cùng phiên; không đóng yêu cầu của phiên khác đến khi một binding thật thành công.
-- **Identity:** purpose `attach_email` riêng, ràng buộc account, session và password version.
-  Ghi lại ngân sách Argon2 trước verify (10 lượt tài khoản/15 phút, độc lập với sign-in);
-  Argon2 chạy ngoài lock. Proof đúng mới chèn `account_emails` và consume cùng transaction,
-  unique address quyết định ai thắng; deadline/các khóa được kiểm lại khi chờ. Email đang thuộc
-  tài khoản khác không được gửi thư, không trả tên/chủ, và kết quả yêu cầu ban đầu không dùng làm
-  bằng chứng. Các lỗi hạ tầng/ACK mất không phải là kết luận giao dịch.
-- **App/Web:** [hợp đồng App](../../services/vink-app/contracts/http/v1/README.md#sign-in-d-05)
-  và [RPC](../../services/vink-identity/contracts/rpc/v1/README.md) sở hữu transport. UUID form
-  không đủ quyền, phải khớp cookie của đúng purpose. Sau ACK thành công hoặc chưa rõ, Web chỉ đọc
-  binding từ server, chỉ xác nhận yêu cầu nếu đúng principal, phiên và địa chỉ chuẩn hóa;
-  không tự POST lại, không ghi cookie phiên mới, không phỏng đoán thư đã tới hộp.
-- **Rollback:** rollback App/Web có thể ẩn UI, không gỡ email đã xác minh. Nếu cần quay lại
-  Identity binary cũ, [migration rollback](../../services/vink-identity/migrations-rollback/20261119000000_email_attachment.down.sql)
-  xóa proof, thư và ngân sách của lát này, không xóa binding hoặc credential.
+Khi mở cài đặt, Web đọc `GET /api/v1/auth/email` theo principal và epoch của phiên hiện tại. Hàng Email hiển thị địa chỉ đã xác minh, cũng áp dụng với tài khoản chỉ dùng mã. Xem [LayoutSpec](../design/auth-password-web.md) và [hợp đồng App](../../services/vink-app/contracts/http/v1/README.md#sign-in-d-05). Luồng thêm email sau đăng ký của [#329](evidence/auth-email-attachment-329/README.md) chỉ còn là bằng chứng lịch sử.
 
-[Bằng chứng local #329](evidence/auth-email-attachment-329/README.md).
 ## Đặt lại mật khẩu (#181, phần còn lại của #329)
 
 [Đặc tả Web → App → Identity](../architecture/password-recovery.md) và [LayoutSpec](../design/password-recovery.md)
-đề xuất entry “Quên mật khẩu?” riêng, hiện chưa có. O-11@r1 OPEN, O-11@r2 PENDING: chưa chốt
-điều kiện email lúc đăng ký, và cách xử lý phiên sau reset cho đúng revision; duyệt hình Auth R2
+đề xuất entry “Quên mật khẩu?” riêng, hiện chưa có. O-11@r1 OPEN, O-11@r2 PENDING: chưa chốt cách xử lý phiên sau reset; duyệt hình Auth R2
 không là signoff. O-12@r2 vẫn PRODUCT_CONFIRMED và D-05 vẫn PROVISIONAL. Không có reset runtime,
 CMP/native auth, đổi email đã gắn, mở cổng production hoặc deploy trong lát này.

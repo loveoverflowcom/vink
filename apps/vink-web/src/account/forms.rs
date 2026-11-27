@@ -1,8 +1,8 @@
 //! Form lifetimes own the inputs. Only the mounted form can display an answer;
 //! the tab still reconciles any write that could have changed the browser's cookie.
 
-mod attachment;
 mod deletion;
+mod email;
 pub(super) use deletion::AccountDeletion;
 pub(crate) use deletion::DeletionStage;
 
@@ -236,7 +236,7 @@ pub(super) fn GuestAuth(epoch: u64) -> impl IntoView {
             view! { <GuestPassword epoch now focus switch mode=Mode::Login /> }.into_any()
         }
         (Mode::Register, focus) => {
-            view! { <GuestPassword epoch now focus switch mode=Mode::Register /> }.into_any()
+            view! { <email::RegistrationForm epoch now focus switch /> }.into_any()
         }
         (Mode::Email, focus) => view! { <EmailSignIn epoch now focus switch /> }.into_any(),
     }
@@ -346,6 +346,7 @@ fn GuestPassword(
     focus: bool,
     switch: Callback<Mode>,
     mode: Mode,
+    #[prop(optional)] registration: Option<(String, Millis)>,
 ) -> impl IntoView {
     let session = Session::current();
     let (operation, purpose, title, form_id, submit_id) = match mode {
@@ -380,7 +381,13 @@ fn GuestPassword(
     let lead = reader.and_then(|reader| reader.lead);
     let username = InputValue::new();
     let password = InputValue::new();
-    username.focus_on_mount(focus);
+    let registration = StoredValue::new(registration);
+    let digits = InputValue::new();
+    if is_register {
+        digits.focus_on_mount(focus);
+    } else {
+        username.focus_on_mount(focus);
+    }
     let error = RwSignal::new(None);
     let result = RwSignal::new(GuestResult::Ready);
     let state = session.action(operation, now);
@@ -407,7 +414,11 @@ fn GuestPassword(
                     return;
                 }
                 let input = PasswordCredentials { username: user, password: secret };
-                let command = if is_register { Command::Register(input) } else { Command::Login(input) };
+                let command = if let Some((email, expires)) = registration.get_value() {
+                    if now.get_untracked() >= expires { error.set(Some(AuthError::ChallengeClosed)); return; }
+                    let Some(code) = code_value(digits, error) else { digits.focus(); return; };
+                    Command::Register(crate::contract::Registration { credentials: input, email, code })
+                } else { Command::Login(input) };
                 session.dispatch(epoch, command, move |outcome| {
                     if result.try_get_untracked().is_none() { return; }
                     let next = match outcome {
@@ -431,6 +442,12 @@ fn GuestPassword(
                     result.set(next);
                 });
             }>
+            {registration.get_value().map(|(email, expires)| view! {
+                <p role="status">"Mã xác minh đã được yêu cầu cho " <strong class="wrap-anywhere">{email}</strong> "." {instant(expires)}</p>
+                <TextField id="registration-code" label="Mã xác minh" name="code" autocomplete="one-time-code"
+                    required=true variant=FieldVariant::FloatingTonal input_ref=digits.node value=empty_value()
+                    on_input=digits.edit() error=field_error(error, |e| matches!(e, AuthError::InvalidCode | AuthError::CodeRejected)) />
+            })}
             <PasswordFields purpose username password error />
             <FormError error operation password_fields=true waiting=session.retry_wait(operation, now) />
             {move || match result.get() {
@@ -674,12 +691,10 @@ enum Credential {
 }
 
 #[component]
-fn CredentialSettings(epoch: u64, now: ReadSignal<Millis>, changed: Callback<()>) -> impl IntoView {
+fn CredentialSettings(epoch: u64, now: ReadSignal<Millis>) -> impl IntoView {
     let session = Session::current();
     let status = RwSignal::new(Credential::Loading);
     let challenge = RwSignal::new(None::<Challenge>);
-    // Enrollment changes eligibility without changing the session or remounting Tôi.
-    let pending_change = StoredValue::new(false);
     let read = move |uncertain| {
         status.set(if uncertain {
             Credential::Reconciling
@@ -691,13 +706,7 @@ fn CredentialSettings(epoch: u64, now: ReadSignal<Millis>, changed: Callback<()>
             move || status.try_get_untracked().is_some(),
             move |outcome| {
                 let next = match (outcome, uncertain) {
-                    (Ok(true), _) => {
-                        if pending_change.get_value() {
-                            pending_change.set_value(false);
-                            changed.run(());
-                        }
-                        Credential::Present
-                    }
+                    (Ok(true), _) => Credential::Present,
                     (Ok(false), true) => Credential::Uncertain(None),
                     (Ok(false), false) => Credential::Missing,
                     (Err(error), true) => Credential::Uncertain(Some(error)),
@@ -720,11 +729,9 @@ fn CredentialSettings(epoch: u64, now: ReadSignal<Millis>, changed: Callback<()>
         problem.set(None);
         match outcome {
             Ok(Reply::Done) | Err(AuthError::AlreadyEnrolled) => {
-                pending_change.set_value(true);
                 read(false);
             }
             Err(error) if AuthError::uncertain(&error) => {
-                pending_change.set_value(true);
                 read(true);
             }
             Err(AuthError::ChallengeClosed) => problem.set(Some(AuthError::ChallengeClosed)),
@@ -858,8 +865,6 @@ pub(super) fn SignedInSettings(epoch: u64, fixture: bool) -> impl IntoView {
     let session = Session::current();
     let opened = RwSignal::new(false);
     let loaded = RwSignal::new(false);
-    let binding_changed = Trigger::new();
-    let changed = Callback::new(move |()| binding_changed.notify());
     let now = use_clock();
     view! {
         <section class="vk-account-settings grid w-full min-w-0 gap-vk-2" aria-labelledby="account-settings-title">
@@ -892,14 +897,11 @@ pub(super) fn SignedInSettings(epoch: u64, fixture: bool) -> impl IntoView {
                         </Button>
                         <Show when=move || loaded.get()>
                             <div hidden=move || !opened.get()>
-                                <CredentialSettings epoch now changed />
+                                <CredentialSettings epoch now />
                             </div>
                         </Show>
                     </div>
-                    {move || {
-                        binding_changed.track();
-                        view! { <attachment::EmailSettings epoch now /> }
-                    }}
+                    <email::EmailSettings epoch />
                 }.into_any()
             }}
             <Show when=move || session.appearance_principal.with(Option::is_some)>
