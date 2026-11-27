@@ -1,6 +1,10 @@
 // Epic #323 / #343 Chrome E2E verification against real `vink-app` (author + guest origins)
 // and real scratch PostgreSQL, plus real CSR standalone under `vink-identity`.
 
+import { fabricate } from './auth-smoke.mjs';
+import { holdAnswer } from './auth-browser-network.mjs';
+import { navigationChecks, observeVisit, tap } from './work-view-navigation.mjs';
+
 const SAMPLE_WORK = '33333333-3333-4333-8333-333333333333';
 const DRAFT_LINE = 'Phố cũ mưa giăng sợi mỏng,';
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -180,6 +184,15 @@ export async function workViewsE2E(_rootPage, { cdp, openPage, args, check }) {
       check(cookiesAfter?.value === guestCookie.value, 'same guest cookie value preserved on 24h return');
       check((await readViews()).count === startCount + 1, '24h repeat visit does not increment');
       check(guest1.errors.length === 0, 'guest1 flow has no console errors');
+
+      const shared = await openPage(browserContextId);
+      const sharedLedger = attachViewLedger(shared, guestBase);
+      try {
+        await navigationChecks(shared, {base:guestBase, ledger:sharedLedger, check,
+          readCount:async () => (await readViews()).count, expected:startCount + 1});
+      } finally {
+        sharedLedger.stop();
+      }
     } finally {
       ledger.stop();
       await cdp.send('Target.disposeBrowserContext', { browserContextId });
@@ -223,60 +236,90 @@ export async function workViewsE2E(_rootPage, { cdp, openPage, args, check }) {
     }
   }
 
-  // 7. Transient 503 failure retries with SAME event_id and recovers to +1 total.
+  // Isolate prerender from visibility and drive the exact boundary on the mounted adapter.
+  // The App and its 204 are real. Only the monotonic clock and prerender flag are controlled.
   {
     const { browserContextId } = await cdp.send('Target.createBrowserContext');
-    const guest3 = await openPage(browserContextId);
-    const ledger = attachViewLedger(guest3, guestBase);
-    let droppedOnce = false;
-    const postedIds = [];
-    const fetchListener = (message) => {
-      if (message.sessionId !== guest3.sessionId || message.method !== 'Fetch.requestPaused') return;
-      const { requestId, request } = message.params;
-      if (request.method === 'POST' && request.url.endsWith(`/works/${SAMPLE_WORK}/views`)) {
-        const body = request.postData ? JSON.parse(request.postData) : {};
-        if (body.event_id) postedIds.push(body.event_id);
-        if (!droppedOnce) {
-          droppedOnce = true;
-          guest3.send('Fetch.fulfillRequest', {
-            requestId,
-            responseCode: 503,
-            responseHeaders: [
-              { name: 'Content-Type', value: 'application/json' },
-              { name: 'Cache-Control', value: 'no-store' },
-            ],
-            body: Buffer.from(JSON.stringify({ error: { code: 'dependency_unavailable', message: 'retry' } })).toString('base64'),
-          }).catch(() => {});
-          return;
-        }
-      }
-      guest3.send('Fetch.continueRequest', { requestId }).catch(() => {});
-    };
-    guest3.cdp.listeners.push(fetchListener);
+    const page = await openPage(browserContextId);
+    const ledger = attachViewLedger(page, authorBase);
     try {
-      await guest3.send('Fetch.enable', {
-        patterns: [{ urlPattern: `${guestBase}/api/v1/works/${SAMPLE_WORK}/views`, requestStage: 'Request' }],
-      });
-      await guest3.goto(`${guestBase}${readerPath}`);
-      await guest3.waitFor(`document.documentElement.dataset.hydrated==='true'`, 'guest3 ready for retry');
+      await page.send('Page.addScriptToEvaluateOnNewDocument', {source:`
+        window.viewClock = 100;
+        performance.now = () => window.viewClock;
+        window.viewPrerender = true;
+        Object.defineProperty(document, 'prerendering', {get:() => window.viewPrerender});
+      `});
+      await page.goto(authorBase + readerPath);
+      await page.waitFor("document.visibilityState==='visible' && document.documentElement.dataset.hydrated==='true' && document.querySelector('.vk-document')", 'visible prerender fixture');
       await sleep(5200);
-      await waitForCount(() => droppedOnce, 4000, 'first attempt hit 503');
-      // Allow 503 response delivery into WASM so 1s retry_timer is actively armed before waking.
-      await sleep(150);
-      // P1 regression: online/focus/visibilitychange during 1s backoff must NOT abort retry timer.
-      await guest3.eval(`
-        window.dispatchEvent(new Event('online'));
-        window.dispatchEvent(new Event('focus'));
-        document.dispatchEvent(new Event('visibilitychange'));
-      `);
-      await waitForCount(() => postedIds.length >= 2 && ledger.rows.some((r) => r.status === 204 && r.extraInfoReceived), 5000, 'bounded retry recovery');
-      check(postedIds[0] === postedIds[1], 'retry after 503 with lifecycle wakes reuses exact same UUIDv7 event_id');
-      check((await readViews()).count === startCount + 3, 'retry recovers to +1 without blocking Reader');
-      check(guest3.errors.length === 0, 'retry flow raises zero browser/console errors');
+      await page.eval("window.viewClock += 6000; document.dispatchEvent(new Event('prerenderingchange'))");
+      check(ledger.rows.length === 0, 'prerender alone suppresses intake');
+      await page.eval("window.viewPrerender = false; document.dispatchEvent(new Event('prerenderingchange'))");
+      await page.eval("window.viewClock += 4999; document.dispatchEvent(new Event('prerenderingchange'))");
+      await sleep(120);
+      check(ledger.rows.length === 0, '4999ms since activation emits zero candidates');
+      await page.eval("window.viewClock++; document.dispatchEvent(new Event('prerenderingchange'))");
+      await waitForCount(() => ledger.rows[0]?.status === 204, 4000, 'exact-threshold 204');
+      await page.eval("window.viewClock += 6000; document.dispatchEvent(new Event('visibilitychange'))");
+      await sleep(120);
+      check(ledger.rows.length === 1 && (await readViews()).count === startCount + 2,
+        '5000ms produces exactly one candidate and a later wake produces none');
     } finally {
-      await guest3.send('Fetch.disable').catch(() => {});
-      const idx = guest3.cdp.listeners.indexOf(fetchListener);
-      if (idx >= 0) guest3.cdp.listeners.splice(idx, 1);
+      ledger.stop();
+      await cdp.send('Target.disposeBrowserContext', { browserContextId });
+    }
+  }
+
+  // 7. Hold the actual 204 until a separate author read sees the committed increment.
+  {
+    const { browserContextId } = await cdp.send('Target.createBrowserContext');
+    const guest = await openPage(browserContextId);
+    const ledger = attachViewLedger(guest, guestBase);
+    const intake = `/api/v1/works/${SAMPLE_WORK}/views`;
+    try {
+      await guest.goto(guestBase + readerPath);
+      const ack = await holdAnswer(guest, 'POST', intake);
+      check(await ack.held() === 204 && (await readViews()).count === startCount + 3,
+        'real author read sees +1 while the first committed 204 is still held');
+      check(await guest.eval(`Boolean(document.querySelector('.vk-document')?.textContent.includes(${JSON.stringify(DRAFT_LINE)}))`),
+        'Reader text remains available during lost ACK');
+      await ack.finish(true, true);
+      await guest.eval("for (const name of ['online','focus']) window.dispatchEvent(new Event(name)); document.dispatchEvent(new Event('visibilitychange'))");
+      await waitForCount(() => ledger.rows[1]?.status === 204, 4000, 'retry after lost ACK');
+      const ids = ledger.rows.map(row => JSON.parse(row.postData).event_id);
+      check(ids.length === 2 && ids[0] && ids[0] === ids[1] && (await readViews()).count === startCount + 3,
+        'the exact event_id replays a post-commit loss with one durable increment');
+
+      // Also keep pre-commit 503 coverage. An early route exit must disarm that retry.
+      const selfLedger = attachViewLedger(guest, authorBase);
+      await observeVisit(guest);
+      await guest.goto(authorBase + readerPath);
+      await guest.waitFor("document.documentElement.dataset.hydrated==='true'", 'ready to lose ACK and leave');
+      const end503 = await fabricate(guest, 'POST', intake, 503, {error:{code:'dependency_unavailable'}});
+      await waitForCount(() => selfLedger.rows[0]?.status === 503, 8000, 'pre-commit 503');
+      await end503();
+      await guest.waitFor('workViewTimers().includes(1000)', 'retry timer armed after 503');
+      await guest.click('#reader-return');
+      await guest.waitFor("location.pathname==='/'", 'Reader usable during retry backoff');
+      check(!await guest.eval('workViewTimers().includes(1000)'), 'pending backoff timer cleared on navigation');
+      await sleep(1600);
+      check(selfLedger.rows.length === 1, 'leaving Reader during backoff cancels the pending retry');
+      // Persistent post-commit losses exhaust all three backoffs. Observe past the longest
+      // backoff to catch a restarted retry loop without waking or replacing the Reader.
+      await guest.goto(authorBase + readerPath);
+      for (let index = 0; index < 4; index++) {
+        const lost = await holdAnswer(guest, 'POST', intake);
+        // The last retry is due after 9s. The shared hold helper has an 8s wait budget.
+        if (index === 3) await sleep(2500);
+        check(await lost.held() === 204, `committed answer ${index + 1} ready to drop`);
+        await lost.finish(true, true);
+      }
+      await sleep(9500);
+      const exhausted = selfLedger.rows.slice(1).map(row => JSON.parse(row.postData).event_id);
+      check(exhausted.length === 4 && new Set(exhausted).size === 1, 'persistent ACK loss stops after four same-ID attempts');
+      selfLedger.stop();
+      check(guest.errors.length === 0, 'post-commit recovery has no application exception');
+    } finally {
       ledger.stop();
       await cdp.send('Target.disposeBrowserContext', { browserContextId });
     }
@@ -453,10 +496,10 @@ export async function workViewsE2E(_rootPage, { cdp, openPage, args, check }) {
         })()`),
         `#514 real Desk UI displays live counted views (${expected}) in Thấm -> Nhận xét -> Lượt xem order with no Read link`,
       );
-      await deskPage.click('#views-explainer-trigger');
+      await tap(deskPage, '#views-explainer-trigger');
       await deskPage.waitFor(`document.querySelector('#views-explainer')?.open === true`, 'Desk explainer dialog opened');
       check(
-        await deskPage.eval(`document.querySelector('#views-explainer')?.textContent.includes('5 giây')`),
+        await deskPage.eval(`['5 giây','24 giờ','Khách','tự xem','JavaScript'].every(term => document.querySelector('#views-explainer')?.textContent.includes(term))`),
         '#514 real Desk explainer shows 5s threshold from shared policy',
       );
       check(deskPage.errors.length === 0, 'author Desk real views flow has no console errors');
@@ -490,6 +533,19 @@ export async function standaloneWorkViewCheck(page, { args, check }) {
       'standalone CSR: authenticated non-author member counts via 204 no-store without guest cookie',
     );
 
+    // A session-change notification fences an already armed retry as well as a countdown.
+    const ack = await holdAnswer(page, 'POST', `/api/v1/works/${SAMPLE_WORK}/views`);
+    await page.reload();
+    check(await ack.held() === 204, 'real member answer available before session-change signal');
+    await ack.finish(true, true);
+    await page.eval(`(() => {
+      const channel = new BroadcastChannel('vink-session');
+      channel.postMessage('changed');
+      channel.close();
+    })()`);
+    await sleep(1600);
+    check(ledger.rows.length === 2, 'member retry does not cross the cookie-change fence');
+
     // E-41: hold the real session read after cookie revocation. The signal alone must
     // cancel the current visit before the timer can send a POST under the guest scope.
     await page.goto(`${base}${path}`);
@@ -519,7 +575,7 @@ export async function standaloneWorkViewCheck(page, { args, check }) {
       })()`);
       await waitForCount(() => pendingSession, 4000, 'held session recheck after the change signal');
       await sleep(5300);
-      check(ledger.rows.length === 1, 'standalone CSR E-41: session signal cancels the visit before the authority recheck settles');
+      check(ledger.rows.length === 2, 'standalone CSR E-41: session signal cancels the visit before the authority recheck settles');
     } finally {
       page.cdp.listeners.splice(page.cdp.listeners.indexOf(holdSession), 1);
       await page.send('Fetch.disable');

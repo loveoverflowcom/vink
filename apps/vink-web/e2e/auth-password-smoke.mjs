@@ -14,6 +14,7 @@ import { EDITOR_READY, HYDRATED, STANDING, account, cookies, fabricate, fill, ma
 import { deskGuest } from './desk-empty-smoke.mjs';
 import { captureRequest, holdAnswer } from './auth-browser-network.mjs';
 import { APPEARANCE_SETTLED } from './visual-evidence.mjs';
+import { nativeAuthorMetrics } from './work-view-author.mjs';
 import { standaloneWorkViewCheck } from './work-views-smoke.mjs';
 import { readerSave } from './saved-works-smoke.mjs';
 
@@ -1265,6 +1266,20 @@ export async function standalone(page, {args, check, openPage}) {
   await page.waitFor(q('#relationship-private'), 'CSR second member cannot open the owner’s private Following');
   check(await page.eval(`!${q('#relationship-count, #relationship-empty, #rel-other-direction')}`),
     'CSR denied list does not expose a count, empty illustration or alternative direction');
+  const { browserContextId } = await page.cdp.send('Target.createBrowserContext');
+  try {
+    const owner = await openPage(browserContextId);
+    await owner.goto(base + '/toi');
+    await owner.waitFor(q(LOGIN + '-username'), 'native author sign-in');
+    await credentials(owner, LOGIN, username, SECRET_A);
+    await owner.click(LOGIN + '-submit');
+    await owner.waitFor(`${STANDING} === 'active'`, 'independent native author session');
+    await page.send('Page.bringToFront');
+    await nativeAuthorMetrics(owner, page, {base, check});
+  } finally {
+    await page.cdp.send('Target.disposeBrowserContext', { browserContextId });
+  }
+  await page.send('Page.bringToFront');
   await standaloneWorkViewCheck(page, { args, check });
   // #388 starts signed out and measures baseline text in this disposable Chrome profile.
   // The appearance checks above deliberately saved settings for one of its readers.

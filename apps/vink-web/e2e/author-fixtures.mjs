@@ -2,11 +2,17 @@ import { execFileSync } from 'node:child_process';
 
 const scratch = process.env.VINK_HANDLE_SCRATCH;
 const deletionScratch = process.env.VINK_ACCOUNT_DELETION_SCRATCH;
+const standaloneScratch = process.env.VINK_STANDALONE_SCRATCH;
+delete process.env.VINK_STANDALONE_SCRATCH;
 delete process.env.VINK_HANDLE_SCRATCH;
 delete process.env.VINK_ACCOUNT_DELETION_SCRATCH;
 
 export function authorFixtureSql(sql) {
   return fixtureSql(scratch, sql, false);
+}
+
+export function standaloneFixtureSql(sql) {
+  return fixtureSql(standaloneScratch, sql, true);
 }
 
 export function accountDeletionFixtureSql(sql) {
