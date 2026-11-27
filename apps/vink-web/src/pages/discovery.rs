@@ -17,8 +17,8 @@ use leptos_meta::{Link, Meta, Title};
 use leptos_router::hooks::{use_params_map, use_query_map};
 use vink_ui::{ActionSurface, Button, ButtonVariant, HiddenField};
 use vink_ui::{
-    Dialog, DialogKind, Heading, HeadingLevel, Icon, IconButton, IconName, InlineNotice,
-    RecoveryAction, RecoveryIntent, SearchField, SearchVariant, Tone, TypeRole,
+    Dialog, DialogKind, DismissPolicy, Heading, HeadingLevel, Icon, IconButton, IconName,
+    InlineNotice, RecoveryAction, RecoveryIntent, SearchField, SearchVariant, Tone, TypeRole,
 };
 
 mod feed;
@@ -791,7 +791,7 @@ fn DiscoveryFilters(context: ExploreContext, search_open: Memo<bool>) -> impl In
                 }.into_any()),
             })}
         </Suspense>
-        <Dialog id="tag-picker" open title="Lọc thẻ" kind=DialogKind::Sheet focus_title=true
+        <Dialog id="tag-picker" open title="Lọc thẻ" kind=DialogKind::Sheet focus_title=true dismiss=DismissPolicy::EscapeAndOutside
             on_dismiss=move |_| dismiss_picker()
             header_action=move || view! { <IconButton id="close-tag-filters" label="Đóng lọc thẻ" icon=IconName::Close
                 surface=ActionSurface::Tonal on_press=move |_| dismiss_picker() /> }>
