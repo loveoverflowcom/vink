@@ -94,7 +94,7 @@ fn ReaderScope(id: String) -> impl IntoView {
     let reader = api::reader_resource(work_id);
     let status = ResponseStatus::capture();
     view! {
-        <Suspense fallback=|| view! { <p class="vk-muted" role="status">"Đang mở tác phẩm…"</p> }>
+        <Suspense fallback=|| view! { <crate::ui::PendingRead label="Đang mở tác phẩm…" /> }>
             {move || {
                 let status = status.clone();
                 Suspend::new(async move {

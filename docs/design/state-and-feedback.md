@@ -3,8 +3,7 @@
 **NEW** · [#21](https://github.com/loveoverflowcom/vink/issues/21). Hướng dẫn cho người thiết kế màn
 và viết copy; contract kỹ thuật (kiểu, tổ hợp hợp lệ, props) nằm ở
 [states.md](../../packages/ui-system/shared/states.md), bằng chứng chạy ở
-[ui-system-states-evidence](../development/ui-system-states-evidence.md). Component đã có ở cả hai
-renderer nhưng **chưa màn nào của app dùng**; adoption thuộc #23 sau qualification #24.
+[ui-system-states-evidence](../development/ui-system-states-evidence.md). Product Web dùng các primitive UIS-03 trong Bàn viết, Khám phá và các vùng đọc bên dưới. [Inventory theo caller](../development/discovery-ui.md#loading-v%C3%A0-ph%E1%BB%A5c-h%E1%BB%93i-624).
 
 Nguyên tắc: giữ dữ liệu và đường phục hồi đúng quan trọng hơn làm mọi lỗi trông giống nhau. Người
 đọc/viết phải biết điều gì đang xảy ra, chữ nào vẫn an toàn và có thể làm gì tiếp.
@@ -66,7 +65,9 @@ chính/phụ `--vk-space-4`, **không divider**):
 
 ## Chuyển động
 
-Ba mục đích, ba component: **SurfacePulse** (skeleton nội dung lần đầu), **MicroArc** (hành động
+Với vùng kết quả chưa có hình học hàng cố định, Product Web dùng MicroArc 24 px ở giữa vùng. Shell, tab và thanh tìm kiếm giữ vị trí; subsection giữ chỉ báo trong luồng. Nhãn chờ dành cho trình đọc màn hình, ghi chú chậm xuất hiện sau 8 giây. Khi có dữ liệu hoặc lỗi, thay vùng chờ ngay.
+
+Ba component của UIS-03: **SurfacePulse** (skeleton nội dung lần đầu), **MicroArc** (hành động
 đang chờ trong nút, giữ nhãn và vùng chạm), **EdgeProgress** (làm mới/tìm đang bay; phần trăm chỉ
 khi có tiến độ thật). Giảm chuyển động → chỉ báo tĩnh + nhãn, không vòng lặp; tab ẩn, ứng dụng ở
 nền hoặc vùng không hoạt động → không vòng lặp nào chạy. Không shimmer phủ mọi vùng, không chuyển

@@ -458,6 +458,12 @@ pub(super) fn HandleRow(controller: Controller) -> impl IntoView {
             let _ = row.focus();
         }
     });
+    let reading = move || {
+        !controller.opened.get()
+            && !controller.unavailable.get()
+            && controller.confirmed.with(Option::is_none)
+            && controller.pending.with(Option::is_none)
+    };
     let can_open = move || {
         controller.pending.with(Option::is_some)
             || (!controller.unavailable.get()
@@ -498,13 +504,14 @@ pub(super) fn HandleRow(controller: Controller) -> impl IntoView {
                     </Button>
                 </Show>
             </div>
+            <Show when=reading><crate::ui::PendingRead label="Đang tải địa chỉ tác giả…" /></Show>
             <p id="author-handle-status" role="status" aria-atomic="true" class="m-0 empty:hidden">{move || {
                 if controller.opened.get() {
                     ""
                 } else if controller.unavailable.get() {
                     "Chưa tải được địa chỉ tác giả."
-                } else if controller.confirmed.with(Option::is_none) && controller.pending.with(Option::is_none) {
-                    "Đang tải địa chỉ tác giả…"
+                } else if reading() {
+                    ""
                 } else if controller.pending.with(Option::is_some) && controller.message.get().is_empty() {
                     "Có yêu cầu địa chỉ đang chờ xác nhận."
                 } else {

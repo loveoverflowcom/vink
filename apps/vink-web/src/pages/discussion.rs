@@ -524,7 +524,7 @@ fn LinkedComment(work_id: String, comment: String) -> impl IntoView {
     view! {
         <section id="feedback-region" class="vk-discussion grid min-w-0 gap-vk-3 [margin-block:var(--vk-space-8)]" aria-labelledby="feedback-heading">
             <Heading level=HeadingLevel::H2 role=TypeRole::Title id="feedback-heading" attr:tabindex="-1">"Nhận xét"</Heading>
-            <Suspense fallback=|| view! { <p role="status">"Đang mở nhận xét…"</p> }>
+            <Suspense fallback=|| view! { <crate::ui::PendingRead label="Đang mở nhận xét…" /> }>
                 {move || {
                     let anchor = anchor.clone();
                     data.get().map(|result| match result {
@@ -1015,7 +1015,7 @@ fn OwnComments(
                     </div>
                 </Show>
                 <Show when=move || state.read().own.loading && visible_ids.with(Vec::is_empty)>
-                    <p role="status" class="vk-muted m-0">"Đang tải nhận xét của bạn…"</p>
+                    <crate::ui::PendingRead label="Đang tải nhận xét của bạn…" />
                 </Show>
                 <For each=move || visible_ids.get() key=|id| id.clone()
                     children=move |id| {

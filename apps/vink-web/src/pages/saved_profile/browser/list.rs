@@ -94,7 +94,6 @@ struct ListOwner {
     actor: StoredValue<VerifiedOwner>,
     path: StoredValue<String>,
     session: Session,
-    delay: RwSignal<u8>,
 }
 
 impl ListOwner {
@@ -145,24 +144,6 @@ impl ListOwner {
         } else {
             return_pages(&path, &owner.scope).clamp(1, MAX_PAGES)
         };
-        if !append {
-            self.delay.set(0);
-            for (time, stage) in [(300, 1), (8_000, 2)] {
-                let ticket_for_delay = ticket.clone();
-                set_timeout(
-                    move || {
-                        if self
-                            .state
-                            .try_with_untracked(|list| list.reads.accepts(&ticket_for_delay))
-                            .unwrap_or(false)
-                        {
-                            self.delay.try_set(stage);
-                        }
-                    },
-                    std::time::Duration::from_millis(time),
-                );
-            }
-        }
         spawn_local(async move {
             let principal = &owner.profile.principal_id;
             let first = api::load_saved_works(ticket.cursor.as_deref(), principal).await;
@@ -458,10 +439,13 @@ pub(super) fn SavedList(owner: VerifiedOwner) -> impl IntoView {
         actor: StoredValue::new(owner),
         path: StoredValue::new(path),
         session: Session::current(),
-        delay: RwSignal::new(0),
     };
     let state = list.state;
     let initial = Memo::new(move |_| state.with(|list| list.chain.pages == 0));
+    let gate = vink_ui::use_loading_gate(
+        Signal::derive(move || initial.get() && !state.with(|s| s.initial_error)),
+        vink_ui::Clock::Browser,
+    );
     let empty = Memo::new(move |_| {
         state.with(|list| {
             list.chain.pages > 0 && list.rows.is_empty() && list.chain.next_cursor.is_none()
@@ -481,8 +465,8 @@ pub(super) fn SavedList(owner: VerifiedOwner) -> impl IntoView {
                     }.into_any()
                 } else {
                     view! {
-                        <p role="status">{move || if list.delay.get() >= 2 { "Vẫn đang tải…" } else { "Đang tải danh sách…" }}</p>
-                        <Show when=move || { list.delay.get() >= 1 }>
+                        <p role="status" class:vk-ui-visually-hidden=move || !gate.slow.get()>{move || if gate.slow.get() { "Vẫn đang tải…" } else { "Đang tải danh sách…" }}</p>
+                        <Show when=move || gate.visible.get()>
                             <div class="vk-saved-skeleton" aria-hidden="true"><Skeleton /><Skeleton /><Skeleton /></div>
                         </Show>
                     }.into_any()
@@ -595,13 +579,16 @@ fn Row(list: ListOwner, work: String) -> impl IntoView {
                 <div class="vk-saved-row__action">
                     <IconButton id=format!("saved-remove-{work}") icon=IconName::Bookmark label=label
                         surface=ActionSurface::Tonal state=phase on_press=move |_| list.operate(id.get_value(), false) />
+                    <Show when=move || matches!(action.get(), Some(RowAction::Writing | RowAction::Checking))>
+                        <span class="vk-saved-row__progress"><vink_ui::LoadingIndicator /></span>
+                    </Show>
                 </div>
                 {move || match action.get() {
                     Some(RowAction::Writing) => view! {
-                        <p class="vk-saved-row__error" role="status">"Đang bỏ lưu…"</p>
+                        <p class="vk-ui-visually-hidden" role="status">"Đang bỏ lưu…"</p>
                     }.into_any(),
                     Some(RowAction::Checking) => view! {
-                        <p class="vk-saved-row__error" role="status">"Đang kiểm tra…"</p>
+                        <p class="vk-ui-visually-hidden" role="status">"Đang kiểm tra…"</p>
                     }.into_any(),
                     Some(RowAction::Retry) => view! {
                         <div class="vk-saved-row__error"><p role="alert">"Chưa bỏ lưu được. Bài vẫn nằm trong danh sách."</p>

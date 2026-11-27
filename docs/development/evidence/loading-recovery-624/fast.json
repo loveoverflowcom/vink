@@ -1,0 +1,14 @@
+[
+  {
+    "flow": "all",
+    "pending": 475.90000000596046,
+    "settled": 481.80000001192093,
+    "arc": false
+  },
+  {
+    "flow": "following",
+    "pending": 2242.0999999940395,
+    "settled": 2244.5999999940395,
+    "arc": false
+  }
+]

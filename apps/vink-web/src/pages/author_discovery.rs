@@ -117,9 +117,8 @@ fn results_heading(q: &str) -> impl IntoView + use<> {
 
 fn search_loading(suggestions: bool) -> impl IntoView {
     view! {
-        <p role="status" id="author-search-loading">
-            {if suggestions { "Đang tải tác giả đề xuất…" } else { "Đang tìm tác giả…" }}
-        </p>
+        <crate::ui::PendingRead attr:id="author-search-loading"
+            label=if suggestions { "Đang tải tác giả đề xuất…" } else { "Đang tìm tác giả…" } />
     }
 }
 
@@ -252,7 +251,8 @@ fn AuthorResults(
         <Show when=move || results.with(|state| state.rows.is_empty())>
             <SearchEmpty q clear />
         </Show>
-        <ul class="vk-author-search__list" id="author-search-list" role="list">
+        <ul class="vk-author-search__list" id="author-search-list" role="list"
+            aria-busy=move || results.with(|state| state.appending).to_string()>
             <For each=move || results.with(|state| state.rows.clone())
                 key=|row| (row.author.handle.clone(), row.author.pen_name.clone())
                 children=move |row| {
@@ -286,25 +286,27 @@ fn AuthorResults(
                     {restart.then(|| view! { <FirstSearchPage q on_restart /> })}
                 </div> }
             }))}
-            <Show when=move || results.with(|state| state.appending)>
-                <p role="status">"Đang tải thêm tác giả…"</p>
-            </Show>
             <Show when=move || results.with(|state| state.next.is_some())>
-                <a id="author-search-more" class="vk-ui-link"
-                    aria-disabled=move || results.with(|state| state.appending).then_some("true")
-                    href=move || results.with(|state| q.with_value(|q| author_search_href(q, state.next.as_deref())))
-                    on:click=move |event| {
-                        #[cfg(feature = "browser")]
-                        if ordinary_click(&event) && append() {
-                            event.prevent_default();
-                        }
-                        #[cfg(not(feature = "browser"))]
-                        let _ = event;
-                    }>
-                    {move || results.with(|state| if state.append_error.is_some() {
-                        "Thử tải thêm"
-                    } else { "Tải thêm tác giả" })}
-                </a>
+                <div class="flex flex-wrap items-center gap-vk-2">
+                    <a id="author-search-more" class="vk-ui-link"
+                        aria-disabled=move || results.with(|state| state.appending).then_some("true")
+                        href=move || results.with(|state| q.with_value(|q| author_search_href(q, state.next.as_deref())))
+                        on:click=move |event| {
+                            #[cfg(feature = "browser")]
+                            if ordinary_click(&event) && append() {
+                                event.prevent_default();
+                            }
+                            #[cfg(not(feature = "browser"))]
+                            let _ = event;
+                        }>
+                        {move || results.with(|state| if state.append_error.is_some() {
+                            "Thử tải thêm"
+                        } else { "Tải thêm tác giả" })}
+                    </a>
+                    <Show when=move || results.with(|state| state.appending)>
+                        <crate::ui::PendingRead label="Đang tải thêm tác giả…" />
+                    </Show>
+                </div>
             </Show>
             <Show when=move || has_cursor && !results.with(|state|
                 state.append_error == Some(LoadError::Invalid(InvalidRead::RestartCursor)))>

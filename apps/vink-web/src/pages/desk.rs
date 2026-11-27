@@ -750,8 +750,8 @@ fn CreateNotice(
             <div data-testid="create-notice" role="status">
                 <StatePanel content=PanelContent { kind: PanelKind::Error(kind), title: title.into(), message: detail.into(), actions: vec![], code: None }>
                     <Button variant=ButtonVariant::Filled id="reconcile-drafts"
-                        on_press=move |_| refresh.run(()) state=Signal::derive(move || blocked(loading.get()))>
-                        {move || if loading.get() { "Đang tải lại…" } else { "Tải lại danh sách" }}
+                        on_press=move |_| refresh.run(()) state=Signal::derive(move || if loading.get() { ActionState::pending("Đang tải lại…") } else { ActionState::Enabled })>
+                        "Tải lại danh sách"
                     </Button>
                 </StatePanel>
             </div>
@@ -805,7 +805,8 @@ fn DraftListView(
             })
     });
     view! {
-        <div class="vk-draft-list gap-vk-3 [min-inline-size:0]">
+        <div class="vk-draft-list relative gap-vk-3 [min-inline-size:0]">
+            <crate::ui::RefreshProgress active=Signal::derive(move || loading.get() && !appending.get() && pages.with(|p| p.loaded)) />
             <div class="vk-draft-controls flex flex-wrap items-center justify-between gap-[8px] [min-inline-size:0]">
                 <Show when=move || ready.get() && !first_use.get()>
                     <CreateDraftControls creation can_create create create_format />
@@ -915,7 +916,7 @@ fn DraftListView(
                 <Show when=move || pages.with(|p| p.chain.next_cursor.is_some()) && !invalid_page()>
                     <Button variant=ButtonVariant::Outlined id="load-more-drafts" on_press=move |_| more.run(())
                         state=Signal::derive(move || if appending.get() { ActionState::pending("Đang tải…") } else { blocked(refresh_disabled.get()) })>
-                        {move || if appending.get() { "Đang tải…" } else if page_error.get().is_some() { "Thử tải thêm" } else if pages.with(|p| p.next_part()) { "Xem phần tiếp theo" } else { "Tải thêm" }}
+                        {move || if page_error.get().is_some() { "Thử tải thêm" } else if pages.with(|p| p.next_part()) { "Xem phần tiếp theo" } else { "Tải thêm" }}
                     </Button>
                 </Show>
                 <Show when=move || pages.with(|p| p.loaded && p.chain.next_cursor.is_none() && (!p.drafts.is_empty() || p.part > 1)) && !loading.get() && load_error.get().is_none()>
@@ -1088,7 +1089,7 @@ pub fn DraftEditor() -> impl IntoView {
     view! {
         <Meta name="robots" content="noindex" />
         <Suspense fallback=|| view! {
-            <DraftEditorFrame><EditorHeading label=Signal::stored("Bản nháp") /><p class="vk-muted">"Đang mở bản nháp…"</p></DraftEditorFrame>
+            <DraftEditorFrame><EditorHeading label=Signal::stored("Bản nháp") /><crate::ui::PendingRead label="Đang mở bản nháp…" /></DraftEditorFrame>
         }>
             {move || Suspend::new(async move {
                 match draft.await {
@@ -2267,7 +2268,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                         </div>
                         <BodyEditor source=body on_change=on_body_change on_ready=on_body_ready />
                         <Show when=move || body.state.get() == BodyState::Loading>
-                            <p class="vk-muted vk-editor-body__pending">"Đang mở trình soạn thảo…"</p>
+                            <crate::ui::PendingRead label="Đang mở trình soạn thảo…" class:vk-editor-body__pending=true />
                         </Show>
                         <Show when=move || body.state.get() == BodyState::Failed>
                             <InlineNotice tone=Tone::Error announce=Announce::Assertive
@@ -2326,7 +2327,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                                     view! { <p class="vk-editor-outline__empty">"Không mở được mục lục. Hãy tải lại trang."</p> }.into_any()
                                 } else if body.state.get() != BodyState::Ready || (snapshot.items.is_empty() && snapshot.status == OutlineStatus::Partial) {
                                     view! {
-                                        <p class="vk-editor-outline__empty">"Đang đọc mục lục…"</p>
+                                        <crate::ui::PendingRead label="Đang đọc mục lục…" />
                                     }
                                     .into_any()
                                 } else if snapshot.items.is_empty() {

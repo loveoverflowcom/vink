@@ -1,7 +1,61 @@
 // TAG-PR-06. Real server reads unless a case explicitly says transport fixture.
 // SQL publications in the dedicated phase qualify public reading, never author publication.
 import { discoveryChipGeometry } from './discovery-chip-geometry.mjs';
+import { holdAnswer } from './auth-browser-network.mjs';
 import { collectElementAccessibility } from './visual-evidence.mjs';
+async function publicLoading(page, args, check) {
+  // This is a client navigation into public results; the server resolves direct SSR entry.
+  await page.goto(args.base + '/?mode=authors');
+  await page.waitFor("document.documentElement.dataset.hydrated === 'true' && document.querySelector('#explore-mode-works')", 'authors ready for public navigation');
+  const held = await holdAnswer(page, 'GET', '/api/v1/works');
+  await page.click('#explore-mode-works');
+  check(await held.held() === 200, 'All results waits on the public list provider');
+  const arc = "document.querySelector('[data-testid=discovery-loading] .vk-ui-arc svg')";
+  await page.waitFor(arc, 'public loading gate elapsed');
+  const shell = () => page.eval("JSON.stringify([...document.querySelectorAll('.vk-explore__top, .vk-explore-modes, #bottom-navigation')].map(el=>{const {x,y,width,height}=el.getBoundingClientRect();return [x,y,width,height]}))");
+  const before = await shell();
+  const focus = await page.eval('document.activeElement.id');
+  await page.send('Emulation.setEmulatedMedia', {features:[{name:'prefers-reduced-motion',value:'no-preference'}]});
+  check(await page.eval("getComputedStyle("+arc+").animationName==='vk-ui-spin' && getComputedStyle("+arc+").animationIterationCount==='infinite' && !!"+arc+".closest('[aria-busy=true]') && !document.querySelector('[data-feed-state=loading]')"), 'public results expose their own active MicroArc');
+  await page.send('Emulation.setEmulatedMedia', {features:[{name:'prefers-reduced-motion',value:'reduce'}]});
+  check(await page.eval("getComputedStyle("+arc+").animationIterationCount==='0' || getComputedStyle("+arc+").animationName==='none'"), 'reduced motion leaves a static public indicator');
+  await held.finish();
+  await page.waitFor("document.querySelector('#public-results') && !document.querySelector('[data-testid=discovery-loading]')", 'All results releases independently');
+  check(before === await shell() && focus === await page.eval('document.activeElement.id'), 'loading and success preserve shell geometry and focus');
+  await page.send('Emulation.setEmulatedMedia', {features:[]});
+}
+
+async function invalidCursorRecovery(page, args, check) {
+  const invalid = await fetch(args.base + '/?cursor=khong-hop-le');
+  check(invalid.status === 422 && (await invalid.text()).includes('Về trang đầu'), 'invalid cursor is recoverable SSR 422');
+  await page.viewport(320, 480);
+  await page.goto(args.base + '/?cursor=khong-hop-le');
+  await page.waitFor("document.querySelector('#restart-public')", 'native invalid recovery');
+  check(await page.eval("!document.querySelector('.vk-empty-state__art')"), '#258 invalid cursor is an error, without artwork');
+  check(await page.eval(`(async () => {
+    document.documentElement.style.fontSize = '200%';
+    await document.fonts.ready;
+    const panel = document.querySelector('[data-testid=public-invalid]');
+    const restart = panel.querySelector('#restart-public');
+    restart.focus();
+    const rect = restart.getBoundingClientRect();
+    return panel.querySelectorAll('a').length === 1 && restart.getAttribute('href') === '/'
+      && restart.textContent.trim() === 'Về trang đầu' && panel.querySelector('h2')
+      && panel.querySelectorAll('[role=alert]').length === 1
+      && getComputedStyle(restart).textDecorationLine === 'none'
+      && rect.width <= innerWidth && rect.height >= 44;
+  })()`), 'bare invalid cursor has one usable recovery at 320px / 200%');
+  await page.goto(args.base + '/?q=mua&cursor=khong-hop-le');
+  await page.waitFor("document.querySelector('#restart-public')", 'filtered invalid recovery');
+  check(await page.eval(`(() => {
+    const [first, clear] = document.querySelectorAll('[data-testid=public-invalid] a');
+    const a = first.getBoundingClientRect(), b = clear.getBoundingClientRect();
+    return first.getAttribute('href') === '/?q=mua' && clear.getAttribute('href') === '/'
+      && clear.textContent.trim() === 'Xóa tìm kiếm' && (b.top >= a.bottom || a.right <= b.left);
+  })()`), 'filtered cursor has two distinct usable native destinations');
+  await page.viewport(1440);
+}
+
 export async function discoveryReading(page, { args, check, textContrast }) {
   const ready = async () => page.waitFor("document.documentElement.dataset.hydrated === 'true' && document.querySelector('#public-query')", 'discovery hydration');
   const goto = async path => { await page.goto(args.base + path); await ready(); };
@@ -451,19 +505,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   const unknown = await fetch(args.base + '/the/khong-ton-tai-100');
   const unknownHtml = await unknown.text();
   check(unknown.status === 404 && unknownHtml.includes('Không tìm thấy thẻ này') && !unknownHtml.includes('/pkg/empty/'), 'unknown tag has its own SSR 404 without absence artwork');
-  const invalid = await fetch(args.base + '/?cursor=broken');
-  check(invalid.status === 422 && (await invalid.text()).includes('Thử từ trang đầu'), 'invalid cursor is recoverable SSR 422');
-  await page.viewport(320, 480);
-  await goto('/?cursor=broken');
-  check(await page.eval("!document.querySelector('.vk-empty-state__art')"), '#258 invalid cursor is an error, without artwork');
-  check(await page.eval(`(async () => {
-    document.documentElement.style.fontSize = '200%';
-    await document.fonts.ready;
-    const restart = document.querySelector('#restart-public'), clear = restart.nextElementSibling;
-    return clear.matches('a[href="/"]') &&
-      clear.getBoundingClientRect().top - restart.getBoundingClientRect().bottom >= 7;
-  })()`), 'invalid cursor recovery links have distinct rows at 320px / 200%');
-  await page.viewport(1440);
+  await invalidCursorRecovery(page, args, check);
 
   // Native browser GET, with page JS disabled and WASM preloads blocked.
   // A decoded image from an earlier matrix must not bypass either failure fixture.
@@ -870,6 +912,8 @@ async function emptyRefreshFocus(page, {args, check}) {
 }
 
 export async function discoveryCorpus(page, { args, check }) {
+  await publicLoading(page, args, check);
+  await invalidCursorRecovery(page, args, check);
   await discoveryChipGeometry(page, { args, check });
   const load = async path => (await fetch(args.base+path)).json();
   const catalog = await load('/api/v1/tags');

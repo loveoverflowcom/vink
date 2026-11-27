@@ -357,7 +357,7 @@ pub(super) fn ActiveFollowRegion(
             return (false, "");
         }
         controller.with(|c| match c.phase() {
-            FollowPhase::Loading => (false, "Đang kiểm tra trạng thái theo dõi…"),
+            FollowPhase::Loading => (false, ""),
             FollowPhase::SelfProfile(_) => (false, ""),
             FollowPhase::Unavailable | FollowPhase::Gone => {
                 (false, "Hiện không thể theo dõi tác giả này.")
@@ -417,6 +417,9 @@ pub(super) fn ActiveFollowRegion(
                 </Button>
             </Show>
           </div>
+          <Show when=move || !is_owner.get() && controller.with(|c| matches!(c.phase(), FollowPhase::Loading))>
+              <crate::ui::PendingRead label="Đang kiểm tra trạng thái theo dõi…" />
+          </Show>
           <p id="follow-status" role="status" aria-atomic="true"
               data-error=move || status_info.get().0.then_some("true")>
               {move || status_info.get().1}

@@ -764,7 +764,7 @@ fn CredentialSettings(epoch: u64, now: ReadSignal<Millis>) -> impl IntoView {
     view! {
         <div class="vk-account-form" id="password-credential-status">
             {move || match status.get() {
-                Credential::Loading | Credential::Reconciling => view! { <p role="status">"Đang kiểm tra cách đăng nhập…"</p> }.into_any(),
+                Credential::Loading | Credential::Reconciling => view! { <crate::ui::PendingRead label="Đang kiểm tra cách đăng nhập…" /> }.into_any(),
                 Credential::Present => view! {
                     <p role="status">"Tài khoản đã có thông tin đăng nhập bằng mật khẩu."</p>
                 }.into_any(),

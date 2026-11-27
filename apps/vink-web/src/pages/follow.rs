@@ -238,13 +238,16 @@ pub(super) fn ProfileRelationships(
             Ok(facts) => facts,
             Err(failed) => return view! {
                 <div id="profile-relationships" class="vk-profile-relationships">
-                    <p role="status">{if failed { "Chưa tải được danh sách và số đếm theo dõi." }
-                        else { "Đang cập nhật danh sách và số đếm theo dõi…" }}</p>
-                    {failed.then(|| view! {
-                        <Button id="profile-relationships-retry" variant=ButtonVariant::Tonal on_press=on_retry>
-                            "Thử lại thông tin theo dõi"
-                        </Button>
-                    })}
+                    {if failed {
+                        view! {
+                            <p role="status">"Chưa tải được danh sách và số đếm theo dõi."</p>
+                            <Button id="profile-relationships-retry" variant=ButtonVariant::Tonal on_press=on_retry>
+                                "Thử lại thông tin theo dõi"
+                            </Button>
+                        }.into_any()
+                    } else {
+                        view! { <crate::ui::PendingRead label="Đang cập nhật danh sách và số đếm theo dõi…" /> }.into_any()
+                    }}
                 </div>
             }.into_any(),
         };
@@ -421,7 +424,7 @@ fn RelationshipListPage(
                     view! { <span></span> }.into_any()
                 }
             }
-            <Transition fallback=|| view! { <p role="status">"Đang mở danh sách…"</p> }>
+            <Transition fallback=|| view! { <crate::ui::PendingRead label="Đang mở danh sách…" /> }>
                 {move || data.get().map(|(_, result)| view! {
                     <RelationshipListProjection
                         name=name_for_view.get_value()
@@ -817,7 +820,9 @@ fn render_list_status(
 ) -> AnyView {
     match state {
         #[cfg(feature = "browser")]
-        LiveListState::Loading => view! { <p role="status">"Đang tải danh sách…"</p> }.into_any(),
+        LiveListState::Loading => {
+            view! { <crate::ui::PendingRead label="Đang tải danh sách…" /> }.into_any()
+        }
         LiveListState::Page { .. } => ().into_any(),
         LiveListState::Alias { href } => {
             super::handle::redirect_alias(

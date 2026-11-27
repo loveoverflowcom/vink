@@ -26,7 +26,7 @@ pub(super) fn OwnProfileHost(scope: String) -> impl IntoView {
         async move { api::load_own_profile().await }
     });
     view! {
-        <Suspense fallback=|| view! { <p role="status">"Đang tải hồ sơ của bạn…"</p> }>
+        <Suspense fallback=|| view! { <crate::ui::PendingRead label="Đang tải hồ sơ của bạn…" /> }>
             {move || loaded.get().map(|result| match result {
                 Ok(profile) if same_owner(session, key, &profile) =>
                     view! { <ProfileForm scope=key initial=profile /> }.into_any(),
