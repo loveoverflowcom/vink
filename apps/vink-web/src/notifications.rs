@@ -1,6 +1,6 @@
 //! Web entry points for Notifications. Private data starts only in the browser.
 use leptos::prelude::*;
-use vink_ui::{BadgeState, Icon, IconName, NavUtility, NotificationBadge};
+use vink_ui::{BadgeState, IconName, NavUtility, NotificationBadge};
 
 use crate::account::Session;
 use crate::session::Standing;
@@ -19,7 +19,6 @@ pub(crate) use inbox::{InboxPage, InboxPopover};
 
 pub(crate) const INBOX_PATH: &str = "/thong-bao";
 pub(crate) const BELL: &str = "notification-bell";
-pub(crate) const MOBILE_BELL: &str = "notification-bell-mobile";
 pub(crate) const POPOVER: &str = "notification-popover";
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -61,7 +60,6 @@ pub(crate) struct Notifications {
     count: RwSignal<BadgeState>,
     count_failed: RwSignal<bool>,
     offline: RwSignal<bool>,
-    large_text: RwSignal<bool>,
     #[cfg(feature = "browser")]
     arrived_from_app: RwSignal<bool>,
     inbox: RwSignal<state::Inbox>,
@@ -72,18 +70,13 @@ pub(crate) struct Notifications {
 }
 
 impl Notifications {
-    pub(crate) fn provide(
-        session: Session,
-        open: Signal<bool>,
-        large_text: RwSignal<bool>,
-    ) -> Self {
+    pub(crate) fn provide(session: Session, open: Signal<bool>) -> Self {
         let this = Self {
             session,
             page_access: Memo::new(move |_| PageAccess::from_session(session)),
             count: RwSignal::new(BadgeState::Hidden),
             count_failed: RwSignal::new(false),
             offline: RwSignal::new(false),
-            large_text,
             #[cfg(feature = "browser")]
             arrived_from_app: RwSignal::new(false),
             inbox: RwSignal::new(state::Inbox::default()),
@@ -110,8 +103,12 @@ impl Notifications {
         this
     }
 
-    fn available(self) -> bool {
+    pub(crate) fn available(self) -> bool {
         self.session.notification_scope.with(Option::is_some)
+    }
+
+    pub(crate) fn badge_state(self) -> Signal<BadgeState> {
+        self.count.into()
     }
 
     pub(crate) fn current() -> Self {
@@ -144,33 +141,6 @@ pub(crate) fn RailBell(
             controls=POPOVER badge accessible_label=name /> }
             .into_any()
         }
-    }
-}
-
-#[component]
-pub(crate) fn MobileBell() -> impl IntoView {
-    let notifications = Notifications::current();
-    view! {
-        <Show when=move || notifications.available()>
-            <a id=MOBILE_BELL class="vk-notif-mobile-bell" href=INBOX_PATH
-                data-large-text=move || notifications.large_text.get().to_string()
-                aria-label=move || notifications.count.get().trigger_name("Thông báo")
-                on:keydown=move |event: leptos::ev::KeyboardEvent| {
-                    if event.key() == " " && !event.repeat() {
-                        event.prevent_default();
-                        #[cfg(feature = "browser")]
-                        {
-                            use leptos::wasm_bindgen::JsCast;
-                            if let Some(link) = event.current_target().and_then(|el| el.dyn_into::<web_sys::HtmlElement>().ok()) {
-                                link.click();
-                            }
-                        }
-                    }
-                }>
-                <Icon name=IconName::NotificationsNone />
-                <NotificationBadge state=notifications.count />
-            </a>
-        </Show>
     }
 }
 

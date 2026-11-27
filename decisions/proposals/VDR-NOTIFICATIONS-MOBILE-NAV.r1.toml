@@ -1,0 +1,19 @@
+version = 1
+id = "VDR-NOTIFICATIONS-MOBILE-NAV"
+revision = 1
+
+[content]
+kind = "product"
+domain = "notifications"
+title = "Đích Thông báo trong thanh điều hướng mobile Web"
+resolution = """
+Dưới 760 CSS px, thanh điều hướng Web có thứ tự Khám phá, Bàn viết, Thông báo, Tài khoản khi phiên có quyền thông báo đã xác nhận. Thông báo mở /thong-bao và hiển thị badge của phiên. Khách và phiên chưa đủ quyền giữ Khám phá, Bàn viết, Tài khoản hoặc Đăng nhập theo khả năng xác thực. Bỏ chuông riêng khỏi header Khám phá, Bàn viết và hero Tài khoản.
+"""
+rationale = """
+Chủ sản phẩm xác nhận trong #608 (https://github.com/loveoverflowcom/vink/issues/608) ngày 27/11/2026: “Để cho đơng giản, cứ để 4 tab cho clean code, không sao đâu, làm sạch code và để 4 tab phần này, rà soát nữa nhé.” Delta thay riêng phần vị trí chuông mobile và quy tắc ba đích cũ của VDR-NOTIFICATIONS-DESIGN@r1. Màu badge và vị trí chuông desktop của r1 vẫn chờ signoff.
+"""
+requires = ["VDR-DECISION-SIGNOFF@r1"]
+related_ids = [
+    "NOTIF-06",
+    "NOTIF-10",
+]

@@ -186,18 +186,9 @@ a {
 /* The Tôi viewport removes this inset while the full-height auth entry is mounted. */
 .vk-me { padding-block-start: var(--vk-space-8); }
 .vk-account-hero { container-type: inline-size; }
-.vk-account-status {
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-areas: "avatar identity bell";
-}
-.vk-account-status > .vk-account-avatar { grid-area: avatar; }
-.vk-account-identity { grid-area: identity; }
-.vk-account-status > .vk-notif-mobile-bell { grid-area: bell; justify-self: end; }
+.vk-account-status { grid-template-columns: auto minmax(0, 1fr); }
 @container (max-width: 24rem) {
-  .vk-account-status {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas: "avatar bell" "identity identity";
-  }
+  .vk-account-status { grid-template-columns: minmax(0, 1fr); }
   .vk-account-status > .vk-account-avatar { justify-self: start; }
 }
 .vk-account-status :is(h1, p) { margin: 0; }
@@ -2566,72 +2557,6 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
   pointer-events: none;
   inline-size: 1rem;
   block-size: 1px;
-}
-
-.vk-notif-mobile-bell { display: none; }
-
-@media (max-width: 759px) {
-  .vk-notif-mobile-bell {
-    position: relative;
-    display: inline-grid;
-    flex: 0 0 48px;
-    place-items: center;
-    inline-size: 48px;
-    block-size: 48px;
-    margin-inline-start: auto;
-    border-radius: var(--vk-radius-control-48);
-    color: var(--vk-on-surface);
-    text-decoration: none;
-  }
-  .vk-notif-mobile-bell:hover { background: var(--vk-state-hover); }
-  .vk-notif-mobile-bell .vk-ui-icon,
-  .vk-explore__top:has(.vk-notif-mobile-bell) .vk-search-launcher .vk-ui-icon,
-  .vk-desk-heading:has(.vk-notif-mobile-bell) .vk-search-launcher .vk-ui-icon {
-    inline-size: 30px;
-    block-size: 30px;
-  }
-  .vk-notif-mobile-bell .vk-ui-badge {
-    position: absolute;
-    inset-block-start: 3px;
-    inset-inline-end: 0;
-    box-shadow: 0 0 0 2px var(--vk-bg-page);
-  }
-  :is(.vk-explore__top, .vk-desk-heading):has(> .vk-notif-mobile-bell) {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
-  }
-  .vk-explore__top > .vk-notif-mobile-bell,
-  .vk-desk-heading > .vk-notif-mobile-bell { grid-area: 1 / 3; }
-  .vk-explore__top:has(> .vk-notif-mobile-bell) > .vk-discovery-toolbar,
-  .vk-desk-heading:has(> .vk-notif-mobile-bell) > .vk-desk-heading__actions { grid-area: 1 / 2; }
-  .vk-desk-heading:has(> .vk-notif-mobile-bell) > .vk-draft-search { grid-column: 1 / -1; }
-}
-
-@media (max-width: 759px) {
-  :is(.vk-explore__top, .vk-desk-heading):has(> .vk-notif-mobile-bell[data-large-text="true"]) {
-    grid-template-columns: minmax(0, 1fr) 48px;
-  }
-  :is(.vk-explore__top, .vk-desk-heading) > .vk-notif-mobile-bell[data-large-text="true"] { grid-area: 1 / 2; }
-  .vk-discovery:not(.vk-discovery--tag)
-    .vk-explore__top:has(> .vk-notif-mobile-bell) > .vk-explore__heading {
-      position: static;
-      inline-size: auto;
-      block-size: auto;
-      margin: 0;
-      overflow: visible;
-      clip-path: none;
-      white-space: normal;
-  }
-  :is(.vk-explore__top, .vk-desk-heading):has(> .vk-notif-mobile-bell[data-large-text="true"])
-    > :is(.vk-discovery-toolbar, .vk-desk-heading__actions) { grid-area: 2 / 1 / auto / -1; }
-}
-@media (max-width: 359px) {
-  :is(.vk-explore__top, .vk-desk-heading):has(> .vk-notif-mobile-bell) {
-    grid-template-columns: minmax(0, 1fr) 48px;
-  }
-  :is(.vk-explore__top, .vk-desk-heading) > .vk-notif-mobile-bell { grid-area: 1 / 2; }
-  :is(.vk-explore__top, .vk-desk-heading):has(> .vk-notif-mobile-bell)
-    > :is(.vk-discovery-toolbar, .vk-desk-heading__actions) { grid-area: 2 / 1 / auto / -1; }
 }
 
 .vk-notif-popover {

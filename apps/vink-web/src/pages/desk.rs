@@ -78,7 +78,6 @@ fn DeskHeading(
                 </span>
             })}
             </div>
-            <crate::notifications::MobileBell />
             {children.map(|slot| slot())}
         </header>
     }

@@ -191,7 +191,11 @@ async function quietListSurfaces(page, selector, scenario) {
   })()`), `${scenario}: full-row links are separated by space and flat tone, without row rules or endpoint chrome`);
 }
 
-async function bottomNavigationGeometry(page, scenario, accountLabel = 'Tài khoản') {
+const publicBottomRoutes = ['/', '/ban-viet', '/toi'];
+const eligibleBottomRoutes = ['/', '/ban-viet', '/thong-bao', '/toi'];
+
+async function bottomNavigationGeometry(page, scenario, accountLabel = 'Tài khoản', routes = publicBottomRoutes) {
+  const labels = { '/': 'Khám phá', '/ban-viet': 'Bàn viết', '/thong-bao': 'Thông báo', '/toi': accountLabel };
   if (!await page.eval(`document.querySelector('.vk-ui-bottom-nav').getClientRects().length > 0`)) return;
   const hydrated = await page.eval(`document.documentElement.dataset.hydrated === 'true'`);
   if (hydrated) {
@@ -200,29 +204,34 @@ async function bottomNavigationGeometry(page, scenario, accountLabel = 'Tài kho
   } else {
     await page.eval(`document.fonts.ready`);
   }
-  check(await page.eval(`(() => {
+  const dimensions = await page.eval(`(() => {
     const bar = document.querySelector('.vk-ui-bottom-nav'), b = bar.getBoundingClientRect();
     const links = [...bar.querySelectorAll('a')];
-    return links.map(a => a.querySelector('.vk-ui-nav-item__label').textContent).join('|') === ${JSON.stringify('Khám phá|Bàn viết|' + accountLabel)} && links.every(a => {
+    return links.map(a => {
       const r = a.getBoundingClientRect(), label = a.querySelector('.vk-ui-nav-item__label');
       const l = label.getBoundingClientRect(), range = document.createRange();
       range.selectNodeContents(label);
-      return r.width >= 44 && r.height >= 44 && r.left >= b.left && r.right <= b.right &&
+      const lineHeight = parseFloat(getComputedStyle(label).lineHeight);
+      const fits = r.width >= 44 && r.height >= 44 && r.left >= b.left && r.right <= b.right + 1 &&
         r.top >= b.top && r.bottom <= b.bottom && label.scrollWidth <= label.clientWidth + 1 &&
-        l.height <= parseFloat(getComputedStyle(label).lineHeight) * 2 + 1 &&
+        l.height <= lineHeight * 2 + 1 &&
         [...range.getClientRects()].every(t => t.left >= r.left - 1 && t.right <= r.right + 1 && t.top >= r.top && t.bottom <= r.bottom);
+      return { href: a.getAttribute('href'), label: label.textContent, fits, width: r.width, lines: l.height / lineHeight };
     });
-  })()`), `${scenario}: all three labels fit in at most two lines inside targets >=44px`);
+  })()`);
+  check(dimensions.map(item => item.href).join('|') === routes.join('|') &&
+    dimensions.every(item => item.fits && item.label === labels[item.href]),
+    `${scenario}: navigation labels fit in two lines inside targets >=44px (${JSON.stringify(dimensions)})`);
   check(await page.eval(`document.querySelector('.vk-ui-bottom-nav').getBoundingClientRect().height <= innerHeight * 0.18`), `${scenario}: bottom navigation leaves at least 82% of viewport height for the page`);
 }
 
 // Compare the icon row and the first rendered text line, never the centre of the
 // whole label: one- and two-line labels intentionally have different heights.
-async function bottomNavigationAlignment(page, scenario, accountLabel = 'Tài khoản') {
+async function bottomNavigationAlignment(page, scenario, accountLabel = 'Tài khoản', routes = publicBottomRoutes) {
   if (!await page.eval(`document.querySelector('.vk-ui-bottom-nav').getClientRects().length > 0`)) return;
-  await bottomNavigationGeometry(page, scenario, accountLabel);
+  await bottomNavigationGeometry(page, scenario, accountLabel, routes);
   const inspected = await page.eval(buildNavInspectionScript('.vk-ui-bottom-nav'));
-  const evalResult = evaluateNavAlignment(inspected.items, { tolerancePx: 1, maxLines: 2, checkSameRow: true, expectedCount: 3 });
+  const evalResult = evaluateNavAlignment(inspected.items, { tolerancePx: 1, maxLines: 2, checkSameRow: true, expectedCount: routes.length });
   check(evalResult.ok, `${scenario}: equal targets, icon centres, first label lines and label font align within 1px: ${evalResult.reasons.join('; ') || JSON.stringify({ iconDelta: evalResult.maxIconCenterDelta, firstLineDelta: evalResult.maxFirstLineDelta, lineCounts: evalResult.lineCounts })}`);
   const toiAx = await collectElementAccessibility(page, '.vk-ui-bottom-nav a[href="/toi"]');
   const routePath = await page.eval(`location.pathname`);
@@ -249,13 +258,13 @@ async function bottomNavigationAlignment(page, scenario, accountLabel = 'Tài kh
   }));
 }
 
-async function bottomNavigationAnatomy(page, route, scenario, hasAccountAvatar = true) {
+async function bottomNavigationAnatomy(page, route, scenario, hasAccountAvatar = true, routes = publicBottomRoutes) {
   const items = await page.eval(buildNavIndicatorInspectionScript());
-  check(items.map(item => item.href).join('|') === '/|/ban-viet|/toi' &&
+  check(items.map(item => item.href).join('|') === routes.join('|') &&
     items.every(item => item.current === (item.href === route ? 'page' : null)),
   `${scenario}: route order and exactly one matching aria-current`);
   check(items.every(item => item.flatTarget), `${scenario}: selected background must not cover the whole destination`);
-  const isolated = items.every(item => item.fill === item.expectedFill && item.leadingInside && item.labelOutside) && items[2].avatar === hasAccountAvatar;
+  const isolated = items.every(item => item.fill === item.expectedFill && item.leadingInside && item.labelOutside) && items.find(item => item.href === '/toi')?.avatar === hasAccountAvatar;
   if (hasAccountAvatar) await accountNavigationGeometry(page, '#bottom-navigation a[href="/toi"]', true, scenario);
   check(isolated, `${scenario}: selected Lavender indicator contains only the icon/avatar; labels sit below` +
     (isolated ? '' : ` (${JSON.stringify(items)})`));
@@ -312,22 +321,28 @@ async function bottomNavigationStates(page) {
   }
 }
 
-async function bottomNavigationSafeArea(page) {
+async function bottomNavigationSafeArea(page, routes = publicBottomRoutes) {
   await page.viewport(390);
-  await page.eval(`document.documentElement.style.fontSize = ''`);
   const bar = `document.querySelector('.vk-ui-bottom-nav')`;
-  const before = await page.eval(`({ height: ${bar}.getBoundingClientRect().height, padding: parseFloat(getComputedStyle(${bar}).paddingBottom) })`);
+  const clearInsets = { insets: { bottom: 0, left: 0, right: 0 } };
   try {
-    await page.send('Emulation.setSafeAreaInsetsOverride', { insets: { bottom: 24, left: 20, right: 20 } });
+    await page.send('Emulation.setSafeAreaInsetsOverride', clearInsets);
   } catch (error) {
     if (!String(error).includes("wasn't found")) throw error;
     console.log('  UNSUPPORTED  Chrome CDP safe-area inset overrides');
     return;
   }
   try {
+    await page.eval(`(async () => {
+      document.documentElement.style.fontSize = '';
+      await document.fonts.ready;
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    })()`);
+    const before = await page.eval(`({ height: ${bar}.getBoundingClientRect().height, padding: parseFloat(getComputedStyle(${bar}).paddingBottom) })`);
+    await page.send('Emulation.setSafeAreaInsetsOverride', { insets: { bottom: 24, left: 20, right: 20 } });
     await page.waitFor(`${bar}.getBoundingClientRect().height > ${before.height} &&
       parseFloat(getComputedStyle(${bar}).paddingBottom) === ${before.padding + 24}`, 'bar grows around the safe area');
-    await bottomNavigationAlignment(page, '390px with emulated safe area');
+    await bottomNavigationAlignment(page, '390px with emulated safe area', 'Tài khoản', routes);
     check(await page.eval(`(() => {
       const bar = ${bar}, links = bar.querySelectorAll('a');
       const lastChoice = document.querySelector('#page-rail input:checked');
@@ -335,13 +350,13 @@ async function bottomNavigationSafeArea(page) {
       scrollTo(0, document.documentElement.scrollHeight);
       const r = bar.getBoundingClientRect();
       return links[0].getBoundingClientRect().left >= r.left + 20 &&
-        links[2].getBoundingClientRect().right <= r.right - 20 &&
-        links[2].getBoundingClientRect().bottom <= r.bottom - 24 &&
+        links[links.length - 1].getBoundingClientRect().right <= r.right - 20 &&
+        links[links.length - 1].getBoundingClientRect().bottom <= r.bottom - 24 &&
         document.activeElement === lastChoice &&
         lastChoice.closest('label').getBoundingClientRect().bottom <= r.top;
     })()`), 'safe-area padding and measured clearance leave the last focused control reachable');
   } finally {
-    await page.send('Emulation.setSafeAreaInsetsOverride', { insets: { bottom: 0, left: 0, right: 0 } });
+    await page.send('Emulation.setSafeAreaInsetsOverride', clearInsets);
   }
 }
 
@@ -3583,7 +3598,7 @@ async function draftDashboard(page) {
         ['#drafts','.vk-draft-controls','#draft-results'].every(s=>Math.abs(document.querySelector(s).getBoundingClientRect().left-h.left)<1);
     })()`), `#213 ${theme} ${width}/${scale}: two-line default, complete DOM title, metadata and common list/search axis`);
     await page.eval(`document.querySelector('#drafts').scrollIntoView({block:'start'})`);
-    const anchors = `['#desk-title','.vk-desk-heading__privacy','.vk-notif-mobile-bell']
+    const anchors = `['#desk-title','.vk-desk-heading__privacy']
       .map(s => document.querySelector('#heading ' + s)).filter(el => el?.checkVisibility())
       .map(el => { const r = el.getBoundingClientRect(); return [r.left, r.top + scrollY, r.width, r.height]; }).flat()`;
     const closed = await page.eval(anchors);
@@ -3592,7 +3607,7 @@ async function draftDashboard(page) {
     await page.eval(`Promise.all(document.querySelector('.vk-draft-search').getAnimations().map(a=>a.finished.catch(()=>{})))`);
     const opened = await page.eval(anchors);
     check(closed.length === opened.length && closed.every((v,i) => Math.abs(v-opened[i]) <= 1),
-      `#531 Desk ${theme} ${width}/${scale}: title, lock and bell remain anchored while the search dock pushes list tools below`);
+      `#531 Desk ${theme} ${width}/${scale}: title and lock remain anchored while the search dock pushes list tools below`);
     await searchBarGeometry(page,'#draft-search',`Desk ${width}/${scale}/${theme}`);
     if (([390,1440].includes(width) && scale === 100) || (width === 320 && scale === 200)) {
       await page.eval('scrollTo(0,0)');
@@ -6745,7 +6760,13 @@ try {
     await markdownReader(page, { args, check, textContrast });
   }
   else if (args.phase === 'auth') await authWeb(page, { args, check, openPage: (isolated) => openPage(cdp, isolated) });
-  else if (args.phase === 'notifications') await notifications(page, { args, check });
+  else if (args.phase === 'notifications') await notifications(page, { args, check,
+    checkBottomNavigation: async (page, route, scene) => {
+      await bottomNavigationAnatomy(page, route, scene, true, eligibleBottomRoutes);
+      await bottomNavigationAlignment(page, scene, 'Tài khoản', eligibleBottomRoutes);
+    },
+    checkSafeArea: page => bottomNavigationSafeArea(page, eligibleBottomRoutes),
+  });
   else if (args.phase === 'reader-auth-closed') {
     await closedAccountAppearance(page, { args, check });
     await readerAuthClosed(page, { args, check });

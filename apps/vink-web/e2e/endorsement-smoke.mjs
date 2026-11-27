@@ -245,7 +245,8 @@ export async function endorsementAsReader(page, { args, check, captureMatrix }) 
     await page.click('#work-endorsement a[href*="/tham/"]');
     await page.waitFor(`location.pathname.endsWith('/tham/${SAMPLE_REVISION}')
       && document.querySelector('main .vk-notif-endorsers li')
-      && !document.querySelector('#notification-bell-mobile')`, 'real public Thấm membership on the mobile route');
+      && !document.querySelector('#bottom-navigation [data-destination=notifications]')`,
+    'real public Thấm membership on mobile keeps public navigation for the development session');
     check(await page.eval(`(() => {
       const row = document.querySelector('main .vk-notif-endorsers li');
       const name = row.querySelector('.vk-ui-identity-name');

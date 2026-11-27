@@ -8,7 +8,9 @@ const json = path => JSON.parse(readFileSync(new URL(path, import.meta.url), 'ut
 const examples = json('../../../services/vink-app/contracts/http/v1/fixtures/notifications-examples.json');
 const gateway = json('../../../services/vink-app/contracts/http/v1/fixtures/notifications-gateway.json');
 const bell = '#notification-bell';
-const mobile = '#notification-bell-mobile';
+const mobile = '#bottom-navigation [data-destination=notifications]';
+const publicTabs = `[...document.querySelectorAll('#bottom-navigation a')].map(a => a.getAttribute('href')).join('|') === '/|/ban-viet|/toi'
+  && !document.querySelector(${JSON.stringify(mobile + ', ' + bell)})`;
 const popup = '#notification-popover';
 const inbox = '/api/v1/me/notifications';
 const read = `${inbox}/read`;
@@ -31,7 +33,7 @@ async function fixture(page) {
   const started = performance.now();
   const state = { session: 'A', countMode: 'fresh', staleCount: 8, firstFailure: false, count: 3, snapshot: 45, seen: 0,
     pageSize: null, marked: false, moreFailure: true, holdCount: false, holdMark: false,
-    markFailure: false, holdFirst: false, checkFailure: false, holdSession: false, standing: 'anonymous' };
+    markFailure: false, holdFirst: false, checkFailure: false, holdSession: false, scopeAllowed: true, standing: 'anonymous' };
   const held = new Map();
   const root = gateway.response.items[0];
   const [tham, rejected] = examples.inbox.items;
@@ -79,7 +81,7 @@ async function fixture(page) {
         return;
       }
     } else if (path === '/api/v1/auth/session/account') {
-      response = scope ? [200, { principal_id: sessionId[scope], display_name: `Bút danh ${scope}`, notification_scope: scope }]
+      response = scope ? [200, { principal_id: sessionId[scope], display_name: `Bút danh ${scope}`, notification_scope: state.scopeAllowed ? scope : null }]
         : [401, { error: { code: 'unauthenticated' } }];
     } else if (path.startsWith(inbox) && (!scope || expectScope !== scope)) {
       response = [401, { error: { code: 'unauthenticated' } }];
@@ -192,7 +194,7 @@ async function geometry(page, scope) {
   })()`);
 }
 
-const viewport = [320, 390, 834, 1024, 1440];
+const viewport = [320, 360, 390, 759, 760, 834, 1100, 1440];
 async function preferences(page, width, theme, scale, height = 900) {
   await page.viewport(width, height);
   await page.send('Emulation.setEmulatedMedia', { features: [
@@ -200,6 +202,7 @@ async function preferences(page, width, theme, scale, height = 900) {
   ] });
   await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 1, y: 1 });
   await page.eval(`(async () => {
+    document.documentElement.dataset.theme = '${theme}';
     document.documentElement.style.fontSize = '${scale}%';
     scrollTo(0, 0);
     await document.fonts.ready;
@@ -382,7 +385,7 @@ async function inboxSessionStates(page, { args, check }, controlled) {
   state.holdSession = true;
   await page.goto(args.base + inboxPath);
   await eventually(() => held.has('session'), 'initial session check is held');
-  check(await page.eval(`${loading} && !(${isMissing}) && ${noPrivate}`), '#575 unknown session is pending');
+  check(await page.eval(`${loading} && !(${isMissing}) && ${noPrivate} && (${publicTabs})`), '#575 pending session shows only public destinations');
   await held.get('session')();
   await page.waitFor(`${isMissing} || document.querySelector('main a[href="/toi"]')`, 'guest presentation settled');
   for (const [width, height, theme, scale] of [
@@ -400,7 +403,7 @@ async function inboxSessionStates(page, { args, check }, controlled) {
     && document.querySelector('main h1').textContent === 'Không tìm thấy trang này.'
     && document.title === 'Không tìm thấy — Vink'
     && document.querySelector('meta[name=robots][content=noindex]')
-    && !document.querySelector('#notification-page-title, main a[href="/toi"]')
+    && (${publicTabs}) && !document.querySelector('#notification-page-title, main a[href="/toi"]')
     && !document.querySelector('main').textContent.includes('Đăng nhập để xem thông báo')`),
   '#575 confirmed Anonymous uses shared NotFound at the Inbox URL');
   check(await page.eval('document.documentElement.scrollWidth <= innerWidth + 1'), '#575 guest NotFound at 320px and 200% fits the viewport');
@@ -437,9 +440,9 @@ async function inboxSessionStates(page, { args, check }, controlled) {
   state.checkFailure = true;
   await controlled.change('B');
   await eventually(() => held.has('session'), 'fenced session recheck is held');
-  await page.waitFor(`${loading} && ${noPrivate} && !(${isMissing})`, 'session fence removes rows, unread and actions while pending');
+  await page.waitFor(`${loading} && ${noPrivate} && !(${isMissing}) && (${publicTabs})`, 'session fence removes private navigation, rows and actions while pending');
   await held.get('session')();
-  await page.waitFor(`${sessionError} && ${noPrivate} && !(${loading}) && !(${isMissing})`, 'fenced 503 offers session retry without private DOM');
+  await page.waitFor(`${sessionError} && ${noPrivate} && !(${loading}) && !(${isMissing}) && (${publicTabs})`, 'fenced 503 offers session retry without private DOM');
   const sessionChecks = calls.filter(request => request.path === auth).length;
   state.checkFailure = false;
   await page.click(retry);
@@ -448,7 +451,15 @@ async function inboxSessionStates(page, { args, check }, controlled) {
     && await page.eval(`!document.querySelector('main').textContent.includes('${privateTitle}')`),
   '#575 retry checks session before restoring scoped rows');
   await controlled.change(null);
-  await page.waitFor(`${isMissing} && ${noPrivate}`, 'logout replaces the loaded Inbox with guest NotFound');
+  await page.waitFor(`${isMissing} && ${noPrivate} && (${publicTabs})`, 'logout restores public navigation and the shared guest NotFound');
+  state.scopeAllowed = false;
+  const scopedRequests = calls.filter(request => request.path.startsWith(inbox)).length;
+  await controlled.change('A');
+  await page.waitFor(`document.querySelector('main a[href="/toi"]') && ${noPrivate} && (${publicTabs})`,
+    'an active profile without notification scope keeps only public destinations');
+  check(calls.filter(request => request.path.startsWith(inbox)).length === scopedRequests,
+    '#608 scope-less active account issues no private notification requests');
+  state.scopeAllowed = true;
 
   state.standing = 'suspended';
   await controlled.change(null);
@@ -462,7 +473,7 @@ async function inboxSessionStates(page, { args, check }, controlled) {
   await page.goto(args.base + '/');
 }
 
-export async function notifications(page, { args, check }) {
+export async function notifications(page, { args, check, checkBottomNavigation, checkSafeArea }) {
   const controlled = await fixture(page);
   const { state, calls, held } = controlled;
   const latest = path => calls.findLast(request => request.path === path);
@@ -563,33 +574,34 @@ export async function notifications(page, { args, check }) {
   state.marked = false;
   await page.viewport(390);
   await page.waitFor(focused('#noi-dung'), 'resize returns focus to main');
-  check(await page.eval(`!document.querySelector('${popup}').open && ${visible(mobile)}
-    && document.querySelectorAll('.vk-ui-bottom-nav a').length === 3`), 'AC-01 mobile has a header bell and exactly three bottom destinations');
+  check(await page.eval(`!document.querySelector('${popup}').open && ${visible(mobile)} && !(${visible(bell)})`),
+    '#608 resize closes the popover and exposes the mobile tab');
   await page.click('#bottom-navigation a[href="/toi"]');
-  await page.waitFor(`location.pathname === '/toi' && document.querySelector('#page-account .vk-account-status ${mobile}')`,
-    '#520 mobile account card contains the enabled bell');
-  const mobileAccount = '#page-account .vk-account-status';
-  for (const [width, scale, theme] of [[700, 100, 'light'], [390, 100, 'light'], [390, 150, 'dark'], [320, 200, 'dark']]) {
-    await page.viewport(width);
-    await page.eval(`document.documentElement.dataset.theme = '${theme}'; document.documentElement.style.fontSize = '${scale}%'; scrollTo(0, 0)`);
-    check(await page.eval(`(() => {
-      const card = document.querySelector('${mobileAccount}');
-      const button = card.querySelector('${mobile}');
-      const title = card.querySelector('#me-title');
-      const illustration = card.querySelector('.vk-account-illustration');
-      const c = card.getBoundingClientRect(), b = button.getBoundingClientRect(), t = title.getBoundingClientRect();
-      // R5 gives the name its own row below the bell and avatar in the narrow card.
-      const fits = ${width === 700} ? t.right <= b.left : t.top >= b.bottom && Math.abs(t.width - c.width) <= 1;
-      return !illustration && title.matches('h1.vk-ui-type-title') && document.querySelectorAll('main h1').length === 1 &&
-        title.textContent.trim().length > 0 && title.textContent !== 'Tài khoản' && b.width >= 48 && b.height >= 48 &&
-        b.top >= c.top && b.bottom <= c.bottom && fits &&
-        document.documentElement.scrollWidth <= innerWidth;
-    })()`), `#520/#591 mobile ${width}px/${scale}% ${theme}: name and bell fit the expected card rows`);
-    await screenshot(`account-mobile-bell-${width}-${scale}-${theme}`, width, scale, theme);
+  await page.waitFor(`location.pathname === '/toi' && document.querySelector('#me-title')`, 'Tài khoản opened');
+  for (const [width, scale, theme, height] of [[390, 100, 'light', 844], [390, 150, 'dark', 844], [320, 200, 'dark', 800]]) {
+    await preferences(page, width, theme, scale, height);
+    await checkBottomNavigation(page, '/toi', `Tài khoản ${width}/${scale}/${theme}`);
+    check(await page.eval(`document.querySelectorAll('main h1').length === 1 &&
+      document.querySelector('#me-title').matches('h1.vk-ui-type-title') &&
+      !document.querySelector('main [href="/thong-bao"]') &&
+      document.documentElement.scrollWidth <= innerWidth`), '#608 Account keeps one readable title and has no header trigger');
+    await page.capture(`608-account-${width}-${scale}-${theme}`, {
+      scenario: '608-mobile-account', requestedScene: { width, height, scale, theme },
+      boundary: 'Product Chrome · CDP session and Notifications fixtures',
+    });
   }
-  await page.eval(`document.documentElement.style.fontSize = ''; document.querySelector('${mobile}').focus()`);
-  await page.key('Space');
-  await page.waitFor(`location.pathname === '/thong-bao' && document.querySelectorAll('main ${row}').length >= 3`, 'mobile account bell opens the inbox');
+  await preferences(page, 390, 'light', 100, 844);
+  await checkSafeArea(page);
+  await page.eval(`document.querySelector('${mobile}').focus()`);
+  await page.key('Enter');
+  await page.waitFor(`location.pathname === '/thong-bao' && document.querySelectorAll('main ${row}').length >= 3 &&
+    document.querySelector('${mobile}')?.getAttribute('aria-current') === 'page' && !document.querySelector('${popup}').open`,
+    '#608 Enter opens the selected Inbox tab with no popover');
+  await page.eval('history.back()');
+  await page.waitFor(`location.pathname === '/toi' && ${focused(mobile)}`, 'Back restores mobile navigation focus');
+  await page.eval('history.forward()');
+  await page.waitFor(`location.pathname === '/thong-bao' && document.querySelector('${mobile}')?.getAttribute('aria-current') === 'page' &&
+    document.querySelectorAll('main ${row}').length >= 3`, 'Forward restores Inbox and selected tab');
   await page.eval(`[...document.querySelectorAll('main button')].find(el => el.textContent.includes('Xem thêm')).click()`);
   await page.waitFor(`document.querySelector('main .vk-notif-more [role=alert]')`, 'pagination error below list');
   check(await page.eval(`document.querySelectorAll('main ${row}').length === 3`), 'AC-03 failed continuation keeps the previous page');
@@ -643,6 +655,7 @@ export async function notifications(page, { args, check }) {
         const trigger = width < 760 ? mobile : bell;
         const modal = width >= 760 && scale === 100;
         await page.waitFor(`document.querySelector('${trigger}')?.tagName === '${modal ? 'BUTTON' : 'A'}'`, 'viewport-specific trigger');
+        if (width < 760) await checkBottomNavigation(page, '/', `Khám phá ${width}/${scale}/${theme}`);
         await screenshot(`notifications-after-${width}-${theme}-${scale}`, width, scale, theme);
         await page.click(trigger);
         const surface = modal ? popup : 'main .vk-notif-page';
@@ -674,6 +687,7 @@ export async function notifications(page, { args, check }) {
         report.at(-1).header = header;
         check(header.fit && header.wholeWords && header.standard && header.icon?.every(size => size === 24) && header.target.every(size => size >= 48),
           `#602 ${name}: whole title words, aligned 24px icon and transparent 48px target`);
+        if (width < 760) await checkBottomNavigation(page, '/thong-bao', name);
         await screenshot(name, width, scale, theme);
         if (modal) {
           check(await page.eval(`getComputedStyle(document.querySelector('${popup}')).animationName === 'none'`),
@@ -801,6 +815,80 @@ export async function notifications(page, { args, check }) {
   await sleep(150);
   check(await page.eval(`!document.body.textContent.includes('Thông báo của tài khoản B')
     && document.querySelector('${bell} .vk-ui-badge')?.hidden`), 'AC-02 A→B→A fences old private DOM and replies');
+
+  // A count update and viewport changes leave one stable navigation entry, without reading the inbox.
+  await preferences(page, 390, 'light', 100);
+  const writes = calls.filter(call => call.method === 'POST' && call.path.startsWith(inbox)).length;
+  const reads = calls.filter(call => call.path === inbox).length;
+  state.snapshot++;
+  state.count = 120;
+  await page.eval("window.dispatchEvent(new Event('online'))");
+  await page.waitFor(`document.querySelector('${mobile} .vk-ui-badge')?.textContent === '99+'`, 'mobile badge caps at 99+');
+  const countReads = calls.filter(call => call.path === `${inbox}/count`).length;
+  await page.viewport(760);
+  await page.waitFor(`${visible(bell)} && !(${visible(mobile)})`, 'desktop rail replaces mobile tab at 760');
+  await page.viewport(759);
+  await page.waitFor(`${visible(mobile)} && !(${visible(bell)}) && document.querySelector('${mobile} .vk-ui-badge')?.textContent === '99+'`,
+    'the same count returns to the mobile tab at 759');
+  const mobileName = await page.eval(`document.querySelector('${mobile}').getAttribute('aria-label')`);
+  const ax = await page.send('Accessibility.getFullAXTree');
+  check(mobileName.includes('99') && ax.nodes.some(node => node.role?.value === 'link' && node.name?.value === mobileName),
+    '#608 Chrome AX exposes the capped count on the link');
+  check(calls.filter(call => call.path === `${inbox}/count`).length === countReads &&
+    calls.filter(call => call.method === 'POST' && call.path.startsWith(inbox)).length === writes &&
+    calls.filter(call => call.path === inbox).length === reads, '#608 crossing 759/760 does not restart poll, open inbox or write Seen/Read');
+  await preferences(page, 320, 'dark', 200, 800);
+  await checkBottomNavigation(page, '/', 'Khám phá badge 99+ 320/200/Dark');
+  const badgeGeometry = await page.eval(`(() => {
+    const link = document.querySelector('${mobile}');
+    const cell = link.getBoundingClientRect();
+    const glyph = link.querySelector('svg[data-icon=notifications-none]').getBoundingClientRect();
+    const badge = link.querySelector('.vk-ui-badge').getBoundingClientRect();
+    const bar = link.closest('nav').getBoundingClientRect();
+    return { top: badge.top - bar.top, bottom: badge.bottom - (glyph.top + glyph.height / 2),
+      start: badge.left - cell.left, end: cell.right - badge.right };
+  })()`);
+  check(badgeGeometry.top >= 0 && badgeGeometry.bottom <= 0 && badgeGeometry.start >= 0 && badgeGeometry.end >= 0,
+    `#608 the 99+ badge leaves the bell centre clear at 320px/200% (${JSON.stringify(badgeGeometry)})`);
+  await page.capture('608-explore-badge-320-200-dark', {
+    scenario: '608-mobile-badge', requestedScene: { width: 320, height: 800, scale: 200, theme: 'dark' },
+    boundary: 'Product Chrome · CDP session and Notifications fixtures',
+  });
+  await page.goto(`${args.base}/thong-bao`);
+  await page.waitFor(`document.querySelector('${mobile}')?.getAttribute('aria-current') === 'page' &&
+    document.querySelector('main ${row}')`, 'direct Inbox entry selects the eligible tab');
+  await preferences(page, 320, 'dark', 200, 800);
+  await checkBottomNavigation(page, '/thong-bao', 'Inbox direct 320/200/Dark');
+  await page.capture('608-inbox-direct-320-200-dark', {
+    scenario: '608-inbox-direct', requestedScene: { width: 320, height: 800, scale: 200, theme: 'dark' },
+    boundary: 'Product Chrome · CDP session and Notifications fixtures',
+  });
+  await page.goto(`${args.base}/ban-viet`);
+  await page.waitFor(`${mounted} && ${visible(mobile)}`, 'Desk with eligible navigation');
+  await preferences(page, 320, 'dark', 200, 800);
+  await checkBottomNavigation(page, '/ban-viet', 'Bàn viết 320/200/Dark');
+  check(await page.eval(`!document.querySelector('main [href="/thong-bao"]')`),
+    '#608 Desk has one Notifications entry in the visible shell');
+  await page.goto(`${args.base}/tac-pham/${work}`);
+  await page.waitFor(`${mounted} && ${visible(mobile)}`, 'Reader with eligible navigation');
+  await checkBottomNavigation(page, '/', 'Reader mobile belongs to Khám phá');
+  await page.send('Emulation.setTouchEmulationEnabled', { enabled: true });
+  try {
+    const point = await page.eval(`(() => {
+      const r = document.querySelector('${mobile}').getBoundingClientRect();
+      return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+    })()`);
+    await page.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point] });
+    await page.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await page.waitFor(`location.pathname === '/thong-bao' &&
+      document.querySelector('${mobile}')?.getAttribute('aria-current') === 'page'`, 'native touch opens Inbox from Reader');
+  } finally {
+    await page.send('Emulation.setTouchEmulationEnabled', { enabled: false });
+  }
+  await page.goto(`${args.base}/ban-viet/${work}`);
+  await page.waitFor(`${mounted} && document.querySelector('#shell[data-hide-bar]') &&
+    !document.querySelector('#bottom-navigation').checkVisibility()`, 'editor retains the hidden-bar layout');
+  await preferences(page, 1440, 'light', 100);
 
   const selectedWork = controlled.rows[0].target;
   await page.goto(`${args.base}/ban-viet?review=${selectedWork.work_id}&revision=${selectedWork.revision_id}&decision=3`);

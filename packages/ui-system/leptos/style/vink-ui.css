@@ -1921,6 +1921,22 @@ a.vk-ui-byline__identity:focus-visible {
   z-index: 5;
 }
 
+/* Four or more cells need the available width for whole words at large text sizes.
+ * The inner focus ring leaves room for edge-to-edge targets; safe-area insets still apply. */
+@media (width < 400px) {
+  .vk-ui-bottom-nav:has(> .vk-ui-nav-item:nth-of-type(4)) {
+    column-gap: 0;
+    padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
+  }
+
+  /* Tighten tracking only as text grows. Keep the caption size and whole words,
+   * including a fractional pixel of glyph rounding on classic scrollbars. */
+  .vk-ui-bottom-nav:has(> .vk-ui-nav-item:nth-of-type(4)) .vk-ui-nav-item__label {
+    inline-size: calc(100% + 1px);
+    letter-spacing: min(0px, 1.28px - 0.08rem);
+  }
+}
+
 /* Equal grid targets stretch to the tallest label. Start each icon/label stack at
  * the same inset so a one-line label shares the first row of a two-line label. */
 .vk-ui-bottom-nav .vk-ui-nav-item {
@@ -2087,6 +2103,20 @@ a.vk-ui-byline__identity:focus-visible {
   inline-size: var(--vk-ui-shape-icon-size);
   block-size: var(--vk-ui-shape-icon-size);
   color: var(--vk-ui-shape-fg);
+}
+
+.vk-ui-bottom-nav .vk-ui-nav-item:has(.vk-ui-nav-item__badge) { position: relative; }
+.vk-ui-bottom-nav .vk-ui-nav-item__badge {
+  position: absolute;
+  display: flex;
+  inset-block-start: calc(-1 * min(var(--vk-space-1), 6px));
+  inset-inline-end: max(0px, 50% - 38px);
+}
+.vk-ui-bottom-nav .vk-ui-nav-item__badge .vk-ui-badge {
+  /* Keep the count above the glyph centre even at large text; the link names it in full. */
+  padding-inline: min(var(--vk-space-1), 4px);
+  font-size: min(var(--vk-type-caption-size), 16px);
+  box-shadow: 0 0 0 2px var(--vk-bg-nav);
 }
 
 .vk-ui-nav-utility:has(.vk-ui-nav-utility__badge) { position: relative; }

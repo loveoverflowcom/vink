@@ -24,7 +24,7 @@ Theo [quy ước LayoutSpec](../../.agents/skills/vink-layout-spec/references/la
 | Không tìm thấy | H1 Literata Title, mô tả, một link tonal có la bàn Explore trước nhãn “Về Khám phá”. Route sở hữu href, status và robots. |
 | Quay về | Back theo history dùng ArrowBack và fallback hiện có. Up là BackLink native tới parent. Close và Escape đóng overlay và trả focus. |
 
-Guest Inbox của #608 dùng NotFoundContent. #621 kế thừa EmptyState và bộ lọc đã áp dụng.
+Hộp thư của khách dùng chung NotFoundContent (#575, #603, #608). #621 kế thừa EmptyState và bộ lọc đã áp dụng.
 #624 kế thừa ReadFailure khi xử lý loading và DiscoveryFailure riêng.
 Ở 320 × 540 với chữ 200%, kiểm thứ tự Tab và hit-test CTA sau khi cuộn.
 
@@ -38,6 +38,9 @@ và rail dùng `bg-page` / `bg-nav`, popover dùng `surface`. Badge số dùng `
 ghi hai thay đổi so với 20/11 là badge đỏ và chuông dưới Bàn viết. Trạng thái `PENDING` chờ lời
 chủ sản phẩm xác nhận đúng revision và SHA-256 theo
 [VDR-DECISION-SIGNOFF@r1](../../decisions/signoffs/VDR-DECISION-SIGNOFF.r1.toml).
+[#608](https://github.com/loveoverflowcom/vink/issues/608) chốt riêng vị trí Thông báo trên mobile.
+[Delta TOML](../../decisions/proposals/VDR-NOTIFICATIONS-MOBILE-NAV.r1.toml) ghi lời chốt và giữ
+`PENDING` cho đến khi có signoff đúng revision/hash. Các phần còn lại của đề xuất R4 giữ trạng thái đã ghi.
 
 | Handoff | Đề xuất đang mô tả |
 | --- | --- |
@@ -61,19 +64,23 @@ Screen #shell — ≥ 760: rail + main; < 760: main + bottom bar
         Link #nav-me (Tôi)      — như hiện hành
     Region #noi-dung (main; không remount khi đổi khung)
     Overlay #notif-popover      — chỉ ≥ 760 và chữ < 150%
-  Region #bottom-bar (< 760): đúng 3 đích Khám phá · Bàn viết · Tôi (không có chuông)
-Hierarchy: chuông ngay dưới Bàn viết, cùng chữ, độ đậm, chiều cao (56) và kiểu outlined/filled với các đích rail; badge là điểm nhấn duy nhất của rail
-Sizing: rail 220/96 (size.rail-*), đích 56 bo 16 (radius.control-56); badge số 18
-Responsive: < 760 chuông chuyển lên header trang (§3); 760–1099 rail 96 nhãn dưới icon, badge ở góc icon;
-  ≥ 1100 rail 220 badge cuối hàng. Chữ ≥ 150%: chuông là link /thong-bao, không popover
-Themes: nền rail = bg-page; đang mở popover hoặc đang ở /thong-bao = primary-container (như đích đang chọn)
-States: fresh/stale dương hiện cùng kiểu số (tối đa 99+); fresh/stale bằng 0 hoặc 503 ẩn badge
-Interaction: Enter/Space → mở (≥760) | điều hướng (mobile, chữ lớn); focus ring 3 px
-Accessibility: name "Thông báo, n mục mới" (+ ", có thể chưa cập nhật" khi số cũ dương);
-  aria-haspopup=dialog, aria-expanded, aria-controls; aria-current=page ở /thong-bao; không aria-live
-Invariants: chuông không xuất hiện cho khách, Reader, editor, trang con ở mobile; vùng chạm ≥ 44 × 44 CSS px;
-  badge không bao giờ là "0" khi 503/stale
-Compare: artboards d-x-light/dark, d-c-light/dark, comp-rail, comp-bell, comp-badge
+  Region #bottom-navigation (< 760)
+    Link Khám phá · Link Bàn viết · Link Thông báo (khi đủ quyền) · Link Tài khoản/Đăng nhập
+Hierarchy: bốn ô bằng nhau cho phiên có notification_scope; ba ô công khai cho phiên chưa đủ quyền.
+  Mobile giữ pill sau glyph, badge góc trên và nhãn nguyên vẹn ở dưới; Tài khoản dùng avatar hiện có.
+  Badge số trên mobile giới hạn chữ ở 16 CSS px để 99+ chừa tâm glyph ở 320 px, chữ 200%.
+Sizing: vùng chạm ≥ 44 × 44 CSS px; thanh dưới chừa safe area, chiều cao đo theo nội dung.
+Responsive: 760–1099 rail 96 nhãn dưới icon và badge ở góc icon; ≥ 1100 theo preference, rail 220
+  đặt badge cuối hàng. Chữ ≥ 150% trên rail dùng link /thong-bao.
+Themes: nền rail = bg-page; rail ở popover mở hoặc /thong-bao dùng primary-container.
+States: fresh/stale dương hiện cùng kiểu số (tối đa 99+); fresh/stale bằng 0 hoặc unavailable ẩn badge.
+Interaction: mobile dùng link native (tap, click hoặc Enter); rail giữ Enter/Space cho popover và
+  fallback link. Khi resize popover xuống mobile, đóng dialog và focus #noi-dung.
+Accessibility: tên theo §9; aria-current=page ở /thong-bao. Chỉ nút rail mở dialog có
+  aria-haspopup=dialog, aria-expanded và aria-controls.
+Invariants: không đưa dữ liệu của phiên cũ sang phiên mới. Dùng cùng tập đích ở mọi nơi thanh dưới
+  hiện, kể cả Reader. Editor tiếp tục ẩn thanh này. Tên, glyph và vùng focus không đổi vì badge.
+Compare: artboards d-x-light/dark, d-c-light/dark, comp-rail, comp-bell, comp-badge cho rail lịch sử.
 ```
 
 ## 3. Popover thông báo
@@ -128,28 +135,24 @@ Screen #thong-bao — mặc định < 760 và deep link; desktop dùng cùng n�
 Hierarchy: h1 → #read-all (cùng hàng với h1) → dòng chưa đọc
 Sizing: nhãn ngày chỉ khi > 1 nhóm; nhóm cách nhau 20; hàng đầu cao ≥ 48
 Responsive: dòng chuyển "xếp chồng" khi bề rộng danh sách / hệ số chữ < ≈ 215 px (320 px ≥ 150%);
-  h1 xuống dòng bên trái nút Double Check; thanh dưới giữ 3 ô, nhãn 2 dòng
+  h1 xuống dòng bên trái nút Double Check; thanh dưới theo §2, nhãn có thể xuống hai dòng
 Scroll: cuộn trang chính; thanh dưới cố định; không có cuộn riêng
 Overlays: không có
 States: như §3 + lỗi tải thêm ngay dưới danh sách
-Interaction: vào trang → Seen; Back → trang trước, focus về #bell (hoặc #noi-dung).
+Interaction: vào trang → Seen khi nhận snapshot; Back → trang trước, hoặc Khám phá nếu vào trực tiếp.
+  Khi trở về đích gốc từ Inbox, ưu tiên focus điểm mở Thông báo đang hiện, rồi tới #noi-dung.
   Double Check cùng hợp đồng popover. Nếu nút mất khi đang giữ focus, trả về h1.
-Accessibility: một h1; landmark main = #noi-dung; không đích nào sáng ở mobile
+Accessibility: một h1, landmark main = #noi-dung. Phiên đủ quyền thấy Thông báo được chọn.
 Invariants: không cuộn ngang ở 320 CSS px, chữ 200%; tối đa 3 dòng nhan đề; dấu tiếng Việt không bị cắt
 Compare: d-page-*, m-inbox-*, m-states, cmp-stress, m-inbox-200
 ```
 
-## 5. Header mobile có chuông
+## 5. Header mobile sau #608
 
-```text
-Region #page-head (Khám phá | Bàn viết | Tôi; < 760)
-  Heading #h1
-  Row #acts — (Khám phá: Tìm (không nền) · Lọc thẻ · logo) | (Bàn viết: Tìm (không nền)) | (Tôi: không)
-  IconButton #bell-m — link /thong-bao, 48, không nền, icon 30, ở cuối hàng đầu
-Responsive: đủ chỗ → một hàng [h1 · acts · bell]; hẹp hoặc chữ lớn → hàng 1 [h1 · bell], hàng 2 [acts]
-Invariants: bell luôn là phần tử cuối hàng đầu và cùng vị trí ở cả ba trang; không chuông ở Reader/editor/trang con
-Compare: m-heads, m-heads-dark, m-heads-wrap, m-nobell
-```
+Khám phá và Bàn viết giữ header với tiêu đề và các công cụ của trang. Hero Tài khoản giữ avatar,
+bút danh và các hành động hồ sơ. Xem §2 cho đích Thông báo.
+Các artboard `m-heads`, `m-heads-dark`, `m-heads-wrap` và AC-01 của #486 ghi lịch sử chuông rời
+trước thay đổi này. Specimen popover ở Preview vẫn dùng dữ liệu mẫu và minh họa riêng hành vi rail.
 
 ## 6. `NotificationRow`
 
@@ -193,7 +196,7 @@ Compare: r-dw-light/mob/var, r-dc-desk/mob, r-tham-d/states/mob, r-gone-d/m
 
 | Vùng | Owner |
 | --- | --- |
-| Chuông và badge | `NavUtility` (slot badge và glyph active), `NotificationBadge` và `ShapeMark` thuộc `vink-ui`. Caller kết hợp `BadgeState::trigger_name` với tên chuông. |
+| Chuông và badge | `NavUtility` trên rail, `NavItem` có badge và glyph active trong thanh dưới. `NotificationBadge` và `ShapeMark` thuộc `vink-ui`. Shell và rail lấy tên từ `BadgeState::trigger_name` và cùng owner Web. |
 | Dòng và nhóm | `NotificationRow` và `NotificationGroup` thuộc `vink-patterns`. Caller chọn glyph, avatar, ngày, excerpt được phép và đích. |
 | Preview | `vink-ui-preview`, hai kịch bản ở §0. Mẫu dùng kiểu chữ có sẵn, cỡ glyph 34 và icon 16. |
 | Tích hợp | Shell, overlay neo rail, trang hộp thư, màn quyết định và người Thấm nằm trong lát Web. |

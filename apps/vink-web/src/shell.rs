@@ -7,14 +7,12 @@ use leptos::prelude::*;
 use leptos_router::hooks::use_location;
 use vink_ui::{
     AdaptiveScaffold, BottomNavigation, CloseReason, IconName, NavContext, NavDestination, NavItem,
-    NavLayout, NavigationRail, OverlayLayer, WindowClass,
+    NavLayout, NavigationRail, NotificationBadge, OverlayLayer, WindowClass,
 };
 
 use crate::appearance::{AccountAvatar, Appearance, RAIL_BOOTSTRAP};
 use crate::navigation::use_navigation_guard;
-use crate::notifications::{BELL, InboxPopover, Notifications, POPOVER, RailBell};
-#[cfg(feature = "browser")]
-use crate::notifications::{INBOX_PATH, MOBILE_BELL};
+use crate::notifications::{BELL, INBOX_PATH, InboxPopover, Notifications, POPOVER, RailBell};
 
 // Giao diện lives only on Tôi (`/toi`); the rail carries no appearance utility (#413).
 const RAIL_MODAL: &str = "navigation-modal";
@@ -25,6 +23,7 @@ const RAIL_MODAL: &str = "navigation-modal";
 pub(crate) enum Destination {
     Explore,
     Desk,
+    Notifications,
     Me,
 }
 
@@ -35,6 +34,7 @@ impl Destination {
         match segments(path)[..] {
             [] | ["tac-pham", _] | ["tac-pham", _, "tham", _] | ["the", _] => Some(Self::Explore),
             ["ban-viet"] | ["ban-viet", _] | ["ban-viet", _, "kiem-duyet"] => Some(Self::Desk),
+            ["thong-bao"] => Some(Self::Notifications),
             ["toi"] | ["toi", "dia-chi" | "chinh-ho-so"] => Some(Self::Me),
             [name] if name.starts_with('@') => Some(Self::Explore),
             [name, "nguoi-theo-doi" | "dang-theo-doi"] if name.starts_with('@') => {
@@ -48,6 +48,7 @@ impl Destination {
         match self {
             Self::Explore => "explore",
             Self::Desk => "desk",
+            Self::Notifications => "notifications",
             Self::Me => "me",
         }
     }
@@ -56,6 +57,7 @@ impl Destination {
         let (label, icon, href) = match self {
             Self::Explore => ("Khám phá", IconName::Explore, "/"),
             Self::Desk => ("Bàn viết", IconName::Edit, "/ban-viet"),
+            Self::Notifications => ("Thông báo", IconName::NotificationsNone, INBOX_PATH),
             Self::Me => ("Tài khoản", IconName::Person, "/toi"),
         };
         NavDestination::new(self.key(), label, icon, href)
@@ -103,19 +105,15 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
     let overlays = RwSignal::new(OverlayLayer::default());
     let rail_open = Memo::new(move |_| overlays.with(|layer| layer.is_open(RAIL_MODAL)));
     let rail_modal = NodeRef::<html::Dialog>::new();
-    let inbox_route = Memo::new(move |_| {
-        location
-            .pathname
-            .with(|path| segments(path) == ["thong-bao"])
-    });
+    let inbox_route = Memo::new(move |_| current.get() == Some(Destination::Notifications));
     let popover = NodeRef::<html::Dialog>::new();
     let popover_open = Memo::new(move |_| overlays.with(|layer| layer.is_open(POPOVER)));
     let large_text = RwSignal::new(false);
-    Notifications::provide(
+    let notifications = Notifications::provide(
         session,
         Signal::derive(move || inbox_route.get() || popover_open.get()),
-        large_text,
     );
+    let badge = notifications.badge_state();
     let text_probe = NodeRef::<html::Span>::new();
     let page_scroll = StoredValue::new(0.0);
     let close_notifications = move |reason| {
@@ -176,27 +174,23 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
                 close_notifications(CloseReason::Dismiss);
             }
         });
-        let path = use_location().pathname;
         Effect::new(move |was_inbox: Option<bool>| {
-            let current = path.get();
+            let is_inbox = inbox_route.get();
             if was_inbox == Some(true)
-                && matches!(segments(&current)[..], [] | ["ban-viet"] | ["toi"])
+                && !is_inbox
+                && location.pathname.with_untracked(|path| {
+                    matches!(segments(path)[..], [] | ["ban-viet"] | ["toi"])
+                })
             {
-                request_animation_frame(move || {
-                    let bell = [MOBILE_BELL, BELL]
-                        .into_iter()
-                        .filter_map(|id| document().get_element_by_id(id))
-                        .find(|bell| bell.get_bounding_client_rect().width() > 0.0)
-                        .or_else(|| document().get_element_by_id("noi-dung"));
-                    focus_without_scroll(bell);
-                });
+                request_animation_frame(restore_inbox_focus);
             }
-            current.trim_end_matches('/') == INBOX_PATH
+            is_inbox
         });
     }
 
     let active =
         move |destination: Destination| Signal::derive(move || current.get() == Some(destination));
+    let notification_name = Signal::derive(move || badge.get().trigger_name("Thông báo"));
     let primary = move |modal: bool| {
         [Destination::Explore, Destination::Desk]
             .into_iter()
@@ -269,7 +263,14 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
                     id="bottom-navigation"
                     label="Điều hướng mobile"
                     destinations=primary(false)
-                    trailing=move || view! { <AccountLink guest=guest.into() current=active(Destination::Me) /> }
+                    trailing=move || view! {
+                        <Show when=move || notifications.available()>
+                            <NavItem destination=Destination::Notifications.nav() active=inbox_route
+                                active_icon=IconName::Notifications accessible_label=notification_name
+                                badge=move || view! { <NotificationBadge state=badge /> } />
+                        </Show>
+                        <AccountLink guest=guest.into() current=active(Destination::Me) />
+                    }
                 />
             }
             overlays=move || view! {
@@ -301,6 +302,34 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
             {children()}
         </AdaptiveScaffold>
     }
+}
+
+#[cfg(feature = "browser")]
+fn restore_inbox_focus() {
+    let document = document();
+    // A user navigating away with a tab already has a visible navigation focus target.
+    if document.active_element().is_some_and(|element| {
+        element
+            .closest("#bottom-navigation")
+            .ok()
+            .flatten()
+            .is_some()
+    }) {
+        return;
+    }
+    let mobile_selector = format!(
+        "#bottom-navigation [data-destination='{}']",
+        Destination::Notifications.key()
+    );
+    let trigger = document
+        .query_selector(&mobile_selector)
+        .ok()
+        .flatten()
+        .into_iter()
+        .chain(document.get_element_by_id(BELL))
+        .find(|entry| entry.get_bounding_client_rect().width() > 0.0)
+        .or_else(|| document.get_element_by_id("noi-dung"));
+    focus_without_scroll(trigger);
 }
 
 #[component]
@@ -588,6 +617,8 @@ mod tests {
             ("/ban-viet/abc", Some(Destination::Desk)),
             ("/ban-viet/abc/kiem-duyet", Some(Destination::Desk)),
             ("/toi", Some(Destination::Me)),
+            ("/thong-bao/", Some(Destination::Notifications)),
+            ("/thong-bao/khac", None),
             // Prefixes and deeper paths are NotFound, not a lit tab.
             ("/ban-vietnam", None),
             ("/ban-viet/abc/kiem-duyet/khac", None),
@@ -625,15 +656,21 @@ mod tests {
 
     #[test]
     fn destinations_keep_the_locked_order_and_real_hrefs() {
-        let hrefs: Vec<_> = [Destination::Explore, Destination::Desk, Destination::Me]
-            .into_iter()
-            .map(|d| (d.nav().label, d.nav().href))
-            .collect();
+        let hrefs: Vec<_> = [
+            Destination::Explore,
+            Destination::Desk,
+            Destination::Notifications,
+            Destination::Me,
+        ]
+        .into_iter()
+        .map(|d| (d.nav().label, d.nav().href))
+        .collect();
         assert_eq!(
             hrefs,
             [
                 ("Khám phá".to_string(), "/".to_string()),
                 ("Bàn viết".to_string(), "/ban-viet".to_string()),
+                ("Thông báo".to_string(), "/thong-bao".to_string()),
                 ("Tài khoản".to_string(), "/toi".to_string()),
             ]
         );

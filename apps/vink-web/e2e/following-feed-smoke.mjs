@@ -195,7 +195,8 @@ async function layout(page, check, textContrast) {
       const navRect = bar.getBoundingClientRect();
       return { rail: rail.getBoundingClientRect().width, mobile: navRect.height > 0,
         railTargets: [...rail.querySelectorAll('#navigation-primary a:not(.vk-ui-nav-utility)')].map(item => item.getAttribute('href')),
-        railAccount: Boolean(rail.querySelector('#navigation-account a[href="/toi"]')) && !rail.querySelector('#profile-trigger, .vk-ui-nav-utility:not(#notification-bell)'), count: items.length, current: current?.getAttribute('href'),
+        railAccount: Boolean(rail.querySelector('#navigation-account a[href="/toi"]')) && !rail.querySelector('#profile-trigger, .vk-ui-nav-utility:not(#notification-bell)'),
+        tabs: items.map(item => item.getAttribute('href')), current: current?.getAttribute('href'),
         pill: current?.querySelector('.vk-ui-nav-item__indicator')?.getBoundingClientRect().toJSON(),
         iconDelta: icons.every(Boolean) ? Math.max(...icons.map(r => r.top + r.height / 2)) - Math.min(...icons.map(r => r.top + r.height / 2)) : null,
         axisDelta: icons.every(Boolean) ? Math.max(...icons.map((r, i) => {
@@ -219,7 +220,7 @@ async function layout(page, check, textContrast) {
           `#296 ${width}/${theme}/${scaleLabel} overflow, links and touch targets (${JSON.stringify(got)})`);
         const nav = got.nav;
         check(width < 760
-          ? nav.mobile && nav.count === 3 && nav.current === '/' && nav.pill &&
+          ? nav.mobile && nav.tabs.join(',') === '/,/ban-viet,/thong-bao,/toi' && nav.current === '/' && nav.pill &&
             nav.pill.width <= 64 && nav.pill.height <= 32 && nav.axisDelta <= 1 && nav.iconDelta <= 1
           : !nav.mobile && nav.rail > 0 && nav.railAccount && nav.railTargets.join(',') === '/,/ban-viet',
           `#355 shell destinations and icon alignment ${width}/${theme}/${scaleLabel} (${JSON.stringify(nav)})`);

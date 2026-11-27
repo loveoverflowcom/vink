@@ -254,11 +254,11 @@ Smoke kiểm hydration, hai khổ thơ, CSS, font và import module editor.
 | `endorsement` | Sample App; App tác giả + reader có moderator grant trong scratch | `endorsement`, không cần Identity |
 | `review` | Sample App, tag catalog, tác giả + admin + reviewer trong scratch | `review-withdrawn`, phản đối tại Bàn viết, quyền API ca/quyết định, snapshot Markdown và Reader SSR/hydrate |
 | `auth` | App scratch migrate/seed + Identity scratch/local outbox | `auth` với session thật |
-| `password` | App password scratch migrate + Identity native scratch/local outbox | `auth-password`, không cần phase auth/main |
+| `password` | App password scratch migrate + Identity native scratch/local outbox | `auth-password`, bao gồm scope Thông báo trước và sau logout/re-login qua App Gateway, không cần phase auth/main |
 | `standalone` | Artifact CSR + proxy loopback, API-only, Identity và App DB scratch | Reader, tìm kiếm, lịch sử, mật khẩu, editor, bảo vệ bản nháp và Lượt xem qua hai tài khoản thật (gửi lại sau commit, Bàn viết, đổi phiên) |
 | `author-search` | App password scratch và Identity native, fixture hồ sơ với bút danh trùng | `author-search`, SSR/no-JS, IME mô phỏng, Back, phân trang và Theo dõi theo phiên |
 | `publication` | App publication scratch migrate/seed/catalog + Identity scratch/local outbox | `publication-author` |
-| `notifications` | Sample App scratch với loopback author | `notifications` (chuông/popover/hộp thư/màn quyết định/ma trận đáp ứng R4) |
+| `notifications` | Sample App scratch với loopback author; CDP mô phỏng Auth và các API Thông báo | `notifications` (tab đủ quyền, badge, popover, hộp thư, quyết định, reflow và fence ở client) |
 | `perf-baseline` | App scratch + catalog + 200 public works/1.000 comments tổng hợp, phiên khách | 10 cold SSR/hydration + 10 warm Reader/Back, ledger CDP, history và secondary; **opt-in** |
 | `return-position` | Cùng fixture công khai của `perf-baseline` | Back/Forward, liên kết quay về, scope/filter/cursor, 50 vòng và các ca focus; **opt-in** |
 

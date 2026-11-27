@@ -587,3 +587,22 @@ giữ `PENDING`. Mức triển khai của lát này là `web`. Mốc thị giác
 | Kiểm chứng | Xem lệnh, ma trận, ảnh và ranh giới ở [evidence #486](evidence/notifications-486/README.md). |
 
 Chuông chỉ hiện badge cho số dương còn xác minh được, từ 1 đến `99+`. Số cũ giữ nguyên trong khi đồng bộ; panel trình bày lỗi count hoặc lỗi tải trang và cho thử lại ở đúng phạm vi. Xem [LayoutSpec](../design/notifications.md#9-tên-truy-cập-và-trạng-thái).
+
+## 12. Đích Thông báo trên mobile (#608)
+
+`AdaptiveShell` ánh xạ /thong-bao và chèn `NavItem` giữa Bàn viết và Tài khoản khi
+`SessionOwner` cấp `notification_scope`. Đích, badge và rail cùng đọc từ owner `Notifications`.
+`BottomNavigation` sở hữu các ô bằng nhau và chiều cao tính cả safe area. Header các trang
+dùng bố cục riêng của trang. Link native giữ lịch sử và chọn đúng đích ở /thong-bao.
+Guest Inbox kế thừa shared NotFound và CTA la bàn Explore của #603.
+
+Thử `verify web --scenario notifications` cho shell, badge và fence trình duyệt bằng
+CDP. `verify web --scenario password` kiểm scope thật qua Identity và App Gateway với PostgreSQL scratch.
+[#581](https://github.com/loveoverflowcom/vink/pull/581) là bằng chứng lịch sử về Chrome qua Identity,
+App Gateway, socket Notifications và PostgreSQL scratch. Count đi 0 → 1 → 0 sau Seen,
+dòng vẫn chưa Read. Ảnh c142 chỉ dùng phiên tổng hợp; c324 dùng cả dữ liệu Notifications mô phỏng.
+Cả hai ở 320 × 800 CSS px, chữ 200%, Dark và source 91191186c1ac5ec6f4032dc0292af025eb2c0458.
+[Ảnh Tài khoản c142](https://drive.google.com/file/d/1Tn18YgVIaAsWxt6hnCNHHyd77MZznXZN/view) ·
+[Ảnh Hộp thư c324](https://drive.google.com/file/d/1Qzp95q0kUVlFwZxJdb1CNiiSpt6yst6D/view).
+
+[Ảnh sau thay đổi và điều kiện chụp](evidence/mobile-navigation-608/README.md).

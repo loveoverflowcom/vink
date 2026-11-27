@@ -31,10 +31,24 @@ const DRAFT_TEXT = 'Dòng đầu có dấu: ỹ ỷ ữ ợ Đ đ.\n\nDòng sau 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const contains = (text) => `${q(PANEL)}?.innerText.includes(${JSON.stringify(text)})`;
 const bodyText = (draft) => draft.document.source;
+const notificationTab = '#bottom-navigation [data-destination=notifications]';
+const openInbox = 'location.pathname === "/thong-bao"';
+const guestTabs = `[...document.querySelectorAll('#bottom-navigation a')].map(a => a.getAttribute('href')).join('|') === '/|/ban-viet|/toi'`;
 
 const read = (page, path) => page.eval(`fetch(${JSON.stringify(path)}).then(async r => ({
   status: r.status, cache: r.headers.get('cache-control'), data: r.ok ? await r.json() : null
 }))`);
+
+// Send only a real current or earlier scope from this scratch browser session.
+async function notificationGateway(page, validScope, earlierScope = null) {
+  return page.eval(`(async () => {
+    const count = scope => fetch('/api/v1/me/notifications/count', {
+      headers: { 'x-vink-notification-scope': scope }, cache: 'no-store',
+    }).then(response => ({ status: response.status, noStore: response.headers.get('cache-control') === 'no-store' }));
+    return { current: await count(${JSON.stringify(validScope)}),
+      earlier: ${earlierScope !== null} ? await count(${JSON.stringify(earlierScope)}) : null };
+  })()`);
+}
 
 async function credentials(page, form, username, password) {
   await fill(page, `${form}-username`, username);
@@ -688,8 +702,27 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   await page.click('#sign-out');
   await refusal();
   await page.waitFor(q('#sign-out-unconfirmed'), 'unconfirmed logout');
-  check((await account(page)).body.principal_id === A.principal_id, 'fault 503 logout: account still valid and displayed');
+  const beforeLogout = (await account(page)).body;
+  check(beforeLogout.principal_id === A.principal_id, 'fault 503 logout: account still valid and displayed');
+  const desktop = await page.eval('({ width: innerWidth, height: innerHeight })');
+  await page.viewport(390, 844);
+  await page.waitFor(`${q(notificationTab)}?.checkVisibility()`, '#608 a valid Identity cookie offers the mobile Notifications link');
+  const accepted = await notificationGateway(page, beforeLogout.notification_scope);
+  check(accepted.current.noStore && [200, 503].includes(accepted.current.status),
+    '#608 the real App Gateway accepts the scope before checking Notifications availability');
+  await page.click(notificationTab);
+  await page.waitFor(`${openInbox} && ${q(notificationTab)}?.getAttribute('aria-current') === 'page'`, '#608 valid session selects Inbox');
+  await page.click('#bottom-navigation a[href="/toi"]');
+  await page.waitFor(q('#sign-out'), 'Account is ready after leaving Inbox');
   check((await signOut(page, base)).includes(204), 'real 204 confirms logout');
+  await page.waitFor(guestTabs, '#608 confirmed logout restores exactly the three public destinations');
+  const revoked = await notificationGateway(page, beforeLogout.notification_scope);
+  check(revoked.current.status === 401 && revoked.current.noStore, '#608 the real Gateway fences the scope after logout');
+  await page.goto(base + '/thong-bao');
+  await page.waitFor(`${openInbox} && ${guestTabs} && ${q('main a[href="/"] > svg[data-icon=explore]')}`,
+    '#608 anonymous direct Inbox uses the shared NotFound link with leading Explore');
+  await page.viewport(desktop.width, desktop.height);
+  await openAccount(page, base, 'anonymous');
   await credentials(page, LOGIN, userA, SECRET_A.trim());
   const readbacks = captureRequest(page, 'GET', '/api/v1/auth/session');
   await page.click(LOGIN + '-submit');
@@ -724,6 +757,10 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   await page.waitFor(`location.pathname === '/ban-viet' && ${q('#create-draft')} && !${q('#sign-in-email')}`,
     'F-06 late real cookie makes the Desk available and returns to it');
   const returnedA = (await account(page)).body;
+  const replaced = await notificationGateway(page, returnedA.notification_scope, beforeLogout.notification_scope);
+  check(returnedA.notification_scope !== beforeLogout.notification_scope &&
+    [200, 503].includes(replaced.current.status) && replaced.earlier.status === 401 && replaced.earlier.noStore,
+    '#608 the real Gateway rejects the earlier scope even after re-login to the same principal');
   check(returnedA.principal_id === A.principal_id && returnedA.display_name === penA &&
     bodyText(await page.draft(draftA)) === DRAFT_TEXT, 'password returns to the same principal, pen name and stored draft');
 
@@ -744,6 +781,9 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   await openAccount(other, base, 'anonymous');
   await signIn(other, ctx, email);
   const B = await setPenName(other, penB);
+  const wrongAccount = await notificationGateway(other, B.notification_scope, returnedA.notification_scope);
+  check([200, 503].includes(wrongAccount.current.status) && wrongAccount.earlier.status === 401 && wrongAccount.earlier.noStore,
+    '#608 the real Gateway rejects account A scope under account B cookie');
   const draftB = await createDraft(other, '[Mẫu] Nháp có từ trước khi thêm mật khẩu');
   await openAccount(other, base, 'active');
   await other.click('#password-credential');

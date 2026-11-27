@@ -1,0 +1,170 @@
+{
+  "account-320-200-dark.png": {
+    "scenarioId": "608-mobile-account",
+    "boundary": "Product Chrome · CDP session and Notifications fixtures",
+    "source": {
+      "sourceSHA": "60c08f90aa2f49ec03cf4e70cc675b509c206337",
+      "dirty": false,
+      "dirtyInputs": [],
+      "sourceFingerprint": "01946ce076ce32315c3426d8e6ffe1cf44485e5ad464d34be420af1e4225b175"
+    },
+    "viewport": {
+      "width": 320,
+      "height": 800,
+      "layoutWidth": 305,
+      "clientWidth": 305,
+      "clientHeight": 800,
+      "dpr": 1
+    },
+    "requestedScene": {
+      "width": 320,
+      "height": 800,
+      "scale": 200,
+      "theme": "dark"
+    },
+    "effectiveTheme": "dark",
+    "textScale": 200,
+    "textScaleLane": "dom-override-geometry-only",
+    "sha256": "74cc67ec4168840e9c5847104f06141fab4f0e37dd084db395375587eb491f5a"
+  },
+  "inbox-320-200-dark.png": {
+    "scenarioId": "608-inbox-direct",
+    "boundary": "Product Chrome · CDP session and Notifications fixtures",
+    "source": {
+      "sourceSHA": "60c08f90aa2f49ec03cf4e70cc675b509c206337",
+      "dirty": false,
+      "dirtyInputs": [],
+      "sourceFingerprint": "01946ce076ce32315c3426d8e6ffe1cf44485e5ad464d34be420af1e4225b175"
+    },
+    "viewport": {
+      "width": 320,
+      "height": 800,
+      "layoutWidth": 305,
+      "clientWidth": 305,
+      "clientHeight": 800,
+      "dpr": 1
+    },
+    "requestedScene": {
+      "width": 320,
+      "height": 800,
+      "scale": 200,
+      "theme": "dark"
+    },
+    "effectiveTheme": "dark",
+    "textScale": 200,
+    "textScaleLane": "dom-override-geometry-only",
+    "sha256": "acd5c9dc167b043665e037fdfe2ed1c594951dccea371295c41e7f15a2ba7459"
+  },
+  "badge-320-200-dark.png": {
+    "scenarioId": "608-mobile-badge",
+    "boundary": "Product Chrome · CDP session and Notifications fixtures",
+    "source": {
+      "sourceSHA": "60c08f90aa2f49ec03cf4e70cc675b509c206337",
+      "dirty": false,
+      "dirtyInputs": [],
+      "sourceFingerprint": "01946ce076ce32315c3426d8e6ffe1cf44485e5ad464d34be420af1e4225b175"
+    },
+    "viewport": {
+      "width": 320,
+      "height": 800,
+      "layoutWidth": 305,
+      "clientWidth": 305,
+      "clientHeight": 800,
+      "dpr": 1
+    },
+    "requestedScene": {
+      "width": 320,
+      "height": 800,
+      "scale": 200,
+      "theme": "dark"
+    },
+    "effectiveTheme": "dark",
+    "textScale": 200,
+    "textScaleLane": "dom-override-geometry-only",
+    "sha256": "3ab1514c38017d0d0ea3df721dcaa35c61bfdeabb760621e7c4e38e7a4756f53"
+  },
+  "guest-inbox-390-150-light.png": {
+    "scenarioId": "inbox-confirmed-anonymous",
+    "boundary": "Chrome · session response fixture",
+    "source": {
+      "sourceSHA": "60c08f90aa2f49ec03cf4e70cc675b509c206337",
+      "dirty": false,
+      "dirtyInputs": [],
+      "sourceFingerprint": "01946ce076ce32315c3426d8e6ffe1cf44485e5ad464d34be420af1e4225b175"
+    },
+    "viewport": {
+      "width": 390,
+      "height": 844,
+      "layoutWidth": 390,
+      "clientWidth": 390,
+      "clientHeight": 844,
+      "dpr": 1
+    },
+    "requestedScene": {
+      "width": 390,
+      "height": 844,
+      "scale": 150,
+      "theme": "light"
+    },
+    "effectiveTheme": "light",
+    "textScale": 150,
+    "textScaleLane": "dom-override-geometry-only",
+    "sha256": "b680727099c93348930be50247ecc8a11d09fd93da830f2d49ba8ef7e7a0eadd"
+  },
+  "mobile-759-100-light.png": {
+    "scenarioId": "notifications-r4",
+    "boundary": "Chrome-CDP-dom-override-geometry",
+    "source": {
+      "sourceSHA": "60c08f90aa2f49ec03cf4e70cc675b509c206337",
+      "dirty": false,
+      "dirtyInputs": [],
+      "sourceFingerprint": "01946ce076ce32315c3426d8e6ffe1cf44485e5ad464d34be420af1e4225b175"
+    },
+    "viewport": {
+      "width": 759,
+      "height": 900,
+      "layoutWidth": 759,
+      "clientWidth": 759,
+      "clientHeight": 900,
+      "dpr": 1
+    },
+    "requestedScene": {
+      "width": 759,
+      "height": 900,
+      "scale": 100,
+      "theme": "light"
+    },
+    "effectiveTheme": "light",
+    "textScale": 100,
+    "textScaleLane": "dom-override-geometry-only",
+    "sha256": "e9e377a267d75af1bb2ecc6f52b0006461e5706a656e6f8fc0d72bf7fd924662"
+  },
+  "rail-760-100-light.png": {
+    "scenarioId": "notifications-r4",
+    "boundary": "Chrome-CDP-dom-override-geometry",
+    "source": {
+      "sourceSHA": "60c08f90aa2f49ec03cf4e70cc675b509c206337",
+      "dirty": false,
+      "dirtyInputs": [],
+      "sourceFingerprint": "01946ce076ce32315c3426d8e6ffe1cf44485e5ad464d34be420af1e4225b175"
+    },
+    "viewport": {
+      "width": 760,
+      "height": 900,
+      "layoutWidth": 760,
+      "clientWidth": 760,
+      "clientHeight": 900,
+      "dpr": 1
+    },
+    "requestedScene": {
+      "width": 760,
+      "height": 900,
+      "scale": 100,
+      "theme": "light"
+    },
+    "effectiveTheme": "light",
+    "textScale": 100,
+    "textScaleLane": "dom-override-geometry-only",
+    "sha256": "7be23995ef76ddda95b48b442396b23cd236b00cb80d161dd3b73e7d951ccf32"
+  }
+}
