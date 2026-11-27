@@ -1049,8 +1049,17 @@ export async function accountDeletion(page, { args, check, openPage }) {
   await page.click('#send-account-deletion-code');
   await page.waitFor(q('#account-delete-code'), 'dedicated email OTP step');
   await fill(page, '#account-delete-code', await mailedCode(args.outbox, email, seen));
+  const answer = await holdAnswer(page, 'POST', '/api/v1/auth/account-deletion/confirm');
   await page.click('#confirm-account-deletion-code');
-  await page.waitFor(`${STANDING} === 'anonymous' && ${contains('Tài khoản đã được xóa vĩnh viễn')}`, 'real email OTP retires the suspended account without issuing a session');
+  check([200, 202].includes(await answer.held()), 'real email OTP was accepted for the suspended account');
+  await answer.finish(true);
+  await page.waitFor(`${STANDING} === 'anonymous' && ${contains('Chưa nhận được kết quả xóa tài khoản')}`,
+    'lost confirmation ACK keeps a status receipt on the dedicated page after sign-out');
+  await page.click('#check-account-deletion');
+  await page.waitFor(contains('Tài khoản đã được xóa vĩnh viễn'), 'status resolves the real OTP deletion without issuing a session');
+  check((await read(page, '/api/v1/auth/session')).data.state === 'anonymous', 'status check did not mint a session');
+  await page.click('#page-account-deletion .vk-ui-back-link');
+  await page.waitFor(q(LOGIN), 'return to ordinary Auth to register a new principal');
   await signIn(page, { args, seen }, email);
   await setPenName(page, 'Người dùng email mới');
   check((await read(page, '/api/v1/auth/session')).data.principal_id !== suspended,
@@ -1060,6 +1069,15 @@ export async function accountDeletion(page, { args, check, openPage }) {
 // Same Chrome driver and real password/editor journeys against the standalone host.
 export async function standalone(page, {args, check, openPage}) {
   const base = args.base;
+  await page.goto(base + '/toi?quan-ly=xoa');
+  await page.waitFor(`${STANDING} === 'anonymous' && ${q('#open-account-deletion')}`,
+    'CSR resolves the dedicated deletion deep link as a guest');
+  check(await page.eval(`!${q('.vk-auth-entry')} && !${q('#delete-account-form')}`),
+    'CSR dedicated entry waits for explicit consent before showing the form');
+  await page.click('#page-account-deletion .vk-ui-back-link');
+  await page.waitFor(`${q(LOGIN)} && !location.search`, 'CSR Back reaches ordinary Auth');
+  check(await page.eval(`!${q('#open-account-deletion')} && !${q('#delete-account-form')}`),
+    'CSR ordinary Auth contains no deletion UI');
   const work = '33333333-3333-4333-8333-333333333333';
   const reader = base + '/tac-pham/' + work;
   const line = 'Phố cũ mưa giăng sợi mỏng,';
