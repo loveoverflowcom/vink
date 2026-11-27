@@ -202,6 +202,8 @@ async fn backfill_and_old_writer_preserve_the_source_across_republication(pool: 
         .run_to(CANONICAL_DOCUMENT_MIGRATION, &pool)
         .await
         .unwrap();
+    // The current store reads account deletions in its standing fence (#550).
+    legacy_standing_fixture(&pool).await;
     let vink = seeded(&pool).await;
     let legacy = sample_work();
     // This stage has the old schema. Use its public pointer as the migration oracle.
@@ -246,6 +248,10 @@ async fn backfill_and_old_writer_preserve_the_source_across_republication(pool: 
             .unwrap()
     );
     writer.commit().await.unwrap();
+    sqlx::query("DROP VIEW account_deletions")
+        .execute(&pool)
+        .await
+        .unwrap();
     assert_eq!(
         migrate(&pool).await.unwrap().applied,
         [

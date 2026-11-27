@@ -157,6 +157,37 @@ pub fn wait_for_line(
     }
 }
 
+/// The `applied=[…]` line a first migrate of `services/{owner}` must print: every version in its
+/// `migrations` directory, ascending. Derived from the files the binary embeds, so adding a
+/// migration keeps the check exact without editing an expected list here.
+pub fn expected_applied(owner: &str) -> Result<String, String> {
+    let dir = crate::root()
+        .join("services")
+        .join(owner)
+        .join("migrations");
+    let mut versions = Vec::new();
+    for entry in std::fs::read_dir(&dir).map_err(|e| format!("{}: {e}", dir.display()))? {
+        let name = entry
+            .map_err(|e| format!("{}: {e}", dir.display()))?
+            .file_name();
+        let name = name.to_string_lossy();
+        if !name.ends_with(".sql") {
+            continue;
+        }
+        let version = name
+            .split_once('_')
+            .and_then(|(version, _)| version.parse::<i64>().ok())
+            .ok_or_else(|| format!("{}: `{name}` has no numeric version", dir.display()))?;
+        versions.push(version);
+    }
+    if versions.is_empty() {
+        return Err(format!("{}: no migrations", dir.display()));
+    }
+    versions.sort_unstable();
+    let versions: Vec<String> = versions.iter().map(i64::to_string).collect();
+    Ok(format!("applied=[{}]", versions.join(", ")))
+}
+
 pub fn strip_ansi(line: &str) -> String {
     let mut out = String::with_capacity(line.len());
     let mut chars = line.chars();
@@ -343,6 +374,25 @@ impl Drop for SocketDir {
 #[cfg(test)]
 mod ownership_tests {
     use super::*;
+
+    #[test]
+    fn expected_applied_lists_every_migration_file_in_version_order() {
+        let applied = expected_applied("vink-identity").unwrap();
+        assert!(
+            applied.starts_with("applied=[20261102000000, "),
+            "{applied}"
+        );
+        assert!(applied.contains("20261205000000"), "{applied}");
+        let versions: Vec<i64> = applied["applied=[".len()..applied.len() - 1]
+            .split(", ")
+            .map(|v| v.parse().unwrap())
+            .collect();
+        assert!(
+            versions.windows(2).all(|pair| pair[0] < pair[1]),
+            "{applied}"
+        );
+        assert!(expected_applied("no-such-service").is_err());
+    }
     #[test]
     #[ignore = "requires VINK_TEST_DATABASE_URL on a local PostgreSQL test server"]
     fn scratch_lock_serializes_runs_and_releases_on_drop() {

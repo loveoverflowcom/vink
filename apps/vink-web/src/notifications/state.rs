@@ -72,6 +72,7 @@ impl Freshness {
     }
 }
 
+#[cfg(feature = "browser")]
 pub(super) fn stale(badge: BadgeState) -> BadgeState {
     match badge {
         BadgeState::Count(n) => BadgeState::Stale(n),

@@ -427,12 +427,9 @@ impl Run<'_> {
         if sql(&s.admin_identity, history)? != 0 {
             return Err("a refused migration created a history table".into());
         }
+        let applied = lifecycle::expected_applied("vink-identity")?;
         let (code, stderr) = self.migrate("first", &s.identity_migrator)?;
-        if code != Some(0)
-            || !stderr.contains(
-                "applied=[20261102000000, 20261107000000, 20261112000000, 20261113000000, 20261114000000, 20261119000000, 20261120000000]",
-            )
-        {
+        if code != Some(0) || !stderr.contains(&applied) {
             return Err(format!("first Identity migrate: {code:?}: {stderr}"));
         }
         let (code, stderr) = self.migrate("second", &s.identity_migrator)?;

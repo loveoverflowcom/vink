@@ -97,7 +97,8 @@ val REGISTERED = listOf("foundation.color-roles", "foundation.typography", "foun
     "navigation.rail", "navigation.bottom-bar", "navigation.top-bar", "navigation.scaffold", "navigation.overlay", "navigation.adapter",
     "composition.nested",
     "screen.explore", "screen.reader", "screen.desk", "screen.editor", "screen.me", "composition.feedback",
-    "composition.endorsement", "composition.tag-selector", "composition.interaction",
+    "composition.endorsement", "composition.save-pair", "composition.tag-selector", "composition.interaction",
+    "composition.notifications",
 )
 
 enum class Frame(val label: String, val width: Dp?) {
@@ -369,7 +370,9 @@ fun Specimen(id: String, scenario: String) {
                 "foundation.typography" -> Typography(combining = scenario == "combining-marks")
                 "foundation.shape-spacing" -> ShapeSpacing()
                 "foundation.motion" -> Motion()
-                else -> if (id.startsWith("screen.") || id == "composition.feedback") ScreenRecipe(id, scenario) else if (!EndorsementSpecimen(id, scenario) && !TagSpecimen(id, scenario) && !ComponentSpecimen(id, scenario)) TextIn("Chưa đăng ký trong preview CMP.", VinkTextRoles.Body)
+                // Mirrors the Leptos preview's note for its own `unsupported` entries.
+                else -> if (VinkCatalog.entries.first { it.id == id }.cmp == "unsupported") TextIn("CMP: unsupported. Mục này chỉ có specimen trong preview Leptos; CMP chưa có component tương ứng.", VinkTextRoles.Body)
+                else if (id.startsWith("screen.") || id == "composition.feedback") ScreenRecipe(id, scenario) else if (!EndorsementSpecimen(id, scenario) && !TagSpecimen(id, scenario) && !ComponentSpecimen(id, scenario)) TextIn("Chưa đăng ký trong preview CMP.", VinkTextRoles.Body)
             }
             }
         }

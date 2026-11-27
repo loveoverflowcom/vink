@@ -393,12 +393,15 @@ async fn markdown_visibility_precedes_validation_for_json_and_html(pool: PgPool)
             let response = get(&app, &reader, &[field]).await;
             assert_eq!(response.header(header::CACHE_CONTROL), Some("no-store"));
             assert!(response.header(header::ETAG).is_none());
-            if control == "tombstone" {
-                assert_eq!(response.status, StatusCode::NOT_FOUND);
+            // HTTP contract v1 since #550 (account deletion): the Reader of a tombstone answers
+            // the neutral `author_deleted` status; only the publication read is 404.
+            let status = if control == "tombstone" {
+                "author_deleted"
             } else {
-                assert_eq!(response.status, StatusCode::OK);
-                assert_eq!(response.json()["status"], control);
-            }
+                control
+            };
+            assert_eq!(response.status, StatusCode::OK);
+            assert_eq!(response.json()["status"], status);
             assert!(response.json().get("document").is_none());
             let previous = get(&app, &publication, &[field]).await;
             assert_eq!(previous.status, StatusCode::NOT_FOUND);

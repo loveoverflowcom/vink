@@ -512,10 +512,9 @@ mod browser {
 
         read_events::observe(move || sync_controller(ctrl));
 
-        let prerender_listener: StoredValue<
-            Option<Closure<dyn FnMut(web_sys::Event)>>,
-            LocalStorage,
-        > = StoredValue::new_local(None);
+        type EventListener = Closure<dyn FnMut(web_sys::Event)>;
+        let prerender_listener: StoredValue<Option<EventListener>, LocalStorage> =
+            StoredValue::new_local(None);
         if let Some(doc) = web_sys::window().and_then(|w| w.document()) {
             let closure = Closure::<dyn FnMut(web_sys::Event)>::new(move |_| sync_controller(ctrl));
             let _ = doc.add_event_listener_with_callback(

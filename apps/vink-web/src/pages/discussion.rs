@@ -158,6 +158,7 @@ struct ViewState {
 
 #[cfg_attr(not(any(feature = "browser", test)), allow(dead_code))]
 impl ViewState {
+    #[cfg(feature = "browser")]
     fn has_paged_tail(&self) -> bool {
         self.roots_chain.pages > 1 || self.reply_chains.values().any(|chain| chain.pages > 1)
     }
