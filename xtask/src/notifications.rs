@@ -282,10 +282,9 @@ impl Run<'_> {
                 "migrate as the Notification runtime: expected exit 1 naming the privilege, got {code:?}: {stderr}"
             ));
         }
+        let applied = lifecycle::expected_applied("vink-notifications")?;
         let (code, stderr) = self.migrate("first", &s.migrator)?;
-        if code != Some(0)
-            || !stderr.contains("applied=[20261128000000, 20261129000000, 20261202000000]")
-        {
+        if code != Some(0) || !stderr.contains(&applied) {
             return Err(format!("first Notification migrate: {code:?}: {stderr}"));
         }
         let (code, stderr) = self.migrate("second", &s.migrator)?;
@@ -1107,10 +1106,9 @@ impl Run<'_> {
         {
             return Err("backout left tables or history behind".into());
         }
+        let applied = lifecycle::expected_applied("vink-notifications")?;
         let (code, stderr) = self.migrate("copy-forward", &s.admin_copy)?;
-        if code != Some(0)
-            || !stderr.contains("applied=[20261128000000, 20261129000000, 20261202000000]")
-        {
+        if code != Some(0) || !stderr.contains(&applied) {
             return Err(format!("forward migration on the copy: {code:?}: {stderr}"));
         }
         println!(
