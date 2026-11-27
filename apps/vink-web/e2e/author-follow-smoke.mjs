@@ -190,7 +190,7 @@ async function relationshipR5Layouts(page, base, handle, {check, chooseAppearanc
   const previous = await page.eval("['theme', 'text'].map(group => document.querySelector('#page-' + group + ' input:checked').value)");
 
   const capture = async (width, theme, scale, state, direction, target) => {
-    await page.viewport(width);
+    await page.viewport(width, 900);
     await page.goto(`${base}/@${handle}/${direction}`);
     const actualScale = scale === 200 ? 150 : scale;
     await page.waitFor(`${q('#rel-back-profile')} && ${q(target)} && ${q('.vk-rel-directions [aria-current=page]')} &&
@@ -225,8 +225,18 @@ async function relationshipR5Layouts(page, base, handle, {check, chooseAppearanc
           return range.getClientRects().length === 1;
         });
       };
+      const names = [heading, ...body.querySelectorAll('.vk-ui-byline__name')];
+      const handles = [...body.querySelectorAll('.vk-ui-identity-handle')];
+      const fitsLines = (element, lines) => {
+        const style = getComputedStyle(element);
+        return element.clientHeight <= lines * parseFloat(style.lineHeight) + 1;
+      };
       return {
         overflow: root.scrollWidth - innerWidth,
+        nameClamp: names.every(el => getComputedStyle(el).webkitLineClamp === '2' && fitsLines(el, 2)),
+        handleClamp: handles.every(el => getComputedStyle(el).textOverflow === 'ellipsis' && fitsLines(el, 1)),
+        compactBack: back.textContent.trim() === 'Hồ sơ' && back.getAttribute('aria-label') === 'Về Hồ sơ',
+        fullHeading: heading.getAttribute('aria-label').startsWith(heading.textContent.trim() + ' · '),
         oneHeading: body.querySelectorAll('h1').length === 1 && heading.tagName === 'H1',
         useUiFont: getComputedStyle(heading).fontFamily.includes('Be Vietnam Pro'),
         wholeWords: wholeWords(heading) && [...body.querySelectorAll('.vk-ui-byline__name')].every(wholeWords),
@@ -241,6 +251,7 @@ async function relationshipR5Layouts(page, base, handle, {check, chooseAppearanc
       };
     })()`);
     check(facts.overflow <= 1 && facts.oneHeading && facts.useUiFont && facts.wholeWords && facts.backShape &&
+      facts.nameClamp && facts.handleClamp && facts.compactBack && facts.fullHeading &&
       facts.leftAligned && facts.indicator && facts.centered,
       `#590 ${state} ${width}/${theme}/${scale}% ${JSON.stringify(facts)}`);
     await page.capture(`r5-relationship-${state}-${width}-${theme}-${scale}`, {
@@ -946,6 +957,24 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
   rename(longName);
   try {
     await relationshipR5Layouts(page, base, handleB, {check, chooseAppearance});
+    const unbroken = 'Nguyễn'.repeat(12);
+    rename(unbroken);
+    await page.viewport(320, 900);
+    await page.goto(base + listPath);
+    await page.waitFor(q('#relationship-title'), 'long unbroken bút danh from Product SSR');
+    const identity = await page.eval(`(() => {
+      const heading = ${q('#relationship-title')};
+      const lineHeight = parseFloat(getComputedStyle(heading).lineHeight);
+      return { name: heading.textContent.trim(), label: heading.getAttribute('aria-label'),
+        lineHeight, height: heading.clientHeight, contentHeight: heading.scrollHeight,
+        overflow: document.documentElement.scrollWidth - innerWidth };
+    })()`);
+    check(identity.name === unbroken && identity.label.startsWith(unbroken + ' · ') &&
+      identity.height <= identity.lineHeight * 2 + 1 && identity.contentHeight > identity.height && identity.overflow <= 1,
+      '#605 long unbroken Vietnamese name overflows only inside its visual clamp');
+    const { nodes } = await page.send('Accessibility.getFullAXTree');
+    check(nodes.some(node => node.role?.value === 'heading' && node.name?.value === identity.label),
+      '#605 clipped name is still read in full by the accessibility tree');
   } finally {
     rename(profB.pen_name);
   }

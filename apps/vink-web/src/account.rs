@@ -7,7 +7,7 @@ mod flow;
 mod forms;
 
 use leptos::prelude::*;
-use vink_ui::{ActionState, Button, ButtonVariant};
+use vink_ui::{ActionState, BackLink, Button, ButtonVariant, Link, LinkVariant};
 
 use crate::contract::{EnrollPasswordRequest, PasswordCredentials, Registration, VerifiedEmail};
 use crate::session::{AuthError, Millis, SessionOwner, Standing};
@@ -321,6 +321,42 @@ pub(crate) fn AuthEntry(#[prop(optional)] reader: Option<ReaderPresentation>) ->
     }
 }
 
+pub(crate) const ACCOUNT_DELETION_HREF: &str = "/toi?quan-ly=xoa";
+
+pub(crate) fn account_deletion_available() -> bool {
+    crate::api::local_discussion_fixture_scope().is_none()
+}
+
+/// One explicit mode of Tôi, independent of AuthEntry and of the session standing.
+#[component]
+pub(crate) fn AccountDeletionPage() -> impl IntoView {
+    let session = Session::current();
+    let heading = NodeRef::<leptos::html::H1>::new();
+    Effect::new(move |_| {
+        if let Some(heading) = heading.get() {
+            #[cfg(feature = "browser")]
+            let _ = heading.focus();
+            #[cfg(not(feature = "browser"))]
+            let _ = heading;
+        }
+    });
+    view! {
+        <div id="page-account-deletion" class="vk-account grid min-w-0 gap-vk-4">
+            <div><BackLink href="/toi" label="Tài khoản" /></div>
+            <h1 id="me-title" class="vk-ui-type-title" tabindex="-1" node_ref=heading>"Quản lý xóa tài khoản"</h1>
+            <p>"Bạn có thể yêu cầu xóa tài khoản bằng mật khẩu hoặc mã gửi đến email đã xác minh."</p>
+            <div id="account-session" class="vk-account-session" data-standing=move || session.standing.with(standing_id)>
+                <forms::AccountDeletion />
+                <Show when=move || session.standing.get() == Standing::Unavailable>
+                    <Button variant=ButtonVariant::Tonal on_press=move |_| session.refresh()>"Kiểm tra lại"</Button>
+                </Show>
+                <SessionRetry />
+            </div>
+            <noscript><p class="vk-muted">"Xóa tài khoản cần JavaScript."</p></noscript>
+        </div>
+    }
+}
+
 /// The identity, session entry and settings on “Tôi”.
 #[component]
 pub(crate) fn AccountHub(children: Children) -> impl IntoView {
@@ -344,7 +380,7 @@ pub(crate) fn AccountHub(children: Children) -> impl IntoView {
                         <crate::appearance::AccountAvatar />
                         <div class="vk-account-identity min-w-0 wrap-anywhere">
                             <vink_ui::Heading id="me-title" level=vink_ui::HeadingLevel::H1
-                                role=vink_ui::TypeRole::Title attr:tabindex="-1">
+                                role=vink_ui::TypeRole::Title attr:tabindex="-1" attr:class="vk-ui-identity-name">
                                 {move || standing.with(|current| match current {
                                     Standing::Active(account) => account.display_name.clone(),
                                     _ => "Tài khoản".into(),
@@ -389,7 +425,11 @@ pub(crate) fn AccountHub(children: Children) -> impl IntoView {
                     }.into_any(),
                     }
                 }}
-                {(!fixture).then(|| view! { <forms::AccountDeletion /> })}
+                <Show when=move || !fixture && matches!(standing.get(), Standing::Anonymous | Standing::Suspended)>
+                    <Link attr:id="account-management-help" variant=LinkVariant::Standalone href=ACCOUNT_DELETION_HREF>
+                        "Hỗ trợ quản lý tài khoản"
+                    </Link>
+                </Show>
                 <Show when=move || !entry()><SessionRetry /></Show>
             </div>
             <noscript><p class="vk-muted">"Đăng nhập cần JavaScript. Bạn vẫn có thể đọc các tác phẩm công khai."</p></noscript>

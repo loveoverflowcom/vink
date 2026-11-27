@@ -272,9 +272,9 @@ export async function contextualReaderAuth(owner, { args, check, openPage, seen 
       };
       return { active: document.activeElement === user, user: paint(user), password: paint(password) };
     })()`);
-    check(forcedPaint.active && forcedPaint.user[0] === '2px' && forcedPaint.password[0] === '1px' &&
-      [forcedPaint.user, forcedPaint.password].every(([, style, , border, inputOutline]) => style === 'solid' && border === '0px' && inputOutline === '0px') &&
-      forcedPaint.user[2] !== forcedPaint.password[2],
+    check(forcedPaint.active && forcedPaint.user[0] === '2px' && forcedPaint.user[1] === 'solid' &&
+      forcedPaint.password[0] === '0px' && forcedPaint.password[3] === '1px' &&
+      [forcedPaint.user, forcedPaint.password].every(([, , , , inputOutline]) => inputOutline === '0px'),
       `#559 Reader forced colors retains a single system-color edge and a distinct input focus (${JSON.stringify(forcedPaint)})`);
     await page.key('Tab');
     await page.key('Tab');
@@ -282,7 +282,7 @@ export async function contextualReaderAuth(owner, { args, check, openPage, seen 
       const reveal = document.querySelector('#password-login-password-reveal');
       const shell = reveal.closest('.vk-ui-field__control');
       return document.activeElement === reveal && getComputedStyle(reveal).outlineWidth === '2px' &&
-        getComputedStyle(shell).outlineWidth === '1px';
+        getComputedStyle(shell).borderTopWidth === '1px' && getComputedStyle(shell).outlineWidth === '0px';
     })()`), '#559 password reveal owns its own focus perimeter in forced colors');
     await page.send('Emulation.setEmulatedMedia', { features: [] });
     await page.click('#reader-auth-close');

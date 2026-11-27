@@ -65,7 +65,7 @@ pub(super) fn RegistrationForm(
                     ev.prevent_default(); if let Some(address) = email.read() { send(address); }
                 }>
                     <TextField id="registration-address" name="email" label="Email" autocomplete="email"
-                        kind=TextKind::Email required=true max_length=254 variant=FieldVariant::FloatingTonal
+                        kind=TextKind::Email required=true max_length=254 variant=FieldVariant::AuthTonal
                         input_ref=email.node value=empty_value() on_input=email.edit() error=field_error(error, |e| *e == AuthError::InvalidEmail) />
                     {problem}
                     <div class="vk-account-actions"><Button id="registration-send" variant=ButtonVariant::Filled kind=ButtonKind::Submit state=state>"Gửi mã xác minh"</Button></div>

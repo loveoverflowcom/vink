@@ -63,6 +63,8 @@ function inspectAuth(mode) {
     noBackOrDivider: !find('.vk-auth-divider, .vk-ui-back-link, [data-icon="arrow-back"]') &&
       !entry.innerText.includes('Quay lại đăng nhập') && ![...entry.querySelectorAll('p')].some(p => p.textContent.trim() === 'Hoặc'),
     noRegistrationEmailShortcut: mode.form !== '#registration-email' || !find('#use-email-code'),
+    noDeletion: !(dialog ?? document.querySelector('#account-session'))
+      .querySelector('#open-account-deletion, #account-deletion-settings-link, #delete-account-form'),
     fits: entry.scrollWidth <= entry.clientWidth + 1 && document.documentElement.scrollWidth <= innerWidth + 1,
     actionGap: !mode.method || Math.abs(gap(buttons[0], buttons[1]) - unit / 2) <= 1,
     account: account && accountRow ? {
@@ -90,8 +92,12 @@ function inspectAuth(mode) {
       const fill = style.backgroundColor;
       const edge = style.outlineColor;
       return { height: box(el).height, fill, edge, outline: style.outlineWidth, border: style.borderTopWidth,
-        distinctFill: fill !== host, edgeContrast: contrast(edge, host),
+        radius: style.borderTopLeftRadius,
+        fillContrast: contrast(fill, host), edgeContrast: contrast(edge, host),
         textContrast: contrast(getComputedStyle(label).color, fill),
+        inputContrast: contrast(getComputedStyle(inputs[i]).color, fill),
+        revealContrast: el.querySelector('.vk-ui-field__reveal button')
+          ? contrast(getComputedStyle(el.querySelector('.vk-ui-field__reveal button')).color, fill) : null,
         focused: inputs[i] === document.activeElement,
         icon: glyph?.dataset.icon, iconContrast: glyph ? contrast(getComputedStyle(glyph).color, fill) : null,
         labelFits: (!glyph || box(label).left >= box(glyph).right) && label.scrollWidth <= label.clientWidth + 1,
@@ -118,10 +124,13 @@ export async function checkAuthR31(page, check, scene, mode = 'login') {
     '(' + inspectAuth.toString() + ')(' + JSON.stringify(spec) + ')',
   );
   const { account, buttons } = result;
-  check(result.order && result.noBackOrDivider && result.noRegistrationEmailShortcut &&
+  check(result.order && result.noBackOrDivider && result.noRegistrationEmailShortcut && result.noDeletion &&
     result.actionGap && result.fits && result.heading && result.modalGeometry &&
-    result.fields.every((f, i) => f.height >= 56 && f.outline === (f.focused ? '2px' : '1px') && f.border === '0px' &&
-      f.distinctFill && (f.focused || f.edgeContrast >= 3) && f.textContrast >= 4.5 &&
+    result.fields.every((f, i) => f.height >= 56 && f.radius === '16px' &&
+      f.outline === (f.focused ? '2px' : '0px') && f.border === '0px' &&
+      f.fillContrast >= 3 && (!f.focused || f.edgeContrast >= 3) &&
+      f.textContrast >= 4.5 && f.inputContrast >= 4.5 &&
+      (f.revealContrast === null || f.revealContrast >= 3) &&
       (f.icon ?? null) === spec.icons[i] && (f.iconContrast === null || f.iconContrast >= 3) && f.native && f.labelFits) &&
     buttons.every(b => b.height >= 48 && b.border === '0px' && b.contrast >= 4.5 && !b.clip) &&
     buttons[0].filled && buttons[0].text === spec.primary[1] && buttons[0].type === 'submit' &&

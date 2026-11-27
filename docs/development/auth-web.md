@@ -177,12 +177,21 @@ dùng cỡ chữ mặc định 100%, fixture cho CSS 150% của Product và stre
 
 Nguồn của nhóm hành động là `GuestAuth` và [Button](../../packages/ui-system/leptos/src/action.rs).
 CSS Auth giới hạn hình học trong `.vk-auth-entry`; Filled, Tonal, Text và focus dùng recipe chung.
-Field dùng `FloatingTonal` và alias Auth `field-container` → `surface-container-highest`,
-cùng đường nhận biết `field-outline` từ R3. Reader giữ native `dialog` với CSS sheet.
-Nguồn shared được rà soát theo consumer. TextField dùng ở Auth và Chỉnh hồ sơ. TextArea ở
-Chỉnh hồ sơ và luồng review, Select ở Chỉnh hồ sơ, SearchField ở Khám phá và Bàn viết,
-FilterChip ở Khám phá. Dialog/Sheet của UI System tiếp tục phục vụ các overlay khác.
-Delta R3.1 chỉ chạm form Auth, không đổi primitive, token sinh, preview hoặc CMP.
+R5 [#605](https://github.com/loveoverflowcom/vink/issues/605) chọn biến thể `AuthTonal` của
+TextField cho Tôi, Reader, thêm mật khẩu, email và luồng xóa chuyên biệt. Cặp nền/chữ được xác
+định ở recipe chung để nhận biết field trên cả nền trang lẫn dialog. Chỉnh hồ sơ và các caller
+ngoài Auth vẫn dùng `FloatingTonal` hoặc variant hiện có. Reader giữ native `dialog` với CSS sheet.
+Điểm vào xóa Active thuộc Cài đặt. Hồ sơ đã đăng xuất và bị đình chỉ dùng liên kết hỗ trợ.
+Chế độ `/toi?quan-ly=xoa` trong `Me` sở hữu mount của `AccountDeletion` qua các thay đổi
+standing để đọc lại biên nhận trên cùng trang. Session/AuthGate vẫn sở hữu kiểm tra epoch và
+ủy quyền. [LayoutSpec xóa tài khoản](../design/account-deletion.md).
+
+Baseline R5 là #626 cho đăng ký bắt buộc email xác minh và #604 cho Notifications/Appearance.
+Các sửa bố cục #559, #585, #588–590 giữ thứ tự hành động, câu chữ, quyền và các hướng danh sách.
+Mẫu tóm tắt danh tính chung nằm ở UI System. `AuthorByline` dùng nó cho byline, kết quả tìm kiếm,
+gợi ý và người theo dõi. Tài khoản, hồ sơ, heading danh sách và người đã Thấm dùng cùng class.
+Câu thông báo ghép tác giả với hành động và tên trong ngữ cảnh đọc được giữ đầy đủ.
+[LayoutSpec tóm tắt danh tính](../design/redesign-r4/layout-spec.md#tóm-tắt-danh-tính-r5-605).
 
 Quyết định thuần có unit test trong `session.rs` (`cargo test -p vink-web --lib --features ssr`).
 

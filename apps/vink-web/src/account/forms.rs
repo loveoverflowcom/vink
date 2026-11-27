@@ -292,7 +292,7 @@ fn PasswordFields(
         .name("username")
         .label("Tên đăng nhập")
         .autocomplete("username")
-        .variant(FieldVariant::FloatingTonal)
+        .variant(FieldVariant::AuthTonal)
         .required(true)
         .input_ref(username.node)
         .value(empty_value())
@@ -313,7 +313,7 @@ fn PasswordFields(
         .label("Mật khẩu")
         .autocomplete(autocomplete)
         .kind(TextKind::Password)
-        .variant(FieldVariant::FloatingTonal)
+        .variant(FieldVariant::AuthTonal)
         .reveal_password(true)
         .required(true)
         .input_ref(password.node)
@@ -445,7 +445,7 @@ fn GuestPassword(
             {registration.get_value().map(|(email, expires)| view! {
                 <p role="status">"Mã xác minh đã được yêu cầu cho " <strong class="wrap-anywhere">{email}</strong> "." {instant(expires)}</p>
                 <TextField id="registration-code" label="Mã xác minh" name="code" autocomplete="one-time-code"
-                    required=true variant=FieldVariant::FloatingTonal input_ref=digits.node value=empty_value()
+                    required=true variant=FieldVariant::AuthTonal input_ref=digits.node value=empty_value()
                     on_input=digits.edit() error=field_error(error, |e| matches!(e, AuthError::InvalidCode | AuthError::CodeRejected)) />
             })}
             <PasswordFields purpose username password error />
@@ -612,7 +612,7 @@ fn EmailSignIn(
                         " Nếu chưa thấy thư, hãy xem cả mục thư rác."
                     </p>
                     <TextField id="sign-in-digits" label="Mã 6 chữ số" name="code"
-                        autocomplete="one-time-code" required=true variant=FieldVariant::FloatingTonal
+                        autocomplete="one-time-code" required=true variant=FieldVariant::AuthTonal
                         input_ref=code.node value=empty_value() on_input=code.edit()
                         error=field_error(error, |e| matches!(e, AuthError::InvalidCode | AuthError::CodeRejected)) />
                     {move || error.get().map(|e| {
@@ -652,7 +652,7 @@ fn EmailSignIn(
                         if let Some(value) = email.read() { request(value); }
                     }>
                     <TextField id="sign-in-address" label="Email" name="email" kind=TextKind::Email
-                        autocomplete="email" required=true max_length=254 variant=FieldVariant::FloatingTonal
+                        autocomplete="email" required=true max_length=254 variant=FieldVariant::AuthTonal
                         input_ref=email.node value=first_value on_input=email.edit()
                         error=field_error(error, |e| *e == AuthError::InvalidEmail) />
                     {move || error.get().map(|e| {
@@ -847,7 +847,7 @@ fn EnrollmentForm(
                 {instant(expires)}
             </p>
             <TextField id="password-enroll-code" label="Mã 6 chữ số" name="code" autocomplete="one-time-code"
-                variant=FieldVariant::FloatingTonal required=true
+                variant=FieldVariant::AuthTonal required=true
                 input_ref=code.node value=empty_value() on_input=code.edit()
                 error=field_error(error, |e| matches!(e, AuthError::InvalidCode | AuthError::CodeRejected)) />
             <PasswordFields purpose=PasswordUse::Enroll username password error />
@@ -914,6 +914,10 @@ pub(super) fn SignedInSettings(epoch: u64, fixture: bool) -> impl IntoView {
                         loaded.set(false);
                     } />
                 </div>
+                <div class="vk-account-setting">
+                    <Link attr:id="account-deletion-settings-link" variant=LinkVariant::Standalone
+                        href=super::ACCOUNT_DELETION_HREF>"Xóa tài khoản"</Link>
+                </div>
             })}
         </section>
     }
@@ -944,7 +948,7 @@ pub(super) fn PenName(epoch: u64, focus: bool) -> impl IntoView {
                 });
             }>
             <TextField id="pen-name" label="Bút danh" name="pen_name" autocomplete="nickname"
-                required=true max_length=80 variant=FieldVariant::FloatingTonal
+                required=true max_length=80 variant=FieldVariant::AuthTonal
                 help="Tên hiển thị cùng bài viết và nhận xét của bạn. Bút danh không dùng để đăng nhập."
                 input_ref=pen_name.node value=empty_value() on_input=pen_name.edit()
                 error=field_error(error, |e| *e == AuthError::InvalidPenName) />

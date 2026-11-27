@@ -361,9 +361,9 @@ pub fn AuthorByline(
             decorative=true
         />
         <span class="vk-ui-byline__text">
-            <span class="vk-ui-byline__name" data-blank=blank.then_some("true")
+            <span class="vk-ui-byline__name vk-ui-identity-name" data-blank=blank.then_some("true")
                 data-neutral=neutral.then_some("true")>{name_view}</span>
-            {handle.map(|handle| view! { <span class="vk-ui-byline__handle">{handle}</span> })}
+            {handle.map(|handle| view! { <span class="vk-ui-byline__handle vk-ui-identity-handle">{handle}</span> })}
         </span>
     };
     view! {
@@ -585,7 +585,9 @@ mod tests {
                 && inside.contains(r#"src="/avatar.webp""#)
                 && inside.contains(r#"aria-label="Mở hồ sơ Trần Linh (@tran-linh)""#)
                 && inside.contains(r#"href="/@tran-linh""#)
-                && inside.contains(r#"class="vk-ui-byline__handle">@tran-linh</span>"#),
+                && inside.contains(
+                    r#"class="vk-ui-byline__handle vk-ui-identity-handle">@tran-linh</span>"#
+                ),
             "{html}"
         );
         assert!(

@@ -7,7 +7,7 @@ Quay lại đúng ô soạn sau khi phiên đã được đối soát, không m�
 [HTML preview đã duyệt](https://drive.google.com/file/d/1PC5meJCs_J_5ig3jwaZT-OEP6RzSAUY3/view)
 định nghĩa phân cấp hành động hiện hành. [03-dang-nhap-reader.png, 390×844 tối](https://drive.google.com/file/d/1Uef6IlEtkxQ_trMB8rw0JLz2nh9RlqZb/view)
 thuộc bộ R2, được duyệt ngày 19/11/2026 và ghi trong [issue #328](https://github.com/loveoverflowcom/vink/issues/328).
-Đây là mốc lịch sử. [Form Auth chung](auth-password-web.md) sở hữu trường FloatingTonal,
+Đây là mốc lịch sử. [Form Auth chung](auth-password-web.md) sở hữu trường `AuthTonal` (R5),
 thứ tự hành động, lỗi và đối soát phiên.
 
 | Vùng | Bố cục và thứ tự đọc |
