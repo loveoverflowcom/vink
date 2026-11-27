@@ -384,16 +384,6 @@ a {
   line-height: var(--vk-type-label-line-height);
 }
 
-/* A Display H1 (tag pages) stays one step above the stream's Title H2; Headline when narrow.
- * Khám phá's own modes use the R4.2 page title instead. */
-@media (max-width: 759px) {
-  .vk-explore__heading > .vk-ui-heading:not(.vk-ui-type-page-title) {
-    font-size: var(--vk-type-headline-size);
-    line-height: var(--vk-type-headline-line-height);
-    letter-spacing: var(--vk-type-headline-tracking);
-  }
-}
-
 /* Stream header: H2 and the loaded-count status share a row; DOM order stays heading → count. */
 #community-stream { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-content: start; align-items: baseline; column-gap: var(--vk-space-4); }
 #community-stream > *, #public-collection > *, #public-results > * { grid-column: 1 / -1; }

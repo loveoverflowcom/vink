@@ -346,9 +346,20 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   await page.eval('history.back()');
   await page.waitFor("!document.querySelector('#tag-picker').open && document.activeElement.id==='open-tag-filters'", 'Back closes picker before navigating');
   check(await page.eval('location.href') === before, 'cancelling retains the query');
-  for (const choice of choices) {
+  await page.click('#open-tag-filters');
+  const outside = await page.eval(`(() => {
+    const rect = document.querySelector('#tag-picker').getBoundingClientRect();
+    return { x: innerWidth / 2, y: Math.max(0, rect.top / 2) };
+  })()`);
+  await page.send('Input.dispatchMouseEvent', { type: 'mousePressed', ...outside, button: 'left', clickCount: 1 });
+  await page.send('Input.dispatchMouseEvent', { type: 'mouseReleased', ...outside, button: 'left', clickCount: 1 });
+  await page.waitFor("!document.querySelector('#tag-picker').open && document.activeElement.id==='open-tag-filters'", 'outside click closes the picker');
+  check(await page.eval('location.href') === before, 'outside dismissal preserves the applied query');
+  for (const [index, choice] of choices.entries()) {
+    const theme = index === 0 ? 'light' : 'dark';
+    await page.eval(`document.documentElement.dataset.theme = ${JSON.stringify(theme)}`);
     await page.click('#open-tag-filters');
-    await textContrast(page, 'light', 'filter');
+    await textContrast(page, theme, 'filter');
     await page.eval(`document.getElementById(${JSON.stringify(choice.id)}).focus()`);
     await page.key('Enter');
     await page.waitFor(`location.href === ${JSON.stringify(choice.href)} && document.querySelectorAll('#applied-filters .vk-applied-tag').length === 1 &&
@@ -553,7 +564,8 @@ export async function tagRecovery(page, { args, check }, standing) {
       const a=document.querySelector('.vk-ui-back-link'), h=document.querySelector('#explore-heading h1'),
         input=document.querySelector('#public-query'), search=input.closest('form'), main=document.querySelector('#community-stream');
       return a.getAttribute('href')==='/' && a.textContent.trim()==='Về Khám phá' && a.firstElementChild.matches('[data-icon=arrow-back][aria-hidden=true]') &&
-        h.textContent==='Thơ' && a.getBoundingClientRect().bottom<=h.getBoundingClientRect().top+1 &&
+        h.textContent==='Thơ' && h.classList.contains('vk-ui-type-title') &&
+        getComputedStyle(h).fontSize === (22 * ${scale} / 100) + 'px' && a.getBoundingClientRect().bottom<=h.getBoundingClientRect().top+1 &&
         search.getBoundingClientRect().top>=h.getBoundingClientRect().bottom-1 && input.labels[0].textContent==='Tìm trong thẻ' &&
         !document.querySelector('#open-tag-filters,.vk-explore-modes') && !main.querySelector('a[href="/"]') &&
         document.documentElement.scrollWidth<=innerWidth;
