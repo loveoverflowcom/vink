@@ -275,7 +275,7 @@ impl Notifications {
                         self.seen(command, generation);
                     }
                     if let Some(index) = restore_item {
-                        self.restore_list_focus(scope, generation, Some(index));
+                        self.restore_inbox_focus(scope, generation, Some(index));
                     }
                 }
                 Err(error) => {
@@ -359,7 +359,6 @@ impl Notifications {
         let Some(scope) = self.scope() else {
             return;
         };
-        let restore = has_focus("#notification-read-all");
         let Some((command, cursors)) = self
             .inbox
             .try_update(|inbox| {
@@ -397,6 +396,7 @@ impl Notifications {
             }
             match result {
                 Ok(rows) => {
+                    let restore = has_focus("#notification-read-all");
                     self.inbox.update(|inbox| {
                         // The receipt is snapshot-bounded, not a claim that every rendered
                         // version is read. Apply only current Gateway facts for displayed IDs.
@@ -421,7 +421,7 @@ impl Notifications {
                     });
                     self.refresh_count();
                     if restore {
-                        self.restore_list_focus(scope, generation, None);
+                        self.restore_inbox_focus(scope, generation, None);
                     }
                 }
                 Err(error) => {
@@ -432,7 +432,7 @@ impl Notifications {
             }
         });
     }
-    fn restore_list_focus(self, scope: (String, String), generation: u64, index: Option<usize>) {
+    fn restore_inbox_focus(self, scope: (String, String), generation: u64, index: Option<usize>) {
         request_animation_frame(move || {
             if !self.live(&scope, generation)
                 || document().active_element().is_some_and(|element| {
@@ -441,19 +441,22 @@ impl Notifications {
             {
                 return;
             }
-            let Ok(Some(body)) = document()
-                .query_selector("main .vk-notif-body, #notification-popover[open] .vk-notif-body")
+            let Ok(Some(surface)) =
+                document().query_selector("#notification-popover[open], main .vk-notif-page")
             else {
                 return;
             };
-            let new_row = index.and_then(|index| {
-                body.query_selector_all(".vk-notif-row__link")
-                    .ok()?
-                    .item(index.try_into().ok()?)?
-                    .dyn_into::<web_sys::Element>()
+            let target = if let Some(index) = index {
+                surface
+                    .query_selector_all(".vk-notif-row__link")
                     .ok()
-            });
-            crate::shell::focus_without_scroll(new_row.or(Some(body)));
+                    .and_then(|rows| rows.item(index.try_into().ok()?))
+                    .and_then(|node| node.dyn_into::<web_sys::Element>().ok())
+                    .or_else(|| surface.query_selector(".vk-notif-body").ok().flatten())
+            } else {
+                surface.query_selector(".vk-notif-title").ok().flatten()
+            };
+            crate::shell::focus_without_scroll(target);
         });
     }
 }

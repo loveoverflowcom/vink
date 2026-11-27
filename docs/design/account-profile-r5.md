@@ -9,7 +9,7 @@ dùng dữ liệu minh họa. Product dùng token Vink và dữ liệu của phi
 | Vùng | Bố cục và điểm cố định |
 | --- | --- |
 | A1 Nhận diện | Avatar, bút danh và chuông hiện có. Container hẹp cho tên một hàng đầy đủ. Giữ các đích xem và chỉnh hồ sơ. |
-| A2 Cài đặt | Quyền riêng tư dẫn tới section của form. Tên đăng nhập và mật khẩu vẫn mở disclosure. Email, Giao diện và đăng xuất dùng dữ liệu và điều kiện hiển thị hiện hành. |
+| A2 Cài đặt | Hàng phẳng, icon trung tính cùng trục. Quyền riêng tư là link toàn hàng với chevron dẫn tới section của form. Tên đăng nhập và mật khẩu có chevron theo trạng thái disclosure. Email giữ trạng thái và các thao tác xác minh. [Giao diện](me-preferences-r1-209.md#giao-diện-thành-viên-413-576) là nhóm con, Đăng xuất là nút chữ. |
 | R1 Đầu trang | Một Back về Tài khoản. Pill có chữ trên desktop, tròn 48 CSS px trên mobile. Link về entry của Tài khoản có sẵn khi mở trang trực tiếp. |
 | R2 Nội dung | Avatar chữ từ phiên đã xác minh, Bút danh với trợ giúp ngắn, địa chỉ cạnh action Thiết lập/Đổi địa chỉ, Giới thiệu với ô nhiều dòng. |
 | R3 Quyền riêng tư | Sáu giá trị độc lập, gồm hai cặp list/count. Label và giá trị xếp lại khi thiếu chỗ. Quyền đã khóa có lý do. Cảnh báo hiện ngay sau khi chọn thu hẹp quyền. |
@@ -21,6 +21,11 @@ chọn, theo thao tác bàn phím, Escape và light dismiss của trình duyệt
 `appearance: base-select` dùng menu native có nhãn chữ. TextField/TextArea giữ native control,
 label, lỗi và IME. Giới thiệu tăng chiều cao khoảng 3–8 dòng khi hỗ trợ `field-sizing`.
 Desktop/mobile dùng 100% và 150% từ Giao diện. 200% dùng root-font stress riêng.
+
+[#602](https://github.com/loveoverflowcom/vink/issues/602) cập nhật cách trình bày của A2 theo
+[concept R1](https://drive.google.com/file/d/1wRQ9W1kNWNrRi6fdqioGqxsl-BKqLrgT/view).
+Hàng link có lớp hover, pressed và vòng focus. Dữ liệu, quyền mở vùng, đích và focus khi quay về
+tiếp tục theo phiên và điều hướng R5.
 
 ## Lựa chọn và bàn giao
 

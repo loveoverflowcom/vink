@@ -66,6 +66,7 @@ pub fn PlainTooltip(
             on:keydown=move |event| {
                 if event.key() == "Escape" && visible.get_untracked() {
                     dismissed.set(true);
+                    event.prevent_default();
                     event.stop_propagation();
                 }
             }>

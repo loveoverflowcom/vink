@@ -12,6 +12,9 @@ const mobile = '#notification-bell-mobile';
 const popup = '#notification-popover';
 const inbox = '/api/v1/me/notifications';
 const read = `${inbox}/read`;
+const markAll = `${inbox}/mark-all-read`;
+const markButton = '#notification-read-all';
+const markLabel = 'Đánh dấu tất cả là đã đọc';
 const work = '33333333-3333-4333-8333-333333333333';
 const privateTitle = 'Mùa gió chướng';
 const denied = { error: { code: 'not_found', message: 'not found' } };
@@ -28,7 +31,7 @@ async function fixture(page) {
   const started = performance.now();
   const state = { session: 'A', countMode: 'fresh', staleCount: 8, firstFailure: false, count: 3, snapshot: 45, seen: 0,
     pageSize: null, marked: false, moreFailure: true, holdCount: false, holdMark: false,
-    checkFailure: false, holdSession: false, standing: 'anonymous' };
+    markFailure: false, holdFirst: false, checkFailure: false, holdSession: false, standing: 'anonymous' };
   const held = new Map();
   const root = gateway.response.items[0];
   const [tham, rejected] = examples.inbox.items;
@@ -111,6 +114,11 @@ async function fixture(page) {
               ? { ...row.target, work_title: 'Tác phẩm có cập nhật' } : row.target,
         })),
       }];
+      if (!more && state.holdFirst) {
+        state.holdFirst = false;
+        held.set('first', () => reply(requestId, ...response));
+        return;
+      }
     } else if (path === `${inbox}/seen`) {
       if (body.up_to_snapshot === snapshot(scope)) {
         state.seen = state.snapshot;
@@ -122,8 +130,9 @@ async function fixture(page) {
       response = [200, { group_id: body.group_id, group_version: body.observed_group_version, is_read: true }];
       held.set('read', () => reply(requestId, ...response));
       return;
-    } else if (path === `${inbox}/mark-all-read`) {
+    } else if (path === markAll) {
       const answer = () => {
+        if (state.markFailure) return reply(requestId, 503, unavailable);
         state.marked = true;
         return reply(requestId, 200, { up_to_snapshot: body.up_to_snapshot, groups_marked: 3 });
       };
@@ -366,6 +375,7 @@ async function inboxSessionStates(page, { args, check }, controlled) {
   state.pageSize = 0;
   await page.click(retry);
   await page.waitFor('document.querySelector("main").textContent.includes("Chưa có thông báo.")', 'session retry reaches signed-in empty inbox');
+  check(await page.eval(noPrivate), '#602 a signed-in empty inbox has no bulk action');
   check(!calls.some(request => request.path === inbox && request.scope == null), '#575 no unauthorised inbox read during session verification');
 
   state.pageSize = null;
@@ -469,7 +479,18 @@ export async function notifications(page, { args, check }) {
     .some(initials => initials.textContent.trim() === 'LP' && getComputedStyle(initials).visibility === 'visible')`),
     'AC-05 the shared avatar group shows fallback initials');
   await page.key('Tab');
-  check(await page.eval(`document.querySelector('${popup}').contains(document.activeElement)`), 'AC-05 Tab stays in the dialog');
+  check(await page.eval(focused(markButton)), '#602 Tab reaches the icon from the popover title');
+  await page.waitFor(`(() => {
+    const tip = document.querySelector('${markButton}-tooltip'), bounds = tip.getBoundingClientRect();
+    return !tip.hidden && tip.textContent === '${markLabel}' &&
+      document.elementFromPoint(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)?.closest('[role=tooltip]') === tip;
+  })()`, '#602 the keyboard tooltip is visible over the popover');
+  const { nodes } = await page.send('Accessibility.getFullAXTree');
+  check(nodes.some(node => node.role?.value === 'button' && node.name?.value === markLabel),
+    '#602 the icon has the action name in the Chrome accessibility tree');
+  await page.key('Escape');
+  check(await page.eval(`document.querySelector('${popup}').open && document.querySelector('${markButton}-tooltip').hidden && ${focused(markButton)}`),
+    '#602 Escape dismisses the tooltip without closing the popover or moving focus');
   await page.key('Escape');
   check(await page.eval(focused(bell)), 'AC-01 Escape restores rail bell');
   await page.click(bell);
@@ -483,7 +504,12 @@ export async function notifications(page, { args, check }) {
   await page.click(`${popup} button[aria-label="Đóng thông báo"]`);
   await page.waitFor(focused(bell), 'close button restores the bell');
   await page.key('Space');
-  await page.waitFor(`document.querySelector('${popup}').open`, 'Space opens popover');
+  await page.waitFor(`document.querySelector('${popup}').open && document.querySelector('${popup} ${markButton}')`, 'Space opens popover');
+  await page.key('Tab');
+  await page.key('Space');
+  await page.waitFor(`!document.querySelector('${popup} ${markButton}') && ${focused('#notification-popover-title')}`,
+    '#602 Space marks the popover read and returns focus to its title');
+  state.marked = false;
   await page.viewport(390);
   await page.waitFor(focused('#noi-dung'), 'resize returns focus to main');
   check(await page.eval(`!document.querySelector('${popup}').open && ${visible(mobile)}
@@ -501,11 +527,13 @@ export async function notifications(page, { args, check }) {
       const title = card.querySelector('#me-title');
       const illustration = card.querySelector('.vk-account-illustration');
       const c = card.getBoundingClientRect(), b = button.getBoundingClientRect(), t = title.getBoundingClientRect();
+      // R5 gives the name its own row below the bell and avatar in the narrow card.
+      const fits = ${width === 700} ? t.right <= b.left : t.top >= b.bottom && Math.abs(t.width - c.width) <= 1;
       return !illustration && title.matches('h1.vk-ui-type-title') && document.querySelectorAll('main h1').length === 1 &&
         title.textContent.trim().length > 0 && title.textContent !== 'Tài khoản' && b.width >= 48 && b.height >= 48 &&
-        b.top >= c.top && b.bottom <= c.bottom && t.right <= b.left &&
+        b.top >= c.top && b.bottom <= c.bottom && fits &&
         document.documentElement.scrollWidth <= innerWidth;
-    })()`), `#520 mobile ${width}px/${scale}% ${theme}: heading and bell fit the card side by side`);
+    })()`), `#520/#591 mobile ${width}px/${scale}% ${theme}: name and bell fit the expected card rows`);
     await screenshot(`account-mobile-bell-${width}-${scale}-${theme}`, width, scale, theme);
   }
   await page.eval(`document.documentElement.style.fontSize = ''; document.querySelector('${mobile}').focus()`);
@@ -519,13 +547,40 @@ export async function notifications(page, { args, check }) {
   await page.key('Enter');
   await page.waitFor(`document.querySelectorAll('main ${row}').length > 3`, 'same continuation succeeds');
   await page.waitFor(focused('main .vk-notif-row__link'), 'focus moves to the newly loaded page after the continuation ends');
+  await page.eval("document.querySelector('main button[aria-label=\"Quay lại\"]').focus()");
+  await page.key('Tab');
+  check(await page.eval(focused(markButton)), '#602 Tab reaches the page icon after Back');
+  state.markFailure = true;
   state.holdMark = true;
-  await page.click('main #notification-read-all');
+  held.delete('mark');
+  const previousMarks = calls.filter(request => request.path === markAll).length;
+  await page.key('Enter');
   await eventually(() => held.get('mark'), 'held MarkAllRead');
-  check(await page.eval(`document.querySelectorAll('main .vk-notif-row--unread').length > 0`), 'AC-03 bulk read waits for confirmation');
+  check(await page.eval(`document.querySelector('${markButton}[aria-busy=true][aria-disabled=true]') &&
+    document.querySelector('main .vk-notif-row--unread') && ${focused(markButton)}`),
+  '#602 the focused icon is busy and the rows stay unread before ACK');
+  await page.key('Space');
+  await page.eval(`document.querySelector('${markButton}').click()`);
   await held.get('mark')();
-  await page.waitFor(`!document.querySelector('main .vk-notif-row--unread')`, 'bulk read applied from authoritative reread');
-  check(latest(`${inbox}/mark-all-read`).body.up_to_snapshot === 's1.45.A', 'AC-03 bulk read preserves the first-page snapshot');
+  const markRetry = 'main .vk-notif-error button';
+  await page.waitFor(`document.querySelector('${markRetry}') && document.querySelector('main [role=alert]').textContent.includes('Chưa đánh dấu')`,
+    '#602 a failed mark-all exposes the retry');
+  check(calls.filter(request => request.path === markAll).length === previousMarks + 1
+    && await page.eval(`document.querySelector('main .vk-notif-row--unread') && !document.querySelector('${markButton}').hasAttribute('aria-busy')`),
+    '#602 failure preserves unread rows and pending activation dispatches only once');
+
+  state.markFailure = false;
+  state.holdFirst = true;
+  await page.eval(`document.querySelector('${markRetry}').focus()`);
+  await page.key('Enter');
+  await eventually(() => held.get('first'), 'held inbox reread after MarkAllRead ACK');
+  check(await page.eval(`document.querySelector('main .vk-notif-row--unread') && ${focused(markButton)}`),
+    '#602 the receipt alone leaves rows unread until the authoritative reread');
+  await held.get('first')();
+  await page.waitFor(`!document.querySelector('main .vk-notif-row--unread, main ${markButton}') && ${focused('#notification-page-title')}`,
+    '#602 the reread removes the icon and returns focus to the page title');
+  check(calls.filter(request => request.path === markAll).length === previousMarks + 2
+    && latest(markAll).body.up_to_snapshot === 's1.45.A', '#602 retry sends the same snapshot exactly once');
 
   await page.goto(`${args.base}/`);
   await page.waitFor(`${mounted} && ${visible(mobile)}`, 'mobile home');
@@ -546,6 +601,28 @@ export async function notifications(page, { args, check }) {
         report.push({ name, ...measure });
         check(measure.overflow <= 1 && measure.innerOverflow <= 1 && measure.targets.every(([w, h]) => w >= 44 && h >= 44),
           `AC-05 ${name}: no horizontal overflow, targets ≥44px`);
+        const header = await page.eval(`(() => {
+          const title = document.querySelector('${surface} .vk-notif-title');
+          const button = document.querySelector('${surface} ${markButton}');
+          const glyph = button.querySelector('[data-icon=done-all]');
+          const a = title.getBoundingClientRect(), b = button.getBoundingClientRect();
+          const c = glyph?.getBoundingClientRect(), style = getComputedStyle(button);
+          const close = button.closest('header')?.querySelector('[aria-label="Đóng thông báo"]');
+          const text = title.firstChild;
+          const wholeWords = [...text.textContent.matchAll(/\\S+/g)].every(word => {
+            const range = document.createRange();
+            range.setStart(text, word.index);
+            range.setEnd(text, word.index + word[0].length);
+            return range.getClientRects().length === 1;
+          });
+          return { fit: a.right <= b.left && Math.abs(a.y + a.height / 2 - b.y - b.height / 2) <= 1 &&
+              (!close || b.right <= close.getBoundingClientRect().left), wholeWords, target: [b.width, b.height],
+            icon: c && [c.width, c.height], standard: style.backgroundColor === 'rgba(0, 0, 0, 0)' &&
+              style.borderTopColor === 'rgba(0, 0, 0, 0)' && !button.textContent.trim() };
+        })()`);
+        report.at(-1).header = header;
+        check(header.fit && header.wholeWords && header.standard && header.icon?.every(size => size === 24) && header.target.every(size => size >= 48),
+          `#602 ${name}: whole title words, aligned 24px icon and transparent 48px target`);
         await screenshot(name, width, scale, theme);
         if (modal) {
           check(await page.eval(`getComputedStyle(document.querySelector('${popup}')).animationName === 'none'`),

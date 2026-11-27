@@ -228,10 +228,10 @@ pub(crate) fn AccountAvatar(#[prop(optional)] navigation: bool) -> impl IntoView
 #[component]
 pub(crate) fn AppearanceTitle(id: &'static str) -> impl IntoView {
     view! {
-        <h2 id=id class="vk-appearance-title">
-            <span class="vk-appearance-mark" aria-hidden="true"><span data-appearance-icon="palette"></span></span>
+        <h3 id=id class="vk-account-setting-row">
+            <span aria-hidden="true"><span data-appearance-icon="palette"></span></span>
             "Giao diện"
-        </h2>
+        </h3>
     }
 }
 
@@ -240,15 +240,16 @@ pub(crate) fn AppearanceChoices(prefix: &'static str) -> impl IntoView {
     let appearance = expect_context::<Appearance>();
     view! {
         <div class="vk-appearance-region">
-            <AppearanceRow prefix preference="theme" label="Chế độ màu" icon="system"
+            <AppearanceRow prefix preference="theme" label="Chế độ màu"
                 options=&[("system", "Hệ thống"), ("light", "Sáng"), ("dark", "Tối")]
                 value=Signal::derive(move || Some(appearance.preferences.get().theme.value().to_owned()))
                 on_change=Callback::new(move |value: String| appearance.set_theme(Theme::parse(&value))) />
-            <AppearanceRow prefix preference="text" label="Cỡ chữ" icon="100"
+            <AppearanceRow prefix preference="text" label="Cỡ chữ"
                 options=&[("100", "Mặc định"), (LARGE_TEXT, "Lớn")]
                 value=Signal::derive(move || Some(if appearance.preferences.get().large_text { LARGE_TEXT } else { "100" }.to_owned()))
                 on_change=Callback::new(move |value: String| appearance.set_large_text(value == LARGE_TEXT)) />
-            <AppearanceRow prefix preference="rail" label="Thanh điều hướng" icon="rail"
+            <AppearanceRow prefix preference="rail" label="Thanh điều hướng"
+                help="Trên màn hình vừa, thanh bên mở rộng khi bạn bấm nút điều hướng."
                 options=&[("auto", "Tự động"), ("expanded", "Mở rộng"), ("compact", "Thu gọn")]
                 value=Signal::derive(move || Some(appearance.preferences.get().rail.map_or("auto", Rail::value).to_owned()))
                 on_change=Callback::new(move |value: String| appearance.set_rail(Rail::parse(&value))) />
@@ -256,14 +257,13 @@ pub(crate) fn AppearanceChoices(prefix: &'static str) -> impl IntoView {
     }
 }
 
-// RadioGroup owns the accessible group name, native inputs and checked state.
-// The visible heading and glyph identify the group on Tôi, the only appearance surface (#413).
+// RadioGroup owns the group name, description, native inputs and checked state.
 #[component]
 fn AppearanceRow(
     prefix: &'static str,
     preference: &'static str,
     label: &'static str,
-    icon: &'static str,
+    #[prop(optional, into)] help: Option<String>,
     options: &'static [(&'static str, &'static str)],
     value: Signal<Option<String>>,
     on_change: Callback<String>,
@@ -275,13 +275,8 @@ fn AppearanceRow(
         .collect();
     view! {
         <div class="vk-appearance-row">
-            <h3 id=format!("{id}-title")><span data-appearance-icon=icon aria-hidden="true"></span>{label}</h3>
-            <div class="vk-appearance-region__choices">
-                <vink_ui::RadioGroup id legend=label options value on_change />
-                {(preference == "rail").then(|| view! {
-                    <p class="vk-appearance-rail-hint">"Trên màn hình vừa, thanh bên mở rộng khi bạn bấm nút điều hướng."</p>
-                })}
-            </div>
+            <h4 id=format!("{id}-title")>{label}</h4>
+            <vink_ui::RadioGroup id legend=label options value on_change nostrip:help=help />
         </div>
     }
 }

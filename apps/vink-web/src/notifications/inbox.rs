@@ -5,7 +5,7 @@ use vink_patterns::{
 };
 use vink_ui::{
     ActionState, Button, ButtonVariant, ExpressiveShape, HeadingLevel, IconButton, IconName,
-    Person, ShapeMark, ShapeTone,
+    Person, ShapeMark, ShapeTone, TooltipIconButton,
 };
 
 use super::contract::{Item, Target, segment};
@@ -31,9 +31,12 @@ fn InboxPageContent(owner: Notifications) -> impl IntoView {
     view! {
         <Title text="Thông báo — Vink" />
         <section class="vk-notif-page vk-state-page" aria-labelledby="notification-page-title">
-            <div class="vk-notif-page__top"><BackButton /><ReadAll owner /></div>
+            <BackButton />
             <header class="vk-notif-page__head">
-                <h1 id="notification-page-title" class="vk-ui-heading vk-notif-title" tabindex="-1">"Thông báo"</h1>
+                <div class="vk-notif-header-row">
+                    <h1 id="notification-page-title" class="vk-ui-heading vk-notif-title" tabindex="-1">"Thông báo"</h1>
+                    <ReadAll owner />
+                </div>
                 {move || owner.available().then(|| owner.inbox.with(|inbox| {
                     (inbox.snapshot.is_some() && !inbox.items.is_empty()).then(|| {
                         let count = inbox.items.iter().filter(|item| !item.is_read).count();
@@ -67,7 +70,7 @@ pub(super) fn BackButton() -> impl IntoView {
 pub(crate) fn InboxPopover(open: Signal<bool>, on_close: Callback<()>) -> impl IntoView {
     let owner = Notifications::current();
     view! {
-        <header class="vk-notif-popover__head">
+        <header class="vk-notif-header-row vk-notif-popover__head">
             <h2 id="notification-popover-title" class="vk-ui-heading vk-notif-title" tabindex="-1">"Thông báo"</h2>
             <Show when=move || open.get()><ReadAll owner /></Show>
             <IconButton label="Đóng thông báo" icon=IconName::Close on_press=move |_| on_close.run(()) />
@@ -87,7 +90,8 @@ pub(crate) fn InboxPopover(open: Signal<bool>, on_close: Callback<()>) -> impl I
 fn ReadAll(owner: Notifications) -> impl IntoView {
     view! {
         <Show when=move || owner.available() && owner.inbox.with(|inbox| inbox.items.iter().any(|row| !row.is_read))>
-            <Button id="notification-read-all" variant=ButtonVariant::Tonal
+            <TooltipIconButton id="notification-read-all" icon=IconName::DoneAll
+                label="Đánh dấu tất cả là đã đọc"
                 state=Signal::derive(move || owner.inbox.with(|inbox| {
                     if inbox.mark == Load::Loading { ActionState::pending("Đang đánh dấu…") }
                     else if [inbox.first, inbox.more].contains(&Load::Loading) {
@@ -97,7 +101,7 @@ fn ReadAll(owner: Notifications) -> impl IntoView {
                 on_press=move |_| {
                     #[cfg(feature = "browser")]
                     owner.mark_all();
-                }>"Đọc tất cả"</Button>
+                } />
         </Show>
     }
 }
@@ -224,7 +228,11 @@ fn InboxBody(owner: Notifications, #[prop(optional)] compact: bool) -> impl Into
             <Show when=move || owner.available() && owner.inbox.with(|inbox| inbox.mark == Load::Failed)>
                 <Failure message="Chưa đánh dấu được thông báo." tonal=true retry=Callback::new(move |()| {
                     #[cfg(feature = "browser")]
-                    owner.mark_all();
+                    {
+                        // Retry disappears when the request starts. Keep its focus in this inbox.
+                        crate::shell::focus_without_scroll(document().get_element_by_id("notification-read-all"));
+                        owner.mark_all();
+                    }
                 }) />
             </Show>
             <Show when=move || owner.available() && owner.inbox.with(|inbox| inbox.next.is_some())>

@@ -679,19 +679,77 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   await chooseAppearance(page, 'text', 150);
   await chooseAppearance(page, 'rail', 'compact');
   await page.waitFor(DARK_LARGE_COMPACT, 'real A account applies theme, text and rail from Tôi');
-  for (const width of [320, 390, 1440]) {
+  const accountSettings = '.vk-account-settings';
+  await page.waitFor(`${q('#profile-privacy-link')} && ${q('#email-attach-missing')}`, '#602 real account settings and email state');
+  for (const [width, scale] of [[320, 200], [390, 100], [834, 150], [1440, 100]]) {
     await page.viewport(width);
     for (const theme of ['light', 'dark']) {
       await chooseAppearance(page, 'theme', theme);
+      await chooseAppearance(page, 'text', scale === 150 ? 150 : 100);
+      await page.eval(`document.documentElement.style.fontSize = '${scale === 200 ? '200%' : ''}'`);
       await page.waitFor(`document.documentElement.dataset.theme === '${theme}' &&
-        document.documentElement.dataset.text === '150'`, 'member appearance matrix');
-      await page.eval(`document.querySelector('#page-appearance').scrollIntoView({block:'start', behavior:'instant'})`);
-      await page.waitFor(APPEARANCE_SETTLED, 'member appearance colours settle before capture');
-      await page.capture(`appearance-ssr-native-active-${width}-${theme}`, {
-        textScale: 150, textScaleLane: 'app-appearance-control', requiredTargets: ['#page-appearance-title'],
-      });
+        getComputedStyle(document.documentElement).fontSize === '${16 * scale / 100}px' &&
+        ${APPEARANCE_SETTLED}`, 'member appearance matrix');
+      await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 1, y: 1 });
+      const settings = await page.eval(`(() => {
+        const region = document.querySelector('${accountSettings}'), edge = region.getBoundingClientRect();
+        const rows = ['#profile-privacy-link', '#password-credential', '#email-attach-heading', '#page-appearance-title', '#sign-out']
+          .map(selector => region.querySelector(selector));
+        const axes = rows.map(row => row.querySelector('svg, [data-appearance-icon]').getBoundingClientRect().left);
+        const transparent = 'rgba(0, 0, 0, 0)';
+        const settingsFit = rows.every((row, index) => {
+          const rect = row.getBoundingClientRect(), style = getComputedStyle(row);
+          return rect.height >= 48 && rect.left >= edge.left && rect.right <= edge.right + 1 &&
+            row.scrollWidth <= row.clientWidth + 1 && style.backgroundColor === transparent &&
+            style.borderTopColor === transparent &&
+            (index === 0 ? style.textDecorationLine === 'none' : rows[index - 1].getBoundingClientRect().bottom <= rect.top);
+        });
+        const palette = getComputedStyle(document.documentElement).getPropertyValue('--vk-primary-container').trim();
+        const colors = document.createElement('canvas').getContext('2d');
+        const color = value => { colors.fillStyle = value; return colors.fillStyle; };
+        const choicesFit = [...region.querySelectorAll('fieldset[role=radiogroup]')].every(group => {
+          const options = [...group.querySelectorAll('label')];
+          return group.querySelectorAll('input:checked').length === 1 && options.every(option => {
+            const rect = option.getBoundingClientRect();
+            const selected = Boolean(option.querySelector(':checked'));
+            return rect.width >= 48 && rect.height >= 48 && rect.left >= edge.left && rect.right <= edge.right + 1 &&
+              option.scrollWidth <= option.clientWidth + 1 &&
+              (color(getComputedStyle(option).backgroundColor) === color(palette)) === selected &&
+              (getComputedStyle(option, '::after').opacity === '1') === selected;
+          });
+        });
+        return { settingsFit, axisDelta: Math.max(...axes) - Math.min(...axes),
+          choicesFit, overflow: Math.max(0, document.documentElement.scrollWidth - innerWidth) };
+      })()`);
+      check(settings.settingsFit && settings.axisDelta <= 1 && settings.choicesFit && settings.overflow <= 1,
+        `#602 ${width}px/${scale}% ${theme}: flat settings and native segmented targets fit (${JSON.stringify(settings)})`);
+      const capture = { textScale: scale, textScaleLane: scale === 200
+        ? 'dom-override-geometry-only' : scale === 150 ? 'app-appearance-control' : 'default-100' };
+      for (const [region, selector] of [['settings', '#account-settings-title'], ['appearance', '#page-appearance-title']]) {
+        await page.eval(`document.querySelector('${selector}').scrollIntoView({block:'start', behavior:'instant'})`);
+        await page.capture(`account-${region}-ssr-${width}-${theme}-${scale}`, { ...capture, requiredTargets: [selector] });
+      }
     }
   }
+  await page.eval("document.documentElement.style.fontSize = ''");
+  const { nodes } = await page.send('Accessibility.getFullAXTree');
+  check(nodes.some(node => node.role?.value === 'link' && node.name?.value === 'Quyền riêng tư') &&
+    ['Chế độ màu', 'Cỡ chữ', 'Thanh điều hướng'].every(name => nodes.some(node =>
+      node.role?.value === 'radiogroup' && node.name?.value === name &&
+        (name !== 'Thanh điều hướng' || node.description?.value?.includes('Trên màn hình vừa')))),
+    '#602 AX exposes the privacy link and each named radio group, including the rail description');
+  await page.eval("document.querySelector('#account-settings-title').setAttribute('tabindex', '-1'); document.querySelector('#account-settings-title').focus()");
+  await page.key('Tab');
+  check(await page.eval("document.activeElement?.id === 'profile-privacy-link' && getComputedStyle(document.activeElement).outlineStyle === 'solid'"),
+    '#602 Tab reaches the full privacy row with a visible focus ring');
+  await page.eval("document.querySelector('#page-theme input:checked').focus()");
+  await page.key('ArrowRight');
+  await page.waitFor("document.querySelector('#page-theme input:checked')?.value === 'system'", '#602 native Arrow changes the checked theme');
+  await page.key('Tab');
+  check(await page.eval("document.activeElement?.matches('#page-text input:checked')"),
+    '#602 Tab moves from the selected theme to the selected text size');
+  await chooseAppearance(page, 'theme', 'dark');
+  await chooseAppearance(page, 'text', 150);
   await nativeAccountZoom(page, openPage, check, true);
   await firstPaintAppearance(page, base, check, 'ssr', 'active');
   await openAccount(page, base, 'active');
