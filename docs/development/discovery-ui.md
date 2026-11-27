@@ -13,6 +13,8 @@ chỉ cập nhật text của status. `DiscoverySearch` giữ X trong khi q đan
 đã sửa thành trống. UI System chỉ nhận một tín hiệu clear tùy chọn từ caller. Bàn viết và Preview
 vẫn dùng hành vi mặc định.
 
+[Bằng chứng Product, ảnh trước/sau và số đo #621](evidence/discovery-search-r5-621/README.md).
+
 Oracle picker của #603 kiểm cả link GET đơn thẻ và các phần tử `input`/`button` không được render.
 `verify static repo` ở base nhận nhầm hai literal bên trong assertion là markup production.
 Assertion tạo tên tag từ danh sách hai phần tử, vẫn kiểm đủ hai loại. Guard dùng chung giữ phạm vi.

@@ -1421,6 +1421,31 @@ mod tests {
     }
 
     #[test]
+    fn explore_modes_require_both_following_enabled_and_confirmed_scope() {
+        for enabled in [false, true] {
+            for scope in [None, Some("reader/0")] {
+                let html = Owner::new().with(|| {
+                    provide_context(crate::server::FollowingFeedEnabled(enabled));
+                    let mut session = Session::provide();
+                    // Inject the projection consumed by the navigation, independent of Identity I/O.
+                    session.profile_scope = Memo::new(move |_| scope.map(str::to_owned));
+                    provide_context(session);
+                    let mode = Memo::new(|_| ExploreMode::Following);
+                    let context = Memo::new(|_| context("", None));
+                    view! { <ExploreModes mode context /> }.to_html()
+                });
+                let visible = enabled && scope.is_some();
+                assert_eq!(html.contains("explore-mode-following"), visible, "{html}");
+                assert_eq!(html.matches("<a ").count(), 2 + usize::from(visible));
+                assert_eq!(
+                    html.matches(r#"aria-current="page""#).count(),
+                    usize::from(visible)
+                );
+            }
+        }
+    }
+
+    #[test]
     fn empty_corpus_and_filtered_miss_keep_one_html_status_and_real_recovery() {
         let corpus = render(context("", None), empty(), false, false);
         assert!(corpus.contains("Chưa có tác phẩm công khai."));

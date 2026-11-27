@@ -700,8 +700,9 @@ async function desktopSearchDock(page, {args, check, ready}) {
       order: close.getClientRects().length>0 && top.bottom <= modes.top && modes.bottom <= shell.top,
       submitHidden: getComputedStyle(document.querySelector('#public-search button[type=submit]')).display==='none'};
   })()`);
-  check(dock.url === url && Math.abs(dock.height - 56) < 1 && dock.radius === '16px' && dock.headerVisible && dock.order && dock.submitHidden,
-    'Search opens below stable tabs with a 56px field and no history entry ' + JSON.stringify(dock));
+  check(dock.url === url && Math.abs(dock.height - 56) < 1 && parseFloat(dock.radius) >= dock.height / 2 &&
+    dock.headerVisible && dock.order && dock.submitHidden,
+    '#621 Search opens below stable tabs with a 56px pill and no history entry ' + JSON.stringify(dock));
   await page.capture('discovery-r4-dock-1440-light', { boundary: 'real-public-api', scenario: 'r4-search-dock' });
   await page.send('Input.insertText', { text: 'chưa gửi' });
   await page.eval("document.querySelector('#public-query').dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true}))");
@@ -900,6 +901,19 @@ export async function discoveryCorpus(page, { args, check }) {
   check(await page.eval('location.pathname+location.search')===context, 'reload preserves filtered second-page URL');
   await page.capture('discovery-real-second-page', {boundary:'real-api+SQL-publication-fixture',scenario:'query-tags-pagination-reader-return'});
   await page.viewport(1440);
+  const retainedTags = [form.slug, theme.slug].sort();
+  const clearsOnlySearch = params => !params.has('q') && !params.has('cursor') &&
+    JSON.stringify(params.getAll('tag').sort()) === JSON.stringify(retainedTags);
+  const clearHref = await page.eval("document.querySelector('#clear-public-search').href");
+  check(clearsOnlySearch(new URL(clearHref).searchParams), '#621 native X keeps both legacy tags and drops q/cursor');
+  await page.click('#clear-public-search');
+  await page.waitFor("!new URL(location.href).searchParams.has('q') && document.activeElement?.id === 'public-query'",
+    '#621 clear after pagination restores input focus');
+  check(clearsOnlySearch(new URL(await page.eval('location.href')).searchParams),
+    '#621 hydrated clear preserves the same tag set as the native X');
+  await page.eval('history.back()');
+  await page.waitFor("location.pathname+location.search==="+JSON.stringify(context)+" && document.querySelectorAll('.vk-public-row').length===2",
+    '#621 Back after clearing restores the same paginated results');
   await page.waitFor("document.querySelector('#open-tag-filters')", '#308 filter entry on the second page');
   await page.click('#open-tag-filters');
   await page.waitFor("document.querySelector('#tag-picker')?.open && document.querySelector('#modal-tag-form a')", 'legacy URL opens single-tag picker');
