@@ -15,6 +15,8 @@ của thẻ hợp lệ rỗng và q rỗng, người đọc có một lối lên
 và xóa q giữ thẻ. Alias, thẻ không tồn tại, thẻ ngừng dùng và trang phân trang rỗng dùng
 recovery riêng của owner dữ liệu.
 
+[Bằng chứng Product và kiểm theo từng AC](evidence/web-state-603/README.md).
+
 ### Các phiên bản trước #603
 
 **Action surfaces #225 r2 (16/11/2026):** [LayoutSpec](../design/action-surfaces-desk-discovery-225.md)
