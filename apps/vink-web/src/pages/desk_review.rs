@@ -212,7 +212,7 @@ pub(super) fn ExactDeskDecision(session: Session) -> impl IntoView {
             <Show when=move || session.profile_scope.with(Option::is_none)>
                 {move || match session.standing.get() {
                     crate::session::Standing::Unknown | crate::session::Standing::Active(_) => view! {
-                        <p role="status">"Đang kiểm tra phiên đăng nhập…"</p>
+                        <crate::ui::PendingRead label="Đang kiểm tra phiên đăng nhập…" />
                     }.into_any(),
                     crate::session::Standing::Unavailable => view! {
                         <Button variant=ButtonVariant::Tonal on_press=move |_| session.refresh()>"Kiểm tra lại phiên"</Button>
@@ -490,7 +490,7 @@ fn ReviewDetails(target: ReviewTarget, session: Session, scope: String) -> impl 
     view! {
         <div id="desk-review-content" class=CONTENT_CLASS>
             <p id="desk-review-feedback" tabindex="-1" role="status">{move || feedback.get()}</p>
-            <Suspense fallback=|| view! { <p role="status">"Đang tải chi tiết kiểm duyệt…"</p> }>
+            <Suspense fallback=|| view! { <crate::ui::PendingRead label="Đang tải chi tiết kiểm duyệt…" /> }>
                 {move || {
                     if let Some(error) = denied.get() {
                         return view! { <p role="alert">{read_error(&error)}</p> }.into_any();

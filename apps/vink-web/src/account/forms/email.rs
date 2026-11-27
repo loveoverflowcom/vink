@@ -104,7 +104,7 @@ pub(super) fn EmailSettings(epoch: u64) -> impl IntoView {
             <Icon name=IconName::Mail size=vink_ui::IconSize::Small />
             <span class="vk-account-setting-label min-w-0">"Email"
                 {move || match value.get() {
-                    None => view! { <span role="status">"Đang tải…"</span> }.into_any(),
+                    None => view! { <crate::ui::PendingRead label="Đang tải…" /> }.into_any(),
                     Some(Ok(email)) => view! { <span class="block wrap-anywhere">{email}</span><span class="vk-ui-visually-hidden">"Đã xác minh"</span> }.into_any(),
                     Some(Err(_)) => view! { <span role="status">"Chưa tải được email."</span>
                         <Button variant=ButtonVariant::Text on_press=move |_| read()>"Thử lại"</Button> }.into_any(),

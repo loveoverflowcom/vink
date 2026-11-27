@@ -51,7 +51,7 @@ fn PublicProfile(name: String, cursor: Option<String>) -> impl IntoView {
         });
     }
     view! {
-        <Transition fallback=|| view! { <p role="status">"Đang mở trang tác giả…"</p> }>
+        <Transition fallback=|| view! { <crate::ui::PendingRead label="Đang mở trang tác giả…" /> }>
             {move || match data.get() {
                 Some((stamp, result)) if stamp >= floor.get() => {
                     if retry_focus.get_untracked() {
@@ -71,7 +71,7 @@ fn PublicProfile(name: String, cursor: Option<String>) -> impl IntoView {
                         },
                     )
                 }
-                _ => view! { <p role="status">"Đang mở trang tác giả…"</p> }.into_any(),
+                _ => view! { <crate::ui::PendingRead label="Đang mở trang tác giả…" /> }.into_any(),
             }}
         </Transition>
     }

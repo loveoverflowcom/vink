@@ -136,3 +136,25 @@ do `SearchField` dùng chung giữ (form không còn bản sao riêng); kiểm b
 `Input.imeSetComposition`, và đã chứng minh đối chứng âm (tắt guard dùng chung thì kiểm tra thất bại).
 Catalog rename/retire trực tiếp khi đang mở trang chưa có phiên browser riêng.
 Fixture SQL publication không chứng minh auth hoặc quy trình xuất bản production.
+
+## Loading và phục hồi (#624)
+
+Trong Tất cả, `WorkResults` sở hữu Suspense của public list. Trong Đang theo dõi, chỉ `ActiveFeed` có scope thành viên đã xác nhận mới đọc private feed. Ảnh c058 là Dark, thành viên, `/?mode=following`, có mô phỏng `feed-loading`. Ảnh c053 là Light, khách, `/?cursor=khong-hop-le`, manifest ghi `simulation: null`. Cả hai ở 390 × 844, chữ 100%, bật reduced motion, trên `91191186c1ac5ec6f4032dc0292af025eb2c0458`. [Manifest](https://drive.google.com/file/d/1aSRfwKgtDpwg8leGGswwpEBOT0_O6H7J/view).
+
+**LayoutSpec.** Shell → tab → vùng kết quả. Lần đầu vùng trống có một status, MicroArc sau gate UIS-03 và nhãn chậm. Refresh giữ cây hàng và thêm EdgeProgress ở mép vùng. Append giữ nút và các hàng đã đọc. Recovery dùng bố cục chung của `EmptyState` với glyph Error, heading H2, một alert và liên kết native ở ngoài alert. Cursor hết hạn đưa về đầu cùng điều kiện. Chỉ thêm CTA thứ hai nếu có thể xóa tìm kiếm hoặc bộ lọc để tới một đích khác.
+
+| Vùng và caller Product Web | Loại pending | Áp dụng |
+| --- | --- | --- |
+| Tất cả, trang thẻ · `pages/discovery.rs` | Initial, retained refresh, catalog trong sheet | FIX · PendingRead + RefreshProgress. Catalog đóng giữ thông báo phi thị giác. Phân trang công khai qua GET. |
+| Đang theo dõi · `discovery/feed{,/browser}.rs` | Kiểm phiên, initial, refresh, append | FIX · PendingRead cho hai read độc lập, EdgeProgress khi refresh. ALREADY_CORRECT · nút tải thêm dùng ActionState, ReadOwner kiểm ticket và PageChain kiểm cursor. |
+| Tác giả · `pages/author_discovery.rs` | Tìm, đề xuất, tải thêm | FIX · PendingRead theo vùng. Liên kết GET tải thêm giữ đích SSR, owner chặn request trùng. Danh sách phẳng theo #622. |
+| Hồ sơ, quan hệ · `pages/handle.rs`, `profile{,/browser}.rs`, `follow.rs` | Đọc công khai, đọc hồ sơ của mình, danh sách quan hệ | FIX · chỉ báo tại fallback/nhánh loading. ALREADY_CORRECT · action Follow và retry giữ trạng thái do caller cấp. |
+| Đã lưu · `pages/saved_profile/browser/list.rs` | Initial, append, xác minh kết quả từng hàng | FIX · skeleton cũ dùng gate UIS-03 thay hai timeout. ALREADY_CORRECT · ActionState cho tải thêm và đối chiếu. |
+| Thông báo · `notifications/{inbox,destinations}.rs` | Initial trang/popover/chi tiết, mark, append | ALREADY_CORRECT · skeleton theo hàng, một status, action pending và ReadFailure của #603. |
+| Reader, nhận xét · `pages/{mod,discussion}.rs` | Initial Reader, đọc thảo luận/overlay của mình, tải phản hồi | FIX · PendingRead tại fallback chữ; ALREADY_CORRECT · skeleton nhận xét có gate, nút phản hồi giữ pending. |
+| Bàn viết, Editor · `pages/{desk,desk_review,work_info}.rs` | Lần đầu, mở editor/outline/thẻ/review, reconcile, tải thêm | FIX · vùng chờ cục bộ và nhãn nút ổn định. ALREADY_CORRECT · giữ skeleton danh sách, save slot theo ACK, conflict, phiên và bảo toàn chữ. |
+| Tài khoản · `account/forms{,/email}.rs` | Kiểm cách đăng nhập, mở tùy chọn, gửi biểu mẫu | FIX · chỉ báo cho read. ALREADY_CORRECT · form pending, throttle, outcome không chắc và đối chiếu có copy riêng. |
+| Thấm, Ưng, Lưu, Follow · adapters Reader/Profile | Mutation pending | ALREADY_CORRECT · Toggle/Button giữ slot và nhãn, controller giữ identity, receipt và quyền. |
+| Kiểm duyệt đang chờ, autosave, công khai, privacy | Trạng thái nghiệp vụ và xác nhận ghi | EXCLUDED · giữ thông điệp bền vững, xử lý lỗi và quyền của caller. Auth icon theo #625. |
+
+Recovery 422 xóa q vẫn giữ tag và trang thẻ; xóa tag vẫn giữ q. Khi lỗi thuộc cursor, URL mới chỉ bỏ cursor. 404 và 503 có trạng thái riêng; retry do caller cấp. Kiểm các đường native với SSR, sau đó chạy browser `discovery` và hành trình member Following trong `password`. Motion cần đo computed style khi đang giữ đúng request.

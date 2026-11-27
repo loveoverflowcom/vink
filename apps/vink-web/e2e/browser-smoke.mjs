@@ -1757,7 +1757,7 @@ async function cacheFirstPublicReads(page, note) {
     await sleep(250);
     check(countHref(fallbackQuery) === fCount, 'malformed 422 stops retrying');
     fixtures.clear();
-    await page.click('[data-testid=public-invalid] + a');
+    await page.click('[data-testid=public-invalid] #clear-invalid-filters');
     await page.waitFor(`location.pathname === '/' && location.search === '' && document.querySelector('#public-collection')`, 'return cleanly to unfiltered Explore');
   } finally {
     await page.send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 }).catch(() => {});

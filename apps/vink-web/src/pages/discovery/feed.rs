@@ -82,7 +82,7 @@ pub(super) fn FollowingFeed(context: ExploreContext) -> impl IntoView {
                                 </div>
                             }.into_any(),
                             _ => view! {
-                                <p role="status" data-feed-state="checking">"Đang kiểm tra phiên…"</p>
+                                <crate::ui::PendingRead label="Đang kiểm tra phiên…" attr:data-feed-state="checking" />
                                 <noscript>"Bật JavaScript để mở Đang theo dõi."</noscript>
                             }.into_any(),
                         }}

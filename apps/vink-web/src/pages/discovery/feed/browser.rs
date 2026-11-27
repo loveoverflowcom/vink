@@ -372,11 +372,16 @@ pub(super) fn ActiveFeed(
     let appending = Memo::new(move |_| {
         feed.with(|state| state.owner.in_flight_intent() == Some(Intent::Append))
     });
+    let refreshing = Signal::derive(move || {
+        phase.get() != Phase::Loading
+            && feed.with(|state| state.owner.in_flight_intent() == Some(Intent::Refresh))
+    });
     let can_append = Memo::new(move |_| feed.with(|state| state.chain.next_cursor.is_some()));
     view! {
-        <div class="vk-feed-content" aria-busy=move || (phase.get() == Phase::Loading || appending.get()).to_string()>
+        <div class="vk-feed-content" aria-busy=move || (phase.get() == Phase::Loading || appending.get() || refreshing.get()).to_string()>
+            <crate::ui::RefreshProgress active=refreshing />
             {move || match phase.get() {
-                Phase::Loading => view! { <p role="status" data-feed-state="loading">"Đang tải tác phẩm…"</p> }.into_any(),
+                Phase::Loading => view! { <crate::ui::PendingRead label="Đang tải tác phẩm…" attr:data-feed-state="loading" /> }.into_any(),
                 Phase::Ready { has_following: false } if ids.with(Vec::is_empty) =>
                     view! { <NoFollows /> }.into_any(),
                 Phase::Ready { has_following: true } if ids.with(Vec::is_empty) => view! {

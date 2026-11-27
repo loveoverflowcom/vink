@@ -1,5 +1,5 @@
 //! TAG-PR-06 page glue. Shared chips/bylines render facts; this module owns GET/URL/focus.
-use super::{ResponseStatus, Unavailable, focus_recovery};
+use super::{ResponseStatus, focus_recovery};
 use crate::account::Session;
 use crate::api::{self, LoadError};
 use crate::contract::{PublicTagDto, TagDto, TagList, WorkCard, WorkList};
@@ -796,7 +796,7 @@ fn DiscoveryFilters(context: ExploreContext, search_open: Memo<bool>) -> impl In
             on_dismiss=move |_| dismiss_picker()
             header_action=move || view! { <IconButton id="close-tag-filters" label="Đóng lọc thẻ" icon=IconName::Close
                 surface=ActionSurface::Tonal on_press=move |_| dismiss_picker() /> }>
-            <Suspense fallback=|| view! { <p role="status">"Đang tải danh mục thẻ…"</p> }>
+            <Suspense fallback=|| view! { <crate::ui::PendingRead label="Đang tải danh mục thẻ…" /> }>
                 {move || catalog.get().map(|result| match result {
                     Ok(list) if list.tags.is_empty() => view! {
                         <p role="status">"Chưa có thẻ để lọc."</p>
@@ -838,8 +838,9 @@ fn WorkResults(
                 })
             }}
         </Suspense>
-        <section node_ref=stream id="community-stream" aria-label="Tác phẩm khám phá" tabindex="-1">
-            <Suspense fallback=|| view! { <p role="status" data-testid="discovery-loading">"Đang tải kết quả…"</p> }>
+        <section node_ref=stream id="community-stream" aria-label="Tác phẩm khám phá" tabindex="-1"
+            aria-busy=move || works.with(Option::is_none).to_string()>
+            <Suspense fallback=|| view! { <crate::ui::PendingRead label="Đang tải kết quả…" attr:data-testid="discovery-loading" /> }>
                 {move || {
                     let context = context.clone();
                     Suspend::new(async move {
@@ -868,7 +869,11 @@ fn DiscoveryHeader(
     let list = match result {
         Ok(list) => list,
         Err(error) => {
-            status.set(if error.is_invalid() { 422 } else { 503 });
+            status.set(match error {
+                LoadError::Invalid(_) => 422,
+                LoadError::NotFound => 404,
+                LoadError::Unavailable => 503,
+            });
             return view! {
                 <Title text="Chưa tải được kết quả — Vink" />
                 <Meta name="robots" content="noindex" />
@@ -1092,6 +1097,7 @@ fn PublicResults(context: ExploreContext, live: public_reads::Live<WorkList>) ->
             let retry_context_cursor = context.query.cursor.is_some();
             view! {
                 <div id="public-collection" aria-busy=move || refreshing.get().to_string() data-refreshing=move || refreshing.get().to_string()>
+                    <crate::ui::RefreshProgress active=refreshing />
                     <Show when=move || failed.get()>
                         <div data-testid="public-refresh-failed"><InlineNotice tone=Tone::Warning
                             message="Chưa làm mới được kết quả. Bạn vẫn đang xem bản đã tải cho cùng bộ lọc."
@@ -1309,56 +1315,109 @@ fn DiscoveryFailure(
     use crate::api::{InvalidInputField, InvalidRead};
     let mut first = context.clone();
     first.query.cursor = None;
-    match error {
-        LoadError::Invalid(InvalidRead::RestartCursor) => view! {
-            <div role="alert" data-testid="public-invalid" data-invalid-kind="cursor">
-                <p>"Trang kết quả không còn hợp lệ hoặc không còn khớp tìm kiếm hiện tại."</p>
+    let has_query = !first.query.q.is_empty();
+    let has_tags = !first.query.tags.is_empty() || first.tag_page.is_some();
+    let clear_label = match (has_query, has_tags) {
+        (true, true) => Some("Xóa tìm kiếm và bộ lọc"),
+        (true, false) => Some("Xóa tìm kiếm"),
+        (false, true) => Some("Xóa bộ lọc"),
+        (false, false) => None,
+    };
+    if error == LoadError::Unavailable {
+        let ready = super::client_read_action_ready();
+        let retrying = RwSignal::new(false);
+        return view! {
+            <div data-testid="public-unavailable">
+                <EmptyState icon=IconName::Error heading=HeadingLevel::H2 title="Chưa tải được tác phẩm" alert=true>
+                    <noscript><a class=ButtonVariant::Tonal.classes() href=context.href(None)>"Thử lại"</a></noscript>
+                    {on_retry.map(|retry| view! {
+                        <Show when=move || ready.get()><Button id="retry-public" variant=ButtonVariant::Tonal state=Signal::derive(move || {
+                            if retrying.get() { vink_ui::ActionState::pending("Đang tải lại…") }
+                            else { vink_ui::ActionState::Enabled }
+                        }) on_press=move |_| {
+                            if !retrying.get_untracked() {
+                                retrying.set(true);
+                                retry.run(());
+                            }
+                        }>"Thử lại"</Button></Show>
+                    })}
+                </EmptyState>
             </div>
-            <a id="restart-public" class="vk-ui-link" href=first.href(None)>"Thử từ trang đầu"</a>
-            <a class="vk-ui-link" href="/">"Bỏ toàn bộ bộ lọc"</a>
-        }
-        .into_any(),
-        LoadError::Invalid(InvalidRead::InvalidInput(field)) => {
-            let (kind, message) = match field {
-                InvalidInputField::Query => (
-                    "q",
-                    "Từ khóa tìm kiếm không hợp lệ (cần ít nhất một chữ hoặc số và không vượt quá giới hạn).",
-                ),
-                InvalidInputField::Tag => (
-                    "tag",
-                    "Bộ lọc thẻ không hợp lệ hoặc vượt quá số lượng cho phép.",
-                ),
-                InvalidInputField::Limit => ("limit", "Số lượng kết quả mỗi trang không hợp lệ."),
-                InvalidInputField::Parameter => {
-                    ("query", "Tham số tìm kiếm trên đường dẫn không hợp lệ.")
-                }
-            };
-            view! {
-                <div role="alert" data-testid="public-invalid" data-invalid-kind=kind>
-                    <p>{message}</p>
-                </div>
-                <a id="clear-invalid-filters" class="vk-ui-link" href="/">"Bỏ toàn bộ bộ lọc"</a>
-            }
-            .into_any()
-        }
-        LoadError::Invalid(InvalidRead::Fallback) => view! {
-            <div role="alert" data-testid="public-invalid" data-invalid-kind="fallback">
-                <p>"Không thể tải danh sách tác phẩm với yêu cầu hiện tại."</p>
-            </div>
-            <a class="vk-ui-link" href="/">"Bỏ toàn bộ bộ lọc"</a>
-        }
-        .into_any(),
-        LoadError::Unavailable => view! {
-            <Unavailable on_retry />
-        }
-        .into_any(),
-        LoadError::NotFound => view! {
-            <Unavailable />
-            <a id="restart-public" class="vk-ui-link" href=first.href(None)>"Thử từ trang đầu"</a>
-            <a class="vk-ui-link" href="/">"Bỏ toàn bộ bộ lọc"</a>
-        }
-        .into_any(),
+        }.into_any();
     }
+    let (kind, title, label, href) = match error {
+        LoadError::Invalid(InvalidRead::RestartCursor) => (
+            "cursor",
+            "Trang kết quả không còn hợp lệ",
+            "Về trang đầu",
+            first.href(None),
+        ),
+        LoadError::Invalid(InvalidRead::InvalidInput(field)) => match field {
+            InvalidInputField::Query => {
+                first.query.q.clear();
+                (
+                    "q",
+                    "Từ khóa tìm kiếm không hợp lệ",
+                    "Xóa tìm kiếm",
+                    first.href(None),
+                )
+            }
+            InvalidInputField::Tag => {
+                first.query.tags.clear();
+                first.tag_page = None;
+                (
+                    "tag",
+                    "Bộ lọc thẻ không hợp lệ",
+                    "Xóa bộ lọc",
+                    first.href(None),
+                )
+            }
+            InvalidInputField::Limit => (
+                "limit",
+                "Số lượng kết quả không hợp lệ",
+                "Về Khám phá",
+                "/".to_owned(),
+            ),
+            InvalidInputField::Parameter => (
+                "query",
+                "Đường dẫn tìm kiếm không hợp lệ",
+                "Về Khám phá",
+                "/".to_owned(),
+            ),
+        },
+        LoadError::Invalid(InvalidRead::Fallback) => (
+            "fallback",
+            "Yêu cầu tìm kiếm không hợp lệ",
+            "Về Khám phá",
+            "/".to_owned(),
+        ),
+        LoadError::NotFound => (
+            "missing",
+            "Không tìm thấy danh sách tác phẩm",
+            "Về Khám phá",
+            "/".to_owned(),
+        ),
+        LoadError::Unavailable => unreachable!(),
+    };
+    let secondary = (kind == "cursor" && href != "/")
+        .then_some(clear_label)
+        .flatten();
+    let id = if matches!(kind, "cursor" | "missing") {
+        "restart-public"
+    } else {
+        "clear-invalid-filters"
+    };
+    view! {
+        <div data-testid=if kind == "missing" { "public-not-found" } else { "public-invalid" } data-invalid-kind=kind>
+            <EmptyState icon=IconName::Error heading=HeadingLevel::H2 title alert=true>
+                <a id=id class=ButtonVariant::Tonal.classes() href=href>
+                    {(label == "Về Khám phá").then(|| view! { <Icon name=IconName::Explore /> })}
+                    {label}
+                </a>
+                {secondary.map(|label| view! { <a class=ButtonVariant::Text.classes() href="/">{label}</a> })}
+            </EmptyState>
+        </div>
+    }.into_any()
 }
 
 #[cfg(all(test, feature = "ssr"))]
@@ -1442,6 +1501,39 @@ mod tests {
                     usize::from(visible)
                 );
             }
+        }
+    }
+
+    #[test]
+    fn invalid_recovery_only_drops_the_rejected_conditions() {
+        use crate::api::{InvalidInputField as Field, InvalidRead};
+        let render = |context, rejection| {
+            Owner::new().with(|| {
+                view! { <DiscoveryFailure context error=LoadError::Invalid(rejection) /> }.to_html()
+            })
+        };
+        let bare = render(
+            context("", Some("khong-hop-le")),
+            InvalidRead::RestartCursor,
+        );
+        assert_eq!(bare.matches("<a ").count(), 1);
+        assert_eq!(bare.matches(r#"role="alert""#).count(), 1);
+        assert!(bare.contains("Về trang đầu") && bare.contains(r#"href="/""#));
+        let mut scoped = context("mua", Some("invalid"));
+        scoped.query.tags.push("tho".into());
+        scoped.tag_page = Some("tho".into());
+        for (reason, target, count) in [
+            (InvalidRead::RestartCursor, "/the/tho?q=mua", 2),
+            (InvalidRead::InvalidInput(Field::Query), "/the/tho", 1),
+            (InvalidRead::InvalidInput(Field::Tag), "/?q=mua", 1),
+            (InvalidRead::InvalidInput(Field::Limit), "/", 1),
+            (InvalidRead::InvalidInput(Field::Parameter), "/", 1),
+            (InvalidRead::Fallback, "/", 1),
+        ] {
+            let html = render(scoped.clone(), reason);
+            assert_eq!(html.matches("<a ").count(), count, "{html}");
+            assert!(html.contains(&format!(r#"href="{target}""#)), "{html}");
+            assert!(!html.contains("cursor=invalid"));
         }
     }
 

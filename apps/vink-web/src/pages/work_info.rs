@@ -5,10 +5,7 @@
 //! so the toolbar status and the leave guard cover text and tags together.
 
 use leptos::prelude::*;
-use vink_ui::{
-    Announce, Button, ButtonVariant, IconName, InlineNotice, Text, TextInput, TextTone, Tone,
-    TypeRole,
-};
+use vink_ui::{Announce, Button, ButtonVariant, IconName, InlineNotice, TextInput, Tone};
 
 use crate::contract::TagSuggestion;
 use crate::desk_state::{DraftSession, Failure};
@@ -224,7 +221,7 @@ pub fn WorkInfo(
                     </section>
                 }
                 .into_any(),
-                _ => view! { <Text role=TypeRole::Caption tone=TextTone::Muted>"Đang tải thẻ…"</Text> }.into_any(),
+                _ => view! { <crate::ui::PendingRead label="Đang tải thẻ…" /> }.into_any(),
             }>
                 <TagSelector id="work-tags" compact=true form themes catalog query=raw options exact
                     on_form=Callback::new(move |id: Option<String>| edit(&|t| t.choose_form(id.clone())))

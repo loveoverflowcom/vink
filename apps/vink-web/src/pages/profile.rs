@@ -80,7 +80,7 @@ fn OwnProfileLink() -> impl IntoView {
         });
         let loading = || {
             view! {
-                <p role="status" class="vk-account-profile-note">"Đang tải địa chỉ tác giả…"</p>
+                <crate::ui::PendingRead label="Đang tải địa chỉ tác giả…" />
             }
         };
         return view! {
@@ -152,7 +152,7 @@ pub(crate) fn EditProfile() -> impl IntoView {
             />
             <Show when=move || session.profile_scope.get().is_none()>
                 {move || if session.checking() || matches!(session.standing.get(), crate::session::Standing::Unknown) {
-                    view! { <p role="status">"Đang kiểm tra phiên…"</p> }.into_any()
+                    view! { <crate::ui::PendingRead label="Đang kiểm tra phiên…" /> }.into_any()
                 } else {
                     view! { <p><Link href="/toi">"Mở Tài khoản"</Link></p> }.into_any()
                 }}

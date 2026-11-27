@@ -326,6 +326,13 @@ export async function followingFeed(control, other, {base, openPage, check, hold
     ${q('#following-cards time[datetime]')} && ${q('#following-cards .vk-public-row__tag')}?.textContent==='Thơ' &&
     !document.body.textContent.includes('Tác phẩm ngoài Feed')`),
     'browser displays first-public dates and bound public tags, and omits the viewer’s unrelated publication');
+  const refreshAnswer = await holdAnswer(page, 'GET', API);
+  await page.eval("const link=document.querySelector('#following-cards a'); link.focus(); link.dataset.refreshProbe='true'; window.dispatchEvent(new Event('focus'))");
+  check(await refreshAnswer.held() === 200, 'member refresh contacts the private provider');
+  await page.waitFor("document.querySelector('.vk-feed-content .vk-ui-edge')", 'held refresh shows edge progress');
+  check(await page.eval(ROWS+"===12 && document.activeElement.dataset.refreshProbe==='true' && !!document.querySelector('.vk-feed-content[aria-busy=true]') && !document.querySelector('[data-feed-state=loading]')"), 'member refresh retains the focused row');
+  await refreshAnswer.finish();
+  await page.waitFor("document.querySelector('.vk-feed-content[aria-busy=false]') && !document.querySelector('.vk-feed-content .vk-ui-edge')", 'refresh settles before further interactions');
   const reposted = bWorks.at(-5);
   authorFixtureSql(`BEGIN;
   CREATE TEMP TABLE withdrawn ON COMMIT DROP AS
@@ -370,6 +377,7 @@ export async function followingFeed(control, other, {base, openPage, check, hold
   await focusEvidence(page, firstTitle, check, 'feed-355-title-focus');
 
   await page.send('Emulation.setEmulatedMedia', {features: [{name:'prefers-reduced-motion', value:'reduce'}]});
+  const appendRequests = captureRequest(page, 'GET', API);
   const failed = await holdAnswer(page, 'GET', API);
   await page.eval(`${q('#feed-load-more')}.focus()`);
   await page.key('Space');
@@ -377,6 +385,12 @@ export async function followingFeed(control, other, {base, openPage, check, hold
   check(await page.eval(`matchMedia('(prefers-reduced-motion: reduce)').matches &&
     ${q('#feed-load-more')}.getAttribute('aria-busy') === 'true' &&
     ${q('#feed-load-more-note')}?.textContent.includes('Đang tải thêm')`), 'append pending remains expressed in text with reduced motion');
+  await page.key('Enter');
+  await page.key('Space');
+  await page.eval("document.querySelector('#feed-load-more').click()");
+  check(appendRequests.count() === 1 && await page.eval(ROWS + "===12 && document.activeElement.id==='feed-load-more' && !document.querySelector('[data-feed-state=loading]')"),
+    'pending append retains rows and focus and coalesces repeat activation');
+  appendRequests.close();
   await failed.finish(true);
   await page.send('Emulation.setEmulatedMedia', {features: []});
   await page.waitFor(`${state('append-error')} && ${ROWS}===12`, 'append can fail while prior cards remain');
@@ -424,6 +438,24 @@ export async function followingFeed(control, other, {base, openPage, check, hold
   check(await initialError.held() === 200, 'Back requests fresh authorization from the real provider');
   await page.waitFor(`${state('loading')} && ${ROWS}===0 && document.activeElement?.id !== 'following-feed-heading'`,
     'Back is pending, with zero cached rows and no fallback focus');
+  await page.waitFor("document.querySelector('[data-feed-state=loading] .vk-ui-arc svg')", 'member Following gate expires');
+  check(await page.eval(`(() => {
+    const loading = document.querySelector('[data-feed-state=loading]');
+    return loading.getAttribute('role') === 'status' && loading.closest('[aria-busy=true]')
+      && !document.querySelector('[data-testid=discovery-loading]');
+  })()`), 'held authenticated feed uses only its own busy state');
+  const followingMotion = () => page.eval(`(() => {
+    const arc = document.querySelector('[data-feed-state=loading] .vk-ui-arc svg');
+    const style = getComputedStyle(arc);
+    return {name: style.animationName, iterations: style.animationIterationCount};
+  })()`);
+  await page.send('Emulation.setEmulatedMedia', {features: [{name: 'prefers-reduced-motion', value: 'no-preference'}]});
+  const animated = await followingMotion();
+  check(animated.name === 'vk-ui-spin' && animated.iterations === 'infinite', 'held member feed uses the shared motion');
+  await page.send('Emulation.setEmulatedMedia', {features: [{name: 'prefers-reduced-motion', value: 'reduce'}]});
+  const reduced = await followingMotion();
+  check(reduced.name === 'none' || reduced.iterations === '0', 'reduced motion keeps a static member feed indicator');
+  await page.send('Emulation.setEmulatedMedia', {features: []});
   await initialError.finish(true);
   await page.waitFor(`${state('error')} && ${ROWS}===0 && document.activeElement?.id !== 'following-feed-heading'`,
     'a transport error does not decide that the anchor is gone');

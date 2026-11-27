@@ -385,17 +385,6 @@ a {
 @container vk-explore (max-width: 28rem) {
   #public-results > .vk-public-scope { grid-column: 1 / -1; grid-row: auto; margin-top: var(--vk-space-1); text-align: start; }
 }
-/* Unavailable (`public-unavailable` StatePanel) is a recovery slot inside the stream: centered,
- * full column, titled below its H2. Empty/no-match use `.vk-empty-state` since #258.
- * Reader keeps its own (H1) unavailable panel. */
-#community-stream [data-testid^=public-] > .vk-ui-panel { max-inline-size: none; justify-items: center; text-align: center; }
-#community-stream [data-testid^=public-] .vk-ui-heading {
-  font-size: var(--vk-type-title-size);
-  line-height: var(--vk-type-title-line-height);
-  letter-spacing: var(--vk-type-title-tracking);
-}
-#community-stream [data-testid^=public-] .vk-ui-panel__actions { justify-content: center; }
-
 .vk-public-search { margin: 0; }
 /* Give the single-line placeholder room at 320px / 200% without shrinking either target. */
 @container vk-explore (max-width: 10rem) {
@@ -2032,12 +2021,6 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index) { scrollbar-gut
   }
   /* R4.2 (#405): separate cards keep the 8px gap on phones too. */
   .vk-discovery .vk-public-list { gap: var(--vk-space-card-gap); }
-  /* Recovery links are direct children of the stream on a failed read. */
-  .vk-discovery #community-stream > .vk-ui-link {
-    display: block;
-    inline-size: fit-content;
-    margin-block-start: min(var(--vk-space-2), 8px);
-  }
 }
 @media (max-width: 359px) {
   .vk-main:has(> .vk-reader-page) { padding-inline: 12px; }
@@ -2084,6 +2067,25 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index) { scrollbar-gut
   .vk-rel-wrapper:has(.vk-rel-empty), .vk-state-page, .vk-state-page > .vk-state-slot) {
   flex: 1 0 auto;
 }
+/* Initial results occupy the free stream space; overlays and subsections stay in flow. */
+.vk-pending-read {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--vk-space-2);
+  color: var(--vk-on-surface-variant);
+}
+.vk-main:has([data-testid="discovery-loading"], [data-feed-state="loading"]),
+.vk-main:has([data-testid="discovery-loading"], [data-feed-state="loading"]) :is(.vk-discovery, #community-stream, .vk-feed-content) {
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 auto;
+}
+.vk-main:has([data-testid="discovery-loading"], [data-feed-state="loading"]) > .vk-discovery { inline-size: 100%; }
+.vk-discovery #community-stream > :is([data-testid="discovery-loading"], [data-testid="public-invalid"], [data-testid="public-not-found"], [data-testid="public-unavailable"]),
+.vk-discovery .vk-feed-content > [data-feed-state="loading"] { margin-block: auto; }
+.vk-feed-content, .vk-discovery #public-collection { position: relative; }
+.vk-refresh-progress { position: absolute; inset: 0 0 auto; pointer-events: none; }
 /* Auto inline margins disable flex stretch, so keep each owner's measure instead of shrinking to content. */
 .vk-main:has(.vk-empty-state:not(.vk-empty-state--compact, .vk-empty-state--region), .vk-desk-loading) > :is(.vk-desk--index, .vk-discovery, .vk-state-page) { inline-size: 100%; }
 .vk-main :is(#public-results, .vk-draft-list) > :has(> .vk-empty-state) { margin-block: auto; }

@@ -421,7 +421,7 @@ fn RelationshipListPage(
                     view! { <span></span> }.into_any()
                 }
             }
-            <Transition fallback=|| view! { <p role="status">"Đang mở danh sách…"</p> }>
+            <Transition fallback=|| view! { <crate::ui::PendingRead label="Đang mở danh sách…" /> }>
                 {move || data.get().map(|(_, result)| view! {
                     <RelationshipListProjection
                         name=name_for_view.get_value()
@@ -817,7 +817,9 @@ fn render_list_status(
 ) -> AnyView {
     match state {
         #[cfg(feature = "browser")]
-        LiveListState::Loading => view! { <p role="status">"Đang tải danh sách…"</p> }.into_any(),
+        LiveListState::Loading => {
+            view! { <crate::ui::PendingRead label="Đang tải danh sách…" /> }.into_any()
+        }
         LiveListState::Page { .. } => ().into_any(),
         LiveListState::Alias { href } => {
             super::handle::redirect_alias(
