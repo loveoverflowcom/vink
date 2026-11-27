@@ -2111,12 +2111,14 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index) { scrollbar-gut
  * inside one of those owners. Region states (`--compact`) stay in normal flow. */
 .vk-main:has(.vk-empty-state:not(.vk-empty-state--compact), .vk-desk-loading),
 .vk-main:has(.vk-empty-state:not(.vk-empty-state--compact), .vk-desk-loading) :is(.vk-desk--index, .vk-drafts-region, .vk-desk-works, .vk-draft-list,
-  .vk-discovery, #community-stream, #public-collection, #public-results, .vk-state-page, .vk-state-page > .vk-state-slot) {
+  .vk-discovery, #community-stream, #public-collection, #public-results,
+  .vk-rel-wrapper:has(.vk-rel-empty), .vk-state-page, .vk-state-page > .vk-state-slot) {
   display: flex;
   flex-direction: column;
 }
 .vk-main:has(.vk-empty-state:not(.vk-empty-state--compact), .vk-desk-loading) :is(.vk-desk--index, .vk-drafts-region, .vk-desk-works, .vk-draft-list,
-  .vk-discovery, #community-stream, #public-collection, #public-results, .vk-state-page, .vk-state-page > .vk-state-slot) {
+  .vk-discovery, #community-stream, #public-collection, #public-results,
+  .vk-rel-wrapper:has(.vk-rel-empty), .vk-state-page, .vk-state-page > .vk-state-slot) {
   flex: 1 0 auto;
 }
 /* Auto inline margins disable flex stretch, so keep each owner's measure instead of shrinking to content. */
@@ -2222,11 +2224,17 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index) { scrollbar-gut
   background: var(--vk-primary-container); color: var(--vk-on-primary-container); border-radius: 50%;
   font: var(--vk-type-title-weight) var(--vk-type-title-size)/var(--vk-type-title-line-height) var(--vk-type-title-font);
 }
-.vk-author-public { max-width: 53rem; }
-.vk-main:has(> .vk-author-public) { padding-inline: 0; max-inline-size: 80rem; }
-.vk-author-public { padding-inline: clamp(16px, 4.4vw, 68px); }
+:is(.vk-author-public, .vk-rel-page--results) {
+  max-inline-size: 53rem;
+  padding-inline: clamp(16px, 4.4vw, 68px);
+}
+.vk-main:has(> .vk-author-public, > .vk-rel-wrapper .vk-rel-page--results) {
+  padding-inline: 0;
+  max-inline-size: 80rem;
+}
 @media (max-width: 759px) {
   .vk-author-public { padding: 0 16px var(--vk-space-4); }
+  .vk-rel-page--results { padding-inline: 16px; }
 }
 
 /* Author profile and its session-scoped editor.
@@ -2432,38 +2440,6 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index) { scrollbar-gut
   padding-inline: var(--vk-space-1);
   color: var(--vk-on-surface);
   overflow-wrap: anywhere;
-}
-.vk-rel-list {
-  display: grid;
-  gap: var(--vk-space-2);
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-.vk-rel-item {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--vk-space-2);
-  min-inline-size: 0;
-  padding: var(--vk-space-2) var(--vk-space-1);
-  border-block-end: 1px solid var(--vk-outline-variant);
-}
-.vk-rel-item .vk-ui-byline { flex: 1 1 12rem; }
-.vk-rel-item .vk-ui-byline__identity { inline-size: 100%; }
-.vk-rel-item .vk-follow-mutual {
-  background: transparent;
-  color: var(--vk-on-surface-variant);
-  padding-inline: var(--vk-space-1);
-  font-size: var(--vk-type-caption-size);
-}
-.vk-rel-directions [aria-current] {
-  font-weight: var(--vk-type-label-weight);
-}
-.vk-rel-pagination {
-  display: grid;
-  justify-items: start;
-  gap: var(--vk-space-2);
 }
 .vk-profile-unavailable {
   display: grid;

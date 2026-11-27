@@ -252,6 +252,9 @@ export async function authorHandles(page, { base, openPage, check, holdAnswer, t
     '#521 View profile opens the canonical author route');
   await visit(initial, 'mua-ngo');
   await visit('dem-mua', 'mua-ngo');
+  const aliasList = await fetch(`${base}/@${initial}/nguoi-theo-doi?cursor=tiep`, {redirect: 'manual'});
+  check(aliasList.status === 301 && aliasList.headers.get('location') === '/@mua-ngo/nguoi-theo-doi',
+    'relationship list alias keeps its direction and resolves to the canonical handle');
   for (const method of ['GET', 'HEAD']) {
     for (const alias of [initial, 'dem-mua']) {
       const result = await fetch(`${base}/@${alias}?next=elsewhere`, {method, redirect: 'manual'});
@@ -310,6 +313,11 @@ export async function authorHandles(page, { base, openPage, check, holdAnswer, t
     "UPDATE author_profiles SET current_handle=NULL,version=version+1 WHERE current_handle='mua-ngo' RETURNING 1;",
   );
   check(retired === '1', 'retired exactly the scenario profile');
+  const retiredList = await fetch(`${base}/@${initial}/nguoi-theo-doi`, {redirect: 'manual'});
+  const retiredListHtml = await retiredList.text();
+  check(retiredList.status === 410 && !retiredList.headers.has('location') &&
+    !retiredListHtml.includes(formerName) && !retiredListHtml.includes('id="relationship-count"') &&
+    !retiredListHtml.includes('id="relationship-empty"'), 'retired list returns Gone and omits relationship data');
   await guest.eval('history.back()');
   await guest.waitFor(
     "document.querySelector('main h1')?.textContent==='Hồ sơ không còn trên Vink'",

@@ -999,7 +999,7 @@ fn identity_byline(long: bool) -> AnyView {
         (AvatarSize::Reader, "reader", Some("/tac-gia/mau-an-nhien")),
     ];
     view! {
-        {note("Avatar → tên → @handle là một đích khi có href đã xác minh (dòng reader); metadata nằm ngoài link. Avatar ẩn với công nghệ hỗ trợ.")}
+        {note("Avatar → tên → @handle là một đích khi có href đã xác minh. Metadata nằm ngoài link. Avatar ẩn với công nghệ hỗ trợ.")}
         <Stack gap=Space::S6>
             {rows
                 .into_iter()
@@ -1019,6 +1019,18 @@ fn identity_byline(long: bool) -> AnyView {
                     }
                 })
                 .collect_view()}
+            <div data-byline="relationship">
+                <vink_patterns::AuthorIdentity size=AvatarSize::Medium author=vink_patterns::Author {
+                    name: "[Mẫu] An Nhiên Bên Hiên Nhà Mùa Mưa".into(),
+                    key: None,
+                    published_at: String::new(),
+                    profile: Some(vink_patterns::ProfileLink {
+                        href: "#screen.reader/default".into(),
+                        handle: "mau-an-nhien".into(),
+                    }),
+                    neutral: false,
+                } />
+            </div>
             <div data-byline="blank"><AuthorByline name="  " meta=vec!["Tên trống được nói rõ".to_string()] /></div>
             <div data-byline="neutral"><AuthorByline name="Tài khoản đã xóa" neutral=true meta=vec!["Nhãn trung tính: không chữ cái đầu, handle hay link".to_string()] /></div>
         </Stack>
