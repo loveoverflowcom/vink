@@ -259,14 +259,14 @@ async fn upgrade_retires_only_invalid_subjects_and_replays_existing_receipts(poo
         .execute(&pool)
         .await
         .unwrap();
-    sqlx::query(
-        "INSERT INTO account_emails VALUES ($1,'valid@example.test',now()),($2,'invalid',now())",
-    )
-    .bind(valid)
-    .bind(malformed)
-    .execute(&pool)
-    .await
-    .unwrap();
+    // Legacy lower-case uniqueness admits two byte sequences for the same canonical mailbox.
+    sqlx::query("INSERT INTO account_emails VALUES ($1,'văn@example.test',now()),($2,$3,now())")
+        .bind(valid)
+        .bind(malformed)
+        .bind("va\u{306}n@example.test")
+        .execute(&pool)
+        .await
+        .unwrap();
     let verification: time::OffsetDateTime =
         sqlx::query_scalar("SELECT verified_at FROM account_emails WHERE account_id=$1")
             .bind(valid)
@@ -330,7 +330,7 @@ async fn upgrade_retires_only_invalid_subjects_and_replays_existing_receipts(poo
             .fetch_one(&pool)
             .await
             .unwrap();
-    assert_eq!(after, (valid, "valid@example.test".into(), verification));
+    assert_eq!(after, (valid, "văn@example.test".into(), verification));
     assert!(
         sqlx::query("INSERT INTO accounts(id) VALUES ($1)")
             .bind(Uuid::now_v7())
