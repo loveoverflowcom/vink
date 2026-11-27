@@ -3569,7 +3569,7 @@ async function draftDashboard(page) {
           [search, format, create].every(control => getComputedStyle(control).borderTopLeftRadius === '14px') &&
           (${width} < 834 || createAligned && aligned(title) && aligned(lock)) &&
           formatBox.top >= heading.bottom - 1 && createBox.top >= heading.bottom - 1 &&
-          (!createAligned || Math.abs(createBox.left - formatBox.right - 8) <= 1));
+          (!createAligned || Math.abs(createBox.left - formatBox.right - 12) <= 1));
     })()`), `#522 Desk ${theme} ${width}/${scale}: native format label, flat Search and 48px creation controls below the heading (#593)`);
     check(await page.eval(`(() => {
       const row=document.querySelector('.vk-draft-row__link'), work=row.closest('.vk-author-work'), title=row.querySelector('.vk-draft-row__title'), meta=work.querySelector('.vk-draft-meta');
