@@ -16,6 +16,15 @@ lý do và các quyết định ngoài phạm vi nhập. Các registry phát tri
 
 [#607](https://github.com/loveoverflowcom/vink/issues/607) xác nhận email bắt buộc khi tạo tài khoản. [VDR-AUTH-VERIFIED-EMAIL@r1](proposals/VDR-AUTH-VERIFIED-EMAIL.r1.toml) là bản ghi chờ signoff đúng revision/hash. O-11@r2 giữ nguyên lịch sử đề xuất recovery.
 
+## Điểm Vink (Reputation V1)
+
+[VDR-REPUTATION@r1](proposals/VDR-REPUTATION.r1.toml) ghi sáu lựa chọn nghiệp vụ từ hai lượt
+review 27/11/2026 của [Epic #600](https://github.com/loveoverflowcom/vink/issues/600);
+[VDR-REPUTATION-CONTRACT@r1](proposals/VDR-REPUTATION-CONTRACT.r1.toml) ghi hướng backend đề xuất.
+Cả hai `PENDING`, chưa signoff exact revision/SHA-256; formula, eligibility, lifecycle chi tiết
+và cách tăng trưởng theo kỳ còn review. [PRD §19](../prd/requirements.md#19-điểm-vink-reputation-v1),
+[đặc tả](../docs/architecture/reputation.md), [registry](../docs/development/reputation.md).
+
 ## Social Graph
 
 [VDR-DISCOVERY-FOLLOWING-VISIBILITY@r1](proposals/VDR-DISCOVERY-FOLLOWING-VISIBILITY.r1.toml)

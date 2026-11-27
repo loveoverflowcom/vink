@@ -556,3 +556,29 @@ Quan hệ lưu giữ định danh và thời điểm lưu, không sao chép nhan
 | SAV-INV-05 · PRODUCT_CONFIRMED | Lưu/bỏ lưu chỉ tác động danh sách của chủ. So trước/sau: audience, publication, kiểm duyệt, Thấm/Ưng, xếp hạng và thông báo đều độc lập. |
 
 **DEFERRED** gồm thư mục/playlist, tìm kiếm trong danh sách, ghi chú, vị trí đọc dở, offline, chia sẻ/công khai, lưu bình luận và CMP/native. Trạng thái revision TOML, hợp đồng HTTP, LayoutSpec và mức triển khai tra tại [registry Lưu bài](../docs/development/saved-works.md).
+
+## 19. Điểm Vink (Reputation V1)
+
+[EPIC #600](https://github.com/loveoverflowcom/vink/issues/600) · Backend only. Hai lượt lựa chọn
+nghiệp vụ 27/11/2026 được ghi tại [proposal VDR-REPUTATION@r1](../decisions/proposals/VDR-REPUTATION.r1.toml).
+Lời chọn đã có; revision TOML còn `PENDING` (chưa signoff đúng payload/hash). Không đánh dấu active
+hay kích hoạt public runtime. [Đặc tả](../docs/architecture/reputation.md) ·
+[registry triển khai](../docs/development/reputation.md) ·
+[hợp đồng API dự thảo](../services/vink-app/contracts/http/v1/reputation.md).
+
+| ID · nguồn | Quy tắc nghiệp vụ đích | Ví dụ nghiệm thu |
+| --- | --- | --- |
+| REP-01 · REP-Q01 | Hai thành phần Impact (Thấm nhận trên tác phẩm) và Contribution (Ưng nhận trên nhận xét); không Follow, lượt xem, lượt lưu, số bài hay số bình luận. Một tổng rating, không phải Elo đối đầu. | Follow hoặc lưu bài không đổi điểm; Thấm và Ưng hợp lệ tác động đúng thành phần. |
+| REP-02 · REP-Q02 | Ghi nhận Impact tối đa một đơn vị cho mỗi cặp người Thấm + WorkId qua các anchor revision còn đủ điều kiện. Không chuyển endorsement nguồn sang revision mới. | Một người Thấm revision A, sau đó B của cùng WorkId: không tăng Impact lần hai. Sửa bài bình thường không reset điểm tác giả. |
+| REP-03 · REP-Q03 | Uy tín hiện hành, không phải điểm cộng vĩnh viễn bất kể trạng thái. Chuyển riêng tư loại điểm liên quan; công khai lại khôi phục phần còn đủ điều kiện. Thu hồi theo authority và DEL-05; chi tiết lifecycle còn OPEN. | Ẩn bài làm điểm tương ứng mất hiệu lực; tái công khai không tự tạo endorsement hoặc tăng trưởng mới; xóa tài khoản không hồi sinh. |
+| REP-04 · bổ sung lượt 1, REP-Q04 | Có thống kê tác giả uy tín cao và tăng uy tín nhanh theo tuần/tháng lịch (Asia/Ho_Chi_Minh), không rolling. | Hai sự kiện hai phía ranh giới thứ Hai 00:00 hoặc ngày đầu tháng thuộc hai kỳ khác nhau; không đặt lại tổng điểm khi sang kỳ. |
+| REP-05 · REP-Q05 | Tăng trưởng ròng từ đóng góp mới hợp lệ, khác delta tổng điểm. Loại khôi phục cũ, đổi công thức, backfill giả, thao tác lặp để tăng giả. Attribution/reversal cụ thể OPEN. | +80 đóng góp, -20 thu hồi tương tác, +100 khôi phục cũ: tổng đổi +160, tăng trưởng theo ví dụ review là +60; không coi ví dụ là thuật toán hoàn chỉnh cho mọi lifecycle. |
+| REP-06 · REP-Q06 | Tổng điểm và thống kê đủ điều kiện công khai kể cả khách; thành phần chưa công khai. Không lộ dữ liệu riêng qua tổng, delta, bảng thống kê, cache hoặc API lỗi. | Guest có quyền xem dữ liệu đã đủ điều kiện; ẩn/xóa trong khi worker lag không làm public API lộ projection cũ. |
+| REP-07 · scope #600 | Độc lập Đề xuất, Top 100 tác phẩm, Thấm/Ưng nguồn, Follow, Lưu, AI, moderation và auth/ACL. Không ưu tiên tác phẩm hay mở quyền theo uy tín. | Thay đổi score/rollout không đổi kết quả RANK-04, TOP, SAV-03 và quyền. |
+| REP-08 · scope #600 | Backend-only, projection/read API versioned; không tính lại toàn hệ thống mỗi read hoặc đưa phép tính nặng vào mutation nguồn. Mục tiêu hiệu suất phải đo trước khi public. | Score chưa sẵn sàng khác điểm 0/baseline; đọc có giới hạn, no N+1; benchmark baseline/candidate và kiểm rebuild/rollback. |
+
+**OPEN:** công thức/trọng số/thang/rounding; eligibility mới, anti-abuse, lifecycle chi tiết
+(gỡ/khôi phục bởi admin, suspension, comment edit, unlike/re-like, privacy của lịch sử kỳ);
+điều kiện vào nhóm thống kê, tie-breaker và phạm vi lưu kỳ; backfill, freshness và rollout.
+Các lựa chọn kỹ thuật có evidence thuộc từng slice. Không mặc định có leaderboard UI,
+public history hoặc API trả raw component. Không decay trong phạm vi đề xuất V1.
