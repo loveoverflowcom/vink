@@ -1,5 +1,6 @@
 //! TAG-PR-06 page glue. Shared chips/bylines render facts; this module owns GET/URL/focus.
 use super::{ResponseStatus, Unavailable, focus_recovery};
+use crate::account::Session;
 use crate::api::{self, LoadError};
 use crate::contract::{PublicTagDto, TagDto, TagList, WorkCard, WorkList};
 use crate::discovery::{
@@ -545,25 +546,25 @@ fn ExploreBrand() -> impl IntoView {
 /// These are URL destinations, with native link and history behavior before and after hydration.
 #[component]
 fn ExploreModes(mode: Memo<ExploreMode>, context: Memo<ExploreContext>) -> impl IntoView {
-    let following = api::following_feed_enabled();
-    let mut modes = vec![(ExploreMode::Works, "works", "Tất cả")];
-    if following {
-        modes.push((ExploreMode::Following, "following", "Đang theo dõi"));
-    }
-    modes.push((ExploreMode::Authors, "authors", "Tác giả"));
+    let enabled = api::following_feed_enabled();
+    let session = Session::current();
     view! {
         <nav class="vk-explore-modes" aria-label="Chế độ Khám phá">
-            {modes.into_iter().map(|(entry, key, label)| view! {
-                <a id=format!("explore-mode-{key}")
-                    aria-current=move || (mode.get() == entry).then_some("page")
-                    href=move || match entry {
-                        ExploreMode::Works => "/".into(),
-                        ExploreMode::Following => ExploreMode::FOLLOWING_HREF.into(),
-                        ExploreMode::Authors => context.with(|context| author_search_href(&context.query.q, None)),
-                    }>
-                    {label}
+            <a id="explore-mode-works" href="/"
+                aria-current=move || (mode.get() == ExploreMode::Works).then_some("page")>
+                "Tất cả"
+            </a>
+            <Show when=move || enabled && session.profile_scope.with(Option::is_some)>
+                <a id="explore-mode-following" href=ExploreMode::FOLLOWING_HREF
+                    aria-current=move || (mode.get() == ExploreMode::Following).then_some("page")>
+                    "Đang theo dõi"
                 </a>
-            }).collect_view()}
+            </Show>
+            <a id="explore-mode-authors"
+                aria-current=move || (mode.get() == ExploreMode::Authors).then_some("page")
+                href=move || context.with(|context| author_search_href(&context.query.q, None))>
+                "Tác giả"
+            </a>
         </nav>
     }
 }
@@ -713,6 +714,7 @@ fn DiscoverySearch(
                     <SearchDockBack id="close-public-search" label="Đóng tìm kiếm" on_press=dock.close />
                 })
                 clear_href=without_query
+                clear_available=Signal::derive(move || initial.with(|(_, query)| !query.is_empty()))
                 clear_id=if authors { "author-search-query-clear" } else { "clear-public-search" }
                 on_clear=clear />
         </form>
@@ -1060,6 +1062,16 @@ fn PublicResults(context: ExploreContext, live: public_reads::Live<WorkList>) ->
     let rejected = live.rejected;
     let removed = live.removed;
     let works = Memo::new(move |_| data.with(|list| list.works.clone()));
+    let empty = Memo::new(move |_| works.with(Vec::is_empty));
+    let unavailable_tag = Memo::new(move |_| {
+        data.with(|list| {
+            list.filters
+                .tags
+                .iter()
+                .any(|tag| matches!(tag.resolution.as_str(), "not_found" | "retired"))
+        })
+    });
+    let continuation = Memo::new(move |_| data.with(|list| list.next_cursor.is_some()));
     let show_inline_scope =
         context.tag_page.is_some() || !context.query.q.is_empty() || !context.query.tags.is_empty();
     let list_context = context.clone();
@@ -1087,47 +1099,52 @@ fn PublicResults(context: ExploreContext, live: public_reads::Live<WorkList>) ->
                             on_recover={ let live = live.clone(); move |_| live.refresh() } /></div>
                     </Show>
                     <div id="public-results">
-                        {move || if works.read().is_empty() {
+                        {move || if empty.get() {
                             let has_tags = !empty_context.query.tags.is_empty();
-                            let trimmed_q = empty_context.query.q.trim().to_owned();
-                            let has_query = !trimmed_q.is_empty();
+                            let has_query = !empty_context.query.q.trim().is_empty();
                             let filtered = has_tags || has_query;
                             // A page tail or unresolved tag never establishes an empty public corpus.
-                            let unavailable_tag = data.with(|list| list.filters.tags.iter().any(|tag| matches!(tag.resolution.as_str(), "not_found" | "retired")));
-                            let continuation = data.with(|list| list.next_cursor.is_some());
+                            let continuation = continuation.get();
                             let page_empty = empty_context.query.cursor.is_some() || continuation;
                             let mut no_tags = empty_context.clone(); no_tags.query.tags.clear(); no_tags.query.cursor = None; no_tags.tag_page = None;
-                            let mut no_query = empty_context.clone(); no_query.query.q.clear(); no_query.query.cursor = None;
                             let show_clear_tags = has_tags && (empty_context.tag_page.is_none() || has_query || page_empty);
-                            if unavailable_tag {
+                            if unavailable_tag.get() {
                                 view! { <div data-testid="public-tag-unavailable">
                                     <p role="status" aria-atomic="true">"Không thể tìm tác phẩm theo thẻ này."</p>
                                     <a id="clear-public-tags" class="vk-ui-link" href=no_tags.href(None)>"Bỏ lọc thẻ"</a>
                                 </div> }.into_any()
                             } else {
-                                let message = if page_empty {
-                                    if continuation { "Trang này chưa có tác phẩm; bạn có thể xem trang tiếp.".to_owned() } else { "Trang này không còn tác phẩm.".to_owned() }
-                                } else if has_query {
-                                    format!("Không có tác phẩm khớp “{trimmed_q}”.")
-                                } else if has_tags {
-                                    "Chưa có tác phẩm phù hợp.".to_owned()
-                                } else {
-                                    "Chưa có tác phẩm công khai.".to_owned()
-                                };
-                                let message = if cached_unverified.get() || refreshing.get() || failed.get() {
-                                    format!("Bản đã tải: {message}")
-                                } else { message };
-                                let find_authors = (has_query && !page_empty).then(|| {
-                                    (author_search_href(&trimmed_q, None), format!("Tìm tác giả “{trimmed_q}”"))
+                                let clear_tags = show_clear_tags.then(|| view! {
+                                    <a id="clear-public-tags" class=ButtonVariant::Tonal.classes() href=no_tags.href(None)>"Bỏ lọc thẻ"</a>
                                 });
-                                view! { <div data-testid=if page_empty { "public-empty-page" } else if filtered { "public-no-results" } else { "public-empty" }>
-                                    <EmptyState artwork=if filtered || page_empty { EmptyArtwork::NoResults } else { EmptyArtwork::NoPublicWorks } message announce=true>
-                                        {show_clear_tags.then(|| view! { <a id="clear-public-tags" class=ButtonVariant::Tonal.classes() href=no_tags.href(None)>"Bỏ lọc thẻ"</a> })}
-                                        {has_query.then(|| view! { <a id="clear-public-results" class=ButtonVariant::Tonal.classes() href=no_query.href(None)>"Xóa tìm kiếm"</a> })}
-                                        {find_authors.map(|(href, label)| view! { <a id="find-authors-for-query" class=ButtonVariant::Text.classes() href=href>{label}</a> })}
-                                        {(!filtered && !page_empty).then(|| view! { <a class=ButtonVariant::Tonal.classes() href="/ban-viet">"Đến Bàn viết"</a> })}
-                                    </EmptyState>
-                                </div> }.into_any()
+                                let retained = move || cached_unverified.get() || refreshing.get() || failed.get();
+                                if has_query && !page_empty {
+                                    let href = author_search_href(&empty_context.query.q, None);
+                                    view! { <div data-testid="public-no-results">
+                                        <EmptyState artwork=EmptyArtwork::NoResults hook="vk-discovery-query-miss"
+                                            heading=HeadingLevel::H2 title="Không tìm thấy tác phẩm" announce=true
+                                            message=move || if retained() { "Kết quả này là bản đã tải." } else { "Thử một từ khóa khác." }>
+                                            {clear_tags}
+                                            <a id="find-authors-for-query" class=ButtonVariant::Tonal.classes() href=href>
+                                                <Icon name=IconName::PersonOutline /><span>"Tìm tác giả"</span>
+                                            </a>
+                                        </EmptyState>
+                                    </div> }.into_any()
+                                } else {
+                                    let message = match (page_empty, continuation, has_tags) {
+                                        (true, true, _) => "Trang này chưa có tác phẩm; bạn có thể xem trang tiếp.",
+                                        (true, false, _) => "Trang này không còn tác phẩm.",
+                                        (false, _, true) => "Chưa có tác phẩm phù hợp.",
+                                        _ => "Chưa có tác phẩm công khai.",
+                                    };
+                                    let message = move || if retained() { format!("Bản đã tải: {message}") } else { message.to_owned() };
+                                    view! { <div data-testid=if page_empty { "public-empty-page" } else if filtered { "public-no-results" } else { "public-empty" }>
+                                        <EmptyState artwork=if filtered || page_empty { EmptyArtwork::NoResults } else { EmptyArtwork::NoPublicWorks } message announce=true>
+                                            {clear_tags}
+                                            {(!filtered && !page_empty).then(|| view! { <a class=ButtonVariant::Tonal.classes() href="/ban-viet">"Đến Bàn viết"</a> })}
+                                        </EmptyState>
+                                    </div> }.into_any()
+                                }
                             }
                         } else {
                             let context = list_context.clone();
@@ -1376,19 +1393,55 @@ mod tests {
         }
     }
     #[test]
-    fn explore_modes_serve_native_links_with_or_without_following() {
-        for following in [false, true] {
-            let html = Owner::new().with(|| {
-                provide_context(crate::server::FollowingFeedEnabled(following));
-                let mode = Memo::new(|_| ExploreMode::Authors);
-                let context = Memo::new(|_| context("mưa", None));
-                view! { <ExploreModes mode context /> }.to_html()
-            });
-            assert!(html.contains(r#"aria-label="Chế độ Khám phá""#));
-            assert_eq!(html.matches("<a ").count(), if following { 3 } else { 2 });
-            assert_eq!(html.matches(r#"aria-current="page""#).count(), 1);
-            assert!(html.contains(r#"href="/?mode=authors&amp;q=m%C6%B0a""#));
-            assert_eq!(html.contains(r#"href="/?mode=following""#), following);
+    fn explore_modes_keep_following_out_of_unconfirmed_ssr() {
+        for enabled in [false, true] {
+            for entry in [
+                ExploreMode::Works,
+                ExploreMode::Following,
+                ExploreMode::Authors,
+            ] {
+                let html = Owner::new().with(|| {
+                    provide_context(crate::server::FollowingFeedEnabled(enabled));
+                    Session::provide();
+                    let mode = Memo::new(move |_| entry);
+                    let context = Memo::new(|_| context("mưa", None));
+                    view! { <ExploreModes mode context /> }.to_html()
+                });
+                assert!(html.contains(r#"aria-label="Chế độ Khám phá""#));
+                assert_eq!(html.matches("<a ").count(), 2, "{html}");
+                assert_eq!(
+                    html.matches(r#"aria-current="page""#).count(),
+                    usize::from(entry != ExploreMode::Following),
+                    "{html}"
+                );
+                assert!(html.contains(r#"href="/?mode=authors&amp;q=m%C6%B0a""#));
+                assert!(!html.contains("explore-mode-following"), "{html}");
+            }
+        }
+    }
+
+    #[test]
+    fn explore_modes_require_both_following_enabled_and_confirmed_scope() {
+        for enabled in [false, true] {
+            for scope in [None, Some("reader/0")] {
+                let html = Owner::new().with(|| {
+                    provide_context(crate::server::FollowingFeedEnabled(enabled));
+                    let mut session = Session::provide();
+                    // Inject the projection consumed by the navigation, independent of Identity I/O.
+                    session.profile_scope = Memo::new(move |_| scope.map(str::to_owned));
+                    provide_context(session);
+                    let mode = Memo::new(|_| ExploreMode::Following);
+                    let context = Memo::new(|_| context("", None));
+                    view! { <ExploreModes mode context /> }.to_html()
+                });
+                let visible = enabled && scope.is_some();
+                assert_eq!(html.contains("explore-mode-following"), visible, "{html}");
+                assert_eq!(html.matches("<a ").count(), 2 + usize::from(visible));
+                assert_eq!(
+                    html.matches(r#"aria-current="page""#).count(),
+                    usize::from(visible)
+                );
+            }
         }
     }
 
@@ -1399,14 +1452,17 @@ mod tests {
         assert!(corpus.contains("/pkg/empty/vink-empty-no-public-works.webp"));
         assert!(corpus.contains("href=\"/ban-viet\""));
         let filtered = render(context("mưa", None), empty(), false, false);
+        assert!(filtered.contains("Không tìm thấy tác phẩm"), "{filtered}");
+        assert!(filtered.contains("Thử một từ khóa khác."), "{filtered}");
+        assert!(filtered.contains("/pkg/empty/vink-empty-no-results.webp"));
+        assert!(!filtered.contains("Xóa tìm kiếm"), "{filtered}");
+        assert!(filtered.contains("id=\"find-authors-for-query\""));
+        assert!(filtered.contains(">Tìm tác giả</span>"), "{filtered}");
         assert!(
-            filtered.contains("Không có tác phẩm khớp “mưa”."),
+            filtered.contains("vk-ui-button--tonal") && filtered.contains("<svg"),
             "{filtered}"
         );
-        assert!(filtered.contains("/pkg/empty/vink-empty-no-results.webp"));
-        assert!(filtered.contains("id=\"clear-public-results\""));
-        assert!(filtered.contains("id=\"find-authors-for-query\""));
-        assert!(filtered.contains("Tìm tác giả “mưa”"));
+        assert!(!filtered.contains("“mưa”"), "{filtered}");
         assert!(
             filtered.contains("href=\"/?mode=authors&amp;q=m%C6%B0a\""),
             "{filtered}"
@@ -1460,10 +1516,7 @@ mod tests {
     fn retained_empty_keeps_refresh_failure_facts_and_removed_snapshot_has_no_art() {
         let stale = render(context("mưa", None), empty(), true, false);
         assert!(stale.contains("public-refresh-failed") && stale.contains("bản đã tải"));
-        assert!(
-            stale.contains("Bản đã tải: Không có tác phẩm khớp “mưa”."),
-            "{stale}"
-        );
+        assert!(stale.contains("Kết quả này là bản đã tải."), "{stale}");
         let removed = render(context("", None), empty(), false, true);
         assert!(!removed.contains("/pkg/empty/"));
         assert!(removed.contains("id=\"restart-public\""));
@@ -1581,8 +1634,9 @@ mod tests {
                 );
                 assert!(
                     !html.contains("old-page")
-                        && !html.contains("<input")
-                        && !html.contains("<button"),
+                        && ["input", "button"]
+                            .iter()
+                            .all(|tag| !html.contains(&format!("<{tag}"))),
                     "{html}"
                 );
             }

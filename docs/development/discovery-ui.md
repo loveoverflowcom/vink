@@ -4,6 +4,21 @@ Baseline develop@bc926a8befd4c1ca2a19dece4bee9e782177ca22, 09/11/2026.
 Scope UX-01/02, PUB-02/03. [LayoutSpec](../design/tag-discovery.md) được xuất trước code.
 Không triển khai auth, publish/moderation hoặc app native; không deploy.
 
+## Search R5 #621
+
+[LayoutSpec Search R5](../design/search-r5.md#delta-khám-phá-621) mô tả thanh tìm và recovery.
+`ExploreModes` đọc cùng `profile_scope` với `FollowingFeed`, vì vậy SSR công khai và guest có hai
+đích. URL Following vẫn vào guard. `PublicResults` giữ artwork và link khi chỉ đổi độ tươi,
+chỉ cập nhật text của status. `DiscoverySearch` giữ X trong khi q đang áp dụng, kể cả khi buffer
+đã sửa thành trống. UI System chỉ nhận một tín hiệu clear tùy chọn từ caller. Bàn viết và Preview
+vẫn dùng hành vi mặc định.
+
+[Bằng chứng Product, ảnh trước/sau và số đo #621](evidence/discovery-search-r5-621/README.md).
+
+Oracle picker của #603 kiểm cả link GET đơn thẻ và các phần tử `input`/`button` không được render.
+`verify static repo` ở base nhận nhầm hai literal bên trong assertion là markup production.
+Assertion tạo tên tag từ danh sách hai phần tử, vẫn kiểm đủ hai loại. Guard dùng chung giữ phạm vi.
+
 ## Bộ lọc Web #603
 
 [LayoutSpec hiện hành](../design/redesign-r4/layout-spec.md#4-khám-phá) thay picker nhiều thẻ

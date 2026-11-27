@@ -528,6 +528,9 @@ pub fn SearchField(
     /// Bar-only native fallback. The host callback handles unmodified hydrated activation.
     #[prop(optional, into)]
     clear_href: Option<Signal<String>>,
+    /// Keep clear available while a host query is still applied, even if the local buffer is blank.
+    #[prop(optional, into)]
+    clear_available: Signal<bool>,
     #[prop(optional, into)] clear_id: Option<String>,
     #[prop(optional, into)] on_clear: Option<Callback<()>>,
     #[prop(optional)] input_ref: Option<NodeRef<leptos::html::Input>>,
@@ -545,6 +548,7 @@ pub fn SearchField(
             placeholder,
             name,
             clear_href,
+            clear_available,
             clear_id,
             on_clear,
             input_ref,
@@ -590,6 +594,7 @@ fn search_bar(
     placeholder: Option<String>,
     name: Option<String>,
     clear_href: Option<Signal<String>>,
+    clear_available: Signal<bool>,
     clear_id: Option<String>,
     on_clear: Option<Callback<()>>,
     input_ref: Option<NodeRef<leptos::html::Input>>,
@@ -650,7 +655,7 @@ fn search_bar(
                         <span class="vk-ui-search__compact-placeholder" aria-hidden="true">{text}</span>
                     })}
                 </div>
-                {move || (!value.get().is_empty() && mode == FieldMode::Editable).then(|| {
+                {move || (mode == FieldMode::Editable && (clear_available.get() || !value.get().is_empty())).then(|| {
                     if let Some(href) = clear_href {
                         view! {
                             <crate::action::Link href=href variant=crate::action::LinkVariant::Standalone

@@ -1,0 +1,879 @@
+{
+  "historicalSourceSHA": "91191186c1ac5ec6f4032dc0292af025eb2c0458",
+  "historicalRows": [
+    {
+      "capture_id": "c019",
+      "route": "/?mode=following",
+      "auth": "guest",
+      "theme": {
+        "requested": "light",
+        "effective": "light"
+      },
+      "viewport": {
+        "width": 834,
+        "height": 1112,
+        "unit": "CSS px"
+      },
+      "text_scale": 100,
+      "text_scale_method": "default 100%"
+    },
+    {
+      "capture_id": "e-217896742d4a",
+      "route": "/",
+      "auth": "guest",
+      "theme": {
+        "requested": "light",
+        "effective": "light"
+      },
+      "viewport": {
+        "width": 834,
+        "height": 900,
+        "unit": "CSS px"
+      },
+      "text_scale": 200,
+      "text_scale_method": "dom-override-geometry-only"
+    },
+    {
+      "capture_id": "e-5ad49b5abb7a",
+      "route": "/",
+      "auth": "guest",
+      "theme": {
+        "requested": "dark",
+        "effective": "dark"
+      },
+      "viewport": {
+        "width": 834,
+        "height": 900,
+        "unit": "CSS px"
+      },
+      "text_scale": 100,
+      "text_scale_method": "dom-override-geometry-only"
+    }
+  ],
+  "afterCaptures": {
+    "search-r5-834x900-dark-100": {
+      "width": 834,
+      "height": 900,
+      "textScaleLane": "default-100",
+      "source": {
+        "sourceSHA": "aa51827ae0dd72f0bf3a17c43c245baf1757117f",
+        "dirty": false,
+        "dirtyInputs": [],
+        "sourceFingerprint": "3f659bd6224c10c53eb277ab42735a0440fe8223997749f9b431743f4ca935f6"
+      },
+      "png": {
+        "width": 834,
+        "height": 900,
+        "byteSize": 53128,
+        "sha256": "ef022d4d105eca04dc7949a26a4f02dbfae6f35670f1ef7b344f6ff8499ef45d"
+      },
+      "file": "after-search-dark-834-100.png"
+    },
+    "search-r5-834x900-light-200-reference-replay": {
+      "width": 834,
+      "height": 900,
+      "textScaleLane": "dom-override-geometry-only",
+      "source": {
+        "sourceSHA": "aa51827ae0dd72f0bf3a17c43c245baf1757117f",
+        "dirty": false,
+        "dirtyInputs": [],
+        "sourceFingerprint": "3f659bd6224c10c53eb277ab42735a0440fe8223997749f9b431743f4ca935f6"
+      },
+      "png": {
+        "width": 834,
+        "height": 900,
+        "byteSize": 79024,
+        "sha256": "9b46fe6d422c9af6ca3f4da97ff421b1958874c4774d8fe8a2e3d36a2ba44052"
+      },
+      "file": "after-search-light-834-200.png"
+    },
+    "following-guest-566-834x1112-light-100": {
+      "width": 834,
+      "height": 1112,
+      "textScaleLane": "default-100",
+      "source": {
+        "sourceSHA": "aa51827ae0dd72f0bf3a17c43c245baf1757117f",
+        "dirty": false,
+        "dirtyInputs": [],
+        "sourceFingerprint": "3f659bd6224c10c53eb277ab42735a0440fe8223997749f9b431743f4ca935f6"
+      },
+      "png": {
+        "width": 834,
+        "height": 1112,
+        "byteSize": 35207,
+        "sha256": "662e40c7c16cf366623181eaffc29bee84ded2bc97755b4ea3967fb1b4d596c9"
+      },
+      "file": "after-following-guard-light-834-100.png"
+    }
+  },
+  "afterGeometry": {
+    "320x800-light-100": {
+      "overflow": -15,
+      "barHeight": 56,
+      "radius": 999,
+      "border": "0px",
+      "fieldWidth": 153,
+      "inputSize": "16px",
+      "inputWeight": "400",
+      "uiFont": true,
+      "targets": [
+        [
+          48,
+          48,
+          24,
+          0
+        ],
+        [
+          48,
+          48,
+          24,
+          0
+        ]
+      ],
+      "inset": [
+        8,
+        8
+      ],
+      "actionHeight": 50,
+      "actionRadius": 999,
+      "resultActions": 1,
+      "copy": true
+    },
+    "320x800-light-150": {
+      "overflow": 0,
+      "barHeight": 63.59375,
+      "radius": 999,
+      "border": "0px",
+      "fieldWidth": 153,
+      "inputSize": "24px",
+      "inputWeight": "400",
+      "uiFont": true,
+      "targets": [
+        [
+          48,
+          48,
+          24,
+          0
+        ],
+        [
+          48,
+          48,
+          24,
+          0
+        ]
+      ],
+      "inset": [
+        8,
+        8
+      ],
+      "actionHeight": 68.4375,
+      "actionRadius": 999,
+      "resultActions": 1,
+      "copy": true
+    },
+    "320x800-light-200": {
+      "overflow": 0,
+      "barHeight": 84.796875,
+      "radius": 999,
+      "border": "0px",
+      "fieldWidth": 169,
+      "inputSize": "32px",
+      "inputWeight": "400",
+      "uiFont": true,
+      "targets": [
+        [
+          48,
+          48,
+          24,
+          -0.0078125
+        ],
+        [
+          48,
+          48,
+          24,
+          -0.0078125
+        ]
+      ],
+      "inset": [
+        4,
+        4
+      ],
+      "actionHeight": 131.1875,
+      "actionRadius": 999,
+      "resultActions": 1,
+      "copy": true
+    },
+    "320x800-dark-100": {
+      "overflow": -15,
+      "barHeight": 56,
+      "radius": 999,
+      "border": "0px",
+      "fieldWidth": 153,
+      "inputSize": "16px",
+      "inputWeight": "400",
+      "uiFont": true,
+      "targets": [
+        [
+          48,
+          48,
+          24,
+          0
+        ],
+        [
+          48,
+          48,
+          24,
+          0
+        ]
+      ],
+      "inset": [
+        8,
+        8
+      ],
+      "actionHeight": 50,
+      "actionRadius": 999,
+      "resultActions": 1,
+      "copy": true
+    },
+    "320x800-dark-150": {
+      "overflow": 0,
+      "barHeight": 63.59375,
+      "radius": 999,
+      "border": "0px",
+      "fieldWidth": 153,
+      "inputSize": "24px",
+      "inputWeight": "400",
+      "uiFont": true,
+      "targets": [
+        [
+          48,
+          48,
+          24,
+          0
+        ],
+        [
+          48,
+          48,
+          24,
+          0
+        ]
+      ],
+      "inset": [
+        8,
+        8
+      ],
+      "actionHeight": 68.4375,
+      "actionRadius": 999,
+      "resultActions": 1,
+      "copy": true
+    },
+    "320x800-dark-200": {
+      "overflow": 0,
+      "barHeight": 84.796875,
+      "radius": 999,
+      "border": "0px",
+      "fieldWidth": 169,
+      "inputSize": "32px",
+      "inputWeight": "400",
+      "uiFont": true,
+      "targets": [
+        [
+          48,
+          48,
+          24,
+          -0.0078125
+        ],
+        [
+          48,
+          48,
+          24,
+          -0.0078125
+        ]
+      ],
+      "inset": [
+        4,
+        4
+      ],
+      "actionHeight": 131.1875,
+      "actionRadius": 999,
+      "resultActions": 1,
+      "copy": true
+    },
+    "390x844-light-100": {
+      "overflow": -15,
+      "barHeight": 56,
+      "radius": 999,
+      "border": "0px",
+      "fieldWidth": 223,
+      "inputSize": "16px",
+      "inputWeight": "400",
+      "uiFont": true,
+      "targets": [
+        [
+          48,
+          48,
+          24,
+          0
+        ],
+        [
+          48,
+          48,
+          24,
+          0
+        ]
+      ],
+      "inset": [
+        8,
+        8
+      ],
+      "actionHeight": 50,
+      "actionRadius": 999,
+      "resultActions": 1,
+      "copy": true
+    },
+    "390x844-light-150": {
+      "overflow": 0,
+      "barHeight": 63.59375,
+      "radius": 999,
+      "border": "0px",
+      "fieldWidth": 223,
+      "inputSize": "24px",
+      "inputWeight": "400",
+      "uiFont": true,
+      "targets": [
+        [
+          48,
+          48,
+          24,
+          0
+        ],
+        [
+          48,
+          48,
+          24,
+          0
+        ]
+      ],
+      "inset": [
+        8,
+        8
+      ],
+      "actionHeight": 68.4375,
+      "actionRadius": 999,
+      "resultActions": 1,
+      "copy": true
+    },
+    "390x844-light-200": {
+      "overflow": 0,
+      "barHeight": 84.796875,
+      "radius": 999,
+      "border": "0px",
+      "fieldWidth": 223,
+      "inputSize": "32px",
+      "inputWeight": "400",
+      "uiFont": true,
+      "targets": [
+        [
+          48,
+          48,
+          24,
+          -0.0078125
+        ],
+        [
+          48,
+          48,
+          24,
+          -0.0078125
+        ]
+      ],
+      "inset": [
+        8,
+        8
+      ],
+      "actionHeight": 90.59375,
+      "actionRadius": 999,
+      "resultActions": 1,
+      "copy": true
+    },
+    "390x844-dark-100": {
+      "overflow": -15,
+      "barHeight": 56,
+      "radius": 999,
+      "border": "0px",
+      "fieldWidth": 223,
+      "inputSize": "16px",
+      "inputWeight": "400",
+      "uiFont": true,
+      "targets": [
+        [
+          48,
+          48,
+          24,
+          0
+        ],
+        [
+          48,
+          48,
+          24,
+          0
+        ]
+      ],
+      "inset": [
+        8,
+        8
+      ],
+      "actionHeight": 50,
+      "actionRadius": 999,
+      "resultActions": 1,
+      "copy": true
+    },
+    "390x844-dark-150": {
+      "overflow": 0,
+      "barHeight": 63.59375,
+      "radius": 999,
+      "border": "0px",
+      "fieldWidth": 223,
+      "inputSize": "24px",
+      "inputWeight": "400",
+      "uiFont": true,
+      "targets": [
+        [
+          48,
+          48,
+          24,
+          0
+        ],
+        [
+          48,
+          48,
+          24,
+          0
+        ]
+      ],
+      "inset": [
+        8,
+        8
+      ],
+      "actionHeight": 68.4375,
+      "actionRadius": 999,
+      "resultActions": 1,
+      "copy": true
+    },
+    "390x844-dark-200": {
+      "overflow": 0,
+      "barHeight": 84.796875,
+      "radius": 999,
+      "border": "0px",
+      "fieldWidth": 223,
+      "inputSize": "32px",
+      "inputWeight": "400",
+      "uiFont": true,
+      "targets": [
+        [
+          48,
+          48,
+          24,
+          -0.0078125
+        ],
+        [
+          48,
+          48,
+          24,
+          -0.0078125
+        ]
+      ],
+      "inset": [
+        8,
+        8
+      ],
+      "actionHeight": 90.59375,
+      "actionRadius": 999,
+      "resultActions": 1,
+      "copy": true
+    },
+    "834x900-light-100": {
+      "overflow": -15,
+      "barHeight": 56,
+      "radius": 999,
+      "border": "0px",
+      "fieldWidth": 539,
+      "inputSize": "16px",
+      "inputWeight": "400",
+      "uiFont": true,
+      "targets": [
+        [
+          48,
+          48,
+          24,
+          0
+        ],
+        [
+          48,
+          48,
+          24,
+          0
+        ]
+      ],
+      "inset": [
+        8,
+        8
+      ],
+      "actionHeight": 50,
+      "actionRadius": 999,
+      "resultActions": 1,
+      "copy": true
+    },
+    "834x900-light-150": {
+      "overflow": -15,
+      "barHeight": 63.59375,
+      "radius": 999,
+      "border": "0px",
+      "fieldWidth": 507,
+      "inputSize": "24px",
+      "inputWeight": "400",
+      "uiFont": true,
+      "targets": [
+        [
+          48,
+          48,
+          24,
+          0
+        ],
+        [
+          48,
+          48,
+          24,
+          0
+        ]
+      ],
+      "inset": [
+        8,
+        8
+      ],
+      "actionHeight": 68.4375,
+      "actionRadius": 999,
+      "resultActions": 1,
+      "copy": true
+    },
+    "834x900-light-200": {
+      "overflow": 0,
+      "barHeight": 84.796875,
+      "radius": 999,
+      "border": "0px",
+      "fieldWidth": 475,
+      "inputSize": "32px",
+      "inputWeight": "400",
+      "uiFont": true,
+      "targets": [
+        [
+          48,
+          48,
+          24,
+          -0.0078125
+        ],
+        [
+          48,
+          48,
+          24,
+          -0.0078125
+        ]
+      ],
+      "inset": [
+        8,
+        8
+      ],
+      "actionHeight": 90.59375,
+      "actionRadius": 999,
+      "resultActions": 1,
+      "copy": true
+    },
+    "834x900-dark-100": {
+      "overflow": -15,
+      "barHeight": 56,
+      "radius": 999,
+      "border": "0px",
+      "fieldWidth": 539,
+      "inputSize": "16px",
+      "inputWeight": "400",
+      "uiFont": true,
+      "targets": [
+        [
+          48,
+          48,
+          24,
+          0
+        ],
+        [
+          48,
+          48,
+          24,
+          0
+        ]
+      ],
+      "inset": [
+        8,
+        8
+      ],
+      "actionHeight": 50,
+      "actionRadius": 999,
+      "resultActions": 1,
+      "copy": true
+    },
+    "834x900-dark-150": {
+      "overflow": -15,
+      "barHeight": 63.59375,
+      "radius": 999,
+      "border": "0px",
+      "fieldWidth": 507,
+      "inputSize": "24px",
+      "inputWeight": "400",
+      "uiFont": true,
+      "targets": [
+        [
+          48,
+          48,
+          24,
+          0
+        ],
+        [
+          48,
+          48,
+          24,
+          0
+        ]
+      ],
+      "inset": [
+        8,
+        8
+      ],
+      "actionHeight": 68.4375,
+      "actionRadius": 999,
+      "resultActions": 1,
+      "copy": true
+    },
+    "834x900-dark-200": {
+      "overflow": 0,
+      "barHeight": 84.796875,
+      "radius": 999,
+      "border": "0px",
+      "fieldWidth": 475,
+      "inputSize": "32px",
+      "inputWeight": "400",
+      "uiFont": true,
+      "targets": [
+        [
+          48,
+          48,
+          24,
+          -0.0078125
+        ],
+        [
+          48,
+          48,
+          24,
+          -0.0078125
+        ]
+      ],
+      "inset": [
+        8,
+        8
+      ],
+      "actionHeight": 90.59375,
+      "actionRadius": 999,
+      "resultActions": 1,
+      "copy": true
+    },
+    "1440x900-light-100": {
+      "overflow": -15,
+      "barHeight": 56,
+      "radius": 999,
+      "border": "0px",
+      "fieldWidth": 648,
+      "inputSize": "16px",
+      "inputWeight": "400",
+      "uiFont": true,
+      "targets": [
+        [
+          48,
+          48,
+          24,
+          0
+        ],
+        [
+          48,
+          48,
+          24,
+          0
+        ]
+      ],
+      "inset": [
+        8,
+        8
+      ],
+      "actionHeight": 50,
+      "actionRadius": 999,
+      "resultActions": 1,
+      "copy": true
+    },
+    "1440x900-light-150": {
+      "overflow": -15,
+      "barHeight": 63.59375,
+      "radius": 999,
+      "border": "0px",
+      "fieldWidth": 989,
+      "inputSize": "24px",
+      "inputWeight": "400",
+      "uiFont": true,
+      "targets": [
+        [
+          48,
+          48,
+          24,
+          0
+        ],
+        [
+          48,
+          48,
+          24,
+          0
+        ]
+      ],
+      "inset": [
+        8,
+        8
+      ],
+      "actionHeight": 68.4375,
+      "actionRadius": 999,
+      "resultActions": 1,
+      "copy": true
+    },
+    "1440x900-light-200": {
+      "overflow": 0,
+      "barHeight": 84.796875,
+      "radius": 999,
+      "border": "0px",
+      "fieldWidth": 957,
+      "inputSize": "32px",
+      "inputWeight": "400",
+      "uiFont": true,
+      "targets": [
+        [
+          48,
+          48,
+          24,
+          -0.0078125
+        ],
+        [
+          48,
+          48,
+          24,
+          -0.0078125
+        ]
+      ],
+      "inset": [
+        8,
+        8
+      ],
+      "actionHeight": 90.59375,
+      "actionRadius": 999,
+      "resultActions": 1,
+      "copy": true
+    },
+    "1440x900-dark-100": {
+      "overflow": -15,
+      "barHeight": 56,
+      "radius": 999,
+      "border": "0px",
+      "fieldWidth": 648,
+      "inputSize": "16px",
+      "inputWeight": "400",
+      "uiFont": true,
+      "targets": [
+        [
+          48,
+          48,
+          24,
+          0
+        ],
+        [
+          48,
+          48,
+          24,
+          0
+        ]
+      ],
+      "inset": [
+        8,
+        8
+      ],
+      "actionHeight": 50,
+      "actionRadius": 999,
+      "resultActions": 1,
+      "copy": true
+    },
+    "1440x900-dark-150": {
+      "overflow": -15,
+      "barHeight": 63.59375,
+      "radius": 999,
+      "border": "0px",
+      "fieldWidth": 989,
+      "inputSize": "24px",
+      "inputWeight": "400",
+      "uiFont": true,
+      "targets": [
+        [
+          48,
+          48,
+          24,
+          0
+        ],
+        [
+          48,
+          48,
+          24,
+          0
+        ]
+      ],
+      "inset": [
+        8,
+        8
+      ],
+      "actionHeight": 68.4375,
+      "actionRadius": 999,
+      "resultActions": 1,
+      "copy": true
+    },
+    "1440x900-dark-200": {
+      "overflow": 0,
+      "barHeight": 84.796875,
+      "radius": 999,
+      "border": "0px",
+      "fieldWidth": 957,
+      "inputSize": "32px",
+      "inputWeight": "400",
+      "uiFont": true,
+      "targets": [
+        [
+          48,
+          48,
+          24,
+          -0.0078125
+        ],
+        [
+          48,
+          48,
+          24,
+          -0.0078125
+        ]
+      ],
+      "inset": [
+        8,
+        8
+      ],
+      "actionHeight": 90.59375,
+      "actionRadius": 999,
+      "resultActions": 1,
+      "copy": true
+    }
+  }
+}

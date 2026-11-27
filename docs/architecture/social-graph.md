@@ -125,6 +125,11 @@ Chỉ lấy metadata, tiêu đề/thẻ hiện hành, ngày đầu hiển thị 
 để lọc hoặc truy vấn từng dòng. Kiểm kế hoạch query trên dữ liệu lệch. Bình luận, Follow và
 “Thấm”/“Hữu ích” không sinh item.
 
+Trên Web, [thanh mode Khám phá](../design/redesign-r4/layout-spec.md#4-khám-phá) tiêu thụ
+`Session::profile_scope` và feature flag như `FollowingFeed`. Cookie presence không cấp scope.
+Tín hiệu đổi phiên fence ngay scope cũ. Refresh cùng phiên giữ hành vi của Session owner.
+Đích trực tiếp vẫn do `FollowingFeed` diễn giải trạng thái phiên và do HTTP kiểm quyền mỗi lần đọc.
+
 ## Xóa, hạn chế và tương thích
 
 1. Account xác minh yêu cầu, cấp operation ID/generation, chốt trạng thái đang xóa và quy tắc

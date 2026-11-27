@@ -18,6 +18,11 @@ lý do và các quyết định ngoài phạm vi nhập. Các registry phát tri
 
 ## Social Graph
 
+[VDR-DISCOVERY-FOLLOWING-VISIBILITY@r1](proposals/VDR-DISCOVERY-FOLLOWING-VISIBILITY.r1.toml)
+ghi delta [#621](https://github.com/loveoverflowcom/vink/issues/621) cho thanh mode Khám phá.
+Record chờ signoff đúng revision. [LayoutSpec hiện hành](../docs/design/redesign-r4/layout-spec.md#4-khám-phá)
+quy định hình học và lối vào trực tiếp.
+
 [#288](https://github.com/loveoverflowcom/vink/issues/288) đưa R1–R9 của Epic vào [PRD §15](../prd/requirements.md#15-hồ-sơ-tác-giả-và-theo-dõi-social-graph).
 [Proposal sản phẩm](proposals/VDR-SOCIAL-GRAPH.r1.toml) ghi phạm vi và các SOC-OPEN.
 [Proposal kiến trúc](proposals/VDR-SOCIAL-CONTRACT.r1.toml) ghi ownership và CHOICE-01..06.

@@ -27,8 +27,8 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   check(await page.eval("document.querySelector('#public-query').placeholder === 'Tìm tác phẩm hoặc tác giả' && document.querySelector('#public-query').labels[0]?.textContent === 'Tìm theo tên hoặc tác giả' && !document.querySelector('#public-query-help, #explore-heading p')"), '#308 r1 search keeps distinct placeholder and accessible label without duplicate scope copy');
   await submit('không có tác phẩm này #100');
   await page.waitFor("document.querySelector('[data-testid=public-no-results]')", 'real no-results');
-  check(await page.eval("document.querySelectorAll('#public-results [role=status]').length===1 && document.querySelector('.vk-empty-state__message').textContent==='Không có tác phẩm khớp “không có tác phẩm này #100”.'"), '#225/#258/#405 empty page names the query in one truthful result announcement without redundant 0-count');
-  check(await page.eval("!!document.querySelector('#clear-public-results') && document.querySelector('#find-authors-for-query')?.textContent==='Tìm tác giả “không có tác phẩm này #100”' && new URL(document.querySelector('#find-authors-for-query').href).searchParams.get('mode')==='authors' && new URL(document.querySelector('#find-authors-for-query').href).searchParams.get('q')==='không có tác phẩm này #100'"), '#405 no-results offers query recovery and Tìm tác giả “q” link');
+  check(await page.eval("document.querySelectorAll('#public-results [role=status]').length===1 && document.querySelector('.vk-empty-state__title').textContent==='Không tìm thấy tác phẩm' && document.querySelector('.vk-empty-state__message').textContent==='Thử một từ khóa khác.'"), '#621 query miss offers one concise status without redundant 0-count');
+  check(await page.eval("!!document.querySelector('#clear-public-search') && !document.querySelector('#public-results [aria-label=\"Xóa tìm kiếm\"]') && document.querySelector('#find-authors-for-query')?.textContent.trim()==='Tìm tác giả' && new URL(document.querySelector('#find-authors-for-query').href).searchParams.get('mode')==='authors' && new URL(document.querySelector('#find-authors-for-query').href).searchParams.get('q')==='không có tác phẩm này #100'"), '#621 X is the clear action and the concise author link carries q');
   await page.waitFor("document.querySelector('.vk-empty-state__art')?.complete", '#258 empty artwork completes');
   check(await page.eval(`(async () => {
     const art = document.querySelector('.vk-empty-state__art'); await art.decode();
@@ -36,19 +36,19 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     return art.naturalWidth === 512 && art.naturalHeight === 427 && art.alt === '' &&
       art.getAttribute('width') === '512' && art.getAttribute('height') === '427' &&
       art.decoding === 'async' && art.getAttribute('loading') !== 'lazy' &&
-      !region.querySelector('h2,h3') && !region.textContent.includes('Trang này: 0') &&
+      region.querySelectorAll('h2').length === 1 && !region.querySelector('h3') && !region.textContent.includes('Trang này: 0') &&
       region.getAttribute('aria-label') === 'Tác phẩm khám phá' && region.tabIndex === -1 &&
       performance.getEntriesByType('resource').filter(r => r.name.includes('/pkg/empty/')).length === 1;
   })()`), '#258 actual WebP decode, one image request, HTML status and named focus landmark');
   await page.waitFor("document.activeElement?.id==='community-stream'", '#258 submitted search focuses the named landmark');
   await page.key('Tab');
   check(await page.eval(`(() => {
-    const link=document.querySelector('#clear-public-results'), style=getComputedStyle(link);
+    const link=document.querySelector('#find-authors-for-query'), style=getComputedStyle(link);
     return document.activeElement===link && link.matches(':focus-visible') &&
       style.outlineStyle!=='none' && parseFloat(style.outlineWidth)>0;
   })()`), '#258 keyboard reaches recovery after the landmark with a visible focus ring');
   const emptyMatrix = async surface => {
-  for (const theme of ['light','dark']) for (const width of [320,390,834,1440]) for (const scale of [100,200]) {
+  for (const theme of ['light','dark']) for (const width of [320,390,834,1440]) for (const scale of [100,150,200]) {
     await page.viewport(width);
     await page.eval(`document.documentElement.dataset.theme=${JSON.stringify(theme)}; document.documentElement.style.fontSize='${scale}%'; document.fonts.ready`);
     await page.eval("Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect?.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{})))");
@@ -66,7 +66,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
         centerY:(state.top + state.bottom - region.top - region.bottom)/2};
     })()`);
     check(layout.width <= (width<760?192:240) + 1 && Math.abs(layout.height/layout.width-427/512)<0.01 &&
-      layout.font===(scale===100?'16px':'32px') && layout.overflow<=1 && layout.order,
+      layout.font===(16 * scale / 100) + 'px' && layout.overflow<=1 && layout.order,
       '#258 empty composition reflow/ratio/type/order '+[theme,width,scale].join('/')+' '+JSON.stringify(layout));
     check(Math.abs(layout.centerX)<=1 && Math.abs(layout.centerY)<=1, '#308 empty cluster centered on both axes '+[surface,theme,width,scale].join('/')+' CSS px '+[layout.centerX,layout.centerY]);
     if (width===390 && scale===100) await textContrast(page, theme, 'empty');
@@ -78,9 +78,12 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   await page.viewport(1440);
   await page.eval("document.documentElement.style.fontSize='100%'");
 
-  await page.click('#clear-public-results');
-  await page.waitFor("location.search === '' && document.querySelector('#explore').dataset.search === 'closed' && document.querySelector('.vk-public-row')",
-    '#404 clearing the query from no-results restores the browse header');
+  await page.click('#clear-public-search');
+  await page.waitFor("location.search === '' && document.activeElement?.id === 'public-query' && document.querySelector('.vk-public-row')",
+    '#621 clearing applied query keeps focus in the search field');
+  await page.click('#close-public-search');
+  await page.waitFor("document.querySelector('#explore').dataset.search === 'closed' && document.activeElement?.id === 'open-public-search'",
+    '#404 closing the cleared search returns to browse and restores launcher focus');
   check(await page.eval("!document.querySelector('.vk-empty-state__art') && performance.getEntriesByType('resource').filter(r=>r.name.includes('/pkg/empty/')).every(r=>r.name.endsWith('vink-empty-no-results.webp'))"), '#258 ready branch mounts no artwork and never fetches unrelated illustrations');
   await page.waitFor("document.querySelector('#open-tag-filters')", 'public tag catalog ready');
 
@@ -434,7 +437,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   check(await page.eval("document.querySelector('#navigation-primary a[href=\"/\"]')?.getAttribute('aria-current')==='page'"), 'tag detail belongs to Explore');
   await goto(route+'?q=no-match-empty-258');
   await page.waitFor("document.querySelector('.vk-empty-state__art')?.complete && document.querySelector('.vk-empty-state__art')?.naturalWidth===512", '#258 tag empty artwork');
-  check(await page.eval("document.querySelectorAll('#public-results [role=status]').length===1 && !document.querySelector('#community-stream h2,#community-stream h3') && document.querySelector('.vk-empty-state__message').textContent==='Không có tác phẩm khớp “no-match-empty-258”.'"), '#258/#405 tag empty keeps one concise status naming the query without heading stack');
+  check(await page.eval("document.querySelectorAll('#public-results [role=status]').length===1 && document.querySelectorAll('#community-stream h2').length===1 && document.querySelector('.vk-empty-state__message').textContent==='Thử một từ khóa khác.'"), '#258/#405 tag search miss keeps one result heading and status');
   await emptyMatrix('tag');
   await page.viewport(1440);
   await page.eval("document.documentElement.style.fontSize='100%'");
@@ -477,7 +480,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     for (const type of ['mousePressed','mouseReleased']) await page.send('Input.dispatchMouseEvent', {type,...point,button:'left',clickCount:1});
     await page.waitFor("new URL(location.href).searchParams.get('q')==='khong-co-ket-qua-100' && document.querySelector('[data-testid=public-no-results]')", 'native GET result');
     await page.waitFor("document.querySelector('.vk-empty-state__art')?.complete", '#258 blocked artwork finishes with failure');
-    check(await page.eval("document.querySelector('.vk-empty-state__art').naturalWidth===0 && document.documentElement.dataset.hydrated!=='true' && document.querySelector('.vk-empty-state__message').textContent==='Không có tác phẩm khớp “khong-co-ket-qua-100”.' && document.querySelector('#clear-public-results').getAttribute('href')==='/' && document.querySelectorAll('#public-results [role=status]').length===1"), '#258/#405 blocked artwork before hydration leaves useful HTML and GET recovery');
+    check(await page.eval("document.querySelector('.vk-empty-state__art').naturalWidth===0 && document.documentElement.dataset.hydrated!=='true' && document.querySelector('.vk-empty-state__message').textContent==='Thử một từ khóa khác.' && document.querySelector('#clear-public-search').getAttribute('href')==='/' && document.querySelectorAll('#public-results [role=status]').length===1"), '#258/#405 blocked artwork before hydration leaves useful HTML and GET recovery');
     // page.click waits for animation frames; those callbacks do not run with page JS disabled.
     // Use the same native pointer path as the no-JS search above, without a JS click fallback.
     for (const selector of ['#tag-dock summary', '#dock-tag-form a']) {
@@ -506,8 +509,8 @@ export async function discoveryReading(page, { args, check, textContrast }) {
       check(await page.eval(`(() => {
         const art=document.querySelector('.vk-empty-state__art'), box=art.getBoundingClientRect();
         return art.naturalWidth===0 && box.width>0 && Math.abs(box.height/box.width-427/512)<0.01 &&
-          document.querySelector('.vk-empty-state__message').textContent==='Không có tác phẩm khớp “corrupt-art-258”.' &&
-          document.querySelector('#clear-public-results').getAttribute('href')==='/' &&
+          document.querySelector('.vk-empty-state__message').textContent==='Thử một từ khóa khác.' &&
+          document.querySelector('#clear-public-search').getAttribute('href')==='/' &&
           document.querySelectorAll('#public-results [role=status]').length===1;
       })()`), '#258 corrupt image before hydration keeps reserved space, one HTML status and real recovery');
     } finally {
@@ -574,7 +577,7 @@ export async function tagRecovery(page, { args, check }, standing) {
   }
   await goto(poetry+'?q=muc-603');
   check(await page.eval(`new URL(document.querySelector('#clear-public-tags').href).searchParams.get('q')==='muc-603' &&
-    document.querySelector('#clear-public-results').getAttribute('href')===${JSON.stringify(poetry)}`), 'tag page clear-filter retains q and clear-query retains tag');
+    document.querySelector('#clear-public-search').getAttribute('href')===${JSON.stringify(poetry)}`), 'tag page clear-filter retains q and clear-query retains tag');
 }
 
 async function catalogRecovery(page, {args, check, goto}) {
@@ -697,8 +700,9 @@ async function desktopSearchDock(page, {args, check, ready}) {
       order: close.getClientRects().length>0 && top.bottom <= modes.top && modes.bottom <= shell.top,
       submitHidden: getComputedStyle(document.querySelector('#public-search button[type=submit]')).display==='none'};
   })()`);
-  check(dock.url === url && Math.abs(dock.height - 56) < 1 && dock.radius === '16px' && dock.headerVisible && dock.order && dock.submitHidden,
-    'Search opens below stable tabs with a 56px field and no history entry ' + JSON.stringify(dock));
+  check(dock.url === url && Math.abs(dock.height - 56) < 1 && parseFloat(dock.radius) >= dock.height / 2 &&
+    dock.headerVisible && dock.order && dock.submitHidden,
+    '#621 Search opens below stable tabs with a 56px pill and no history entry ' + JSON.stringify(dock));
   await page.capture('discovery-r4-dock-1440-light', { boundary: 'real-public-api', scenario: 'r4-search-dock' });
   await page.send('Input.insertText', { text: 'chưa gửi' });
   await page.eval("document.querySelector('#public-query').dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true}))");
@@ -782,10 +786,11 @@ async function desktopSearchDock(page, {args, check, ready}) {
 }
 
 // #427 AC-02 / DQ-03: the same mode destinations are reachable at every width.
-async function checkExploreModesTabAndAx(page, {check, label}) {
+async function checkExploreModesTabAndAx(page, {check, label, member = true}) {
   const destinations = [
     ['explore-mode-works', 'Tất cả'],
-    ['explore-mode-following', 'Đang theo dõi'],
+    ...(member ?
+      [['explore-mode-following', 'Đang theo dõi']] : []),
     ['explore-mode-authors', 'Tác giả'],
   ];
   const stops = [];
@@ -836,7 +841,7 @@ async function emptyRefreshFocus(page, {args, check}) {
   await page.send('Fetch.enable', {patterns:[{urlPattern:args.base+'/api/v1/works*', requestStage:'Request'}]});
   try {
     await page.eval(`(() => {
-      const recovery = document.querySelector('#clear-public-results');
+      const recovery = document.querySelector('#find-authors-for-query');
       window.__empty258 = { recovery, art: document.querySelector('.vk-empty-state__art'), now: performance.now.bind(performance) };
       recovery.focus();
       performance.now = () => window.__empty258.now() + 121000;
@@ -846,9 +851,9 @@ async function emptyRefreshFocus(page, {args, check}) {
     while (!held.length && Date.now()<deadline) await new Promise(resolve=>setTimeout(resolve, 25));
     check(held.length===1, '#258 empty revalidation is actually held');
     await page.waitFor("document.querySelector('#public-collection').dataset.refreshing==='true'", '#258 retained empty refreshing');
-    const stable = () => page.eval(`document.querySelector('#clear-public-results')===window.__empty258.recovery &&
+    const stable = () => page.eval(`document.querySelector('#find-authors-for-query')===window.__empty258.recovery &&
       document.activeElement===window.__empty258.recovery && document.querySelector('.vk-empty-state__art')===window.__empty258.art &&
-      document.querySelector('.vk-empty-state__message').textContent==='Bản đã tải: Không có tác phẩm khớp “không có tác phẩm này #100”.' &&
+      document.querySelector('.vk-empty-state__message').textContent==='Kết quả này là bản đã tải.' &&
       document.querySelectorAll('#public-results [role=status]').length===1`);
     check(await stable(), '#258 retained empty refresh preserves recovery focus, artwork node and one qualified status');
     await page.send('Fetch.fulfillRequest', {requestId:held.shift(), responseCode:503,
@@ -896,6 +901,19 @@ export async function discoveryCorpus(page, { args, check }) {
   check(await page.eval('location.pathname+location.search')===context, 'reload preserves filtered second-page URL');
   await page.capture('discovery-real-second-page', {boundary:'real-api+SQL-publication-fixture',scenario:'query-tags-pagination-reader-return'});
   await page.viewport(1440);
+  const retainedTags = [form.slug, theme.slug].sort();
+  const clearsOnlySearch = params => !params.has('q') && !params.has('cursor') &&
+    JSON.stringify(params.getAll('tag').sort()) === JSON.stringify(retainedTags);
+  const clearHref = await page.eval("document.querySelector('#clear-public-search').href");
+  check(clearsOnlySearch(new URL(clearHref).searchParams), '#621 native X keeps both legacy tags and drops q/cursor');
+  await page.click('#clear-public-search');
+  await page.waitFor("!new URL(location.href).searchParams.has('q') && document.activeElement?.id === 'public-query'",
+    '#621 clear after pagination restores input focus');
+  check(clearsOnlySearch(new URL(await page.eval('location.href')).searchParams),
+    '#621 hydrated clear preserves the same tag set as the native X');
+  await page.eval('history.back()');
+  await page.waitFor("location.pathname+location.search==="+JSON.stringify(context)+" && document.querySelectorAll('.vk-public-row').length===2",
+    '#621 Back after clearing restores the same paginated results');
   await page.waitFor("document.querySelector('#open-tag-filters')", '#308 filter entry on the second page');
   await page.click('#open-tag-filters');
   await page.waitFor("document.querySelector('#tag-picker')?.open && document.querySelector('#modal-tag-form a')", 'legacy URL opens single-tag picker');
@@ -970,5 +988,206 @@ export async function discoveryCorpus(page, { args, check }) {
     for(const requestId of held) await page.send('Fetch.failRequest',{requestId,errorReason:'Aborted'}).catch(()=>{});
     await page.send('Fetch.disable');
     page.cdp.listeners.splice(page.cdp.listeners.indexOf(gate),1);
+  }
+}
+
+// #621 · Guest Product search through actual SSR reads and Chrome hydration.
+export async function searchR5(page, {base, check, textContrast}) {
+  const query = 'không có tác phẩm này #100';
+  const destination = '/?q=' + encodeURIComponent(query);
+  const ready = "document.querySelector('#explore')?.dataset.enhanced === 'true'";
+  const {identifier} = await page.send('Page.addScriptToEvaluateOnNewDocument', {source: `
+    window.followingModeExposed = false;
+    new MutationObserver(records => {
+      window.followingModeExposed ||= records.some(record => [...record.addedNodes].some(node =>
+        node.nodeType === Node.ELEMENT_NODE &&
+        (node.id === 'explore-mode-following' || node.querySelector('#explore-mode-following'))));
+    }).observe(document, {subtree: true, childList: true});
+  `});
+  try {
+    await page.goto(base + '/');
+    await page.waitFor(ready, 'plain guest Discovery hydrates');
+    await checkExploreModesTabAndAx(page, {check, label: 'R5 guest after hydration', member: false});
+    check(await page.eval("window.followingModeExposed === false && !document.querySelector('#explore-mode-following')"),
+      '#621 no Following link mounts during guest hydration');
+  } finally {
+    await page.send('Page.removeScriptToEvaluateOnNewDocument', {identifier});
+  }
+
+  await page.send('Emulation.setScriptExecutionDisabled', {value: true});
+  try {
+    await page.goto(base + destination);
+    check(await page.eval(`(() => {
+      const clear = document.querySelector('#clear-public-search');
+      return clear.getAttribute('href') === '/' && clear.getClientRects().length === 1 &&
+        document.querySelectorAll('[aria-label="Xóa tìm kiếm"]').length === 1 &&
+        document.querySelector('#find-authors-for-query').getAttribute('href').startsWith('/?mode=authors&q=');
+    })()`), '#621 native SSR keeps one visible clear link and the author destination');
+    await page.eval("document.querySelector('#clear-public-search').focus()");
+    await page.key('Enter', 0, {settle: false});
+    await page.waitFor("location.search === '' && document.querySelector('#explore')?.dataset.enhanced === 'false'",
+      '#621 keyboard clear follows its native href without JavaScript');
+  } finally {
+    await page.send('Emulation.setScriptExecutionDisabled', {value: false});
+  }
+
+  await page.goto(base + destination);
+  await page.waitFor(ready + " && document.querySelector('#find-authors-for-query')", 'applied guest query hydrates');
+  for (const [width, height] of [[320, 800], [390, 844], [834, 900], [1440, 900]]) {
+    await page.viewport(width, height);
+    for (const theme of ['light', 'dark']) for (const scale of [100, 150, 200]) {
+      const scene = [width + 'x' + height, theme, scale].join('-');
+      const facts = await page.eval(`(async () => {
+        const root = document.documentElement;
+        root.dataset.theme = '${theme}';
+        root.dataset.text = '${scale}';
+        await document.fonts.ready;
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        await Promise.allSettled(document.getAnimations()
+          .filter(animation => animation instanceof CSSTransition).map(animation => animation.finished));
+        scrollTo(0, 0);
+        const box = selector => document.querySelector(selector).getBoundingClientRect();
+        const mid = rect => (rect.top + rect.bottom) / 2;
+        const bar = box('#public-search .vk-ui-search__shell');
+        const field = box('#public-query');
+        const action = box('#find-authors-for-query');
+        const icons = ['#close-public-search', '#clear-public-search'].map(selector => ({
+          button: box(selector), icon: box(selector + ' svg'),
+        }));
+        const barStyle = getComputedStyle(document.querySelector('#public-search .vk-ui-search__shell'));
+        const inputStyle = getComputedStyle(document.querySelector('#public-query'));
+        const actionStyle = getComputedStyle(document.querySelector('#find-authors-for-query'));
+        const result = document.querySelector('[data-testid="public-no-results"]');
+        const link = document.querySelector('#find-authors-for-query');
+        return {
+          overflow: root.scrollWidth - root.clientWidth,
+          barHeight: bar.height, radius: parseFloat(barStyle.borderTopLeftRadius),
+          border: barStyle.borderWidth, fieldWidth: field.width,
+          inputSize: inputStyle.fontSize, inputWeight: inputStyle.fontWeight,
+          uiFont: inputStyle.fontFamily.startsWith('"Be Vietnam Pro"'),
+          targets: icons.map(({button,icon}) => [button.width, button.height, icon.width, mid(icon) - mid(bar)]),
+          inset: [icons[0].button.left - bar.left, bar.right - icons[1].button.right],
+          actionHeight: action.height, actionRadius: parseFloat(actionStyle.borderTopLeftRadius),
+          resultActions: result.querySelectorAll('.vk-empty-state__actions a').length,
+          copy: result.querySelector('.vk-empty-state__title')?.textContent === 'Không tìm thấy tác phẩm' &&
+            result.querySelector('.vk-empty-state__message')?.textContent === 'Thử một từ khóa khác.' &&
+            link.textContent.trim() === 'Tìm tác giả' && link.classList.contains('vk-ui-button--tonal') &&
+            link.firstElementChild.matches('[data-icon="person-outline"][aria-hidden="true"]') &&
+            new URL(link.href).searchParams.get('q') === ${JSON.stringify(query)} &&
+            !result.textContent.includes(${JSON.stringify(query)}),
+        };
+      })()`);
+      check(facts.overflow <= 1 && facts.barHeight >= 56 && facts.radius >= facts.barHeight / 2 &&
+        facts.border === '0px' && facts.fieldWidth > 0 && facts.uiFont && facts.inputWeight === '400' &&
+        facts.inputSize === (16 * scale / 100) + 'px' && Math.abs(facts.inset[0] - facts.inset[1]) <= 1 &&
+        facts.targets.every(([w, h, glyph, center]) => w >= 48 && h >= 48 && glyph >= 24 && Math.abs(center) <= 1) &&
+        facts.targets[0][2] === facts.targets[1][2] && facts.copy && facts.resultActions === 1 &&
+        facts.actionHeight >= 48 && facts.actionRadius >= facts.actionHeight / 2,
+        '#621 Search R5 geometry and recovery ' + scene + ' ' + JSON.stringify(facts));
+      if (width === 834 && scale === 100) {
+        await textContrast(page, theme, 'search-r5', ['#public-query', '#find-authors-for-query',
+          '.vk-discovery-query-miss .vk-empty-state__message']);
+      }
+      await page.capture('search-r5-' + scene, {
+        requiredTargets: ['#close-public-search', '#public-query', '#clear-public-search', '#find-authors-for-query'],
+        boundary: 'Product SSR + Chrome hydration + App PostgreSQL scratch',
+        scenario: 'guest-search-query-miss',
+      });
+    }
+  }
+
+  await page.viewport(320, 800);
+  await page.eval(`(async () => {
+    document.documentElement.dataset.text = '200';
+    await document.fonts.ready;
+    document.querySelector('#find-authors-for-query').scrollIntoView({block: 'center'});
+  })()`);
+  check(await page.eval(`(() => {
+    const a = document.querySelector('#find-authors-for-query');
+    const r = a.getBoundingClientRect();
+    return r.top >= 0 && r.bottom <= innerHeight &&
+      a.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+  })()`), '#621 at 320px and 200%, scrolling reaches the full author recovery target');
+  await page.capture('search-r5-320x800-dark-200-recovery', {
+    requiredTargets: ['#find-authors-for-query'],
+    boundary: 'Product SSR + Chrome hydration + App PostgreSQL scratch',
+    scenario: 'guest-search-query-miss-scrolled-to-recovery',
+  });
+
+  await page.viewport(834, 900);
+  await page.eval(`(async () => {
+    const root = document.documentElement;
+    root.dataset.theme = 'light';
+    delete root.dataset.text;
+    root.style.fontSize = '200%';
+    await document.fonts.ready;
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    await Promise.allSettled(document.getAnimations()
+      .filter(animation => animation instanceof CSSTransition).map(animation => animation.finished));
+    scrollTo(0, 0);
+  })()`);
+  await page.capture('search-r5-834x900-light-200-reference-replay', {
+    requiredTargets: ['#public-query', '#clear-public-search', '#find-authors-for-query'],
+    boundary: 'Product SSR + Chrome hydration + App PostgreSQL scratch',
+    scenario: 'guest-search-query-miss-historical-scale-method',
+    textScaleLane: 'dom-override-geometry-only',
+  });
+  await page.eval("document.documentElement.style.fontSize=''; document.documentElement.dataset.text='100'");
+  try {
+    await page.send('Emulation.setEmulatedMedia', {features: [
+      {name: 'forced-colors', value: 'active'}, {name: 'prefers-reduced-motion', value: 'reduce'},
+    ]});
+    await page.eval("document.querySelector('#close-public-search').focus()");
+    for (const selector of ['#public-query', '#clear-public-search']) {
+      await page.key('Tab');
+      check(await page.eval(`(() => {
+        const shell = document.querySelector('#public-search .vk-ui-search__shell');
+        const field = document.querySelector('#public-query');
+        const active = document.querySelector('${selector}');
+        const outline = el => getComputedStyle(el).outlineStyle === 'solid' &&
+          parseFloat(getComputedStyle(el).outlineWidth) > 0;
+        return active === document.activeElement && active.matches(':focus-visible') &&
+          getComputedStyle(shell).borderWidth === '1px' &&
+          (active === field ? outline(shell) && !outline(field) : outline(active) && !outline(shell));
+      })()`), '#621 forced colors keep a visible keyboard perimeter on ' + selector);
+    }
+  } finally {
+    await page.send('Emulation.setEmulatedMedia', {features: []});
+  }
+
+  await page.eval("document.querySelector('#public-query').focus(); document.querySelector('#public-query').select()");
+  await page.key('Backspace');
+  await page.waitFor("document.querySelector('#public-query').value === '' && document.querySelector('#clear-public-search')",
+    '#621 editing the draft to blank keeps the applied query recoverable');
+  await page.key('Tab');
+  await page.key('Enter');
+  await page.waitFor("location.search === '' && document.activeElement?.id === 'public-query'",
+    '#621 keyboard clear resets applied q and restores input focus');
+  await page.key('Escape');
+  await page.waitFor("document.activeElement?.id === 'open-public-search'", '#621 Escape focuses the search launcher');
+
+  const started = Date.now();
+  let reads = 0;
+  const observe = ({sessionId, method, params}) => {
+    if (sessionId === page.sessionId && method === 'Network.requestWillBeSent' &&
+        new URL(params.request.url).pathname === '/api/v1/works') reads++;
+  };
+  page.cdp.listeners.push(observe);
+  try {
+    await page.eval("window.originalSearchInput = document.querySelector('#public-query')");
+    for (let cycle = 0; cycle < 30; cycle++) {
+      await page.key('Enter');
+      await page.waitFor("document.activeElement?.id === 'public-query'", 'R5 open cycle ' + cycle);
+      await page.send('Input.insertText', {text: 'Tiếng Việt chưa gửi'});
+      await page.key('Tab');
+      await page.key('Enter');
+      await page.waitFor("document.activeElement === originalSearchInput && originalSearchInput.value === ''",
+        'R5 clear cycle ' + cycle);
+      await page.key('Escape');
+      await page.waitFor("document.activeElement?.id === 'open-public-search'", 'R5 close cycle ' + cycle);
+    }
+    check(reads === 0, '#621 30 open/type/clear/close cycles in ' + (Date.now() - started) + ' ms, 0 work reads');
+  } finally {
+    page.cdp.listeners = page.cdp.listeners.filter(listener => listener !== observe);
   }
 }

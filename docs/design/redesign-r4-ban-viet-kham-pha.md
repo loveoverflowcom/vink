@@ -243,7 +243,7 @@ Nút tìm mở ô ngay dưới thanh tab. Tất cả tìm tác phẩm, Tác gi�
 
 Khi đổi chế độ tại cùng viewport và vị trí cuộn, trình duyệt giữ nguyên node header, logo và link tab. Mép trên và mép trái của logo và mỗi tab có dung sai 1 CSS px, cả khi đang chờ API. Bản #530 dùng chỉ báo trượt 240 ms giữa các ô chia đều.
 
-**Delta #566 ngày 26/11/2026.** Primary Tabs căn trái, mỗi link rộng theo nhãn và padding, cao tối thiểu 48 CSS px. Link xuống hàng ở bề rộng hẹp hoặc cỡ chữ lớn. Gạch chân primary 3 CSS px nằm dưới nhãn của link hiện hành và đổi ngay theo URL. Hợp đồng vị trí, node, keyboard và Search Dock của #530 tiếp tục áp dụng. Trạng thái khách Đang theo dõi dùng Empty State căn giữa và Auth R3 ở trang Tài khoản. [LayoutSpec Khám phá](redesign-r4/layout-spec.md#4-khám-phá) · [#566](https://github.com/loveoverflowcom/vink/issues/566)
+**Delta #566 ngày 26/11/2026 (lịch sử).** #621 cập nhật quyền hiện link theo [LayoutSpec hiện hành](redesign-r4/layout-spec.md#4-khám-phá). Primary Tabs căn trái, mỗi link rộng theo nhãn và padding, cao tối thiểu 48 CSS px. Link xuống hàng ở bề rộng hẹp hoặc cỡ chữ lớn. Gạch chân primary 3 CSS px nằm dưới nhãn của link hiện hành và đổi ngay theo URL. Hợp đồng vị trí, node, keyboard và Search Dock của #530 tiếp tục áp dụng. Trạng thái khách Đang theo dõi dùng Empty State căn giữa và Auth R3 ở trang Tài khoản. [LayoutSpec Khám phá](redesign-r4/layout-spec.md#4-khám-phá) · [#566](https://github.com/loveoverflowcom/vink/issues/566)
 
 **Chủ sản phẩm trả lời ngày 23/11/2026 khi nhận PR lát 1–5 (#402–#406)** — trích lựa chọn của
 chủ sản phẩm; chưa ghi vào registry `decisions/`:
