@@ -604,3 +604,5 @@ dòng vẫn chưa Read. Ảnh c142 chỉ dùng phiên tổng hợp; c324 dùng c
 Cả hai ở 320 × 800 CSS px, chữ 200%, Dark và source 91191186c1ac5ec6f4032dc0292af025eb2c0458.
 [Ảnh Tài khoản c142](https://drive.google.com/file/d/1Tn18YgVIaAsWxt6hnCNHHyd77MZznXZN/view) ·
 [Ảnh Hộp thư c324](https://drive.google.com/file/d/1Qzp95q0kUVlFwZxJdb1CNiiSpt6yst6D/view).
+
+[Ảnh sau thay đổi và điều kiện chụp](evidence/mobile-navigation-608/README.md).
