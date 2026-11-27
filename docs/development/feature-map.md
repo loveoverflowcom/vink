@@ -2,7 +2,7 @@
 
 ## Điểm Vink — Reputation (#600)
 
-[PRD §19](../../prd/requirements.md#19-điểm-vink-reputation-v1) · [đặc tả](../architecture/reputation.md) · [registry và evidence](reputation.md) · [API draft](../../services/vink-app/contracts/http/v1/reputation.md). Hai thành phần Thấm/Ưng, current rating và calendar-period growth; proposal PENDING, runtime UNKNOWN chưa audit đầy đủ, evidence NOT_RUN. Backend-only, không đổi Discovery/Top 100; design/Web tách epic.
+[PRD §19](../../prd/requirements.md#19-điểm-vink-reputation-v1) · [đặc tả](../architecture/reputation.md) · [registry và evidence](reputation.md) · [API draft](../../services/vink-app/contracts/http/v1/reputation.md). Hai thành phần Thấm/Ưng, current rating và calendar-period growth (current/closed), thu hồi tương tác cũ, full suspension ẩn public; proposal PENDING, runtime UNKNOWN chưa audit đầy đủ, evidence NOT_RUN. Backend-only, không đổi Discovery/Top 100; design/Web tách epic.
 
 ## Semantic UI trên Web
 

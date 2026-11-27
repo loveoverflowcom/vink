@@ -7,21 +7,25 @@ kind = "product"
 domain = "reputation"
 title = "Điểm Vink V1 — hai thành phần, uy tín hiện hành và thống kê theo kỳ"
 resolution = """
-Phạm vi nghiệp vụ được chủ sản phẩm lựa chọn trong hai lượt review #600 ngày 27/11/2026 (REP-Q01..06):
+Phạm vi nghiệp vụ được chủ sản phẩm lựa chọn trong ba lượt review #600 ngày 27/11/2026 (REP-Q01..09):
 - REP-Q01 = A: Impact từ Thấm nhận được trên tác phẩm; Contribution từ Ưng nhận được trên nhận xét. Không tính Follow. Một tổng điểm kiểu rating, không phải Elo đối đầu; công khai điểm tổng, chưa công khai thành phần.
 - REP-Q02 = A: ghi nhận Impact theo WorkId, cùng người Thấm nhiều revision chỉ tính một đơn vị hợp lệ; không sửa semantics endorsement neo RevisionId. Sửa thông thường không tự làm mất uy tín đã ghi nhận hợp lệ.
 - REP-Q03 = B: uy tín hiện hành; loại phần điểm không còn đủ điều kiện khi tác phẩm chuyển riêng tư, khôi phục khi công khai lại nếu còn hợp lệ. Quy tắc thu hồi chi tiết cho từng nguồn và vòng đời vẫn phải review, không hợp thức hóa dữ liệu bị xóa hoặc riêng tư.
 - REP-Q04 = A: tuần lịch thứ Hai–Chủ nhật và tháng lịch theo Asia/Ho_Chi_Minh; không phải rolling 7/30 ngày.
 - REP-Q05 = B: thống kê tăng trưởng ròng từ đóng góp mới hợp lệ trong kỳ; không ghi khôi phục điểm cũ, đổi công thức hoặc backfill thiếu căn cứ thành tăng trưởng mới. Chống tạo tăng giả do bỏ rồi ghi nhận lại. Định nghĩa chính xác attribution/reversal và đơn vị tăng trưởng phải được review trước kích hoạt.
 - REP-Q06 = A: tổng điểm và thống kê tác giả uy tín cao/tăng nhanh theo tuần, tháng được công khai kể cả khách, chỉ đối với dữ liệu và hồ sơ đủ điều kiện; không lộ thành phần, private data hay cache cũ. Không mở quyền hoặc can thiệp ranking tác phẩm.
+- REP-Q07 = A: thu hồi Thấm/Ưng cũ (kể cả từ kỳ trước) do bỏ tương tác hợp lệ làm giảm tăng trưởng ròng của kỳ thu hồi. Phân biệt community withdrawal với lifecycle/admin/formula effects; không biến re-like thành đóng góp mới. Ví dụ +80 mới, -30 cũ => +50 growth (số minh họa). Quy tắc bù thu hồi khi re-like và attribution phi tuyến còn review.
+- REP-Q08 = A: đình chỉ toàn bộ tài khoản nhận điểm thì ẩn điểm công khai và loại khỏi mọi thống kê công khai trong thời gian đình chỉ, kể cả kỳ cũ. Giữ facts còn hợp lệ và đánh giá lại eligibility khi hết đình chỉ; không reset điểm hoặc tạo growth từ phục hồi standing. Hạn chế riêng đăng/bình luận không đồng nhất với đình chỉ toàn bộ; hiệu ứng với tương tác do actor bị đình chỉ tạo ra còn OPEN.
+- REP-Q09 = A: backend hỗ trợ thống kê tuần/tháng đã kết thúc trong phạm vi retention được chốt sau; tôn trọng privacy/standing/deletion hiện hành. Không giả dữ liệu lịch sử; định nghĩa top rating trong kỳ, correction, thời hạn và UI history còn review.
 Backend-only: PRD, Rust Domain/App, PostgreSQL, worker, read API, qualification. Design/Leptos Web/CMP tách epic. Không công khai runtime trước signoff và privacy/performance gate.
-OPEN: công thức/thang điểm/trọng số/precision; eligibility và anti-abuse; lifecycle chi tiết, điều kiện tác giả mới lên bảng, tie/range và retention kỳ; backfill, freshness, rollout. Các lựa chọn kỹ thuật giao owner có evidence; không xem proposal này là phê duyệt các phương án còn mở.
+OPEN: công thức/thang điểm/trọng số/precision; eligibility và anti-abuse; lifecycle chi tiết (re-like, admin reversal, comment edit, suspended actor); điều kiện tham gia bảng, định nghĩa top rating theo kỳ, closed-period correction, tie/range và retention kỳ; backfill, freshness, rollout. Các lựa chọn kỹ thuật giao owner có evidence; không xem proposal này là phê duyệt các phương án còn mở.
 """
 rationale = """
 Nguồn: https://github.com/loveoverflowcom/vink/issues/600; lời chủ sản phẩm trong phiên review 27/11/2026:
 “EPIC #600 — Chốt sản phẩm lượt 1: Câu 1 = A, Câu 2 = A, Câu 3 = B. Ý kiến bổ sung: Có thống kê được các tác giả uy tín cao / tăng uy tín nhanh nhất trong tuần & tháng. Tiếp tục review các quyết định còn lại và chuẩn bị cập nhật SSOT.”
 “EPIC #600 — Chốt sản phẩm lượt 2: Câu 4 = A, Câu 5 = B, Câu 6 = A. Ý kiến bổ sung: Không có. Tiếp tục review và cập nhật SSOT.”
-Hai lượt là phê duyệt lựa chọn nghiệp vụ, không phải signoff payload TOML exact revision/SHA-256; giữ PENDING đến khi review đúng payload.
+“EPIC #600 — Chốt sản phẩm lượt 3: Câu 7 = A, Câu 8 = A, Câu 9 = A. Ý kiến bổ sung: Không có. Tiếp tục review và cập nhật SSOT trong PR #601.”
+Ba lượt là phê duyệt lựa chọn nghiệp vụ, không phải signoff payload TOML exact revision/SHA-256; giữ PENDING đến khi review đúng payload.
 """
 requires = ["VDR-DECISION-SIGNOFF@r1"]
 related_ids = [
