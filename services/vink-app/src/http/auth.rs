@@ -36,7 +36,7 @@ use crate::application::account::AccountError;
 use crate::application::ports::{RateLimitStore, StoreError};
 use crate::domain::abuse::{
     Admission, Network, PASSWORD_ENROLL, PASSWORD_ENROLL_CHALLENGE, PASSWORD_LOGIN,
-    PASSWORD_REGISTER, RateLimit, SIGN_IN_CHALLENGE, SIGN_IN_COMPLETE,
+    PASSWORD_REGISTER, REGISTER_CHALLENGE, RateLimit, SIGN_IN_CHALLENGE, SIGN_IN_COMPLETE,
 };
 use crate::domain::ids::PrincipalId;
 use crate::domain::principal::{Standing, SubjectKey};
@@ -61,11 +61,6 @@ pub const ENROLL_COOKIE: &str = "__Host-vink_enroll";
 
 /// Registration proof is scoped independently of login, enrollment and deletion.
 pub const REGISTER_COOKIE: &str = "__Host-vink_register";
-const REGISTER_CHALLENGE: RateLimit = RateLimit {
-    bucket: "password.register.challenge",
-    ..SIGN_IN_CHALLENGE
-};
-
 // Allows a 4096-byte password even when JSON uses six bytes per byte of input.
 const AUTH_BODY_LIMIT: usize = 32 * 1024;
 

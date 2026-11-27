@@ -20,11 +20,12 @@ pub(super) fn RegistrationForm(
             email.focus();
             return;
         }
+        let previous_step = issued.get_untracked();
         session.dispatch(
             epoch,
             Command::RequestRegistrationCode(address.clone()),
             move |result| {
-                if issued.try_get_untracked().is_none() {
+                if issued.try_get_untracked() != Some(previous_step) {
                     return;
                 }
                 match result {

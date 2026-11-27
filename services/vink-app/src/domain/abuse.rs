@@ -178,6 +178,12 @@ pub const SIGN_IN_CHALLENGE: RateLimit = RateLimit {
     window_seconds: 15 * 60,
 };
 
+/// Guest registration shares the issuance ceiling, with an independent network window.
+pub const REGISTER_CHALLENGE: RateLimit = RateLimit {
+    bucket: "password.register.challenge",
+    ..SIGN_IN_CHALLENGE
+};
+
 /// Answering codes: each challenge allows 5 attempts; this caps guessing across challenges.
 pub const SIGN_IN_COMPLETE: RateLimit = RateLimit {
     bucket: "sign_in.complete",
