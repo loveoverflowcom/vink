@@ -25,15 +25,14 @@ use vink_identity::password::{Password, Username};
 const CALLER: u32 = 501;
 
 #[sqlx::test(migrator = "vink_identity::persistence::MIGRATOR")]
-async fn account_deletion_password_only_revokes_every_session_and_rejects_operation_reuse(
+async fn account_deletion_password_proof_revokes_every_session_and_rejects_operation_reuse(
     pool: PgPool,
 ) {
     use vink_identity::contract::ContractError;
     let store = store(&pool);
     let username = Username::parse("tac_gia_xoa").unwrap();
     let password = Password::parse("mat-khau-fixture-xoa").unwrap();
-    let first = store
-        .register_password(&username, &password)
+    let first = super::registration::register(&pool, &store, &username, &password)
         .await
         .unwrap()
         .unwrap();
@@ -84,8 +83,7 @@ async fn account_deletion_password_only_revokes_every_session_and_rejects_operat
             .unwrap(),
         Err(PasswordSignInRejection::InvalidCredentials)
     ));
-    let new = store
-        .register_password(&username, &password)
+    let new = super::registration::register(&pool, &store, &username, &password)
         .await
         .unwrap()
         .unwrap();
@@ -124,8 +122,7 @@ async fn registration_and_sign_in_round_trip(pool: PgPool) {
     let username = Username::parse("tac_gia_1").unwrap();
     let password = Password::parse("mat-khau-an-toan-123").unwrap();
 
-    let session = store
-        .register_password(&username, &password)
+    let session = super::registration::register(&pool, &store, &username, &password)
         .await
         .unwrap()
         .unwrap();
@@ -187,18 +184,28 @@ async fn old_raw_hashes_can_still_sign_in_to_the_same_account(pool: PgPool) {
             .hash_password(raw.as_bytes())
             .unwrap()
             .to_string();
+        let mut tx = pool.begin().await.unwrap();
         sqlx::query("INSERT INTO accounts (id) VALUES ($1)")
             .bind(account_id)
-            .execute(&pool)
+            .execute(&mut *tx)
             .await
             .unwrap();
         sqlx::query("INSERT INTO account_passwords (account_id, username, password_hash) VALUES ($1, $2, $3)")
             .bind(account_id)
             .bind(name)
             .bind(hash)
-            .execute(&pool)
+            .execute(&mut *tx)
             .await
             .unwrap();
+        sqlx::query(
+            "INSERT INTO account_emails (account_id,address,verified_at) VALUES ($1,$2,now())",
+        )
+        .bind(account_id)
+        .bind(format!("{name}@example.test"))
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+        tx.commit().await.unwrap();
         let username = Username::parse(name).unwrap();
         let session = store
             .sign_in_password(&username, raw)
@@ -226,15 +233,13 @@ async fn duplicate_username_registration_is_rejected(pool: PgPool) {
     let username = Username::parse("but_danh").unwrap();
     let password = Password::parse("mat-khau-rat-manh-1").unwrap();
 
-    store
-        .register_password(&username, &password)
+    super::registration::register(&pool, &store, &username, &password)
         .await
         .unwrap()
         .unwrap();
 
     // Re-registering the same username is rejected.
-    let err = store
-        .register_password(&username, &password)
+    let err = super::registration::register(&pool, &store, &username, &password)
         .await
         .unwrap()
         .unwrap_err();
@@ -242,8 +247,7 @@ async fn duplicate_username_registration_is_rejected(pool: PgPool) {
 
     // Case-insensitivity: parsed username "BUT_DANH" normalizes to "but_danh" and collides.
     let upper = Username::parse("BUT_DANH").unwrap();
-    let err2 = store
-        .register_password(&upper, &password)
+    let err2 = super::registration::register(&pool, &store, &upper, &password)
         .await
         .unwrap()
         .unwrap_err();
@@ -255,8 +259,7 @@ async fn wrong_password_and_unknown_username_are_rejected(pool: PgPool) {
     let store = store(&pool);
     let username = Username::parse("nguoi_dung").unwrap();
     let password = Password::parse("mat-khau-chuan-123").unwrap();
-    store
-        .register_password(&username, &password)
+    super::registration::register(&pool, &store, &username, &password)
         .await
         .unwrap()
         .unwrap();
@@ -287,8 +290,7 @@ async fn password_sign_in_throttling_after_repeated_failures(pool: PgPool) {
     let store = store(&pool);
     let username = Username::parse("muc_tieu_tan_cong").unwrap();
     let password = Password::parse("mat-khau-chinh-xac").unwrap();
-    store
-        .register_password(&username, &password)
+    super::registration::register(&pool, &store, &username, &password)
         .await
         .unwrap()
         .unwrap();
@@ -331,8 +333,7 @@ async fn disabled_account_cannot_sign_in_with_password_and_active_session_is_rev
     let store = store(&pool);
     let username = Username::parse("bi_khoa").unwrap();
     let password = Password::parse("mat-khau-chuan-123").unwrap();
-    let session = store
-        .register_password(&username, &password)
+    let session = super::registration::register(&pool, &store, &username, &password)
         .await
         .unwrap()
         .unwrap();
@@ -365,7 +366,15 @@ async fn disabled_account_cannot_sign_in_with_password_and_active_session_is_rev
 #[sqlx::test(migrator = "vink_identity::persistence::MIGRATOR")]
 async fn password_routes_over_http(pool: PgPool) {
     let store = store(&pool);
-    let authority = Authority::new_password(store);
+    let email = vink_identity::email_code::EmailAddress::parse("writer@example.test").unwrap();
+    let (handle, code) = super::registration::proof(&pool, &store, &email).await;
+    let authority = Authority::new_native(
+        store,
+        vink_identity::authority::MethodCapabilities {
+            email_code: true,
+            password: true,
+        },
+    );
     let app = router(IdentityState::new(pool, authority, Some(CALLER)))
         .layer(axum::Extension(ConnectInfo(Peer { uid: Some(CALLER) })));
 
@@ -384,10 +393,11 @@ async fn password_routes_over_http(pool: PgPool) {
     let caps: Value = serde_json::from_slice(&bytes).unwrap();
     assert_eq!(caps["operations"]["register_password"], "available");
     assert_eq!(caps["operations"]["sign_in_password"], "available");
-    assert_eq!(caps["operations"]["sign_in"], "not_configured");
+    assert_eq!(caps["operations"]["sign_in"], "available");
 
     // Register via HTTP.
     let reg_req = serde_json::json!({
+        "email":email.as_str(), "challenge":handle.encode(), "code":code.expose(),
         "username": "nha_van_moi",
         "password": "mat-khau-hop-le-100"
     });

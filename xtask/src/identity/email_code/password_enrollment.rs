@@ -198,15 +198,35 @@ impl Flow<'_> {
         comment.expect("submit comment before enrollment", 201, "comment_id")?;
         let comment_id = field(&comment, "comment_id")?;
 
-        // Existing guest registration still creates an independent password-only account.
+        let address = "enroll.other@example.test";
+        let challenge = self.call(
+            "POST",
+            "/api/v1/auth/password/register/challenges",
+            None,
+            Some(&json!({"email": address}).to_string()),
+        )?;
+        challenge.expect("registration challenge", 202, "expires_at")?;
+        let handle = challenge
+            .cookie("__Host-vink_register")
+            .ok_or("registration proof cookie missing")?;
+        let registration_code = self.code(handle)?;
+        let registration_cookie = format!("__Host-vink_register={handle}");
+        let payload = |username: &str| {
+            json!({"username":username,"password":"１２３４５６７８９０","email":address,"code":registration_code}).to_string()
+        };
         self.call(
             "POST",
             "/api/v1/auth/register",
-            None,
-            Some(r#"{"username":" ","password":"valid-passphrase"}"#),
+            Some(&registration_cookie),
+            Some(&payload(" ")),
         )?
         .expect("blank registration username", 422, r#""field":"username""#)?;
-        let other = register(self, "/api/v1/auth/password/register", None)?;
+        let other = self.call(
+            "POST",
+            "/api/v1/auth/password/register",
+            Some(&registration_cookie),
+            Some(&payload("enroll_other")),
+        )?;
         other.expect("guest registration", 200, "needs_principal")?;
         let other = Client {
             session: other

@@ -52,13 +52,15 @@ nhận `account_id`. [Vòng đời](../../../../../docs/architecture/account-del
 | `POST /identity/v1/sessions/revoke` with [request](fixtures/session.revoke.request.json) | `200` [session.revoked.json](fixtures/session.revoked.json) | `401`, `400`, `413`, `501`, `503` |
 | `POST /identity/v1/email-change/challenges` with [request](fixtures/email_change.challenge.request.json) | `202` [challenge.issued.json](fixtures/challenge.issued.json) | as sign-in, plus `403 credential_rejected`, `409 address_unavailable` |
 | `POST /identity/v1/email-change/complete` with [request](fixtures/email_change.complete.request.json) | `200` [changed](fixtures/email_change.changed.json) or [rejected](fixtures/email_change.rejected.json) | `401`, `400`, `413`, `403 credential_rejected`, `501`, `503` |
+| `POST /identity/v1/password/register/challenges` with `{email}` | `202` [challenge issued](fixtures/challenge.issued.json) | `401`, `422 invalid_email`, `429`, `501`, `503` |
 | `POST /identity/v1/password/register` with [request](fixtures/password.register.request.json) | `200` [authenticated](fixtures/password.register.authenticated.json) or [rejected](fixtures/password.register.rejected.username_taken.json) | `401`, `400`, `413`, `422 invalid_username`, `422 invalid_password`, `429 rate_limited`, `501`, `503` |
+| `POST /identity/v1/email/verified` with `{credential}` | `200 {session_id, verified_email}` for the current session | `403`, `501`, `503` |
 | `POST /identity/v1/password/sign-in` with [request](fixtures/password.sign_in.request.json) | `200` [authenticated](fixtures/password.sign_in.authenticated.json) or [rejected](fixtures/password.sign_in.rejected.invalid_credentials.json) | `401`, `400`, `413`, `429 rate_limited`, `501`, `503` |
 | `POST /identity/v1/password/enroll/challenges` with [session request](fixtures/password.enroll.challenge.request.json) | `202` [challenge issued](fixtures/challenge.issued.json) | `401`, `400`, `413`, `403 credential_rejected` or `account_disabled`, `409 already_enrolled` or `address_unavailable`, `429`, `501`, `503` |
 | `POST /identity/v1/password/enroll` with [request](fixtures/password.enroll.request.json) | `200` [enrolled](fixtures/password.enroll.enrolled.json) or rejected with a reason | `401`, `400`, `413`, `403 credential_rejected`, `422 invalid_username` or `invalid_password`, `501`, `503` |
 | `POST /identity/v1/password/enroll/status` with [session request](fixtures/password.enroll.challenge.request.json) | `200` [enrolled](fixtures/password.enroll.status.enrolled.json) or [unenrolled](fixtures/password.enroll.status.unenrolled.json) | `401`, `400`, `413`, `403 credential_rejected` or `account_disabled`, `501`, `503` |
 
-The email-code operations require email-code. Registration and password sign-in require password.
+The email-code operations require email-code. Password sign-in requires password. Password registration requires both methods. The challenge uses the distinct `register_password` purpose. The commit verifies the handle, code and canonical address together, then creates the subject, email, password and session atomically. An occupied address closes this attempt without changing its owner. Wrong codes consume an attempt. A username collision rolls back without spending valid proof.
 All three enrollment operations require both methods. A missing method returns `501 authority_not_configured`.
 
 `credential` is an opaque string (1–4096 bytes) that an end user presented to the caller, for
@@ -161,6 +163,7 @@ it must never turn a `503` or `501` into an authenticated principal.
   like `503`. A timeout after the provider committed is an uncertain outcome: a session issued but
   never delivered cannot be presented by anyone and expires; the consumed code needs a new one.
 - A malformed path under `/identity/` is `not_found`; every answer under it uses the error envelope.
+- #607 is a coordinated breaking cutover within v1. Stop old writers and deploy the matching Identity and App binaries together. See [the cutover procedure](../../../../../docs/development/auth-operations.md).
 - The version is the path segment. Within `v1` the provider may add response fields and new
   operations; consumers must ignore unknown response fields. Removing or renaming a field, changing
   a code's meaning or accepting new request fields needs `v2`, served side by side until consumers move.
@@ -180,25 +183,3 @@ Session credentials, codes, challenge handles, addresses, usernames and password
 from `Debug` and logs. Responses carry the session credential only at issuance and the challenge
 handle only at challenge issuance. Parse errors are discarded. Logs record refusals and
 issued sessions by session id and subject. Database URLs never appear in configuration errors.
-
-
-## Gắn email xác minh lần đầu (#329)
-
-Cả ba RPC chỉ khả dụng với native mail và password; `capabilities.operations.attach_email`
-phản ánh điều đó. Không có route đặt lại mật khẩu, không tái dùng purpose của email-change,
-sign-in hay enrollment.
-
-| RPC POST | Request JSON | Kết quả |
-| --- | --- | --- |
-| `/identity/v1/email/attachment/status` | `{credential}` | `200 {session_id,password_account,verified_email}`, binding hiện hành hoặc `null` |
-| `/identity/v1/email/attachment/challenges` | `{credential,session_id,email,password}` | `202 {challenge,challenge_id,email,expires_at}`; `email` là địa chỉ chuẩn hóa, `challenge` là bí mật chỉ App đưa vào cookie riêng |
-| `/identity/v1/email/attachment/complete` | `{credential,challenge,challenge_id,code}` | `204` sau commit consume proof và chèn binding trên đúng account |
-
-`401` caller UID không được phép, `403` phiên không dùng được/disabled, `409` gồm
-`already_attached`, `attachment_context_changed`, `no_password`, `challenge_closed` và
-`address_unavailable`, `422` gồm `invalid_credentials`, `invalid_email`, `invalid_code`,
-`429 rate_limited`. Body giới hạn như enrollment cho issuance (32 KiB); đọc và complete
-dùng 8 KiB. Từ chối schema không echo dữ liệu người dùng. Email đã thuộc tài khoản khác vẫn có
-cùng shape lúc issuance nhưng không gửi thư; chỉ proof thật có thể gắn, và unique address
-ngăn gộp hoặc đổi chủ. `503` hoặc mất ACK không xác nhận giao dịch đã hay chưa xảy ra: dùng
-status cùng phiên, không tự gửi lại complete. Status không mint phiên và không gửi mail.

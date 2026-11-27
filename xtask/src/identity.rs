@@ -5,6 +5,7 @@
 //! D-05/S-03 email-code spike has its own end-to-end step ([`email_code`]) with both binaries.
 
 mod email_code;
+mod verified_email_cutover;
 
 use std::io::{Read, Write};
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
@@ -427,7 +428,7 @@ impl Run<'_> {
         if sql(&s.admin_identity, history)? != 0 {
             return Err("a refused migration created a history table".into());
         }
-        let applied = lifecycle::expected_applied("vink-identity")?;
+        let applied = self.rehearse_verified_email_cutover()?;
         let (code, stderr) = self.migrate("first", &s.identity_migrator)?;
         if code != Some(0) || !stderr.contains(&applied) {
             return Err(format!("first Identity migrate: {code:?}: {stderr}"));

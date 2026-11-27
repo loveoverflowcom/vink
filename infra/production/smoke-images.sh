@@ -102,7 +102,7 @@ app --fail --unix-socket /run/vink-inbox/inbox.sock http://notifications/health/
 "${compose[@]}" exec -T worker test ! -e /run/vink-inbox/inbox.sock
 
 # Exercise the production binaries through a real session in this disposable project.
-# Password authority needs no mail provider. Keep the production manifests locked by default.
+# Route proof only to the disposable Identity container. Production manifests keep their defaults.
 cat > "$root/password-test.yaml" <<'YAML'
 services:
   app:
@@ -110,13 +110,34 @@ services:
       VINK_AUTH_SIGN_IN: enabled
   identity:
     environment:
-      VINK_IDENTITY_AUTHORITY: password
+      VINK_IDENTITY_AUTHORITY: native
+      VINK_IDENTITY_MAIL_TRANSPORT: local-outbox
+      VINK_IDENTITY_LOCAL_OUTBOX: /run/scratch-mail
+    tmpfs:
+      - /run/scratch-mail:uid=10001,gid=10001,mode=0700
 YAML
 compose+=(-f "$root/password-test.yaml")
 "${compose[@]}" up -d --wait identity app
 base=http://127.0.0.1:3000/api/v1
 auth=(-H 'Origin: https://vink.forum' -H 'Content-Type: application/json')
-app --fail -D - -o /dev/null "${auth[@]}" --data '{"username":"smoke_inbox","password":"scratch-inbox-password"}' "$base/auth/register" |
+# Sign in through the local inbox. Neither proof nor session appears in the command line.
+app --fail -D - -o /dev/null "${auth[@]}" --data '{"email":"smoke-inbox@example.test"}' "$base/auth/sign-in/challenges" |
+    sed -nE 's/^[Ss]et-[Cc]ookie: (__Host-vink_sign_in=[^;]+);.*/Cookie: \1/p' > "$root/proof"
+mail_id=$(sed -nE 's/^Cookie: __Host-vink_sign_in=vink_c1\.([0-9a-f]{32})\..*/\1/p' "$root/proof")
+[[ $mail_id =~ ^[0-9a-f]{32}$ ]]
+deadline=$((SECONDS + 20))
+until "${compose[@]}" exec -T identity test -s "/run/scratch-mail/$mail_id.txt"; do
+    (( SECONDS < deadline )) || exit 1
+    sleep 1
+done
+"${compose[@]}" exec -T identity cat "/run/scratch-mail/$mail_id.txt" |
+    sed -nE 's/^X-Vink-Code: ([0-9]{6})$/{"code":"\1"}/p' > "$root/answer"
+test -s "$root/answer"
+# Header and body both travel on stdin via curl's config-file syntax.
+{
+    sed 's/.*/header = "&"/' "$root/proof"
+    sed 's/"/\\"/g; s/.*/data = "&"/' "$root/answer"
+} | app --fail -D - -o /dev/null "${auth[@]}" --config - "$base/auth/sign-in/complete" |
     sed -nE 's/^[Ss]et-[Cc]ookie: (__Host-vink_session=[^;]+);.*/Cookie: \1/p' > "$root/session"
 test -s "$root/session"
 # Pass the header via stdin, keeping credentials out of argv and stdout.

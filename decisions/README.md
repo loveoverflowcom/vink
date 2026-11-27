@@ -14,6 +14,8 @@ có điều kiện (`READ-01-CHOICE-01..04`, `READ-02-CHOICE-01..04`) và đọc
 nguồn còn dùng và các điểm còn mở. PRD vẫn sở hữu yêu cầu và tiêu chí nghiệm thu. ADR giữ thiết kế,
 lý do và các quyết định ngoài phạm vi nhập. Các registry phát triển ghi mức triển khai và bằng chứng.
 
+[#607](https://github.com/loveoverflowcom/vink/issues/607) xác nhận email bắt buộc khi tạo tài khoản. [VDR-AUTH-VERIFIED-EMAIL@r1](proposals/VDR-AUTH-VERIFIED-EMAIL.r1.toml) là bản ghi chờ signoff đúng revision/hash. O-11@r2 giữ nguyên lịch sử đề xuất recovery.
+
 ## Social Graph
 
 [#288](https://github.com/loveoverflowcom/vink/issues/288) đưa R1–R9 của Epic vào [PRD §15](../prd/requirements.md#15-hồ-sơ-tác-giả-và-theo-dõi-social-graph).

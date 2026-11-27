@@ -64,7 +64,7 @@ chạy bằng uid đã cấu hình. Chế độ mạng (ví dụ mTLS) chưa đ�
 | `VINK_IDENTITY_MIGRATE_DATABASE_URL` | `migrate` | Role migrator `vink_identity_migrator`; không fallback sang URL runtime |
 | `VINK_IDENTITY_SOCKET` | `serve` | Đường dẫn socket, tối đa 100 byte |
 | `VINK_IDENTITY_CALLER_UID` | `serve` | UID duy nhất được gọi contract; không đặt = đóng |
-| `VINK_IDENTITY_AUTHORITY` | `serve` | Không đặt thì chưa có authority. `email-code` và `password` bật từng phương thức. `native` bật cả hai và cho phép enrollment. `email-code` và `native` cần mail transport |
+| `VINK_IDENTITY_AUTHORITY` | `serve` | Không đặt thì chưa có authority. `email-code` và `password` bật từng phương thức. `native` bật cả hai, cho phép đăng ký mật khẩu bằng proof hộp thư và enrollment. Chế độ `password` chỉ đăng nhập bằng credential đã có. `email-code` và `native` cần mail transport |
 | `VINK_IDENTITY_MAIL_TRANSPORT` | `serve` | `resend-api` hoặc `local-outbox` (dev). Bỏ trống mà có `VINK_IDENTITY_LOCAL_OUTBOX` = outbox cục bộ |
 | `VINK_IDENTITY_LOCAL_OUTBOX` | `serve` | Thư mục `0700` nhận thư chứa mã (chỉ cục bộ) |
 | `VINK_IDENTITY_RESEND_API_KEY_FILE` | `serve`, `resend-api` | File key ngoài repo (`0600`), đọc lại mỗi lần gửi |

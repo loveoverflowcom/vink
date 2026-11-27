@@ -123,7 +123,7 @@ pub(crate) async fn complete_sign_in(
 
 #[cfg(feature = "browser")]
 pub(crate) async fn register_password(
-    credentials: crate::contract::PasswordCredentials,
+    credentials: crate::contract::Registration,
 ) -> Result<crate::contract::SessionState, crate::session::AuthError> {
     http::auth(
         "POST",
@@ -203,36 +203,20 @@ pub(crate) async fn password_enrollment_status()
 }
 
 #[cfg(feature = "browser")]
-const EMAIL_ATTACHMENT: &str = "/api/v1/auth/email/attachment";
-
-#[cfg(feature = "browser")]
-pub(crate) async fn email_attachment_status()
--> Result<crate::contract::EmailAttachmentStatus, crate::session::AuthError> {
-    http::auth::<(), _>("GET", EMAIL_ATTACHMENT, &[200], None).await
+pub(crate) async fn verified_email()
+-> Result<crate::contract::VerifiedEmail, crate::session::AuthError> {
+    http::auth::<(), _>("GET", "/api/v1/auth/email", &[200], None).await
 }
 
 #[cfg(feature = "browser")]
-pub(crate) async fn request_email_attachment(
-    input: crate::contract::StartEmailAttachment,
-) -> Result<crate::contract::EmailAttachmentChallenge, crate::session::AuthError> {
+pub(crate) async fn registration_code(
+    email: String,
+) -> Result<crate::contract::ChallengeSent, crate::session::AuthError> {
     http::auth(
         "POST",
-        &format!("{EMAIL_ATTACHMENT}/challenges"),
+        "/api/v1/auth/password/register/challenges",
         &[202],
-        Some(&input),
-    )
-    .await
-}
-
-#[cfg(feature = "browser")]
-pub(crate) async fn complete_email_attachment(
-    input: crate::contract::CompleteEmailAttachment,
-) -> Result<(), crate::session::AuthError> {
-    http::auth(
-        "POST",
-        &format!("{EMAIL_ATTACHMENT}/complete"),
-        &[204],
-        Some(&input),
+        Some(&crate::contract::StartSignInRequest { email }),
     )
     .await
 }

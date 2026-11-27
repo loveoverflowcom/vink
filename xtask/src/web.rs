@@ -555,7 +555,7 @@ fn auth_web(
                 .ok_or("missing standalone scratch database URL")?;
             smoke_with_env(
                 root,
-                &["--phase", "standalone"],
+                &["--phase", "standalone", "--outbox", &outbox],
                 chrome,
                 &origin,
                 state,

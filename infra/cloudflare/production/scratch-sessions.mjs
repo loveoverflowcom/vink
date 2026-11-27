@@ -1,7 +1,14 @@
-// Use only with local-edge, password-only Identity and a disposable PostgreSQL cluster.
+// Use only with local-edge, native Identity with its private local outbox and a disposable PostgreSQL cluster.
 import assert from 'node:assert/strict';
 import { randomBytes, randomUUID } from 'node:crypto';
 
+import { readFile, stat } from 'node:fs/promises';
+import { join } from 'node:path';
+import { setTimeout as sleep } from 'node:timers/promises';
+
+const outbox = process.argv[3];
+const directory = await stat(outbox);
+assert.ok(directory.isDirectory() && (directory.mode & 0o077) === 0, 'private scratch outbox required');
 const base = new URL(process.argv[2]);
 assert.equal(base.hostname, '127.0.0.1');
 assert.equal(base.protocol, 'http:');
@@ -17,8 +24,23 @@ async function request(path, cookie, data) {
   return response;
 }
 for (const penName of ['Tác giả A', 'Tác giả B']) {
-  const registered = await request('/api/v1/auth/register', '', {
-    username:'edge' + randomBytes(6).toString('hex'), password:randomUUID(),
+  const email = randomUUID() + '@example.test';
+  const challenge = await request('/api/v1/auth/password/register/challenges', '', {email});
+  assert.equal(challenge.status, 202);
+  const proof = challenge.headers.getSetCookie().find(v => v.startsWith('__Host-vink_register='))?.split(';')[0];
+  const id = /^__Host-vink_register=vink_c1\.([0-9a-f]{32})\./.exec(proof)?.[1];
+  assert.ok(id, 'scratch registration challenge');
+  let code;
+  for (let tries = 0; tries < 100 && !code; tries++) {
+    try {
+      const mail = await readFile(join(outbox, id + '.txt'), 'utf8');
+      code = /^X-Vink-Code: ([0-9]{6})$/m.exec(mail)?.[1];
+    } catch (err) { if (err.code !== 'ENOENT') throw err; }
+    if (!code) await sleep(100);
+  }
+  assert.ok(code, 'registration mail delivered locally');
+  const registered = await request('/api/v1/auth/register', proof, {
+    email, code, username:'edge' + randomBytes(6).toString('hex'), password:randomUUID(),
   });
   assert.equal(registered.status, 200, 'scratch registration');
   const session = registered.headers.getSetCookie().find(v => v.startsWith('__Host-vink_session='));

@@ -9,10 +9,7 @@ mod forms;
 use leptos::prelude::*;
 use vink_ui::{ActionState, Button, ButtonVariant};
 
-use crate::contract::{
-    CompleteEmailAttachment, EmailAttachmentStatus, EnrollPasswordRequest, PasswordCredentials,
-    StartEmailAttachment,
-};
+use crate::contract::{EnrollPasswordRequest, PasswordCredentials, Registration, VerifiedEmail};
 use crate::session::{AuthError, Millis, SessionOwner, Standing};
 
 use flow::{AuthGate, Operation};
@@ -24,13 +21,12 @@ use forms::{AuthHeading, GuestAuth, PenName, SignOut, SignedInSettings};
 #[cfg_attr(not(feature = "browser"), allow(dead_code))]
 enum Command {
     Login(PasswordCredentials),
-    Register(PasswordCredentials),
+    Register(Registration),
     RequestEmailCode(String),
     EmailCode(String),
     RequestEnrollmentCode,
     Enroll(EnrollPasswordRequest),
-    RequestEmailAttachment(StartEmailAttachment),
-    CompleteEmailAttachment(CompleteEmailAttachment),
+    RequestRegistrationCode(String),
     PenName(String),
     StartDeletion(String),
     ConfirmDeletion(serde_json::Value),
@@ -47,8 +43,7 @@ impl Command {
             Self::EmailCode(_) => Operation::EmailCode,
             Self::RequestEnrollmentCode => Operation::EnrollmentChallenge,
             Self::Enroll(_) => Operation::Enrollment,
-            Self::RequestEmailAttachment(_) => Operation::AttachmentChallenge,
-            Self::CompleteEmailAttachment(_) => Operation::AttachmentComplete,
+            Self::RequestRegistrationCode(_) => Operation::RegistrationChallenge,
             Self::PenName(_) => Operation::PenName,
             Self::StartDeletion(_) => Operation::DeletionChallenge,
             Self::ConfirmDeletion(_) => Operation::ConfirmDeletion,
@@ -64,11 +59,6 @@ enum Reply {
     Challenge(Millis),
     DeletionChallenge(String),
     Deletion(forms::DeletionStage),
-    AttachmentChallenge {
-        id: String,
-        email: String,
-        expires: Millis,
-    },
 }
 
 #[cfg_attr(not(feature = "browser"), allow(dead_code))]
@@ -210,14 +200,14 @@ impl Session {
         let _ = (epoch, live, complete);
     }
 
-    fn attachment_status(
+    fn verified_email(
         self,
         epoch: u64,
         live: impl Fn() -> bool + 'static,
-        complete: impl FnOnce(Result<EmailAttachmentStatus, AuthError>) + 'static,
+        complete: impl FnOnce(Result<VerifiedEmail, AuthError>) + 'static,
     ) {
         #[cfg(feature = "browser")]
-        browser::attachment_status(self, epoch, live, complete);
+        browser::verified_email(self, epoch, live, complete);
         #[cfg(not(feature = "browser"))]
         let _ = (epoch, live, complete);
     }
@@ -236,7 +226,9 @@ impl Session {
                 } else if let Some(seconds) = gate.wait(operation, now.get()) {
                     let verb = if matches!(
                         operation,
-                        Operation::EmailChallenge | Operation::EnrollmentChallenge
+                        Operation::EmailChallenge
+                            | Operation::EnrollmentChallenge
+                            | Operation::RegistrationChallenge
                     ) {
                         "gửi lại"
                     } else {

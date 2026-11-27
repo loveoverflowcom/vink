@@ -59,6 +59,13 @@ export async function mailedCode(outbox, address, seen) {
   throw new Error(`no outbox message for ${address} within 15s`);
 }
 
+export async function registrationProof(page, outbox, address, seen = new Set()) {
+  await fill(page, '#registration-address', address);
+  await page.click('#registration-send');
+  await page.waitFor(q('#registration-code'), 'registration challenge issued');
+  await fill(page, '#registration-code', await mailedCode(outbox, address, seen));
+}
+
 export async function cookies(page, base) {
   const { cookies } = await page.send('Network.getCookies', { urls: [base] });
   return Object.fromEntries(cookies.map((c) => [c.name, c]));

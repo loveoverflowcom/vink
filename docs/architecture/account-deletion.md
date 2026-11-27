@@ -9,6 +9,8 @@
 3. App khóa subject cùng đường provisioning, khóa Publication theo WorkId và lấy standing của principal. Một giao dịch ghi hàng rào App và Social, thu hồi handle/alias, gỡ work, dọn quyền truy cập và phát hiệu ứng cho Notifications. Với account chưa có PrincipalId, App vẫn ghi hàng rào để lời gọi provision đến trễ bị từ chối. Hai DB có hai điểm commit. Khi App chưa ghi xong, Identity đã chặn phiên và trình duyệt nhận trạng thái đã tiếp nhận.
 4. App đọc lại biên nhận chưa hoàn tất qua socket khi khởi động và mỗi 10 giây. Retry cùng biên nhận xử lý được rollback, restart hay mất ACK. Sau hàng rào App, giao dịch riêng dọn payload và ghi checkpoint. Adapter Social dọn cạnh hai chiều theo lô có checkpoint và đã bỏ chúng khỏi các projection ngay tại fence. Chỉ đánh dấu biên nhận hoàn tất ở Identity khi App đã dọn payload và adapter báo xong. Hạn 30 ngày tính từ `accepted_at`; công việc có thể dọn ngay trong lần đầu và ghi lỗi khi quá hạn.
 
+Tại cutover #607, CLI inventory/retire thay bước xác minh của người dùng bằng phân loại dữ liệu legacy trong maintenance. Cùng hàm `retire` phát biên nhận. Các bước 2–4 áp dụng cho cả account đã có principal và account chưa hoàn tất bút danh. [Runbook](../development/auth-operations.md#cutover-email-bắt-buộc-607).
+
 ## Dữ liệu và quyền đọc
 
 - Publication quyết định bằng public pointer hoặc author-hidden pointer thực. Trang thay thế đọc được nhận xét còn hợp lệ và đáp HTTP `no-store`; phiên bản trước đó không thể nhận 304 từ API. Bài chưa từng public và bài ở disposition gỡ sau kiểm duyệt không mở thread hoặc trang thay thế của tác giả.

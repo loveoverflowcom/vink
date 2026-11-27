@@ -105,7 +105,7 @@ pub(super) async fn start(
         .await
         .map_err(refusal)?;
     let challenge_id =
-        attachment_handle_id(&issued.handle).ok_or(ApiError::DependencyUnavailable)?;
+        challenge_handle_id(&issued.handle).ok_or(ApiError::DependencyUnavailable)?;
     let cookie = cookie(
         DELETE_COOKIE,
         &issued.handle,
@@ -158,7 +158,7 @@ pub(super) async fn confirm(
             code,
         } if !operation_id.is_nil() && code.len() <= 16 => {
             let handle = challenge
-                .filter(|handle| attachment_handle_id(handle) == Some(challenge_id))
+                .filter(|handle| challenge_handle_id(handle) == Some(challenge_id))
                 .ok_or(ApiError::ChallengeClosed)?;
             (
                 &CODE_LIMIT,
@@ -224,7 +224,7 @@ fn receipt(applied: bool) -> Response {
         DELETE_COOKIE,
         CHALLENGE_COOKIE,
         ENROLL_COOKIE,
-        ATTACH_COOKIE,
+        REGISTER_COOKIE,
     ] {
         response
             .headers_mut()

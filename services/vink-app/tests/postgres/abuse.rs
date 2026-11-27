@@ -197,10 +197,11 @@ async fn password_routes_enforce_rate_limits_at_the_edge(pool: PgPool) {
             .clone()
             .oneshot(
                 Request::post("/api/v1/auth/register")
+                    .header(header::COOKIE, "__Host-vink_register=fixture-proof")
                     .header(header::ORIGIN, ORIGIN)
                     .header(header::CONTENT_TYPE, "application/json")
                     .body(Body::from(
-                        r#"{"username":"test_user","password":"test_password_123"}"#,
+                        r#"{"username":"test_user","password":"test_password_123","email":"writer@example.test","code":"123456"}"#,
                     ))
                     .unwrap(),
             )

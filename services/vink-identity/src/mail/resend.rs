@@ -466,7 +466,7 @@ mod tests {
         assert_eq!(payload.as_object().unwrap().len(), 4);
         for purpose in [
             Purpose::ChangeEmail,
-            Purpose::AttachEmail,
+            Purpose::RegisterPassword,
             Purpose::EnrollPassword,
             Purpose::TransportCheck,
         ] {

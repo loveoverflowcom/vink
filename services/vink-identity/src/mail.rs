@@ -26,8 +26,8 @@ pub enum Purpose {
     /// Fresh proof of mailbox control before a signed-in account adds a username/password
     /// credential (ACC-03). Bound to the account; never a sign-in or a recovery.
     EnrollPassword,
-    /// First verified email on an existing password account.
-    AttachEmail,
+    /// Proof for creating a new account with a password.
+    RegisterPassword,
     DeleteAccount,
     /// `vink-identity mail test`: proves the transport end to end. Never stored (the outbox
     /// schema accepts only the code purposes) and its text contains no usable code.
@@ -40,7 +40,7 @@ impl Purpose {
             Purpose::SignIn => "sign_in",
             Purpose::ChangeEmail => "change_email",
             Purpose::EnrollPassword => "enroll_password",
-            Purpose::AttachEmail => "attach_email",
+            Purpose::RegisterPassword => "register_password",
             Purpose::DeleteAccount => "delete_account",
             Purpose::TransportCheck => "transport_check",
         }
@@ -51,7 +51,7 @@ impl Purpose {
             "sign_in" => Some(Purpose::SignIn),
             "change_email" => Some(Purpose::ChangeEmail),
             "enroll_password" => Some(Purpose::EnrollPassword),
-            "attach_email" => Some(Purpose::AttachEmail),
+            "register_password" => Some(Purpose::RegisterPassword),
             "delete_account" => Some(Purpose::DeleteAccount),
             _ => None,
         }
@@ -123,7 +123,7 @@ pub fn render(message: &Message) -> (String, String) {
         Purpose::SignIn => "đăng nhập Vink",
         Purpose::ChangeEmail => "xác nhận địa chỉ email mới cho tài khoản Vink",
         Purpose::EnrollPassword => "thêm mật khẩu đăng nhập cho tài khoản Vink",
-        Purpose::AttachEmail => "xác minh email cho tài khoản Vink",
+        Purpose::RegisterPassword => "tạo tài khoản Vink",
         Purpose::DeleteAccount => "xác nhận xóa vĩnh viễn tài khoản Vink",
         Purpose::TransportCheck => {
             return (
@@ -140,8 +140,8 @@ pub fn render(message: &Message) -> (String, String) {
         Purpose::DeleteAccount => {
             "Nếu bạn không yêu cầu xóa tài khoản, hãy bỏ qua thư và giữ riêng mã này."
         }
-        Purpose::AttachEmail => {
-            "Nếu bạn không yêu cầu mã này, hãy bỏ qua thư; email sẽ không được gắn vào tài khoản."
+        Purpose::RegisterPassword => {
+            "Nếu bạn không yêu cầu mã này, hãy bỏ qua thư; tài khoản sẽ chỉ được tạo sau khi xác minh."
         }
         Purpose::EnrollPassword => {
             "Nếu bạn không yêu cầu mã này, hãy bỏ qua thư; mật khẩu sẽ không được thêm vào tài khoản."

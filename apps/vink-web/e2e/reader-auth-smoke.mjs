@@ -237,7 +237,7 @@ export async function contextualReaderAuth(owner, { args, check, openPage, seen 
         };
         await captureMode('', loginR3);
         await page.click('#use-registration');
-        await page.waitFor(active('password-register-username'), 'Reader registration mode');
+        await page.waitFor(active('registration-address'), 'Reader registration mode');
         await captureMode('registration-', await checkAuthR31(page, check, `Reader comment ${scene}`, 'registration'));
         await page.click('#use-password');
         await page.waitFor(active('password-login-username'), 'Reader returns from registration');

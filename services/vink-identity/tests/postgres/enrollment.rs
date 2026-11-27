@@ -782,17 +782,20 @@ async fn a_failure_after_the_hash_leaves_no_half_credential_and_the_proof_stays_
 }
 
 #[sqlx::test(migrator = "vink_identity::persistence::MIGRATOR")]
-async fn a_password_only_account_is_not_enrolled_again_and_registration_still_makes_new_accounts(
+async fn a_registered_password_account_is_not_enrolled_again_and_registration_still_makes_new_accounts(
     pool: PgPool,
 ) {
     let h = harness(&pool);
-    let registered = h
-        .store
-        .register_password(&user("chi_mat_khau"), &pass("mat-khau-chinh-123"))
-        .await
-        .unwrap()
-        .unwrap();
-    // INV-IDENTITY-08/09: it has a password and no email, so nothing is added or linked.
+    let registered = super::registration::register(
+        &pool,
+        &h.store,
+        &user("chi_mat_khau"),
+        &pass("mat-khau-chinh-123"),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    // INV-IDENTITY-08/09: its verified mailbox already has a password, so nothing is added or linked.
     assert!(matches!(
         h.store
             .start_password_enrollment(&registered.credential.encode())
@@ -801,19 +804,26 @@ async fn a_password_only_account_is_not_enrolled_again_and_registration_still_ma
         EnrollmentStart::AlreadyEnrolled
     ));
     // Registration keeps its semantics: a new username is a new account.
-    let second = h
-        .store
-        .register_password(&user("tai_khoan_hai"), &pass("mat-khau-chinh-123"))
-        .await
-        .unwrap()
-        .unwrap();
+    let second = super::registration::register(
+        &pool,
+        &h.store,
+        &user("tai_khoan_hai"),
+        &pass("mat-khau-chinh-123"),
+    )
+    .await
+    .unwrap()
+    .unwrap();
     assert_ne!(second.account_id, registered.account_id);
     assert_eq!(
-        h.store
-            .register_password(&user("CHI_MAT_KHAU"), &pass("mat-khau-chinh-123"))
-            .await
-            .unwrap()
-            .unwrap_err(),
+        super::registration::register(
+            &pool,
+            &h.store,
+            &user("CHI_MAT_KHAU"),
+            &pass("mat-khau-chinh-123")
+        )
+        .await
+        .unwrap()
+        .unwrap_err(),
         PasswordRegistrationError::UsernameTaken
     );
     assert_eq!(count(&pool, "SELECT count(*) FROM accounts").await, 2);
@@ -1245,10 +1255,14 @@ async fn enrollment_is_not_configured_without_both_methods(pool: PgPool) {
     }
 }
 
-#[sqlx::test(migrator = "vink_identity::persistence::MIGRATOR")]
+#[sqlx::test(migrations = false)]
 async fn the_rollback_script_removes_only_enrollment_challenges_and_keeps_credentials(
     pool: PgPool,
 ) {
+    vink_identity::persistence::MIGRATOR
+        .run_to(20261120000000, &pool)
+        .await
+        .unwrap();
     let h = harness(&pool);
     let a = h.email_sign_in(MAIL).await;
     h.enrolled(&a, "tac_gia", "mat-khau-moi-123").await;
@@ -1326,7 +1340,13 @@ async fn the_rollback_script_removes_only_enrollment_challenges_and_keeps_creden
             .await
             .unwrap()
             .applied,
-        [20261114000000, 20261119000000, 20261120000000]
+        [
+            20261114000000,
+            20261119000000,
+            20261120000000,
+            20261205000000,
+            20261206000000
+        ]
     );
     assert_eq!(h.email_sign_in(MAIL).await.account_id, a.account_id);
     assert_eq!(

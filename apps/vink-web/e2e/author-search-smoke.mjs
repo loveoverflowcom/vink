@@ -1,5 +1,5 @@
 // #295, #354 and #566: real SSR, Chrome and native Identity against disposable PostgreSQL databases.
-import { fill, HYDRATED, q, STANDING } from './auth-smoke.mjs';
+import { fill, HYDRATED, mailedCode, q, registrationProof, STANDING } from './auth-smoke.mjs';
 import { authorFixtureSql } from './author-fixtures.mjs';
 
 const MODE = '/?mode=authors';
@@ -246,7 +246,7 @@ async function discoveryModeStability(page, base, check) {
   await page.viewport(1280);
 }
 
-async function followingGuest(page, base, check, textContrast) {
+async function followingGuest(page, base, check, textContrast, outbox) {
   const feed = '/?mode=following';
   const action = '#feed-sign-in';
   const username = 'following_guest_566';
@@ -343,6 +343,7 @@ async function followingGuest(page, base, check, textContrast) {
   const next = `${searchParam('next')} === '${feed}'`;
   await page.waitFor(`location.pathname === '/toi' && ${next} && ${q('#password-login')}`, 'guest CTA reaches real Auth R3');
   await page.click('#use-registration');
+  await registrationProof(page, outbox, username + '@example.test');
   await fill(page, '#password-register-username', username);
   await fill(page, '#password-register-password', password);
   await page.click('#password-register-submit');
@@ -403,11 +404,16 @@ function fetchInPage(page, path, options = {}) {
   })()`);
 }
 
-async function provision(page, name) {
+async function provision(page, name, outbox) {
   const post = (path, payload) => fetchInPage(page, path, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
   });
+  const email = name + '.lookup@example.test';
+  const challenge = await post(ENDPOINTS.register + '/challenges', {email});
+  if (challenge.status !== 202) throw new Error('registration challenge: ' + challenge.status);
+  const code = await mailedCode(outbox, email, new Set());
   const register = await post(ENDPOINTS.register, {
+    email, code,
     username: 'author_lookup_' + name,
     password: 'synthetic-browser-password-for-' + name,
   });
@@ -616,7 +622,7 @@ export async function authorSearch(page, { args, check, openPage, textContrast }
   await discoveryModeStability(page, base, check);
   const { browserContextId } = await page.cdp.send('Target.createBrowserContext');
   try {
-    await followingGuest(await openPage(browserContextId), base, check, textContrast);
+    await followingGuest(await openPage(browserContextId), base, check, textContrast, args.outbox);
   } finally {
     await page.cdp.send('Target.disposeBrowserContext', { browserContextId });
   }
@@ -735,7 +741,7 @@ export async function authorSearch(page, { args, check, openPage, textContrast }
 
   await page.goto(base + queryUrl(pen));
   await page.waitFor(`${HYDRATED} && ${HAS_ROWS} === 12`, 'restore first page before auth');
-  await provision(page, 'alpha');
+  await provision(page, 'alpha', args.outbox);
   await page.goto(base + queryUrl(pen));
   const action = `document.querySelector(${JSON.stringify(row(currentAuthor))})?.closest('li').querySelector('button')`;
   await page.waitFor(`${action}?.textContent.trim() === 'Theo dõi'`, 'first real session gets the Follow button');
@@ -776,7 +782,7 @@ export async function authorSearch(page, { args, check, openPage, textContrast }
   await page.waitFor(`${HYDRATED} && ${ownLink}`, 'guest opens the same exact Handle result');
   presentation(await page.eval(`!${selfInRow} && !${ownLink}.closest('li').querySelector('button')`),
     'S7 guest sees neither Bạn nor a Follow button');
-  await provision(page, 'beta');
+  await provision(page, 'beta', args.outbox);
   await page.goto(own.url);
   await page.waitFor(`${ownLink}?.closest('li').querySelector('button')?.textContent.trim() === 'Theo dõi'`,
     'second session can follow the first viewer as an author');
