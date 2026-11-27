@@ -347,10 +347,10 @@ pub(crate) fn AccountHub(children: Children) -> impl IntoView {
             <Show when=move || !entry() fallback=|| view! {
                 <h1 id="me-title" class="vk-ui-visually-hidden" tabindex="-1">"Tài khoản"</h1>
             }>
-                <div class="vk-account-hero grid gap-vk-3 p-vk-4 rounded-vk-xl bg-vk-surface-container-low">
-                    <div class="vk-account-status grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-vk-3">
+                <div class="vk-account-hero grid min-w-0 gap-vk-4 rounded-vk-xl bg-vk-surface-container-low p-vk-4">
+                    <div class="vk-account-status grid min-w-0 items-center gap-vk-3">
                         <crate::appearance::AccountAvatar />
-                        <div class="min-w-0 wrap-anywhere">
+                        <div class="vk-account-identity min-w-0 wrap-anywhere">
                             <vink_ui::Heading id="me-title" level=vink_ui::HeadingLevel::H1
                                 role=vink_ui::TypeRole::Title attr:tabindex="-1">
                                 {move || standing.with(|current| match current {
@@ -408,7 +408,7 @@ pub(crate) fn AccountHub(children: Children) -> impl IntoView {
 #[component]
 fn AccountAppearance() -> impl IntoView {
     view! {
-        <section id="page-appearance" class="vk-appearance-card" aria-labelledby="page-appearance-title">
+        <section id="page-appearance" class="vk-appearance-card grid min-w-0 gap-vk-4 border-t border-vk-outline-variant py-vk-4" aria-labelledby="page-appearance-title">
             <crate::appearance::AppearanceTitle id="page-appearance-title" />
             <crate::appearance::AppearanceChoices prefix="page" />
         </section>

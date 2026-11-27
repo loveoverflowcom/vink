@@ -9,6 +9,8 @@ const EDIT = '/toi/chinh-ho-so';
 const NAME = '#profile-pen-name';
 const BIO = '#profile-bio';
 const SAVE = '#profile-save';
+const BACK = '#profile-back';
+const BIO_SCOPE = '#profile-bio-policy';
 const SAME_NAME = 'Một bút danh tiếng Việt rất dài dùng chung trên tác phẩm và nhận xét';
 const own = (page) => page.eval(`fetch('${API}').then(r => r.json())`);
 const message = (s) => `${q('#profile-message')}?.textContent.includes(${JSON.stringify(s)})`;
@@ -108,6 +110,62 @@ async function captureLayouts(page, check, name, target) {
   await page.viewport(1280);
 }
 
+// Preserve the caller's real appearance settings across each trip to the profile.
+async function accountR5Layouts(page, check) {
+  const choose = async (group, value) => {
+    const selected = `${q('#page-' + group + ' input:checked')}?.value === ${JSON.stringify(value)}`;
+    if (!await page.eval(selected)) await page.click(`#page-${group} label:has(input[value="${value}"])`);
+    await page.waitFor(selected, 'account appearance choice applied');
+  };
+  const previous = await page.eval("['theme','text'].map(group => document.querySelector('#page-' + group + ' input:checked').value)");
+  for (const width of [390, 1440]) {
+    await page.viewport(width);
+    for (const theme of ['light', 'dark']) {
+      await choose('theme', theme);
+      for (const scale of ['100', '150']) {
+        await choose('text', scale);
+        await page.waitFor(`document.documentElement.dataset.theme === '${theme}' &&
+          (document.documentElement.dataset.text || '100') === '${scale}'`,
+          'actual account appearance reached its selected theme and scale');
+        const header = await page.eval(`(async () => {
+          const hero = ${q('.vk-account-status')}, title = ${q('#me-title')};
+          hero.scrollIntoView({block:'start'});
+          await document.fonts.ready;
+          const h = hero.getBoundingClientRect(), t = title.getBoundingClientRect();
+          const a = hero.querySelector('.vk-account-avatar').getBoundingClientRect();
+          return { parent:h.width, title:t.width, below:t.top>=a.bottom-1,
+            inside:t.left>=-1 && t.right<=innerWidth+1 && document.documentElement.scrollWidth<=innerWidth+1 };
+        })()`);
+        check(header.inside && (width > 390 || header.below && Math.abs(header.parent - header.title) <= 1),
+          `account identity reflows at ${width}/${theme}/${scale}`);
+        await page.capture(`r5-account-${width}-${theme}-${scale}`, {
+          textScale:Number(scale), textScaleLane:'app-appearance-control', requiredTargets:['#me-title'],
+        });
+        await page.click('#edit-profile-link');
+        await page.waitFor(q(NAME), 'R5 opens from the account');
+        const facts = await page.eval(`(() => {
+          const back = ${q(BACK)}, r = back.getBoundingClientRect();
+          back.scrollIntoView({block:'start'});
+          return { hit:r.width>=48 && r.height>=48, oneSave:document.querySelectorAll('#profile-save').length===1,
+            name:back.getAttribute('aria-label'), href:back.getAttribute('href'),
+            inside:document.documentElement.scrollWidth<=innerWidth+1 };
+        })()`);
+        check(facts.hit && facts.oneSave && facts.inside && facts.name === 'Về Tài khoản' &&
+          facts.href === '/toi#edit-profile-link', `profile Back, form and viewport at ${width}/${theme}/${scale}`);
+        await page.capture(`r5-profile-${width}-${theme}-${scale}`, {
+          textScale:Number(scale), textScaleLane:'app-appearance-control',
+          requiredTargets:[BACK, '#edit-profile-heading', NAME],
+        });
+        await page.click(BACK);
+        await page.waitFor("document.activeElement?.id === 'edit-profile-link'", 'R5 Back returns to its account entry');
+      }
+    }
+  }
+  await page.viewport(1280);
+  await choose('theme', previous[0]);
+  await choose('text', previous[1]);
+}
+
 // A synthetic persisted event exercises the live-document branch even on a Chrome
 // configuration that chooses a fresh document for the real Back traversal below.
 async function restoredAttribution(page, check, holdAnswer, { url, endpoint, links, labels, content }) {
@@ -146,6 +204,7 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   await page.send('Page.bringToFront');
   await page.goto(base + '/toi');
   await page.waitFor(q('#edit-profile-link'), 'Me shows the profile entry');
+  await accountR5Layouts(page, check);
   await page.eval(`${q('#edit-profile-link')}.focus()`);
   await page.key('Enter');
   await page.waitFor(q(NAME), 'keyboard opens edit from Me');
@@ -172,6 +231,37 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   check(await lost.held() === 200, 'profile save reached durable commit before the lost answer');
   await lost.finish(true);
   await page.waitFor(message('khớp với thay đổi'), 'lost profile ACK reconciled from persisted state');
+  await page.click(BACK);
+  await page.waitFor(`${q('#me-title')}?.textContent.trim() === ${JSON.stringify(SAME_NAME)}`, 'stored long name returns on Account');
+  await page.viewport(320, 800);
+  const stress = await page.eval(`(async () => {
+    const root = document.documentElement;
+    root.style.fontSize = '200%';
+    const title = ${q('#me-title')};
+    title.closest('.vk-account-status').scrollIntoView({block:'start'});
+    await document.fonts.ready;
+    const node = [...title.childNodes].find(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim());
+    const wholeWords = node && [...node.textContent.matchAll(/\\S+/gu)].every(word => {
+      const range = document.createRange();
+      range.setStart(node, word.index);
+      range.setEnd(node, word.index + word[0].length);
+      return new Set([...range.getClientRects()].map(rect => Math.round(rect.top))).size === 1;
+    });
+    const avatar = title.closest('.vk-account-status').querySelector('.vk-account-avatar');
+    const bell = title.closest('.vk-account-status').querySelector('.vk-notif-mobile-bell');
+    const identity = title.getBoundingClientRect();
+    const bottom = Math.max(avatar.getBoundingClientRect().bottom, bell?.getBoundingClientRect().bottom ?? 0);
+    return {wholeWords, stacked: identity.top >= bottom-1, fits: root.scrollWidth<=root.clientWidth+1,
+      scale: getComputedStyle(root).fontSize};
+  })()`);
+  check(stress.wholeWords && stress.stacked && stress.fits && stress.scale === '32px',
+    `320px Account root 200% keeps the long name readable and clear of avatar/bell (${JSON.stringify(stress)})`);
+  await page.capture('r5-account-320-stress-200', {
+    textScale:200, textScaleLane:'dom-override-geometry-only', requiredTargets:['#me-title'],
+  });
+  await page.eval("document.documentElement.style.fontSize=''");
+  await page.viewport(1280);
+  await page.click('#edit-profile-link');
   await page.reload();
   await page.waitFor(`${q(BIO)}?.value === ${JSON.stringify(bio)}`, 'Bio survives reload');
   check(await page.eval(`!!document.querySelector('a[aria-current="page"][href="/toi"]')`),
@@ -199,7 +289,7 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   await page.viewport(1280);
   await page.eval("document.documentElement.style.fontSize=''");
   await fill(page, BIO, 'Nháp trước khi về Tôi');
-  await page.click('#cancel-profile-edit');
+  await page.click(BACK);
   await page.waitFor("document.activeElement?.id==='edit-profile-link'", 'cancel returns focus to Me entry');
   await page.key('Enter');
   await page.waitFor(`${q(BIO)}?.value==='Nháp trước khi về Tôi'`, 'cancel preserves draft in the same session');
@@ -242,11 +332,44 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   const delayed = await holdAnswer(viewing, 'GET', profileApi);
   await viewing.eval("window.dispatchEvent(new FocusEvent('focus'))");
   check(await delayed.held() === 200, 'hold a real public response before policy changes');
-  await page.eval(`(() => {
-    const select = ${q('#profile-bio-policy')};
-    select.value = 'self'; select.dispatchEvent(new Event('change', {bubbles:true}));
-  })()`);
+  const control = q(BIO_SCOPE);
+  await page.send('Page.bringToFront');
+  await page.eval(`${control}.scrollIntoView({block:"center"}); ${control}.focus()`);
+  await page.key('Space');
+  await page.waitFor(`${control}.matches(":open")`, 'open the real icon picker with the keyboard');
+  check(await page.eval(`Boolean(
+    ${control}.querySelector('option[value="everyone"] [data-icon="public"]') &&
+    ${control}.querySelector('option[value="self"] [data-icon="lock"]') &&
+    ${control}.parentElement.querySelector('.vk-ui-select__value-icon [data-icon="public"]')
+  )`), 'current value and both options show their catalog icons');
+  await page.capture('r5-profile-privacy-picker', {
+    scenario:'Chrome icon picker open by keyboard', requiredTargets:[BIO_SCOPE],
+  });
+  await page.key('ArrowDown');
+  await page.key('Escape');
+  await page.waitFor(`!${control}.matches(":open") && document.activeElement === ${control} &&
+    ${control}.value === "everyone"`, 'Escape cancels and restores focus without changing the policy');
+  await page.key('Space');
+  await page.waitFor(`${control}.matches(":open")`, 'reopen the icon picker');
+  await page.click('#profile-privacy-heading');
+  await page.waitFor(`!${control}.matches(":open") && ${control}.value === "everyone"`, 'outside click dismisses without changing the policy');
+  await page.eval(`${control}.focus()`);
+  await page.key('Space');
+  await page.waitFor(`${control}.matches(":open")`, 'reopen the icon picker after outside click');
+  await page.key('ArrowDown');
+  await page.key('Enter');
+  await page.waitFor(`${control}.value === "self" && !${control}.matches(":open") &&
+    ${q('#profile-privacy-change-note')}?.checkVisibility()`, 'keyboard commits only the draft and shows the narrowing warning');
+  check((await own(page)).policies.bio === 'everyone', 'choosing a value sends no durable update before Save');
   await save(page);
+  await page.waitFor(q(BIO_SCOPE + ':not(select) [data-icon="lock"]'), 'stored private policy becomes a non-interactive value');
+  const narrowed = await own(page);
+  const widen = {principal_id:narrowed.principal_id, expected_version:narrowed.profile_version,
+    pen_name:narrowed.pen_name, bio:narrowed.bio, policies:{...narrowed.policies, bio:'everyone'}};
+  const refused = await page.eval(`fetch('${API}', {method:'PUT', headers:{'content-type':'application/json'},
+    body:${JSON.stringify(JSON.stringify(widen))}}).then(async r => [r.status, (await r.json()).error?.field])`);
+  check(refused[0] === 422 && refused[1] === 'policies' && (await own(page)).policies.bio === 'self',
+    'the real API independently rejects widening the stored locked policy');
   await viewing.waitFor(`${q('#author-profile-heading')} && !${q('.vk-author-bio')}`, 'broadcast invalidates the previous public view');
   await viewing.eval(`window.revokedBioShown = false;
     new MutationObserver(records => {

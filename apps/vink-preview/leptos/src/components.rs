@@ -584,8 +584,10 @@ fn field_area(scenario: &str) -> AnyView {
         <TextArea
             id="body"
             label="Nội dung"
+            variant=FieldVariant::FloatingTonal
             value=body
-            rows=6
+            rows=3
+            grow=true
             on_input=text_logger("body", body)
             help="Dòng trống giữa hai khổ được giữ nguyên."
             error=Signal::stored(error)
@@ -664,6 +666,7 @@ fn genres() -> Vec<ChoiceOption> {
             value: "kich".into(),
             label: "Kịch (chưa hỗ trợ)".into(),
             disabled: true,
+            icon: None,
         },
     ]
 }
@@ -719,8 +722,20 @@ fn field_select(scenario: &str) -> AnyView {
     let format_error =
         (scenario == "invalid").then(|| "[Mẫu] Không thể đổi định dạng.".to_string());
     let format = RwSignal::new(Some("default".to_string()));
+    let audience = RwSignal::new(Some("everyone".to_string()));
     view! {
       <Stack gap=Space::S4>
+        <vink_ui::BackLink href="/" label="Danh mục" />
+        <Select
+            id="audience-select" label="Ai có thể xem"
+            options=vec![
+                ChoiceOption::new("everyone", "Công khai").with_icon(IconName::Public),
+                ChoiceOption::new("self", "Chỉ mình tôi").with_icon(IconName::Lock),
+            ]
+            variant=SelectVariant::IconTonal
+            value=audience on_change=move |picked| audience.set(picked)
+            disabled=disabled inline=true
+        />
         <Select
             id="genre-select"
             label="Thể loại"
