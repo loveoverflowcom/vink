@@ -149,6 +149,9 @@ export async function savedProfilePrivacy(page, { args, check, openPage, paths, 
     await outsider.goto(base + publicPath);
     await outsider.waitFor(q('#author-works-heading'), '#389 guest public profile');
     check(await outsider.eval(`!${q('#profile-modes')}`), '#389 guest public profile has no saved navigation');
+    check(await outsider.eval(`${q('#author-works-heading')}.textContent.trim() === 'Tác phẩm'
+      && ${q('#author-works-heading')}.closest('section')?.getAttribute('aria-labelledby') === 'author-works-heading'`),
+      '#585 public works retain a named section with the shorter heading');
     await outsider.goto(base + path);
     await outsider.waitFor(q(NOT_FOUND), '#389 guest direct destination returns ordinary NotFound');
     check(outsiderCalls.count() === 0, '#389 guest never requests the private list');

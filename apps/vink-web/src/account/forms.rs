@@ -281,12 +281,8 @@ fn PasswordFields(
     };
     let enrollment = matches!(purpose, PasswordUse::Register | PasswordUse::Enroll);
     let guest = matches!(purpose, PasswordUse::Login | PasswordUse::Register);
-    let help = enrollment.then_some(
-        "3–30 ký tự: chữ cái không dấu, số, dấu _ hoặc dấu chấm. Không phân biệt hoa thường. Tên đăng nhập khác bút danh."
-    );
-    let password_help = enrollment.then_some(
-        "10–128 ký tự sau khi chuẩn hóa Unicode, tối đa 4.096 byte nhập. Không bắt buộc chữ hoa, số hay ký hiệu."
-    );
+    let help = enrollment.then_some("3–30 ký tự: chữ không dấu, số, _ hoặc dấu chấm.");
+    let password_help = enrollment.then_some("10–128 ký tự.");
     let username_error = field_error(error, |e| {
         matches!(e, AuthError::InvalidUsername | AuthError::UsernameTaken)
     });
@@ -464,7 +460,7 @@ fn GuestPassword(
             view! {
                 <div class="vk-auth-alternatives">
                     <Button id="use-password" variant=ButtonVariant::Text
-                        on_press=move |_| switch.run(Mode::Login)>"Quay lại đăng nhập"</Button>
+                        on_press=move |_| switch.run(Mode::Login)>"Đăng nhập"</Button>
                     <Button id="use-email-code" variant=ButtonVariant::Text leading=IconName::Mail
                         on_press=move |_| switch.run(Mode::Email)>"Dùng mã email"</Button>
                 </div>
@@ -561,7 +557,7 @@ fn EmailSignIn(
     let send_state = session.action(Operation::EmailChallenge, now);
     let complete_state = session.action(Operation::EmailCode, now);
     view! {
-        <AuthHeading title="Dùng mã email" />
+        <AuthHeading title="Đăng nhập bằng email" />
         {move || if entered_code.get() {
             code.focus_on_mount(focus_code.get_value());
             view! {
@@ -639,7 +635,6 @@ fn EmailSignIn(
                         event.prevent_default();
                         if let Some(value) = email.read() { request(value); }
                     }>
-                    <p class="vk-muted">"Nhập email để nhận mã đăng nhập gồm 6 chữ số."</p>
                     <TextField id="sign-in-address" label="Email" name="email" kind=TextKind::Email
                         autocomplete="email" required=true max_length=254 variant=FieldVariant::FloatingTonal
                         input_ref=email.node value=first_value on_input=email.edit()
@@ -658,7 +653,7 @@ fn EmailSignIn(
         }}
         <div class="vk-auth-alternatives">
             <Button id="use-password" variant=ButtonVariant::Text
-                on_press=move |_| switch.run(Mode::Login)>"Quay lại đăng nhập"</Button>
+                on_press=move |_| switch.run(Mode::Login)>"Dùng mật khẩu"</Button>
         </div>
     }
 }

@@ -49,7 +49,7 @@ pub(super) fn PublicWorksSlot(handle: String) -> impl IntoView {
                     { owner.with(Option::is_some) }
                     #[cfg(not(feature = "browser"))]
                     { false }
-                }>"Tác phẩm công khai"</h2>
+                }>"Tác phẩm"</h2>
             {move || -> Option<AnyView> {
                 #[cfg(feature = "browser")]
                 {

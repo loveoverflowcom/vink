@@ -145,7 +145,7 @@ pub(super) fn EmailSettings(epoch: u64, now: ReadSignal<Millis>) -> impl IntoVie
             Step::Loading => view! { <p role="status" class="vk-muted">"Đang kiểm tra email…"</p> }.into_any(),
             Step::Hidden => ().into_any(),
             Step::Missing(session_id) => view! {
-                <p id="email-attach-missing" class="vk-muted">"Tài khoản chưa có email xác minh."</p>
+                <p id="email-attach-missing" class="vk-muted">"Chưa có email xác minh."</p>
                 <div class="vk-account-actions">
                     <Button id="email-attach-add" variant=ButtonVariant::Tonal
                         on_press=move |_| step.set(Step::Address { session_id: session_id.clone(), focus: true })>

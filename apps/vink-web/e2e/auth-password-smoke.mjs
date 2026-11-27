@@ -76,6 +76,8 @@ async function attachVerifiedEmail(page, { args, check, accountBefore, draft, se
   const field = (suffix) => `#email-attach-${suffix}`;
   const cookie = (await cookies(page, args.base))[sessionCookie];
   await page.waitFor(q(field('missing')), '#329 password account has no verified email');
+  check(await page.eval(`${q(field('missing'))}.textContent.trim() === 'Chưa có email xác minh.'`),
+    '#585 attachment status identifies the missing verified email');
   const initial = await read(page, path);
   check(initial.status === 200 && initial.data.password_account && initial.data.verified_email === null &&
     initial.data.principal_id === accountBefore.principal_id && initial.cache?.includes('no-store'),
@@ -412,6 +414,11 @@ async function authR3Login(page, check, openPage) {
   }
   await page.click('#use-email-code');
   await page.waitFor(`document.activeElement?.id === 'sign-in-address'`, 'email mode focuses its input');
+  check(await page.eval(`${q('.vk-auth-entry .vk-auth-heading h2')}.textContent.trim() === 'Đăng nhập bằng email'
+    && ${q('#sign-in-send')}.textContent.trim() === 'Gửi mã đăng nhập'
+    && ${q('#use-password')}.textContent.trim() === 'Dùng mật khẩu'
+    && !${q('#sign-in-email > p.vk-muted')}`),
+    '#585 email mode identifies the method and each action without a duplicate introduction');
   await matrix(page, 'email', '#sign-in-email', check);
   await nativeAccountZoom(page, openPage, check, false);
   await page.click('#use-password');
