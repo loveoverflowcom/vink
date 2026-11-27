@@ -788,3 +788,6 @@ không đưa `views` hay `Set-Cookie` sang đường `GET` công khai (`READ-01`
   hệt nhau để không lộ tồn tại hay trạng thái riêng tư của bài. Lỗi phụ thuộc (`Unavailable`) trả
   `503` cho phép browser thử lại hữu hạn trong cùng tab với cùng `event_id` (`VIEW-10`). Chi tiết:
   [registry Lượt xem §10](../../../../../docs/development/work-views.md#10-thu-nhận-http-và-tín-hiệu-reader-343).
+- **Tác giả đã xóa tài khoản (`OQ-2`, #550):** giao dịch xóa tài khoản đã xóa mọi số liệu của các
+  tác phẩm đó; sự kiện đến sau, kể cả gửi lại `event_id` cũ, được quyết định như
+  `work_not_found`, trả cùng `204` và không ghi hàng nào.

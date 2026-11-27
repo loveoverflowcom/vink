@@ -338,9 +338,15 @@ pub struct ErasedViews {
 
 /// Erases every view row of `work` inside the caller's transaction (OQ-2: the first runtime
 /// route that deletes a work or an account must call this, or delete the `works` row, which
-/// cascades). It locks the work's public pointer first, like a view decision, so no decision of
-/// this work commits between the erase and the caller's commit; the caller must also make the
-/// work non-public in that transaction or later events are decided again.
+/// cascades). Account deletion (#550) calls it from `retire_owned_work`.
+///
+/// It locks the work's public pointer first, like a view decision, so no decision of a public
+/// work commits between the erase and the caller's commit. A private work has no pointer row to
+/// lock: there a decision is ordered by the owner fence instead (`record_view` holds the owner's
+/// principal FOR KEY SHARE and then reads `account_deletions`), so the caller must hold the
+/// owner's principal FOR UPDATE before the erase and commit the fence in the same transaction, as
+/// account deletion does. The caller must also make the work non-public in that transaction or
+/// later events are decided again. `tests/postgres/work_view_lifecycle.rs` runs both orders.
 pub async fn erase_work(conn: &mut PgConnection, work: WorkId) -> Result<ErasedViews, StoreError> {
     sqlx::query("SELECT 1 FROM publications WHERE work_id = $1 FOR UPDATE")
         .bind(work.as_uuid())

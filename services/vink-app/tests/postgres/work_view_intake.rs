@@ -52,6 +52,14 @@ impl IdentityResolver for CookieIdentity {
     }
 }
 
+/// A router whose identity resolves every request as a guest (no sessions).
+pub(super) fn guest_app(pool: &PgPool) -> Router {
+    let identity = Arc::new(CookieIdentity {
+        sessions: HashMap::new(),
+    });
+    app_with_peer(pool, identity, Ipv4Addr::new(203, 0, 113, 23)).1
+}
+
 fn app_with_peer(
     pool: &PgPool,
     identity: Arc<dyn IdentityResolver>,
@@ -71,7 +79,7 @@ fn app_with_peer(
     (state, app)
 }
 
-async fn post_view_req(
+pub(super) async fn post_view_req(
     app: &Router,
     work_id: Uuid,
     event_id: &str,

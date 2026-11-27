@@ -510,10 +510,11 @@ Các ID dưới đây giữ nguyên WR-01, UX-01, AUD-01/02, PUB-04/05/07, MOD-0
   và `CHOICE-POLICY` (chưa `Accepted`; [registry](../docs/development/work-views.md)).
 - *Mức triển khai và bằng chứng:* xem [registry phát triển](../docs/development/work-views.md) cho
   đường ghi `#341`, đọc tác giả `#342`, thu nhận HTTP + tracker Reader `#343` (PR1) và giao diện
-  Bàn viết `#514` (PR2).
+  Bàn viết `#514` (PR2). Xóa tài khoản tác giả (#550) đã xóa số liệu theo `OQ-2`; route xóa tác
+  phẩm và admin gỡ cả bài là `CONDITIONAL_DEFERRED` cho owner Publication.
 - *Ngoài phạm vi §17:* số công khai ở Reader/Khám phá/hồ sơ, danh sách người xem,
-  dashboard/biểu đồ, xếp hạng, Notifications, CMP/native và route xóa tác phẩm/tài khoản (`OQ-2` /
-  `O-08`).
+  dashboard/biểu đồ, xếp hạng, Notifications, CMP/native, route xóa tác phẩm và admin gỡ cả bài
+  (`OQ-2` / `OQ-4` / `O-08`).
 
 ## 18. Lưu bài để đọc lại (Saved Works)
 

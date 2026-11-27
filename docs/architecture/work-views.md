@@ -126,7 +126,7 @@ Ngày 25/11/2026, chủ sản phẩm chốt toàn bộ `OQ-1..OQ-4`, giữ số 
 | Admin, moderator ở Reader công khai | Sinh lượt | Như người đọc | Như người đọc | Như người đọc. Nếu chính họ là tác giả của bài thì luật tác giả thắng. |
 | Tác giả | Đọc số của tác phẩm mình | Mọi trạng thái còn tác phẩm (VIEW-08) | Chủ tác phẩm lấy từ phiên | Quyền hiện tại tại lúc đọc; phản hồi `no-store`; không vào HTML SSR, cache công khai hay JSON Reader công khai. |
 | Người khác, khách | Đọc số | — | Không bao giờ (VIEW-07) | Không có API công khai cho số này. |
-| Hệ thống | Xóa mã chống trùng hết hạn; xóa số liệu khi xóa tác phẩm/tài khoản (target, OQ-2) | — | Hết cửa sổ; sự kiện xóa | Xóa theo `WorkId`; không cần dữ liệu theo người. |
+| Hệ thống | Xóa mã chống trùng hết hạn; xóa số liệu khi xóa tài khoản tác giả (runtime từ #550, OQ-2) hoặc xóa tác phẩm (`CONDITIONAL_DEFERRED`, OQ-2) | — | Hết cửa sổ; sự kiện xóa | Xóa theo `WorkId` trong giao dịch xóa; không cần dữ liệu theo người. Quyết định đến sau fence xóa tài khoản không ghi gì. |
 
 ## 6. Bảng ví dụ (AC-02)
 
@@ -198,11 +198,11 @@ Reader không có gì mới.
 | L-07 | Chuyển “Chỉ mình tôi” (trang ẩn, PUB-07) | “Nội dung đã được ẩn” | Không | Số Lượt xem cũ, không tăng (`OQ-1 = A`, dù Thấm/Nhận xét ẩn theo `VDR-AUTHOR-WORK-FEEDBACK`). |
 | L-08 | Rút sau duyệt (`O-17@r2`), kể cả khi tác giả chuyển riêng tư sau đó | “Bản này đã bị gỡ sau khi kiểm duyệt.” hoặc trang đóng | Không | Số Lượt xem cũ, không tăng (`OQ-1 = A`). |
 | L-09 | Công khai lại, cùng revision hay revision mới | Thân bài | Có, đếm tiếp | Số cũ cộng lượt mới (nếu người xem mở mới và đủ 5s, không tự đếm qua cập nhật nền của tab đang mở trang ẩn theo `OQ-3A`). Người đã có lượt trong 24 giờ trước khi ẩn vẫn bị chặn tới hết cửa sổ. |
-| L-10 | Tác giả xóa tác phẩm (target, PUB-04; OQ-2) | Trang thay thế “Nội dung đã được tác giả xoá” | Không | Số liệu bị xóa trong cùng PR triển khai route xóa; không còn số để hiện. |
-| L-11 | Xóa tài khoản tác giả (target, SOC-LIFE-02; OQ-2) | Trang thay thế theo SOC-LIFE-02 | Không | Số liệu mọi tác phẩm của tài khoản bị xóa trong cùng PR triển khai route xóa. Tổng ở tác phẩm người khác không bị trừ vì không lưu theo người; mã chống trùng của tài khoản đó tự hết hạn trong tối đa 24 giờ. |
+| L-10 | Tác giả xóa tác phẩm (PUB-04; OQ-2; `CONDITIONAL_DEFERRED`: chưa có route, owner Publication) | Trang thay thế “Nội dung đã được tác giả xoá” | Không | Số liệu bị xóa trong cùng PR triển khai route xóa (gọi `erase_work` hoặc xóa hàng `works`); không còn số để hiện. |
+| L-11 | Xóa tài khoản tác giả (SOC-LIFE-02, DEL-01..08; OQ-2; runtime từ #550) | Trang thay thế theo SOC-LIFE-02 | Không | Giao dịch fence xóa tài khoản xóa cả bốn bảng Lượt xem của mọi tác phẩm của tài khoản, kể cả bài riêng tư hay đã rút; không còn số để hiện. Lượt đang quyết định trước fence commit trước rồi bị xóa; lượt đến sau fence, kể cả gửi lại mã sự kiện cũ, không ghi gì. Lỗi giữa chừng rollback cả fence lẫn việc xóa. |
 | L-12 | Bài đã công khai trước mốc bật (`counted_since != null`) | Thân bài | Có, từ mốc | Số kèm nhãn “Tính từ dd/mm/yyyy” (`Asia/Ho_Chi_Minh`). |
 | L-13 | Bài công khai lần đầu sau mốc | Thân bài | Có | Không cần nhãn “Tính từ”. |
-| L-14 | Admin gỡ cả bài vì vi phạm (PUB-05 C, chưa có runtime; OQ-4) | Không tìm thấy | Không | Tác giả vẫn giữ số Lượt xem cũ riêng tư khi còn quyền xem và số không tăng (`OQ-4`); xóa tác phẩm thì xóa dữ liệu (`OQ-2`). |
+| L-14 | Admin gỡ cả bài vì vi phạm (PUB-05 C, OQ-4; `CONDITIONAL_DEFERRED`: chưa có route admin, owner Publication/Moderation) | Không tìm thấy | Không | Tác giả vẫn giữ số Lượt xem cũ riêng tư khi còn quyền xem và số không tăng (`OQ-4`); xóa tác phẩm thì xóa dữ liệu (`OQ-2`). Bài đang rút sau kiểm duyệt chuyển sang `removed` khi tác giả xóa tài khoản: đó là L-11, số liệu bị xóa. |
 
 ## 8. Trải nghiệm người dùng (nghĩa và quy ước UX-01..10)
 
@@ -243,8 +243,11 @@ của PRD §4). Giao diện Bàn viết (`#514`) triển khai theo [LayoutSpec L
   định (không làm mới), chỉ dùng chống trùng Lượt xem.
 - **Số liệu là dữ liệu riêng của tác giả:** không vào HTML SSR, cache công khai, IndexedDB/bộ nhớ
   đọc công khai hay JSON Reader công khai; đọc bằng phiên của tác giả với `no-store`.
-- **Xóa:** xóa tác phẩm hay tài khoản thì xóa số liệu tương ứng (kích hoạt ở PR đầu tiên đưa route
-  xóa vào runtime, OQ-2).
+- **Xóa:** xóa tác phẩm hay tài khoản tác giả thì xóa số liệu tương ứng (OQ-2). Xóa tài khoản tác
+  giả đã chạy từ #550 (L-11); route xóa tác phẩm và admin gỡ cả bài là `CONDITIONAL_DEFERRED` cho
+  PR của owner Publication. Xóa tài khoản của **người đọc** không trừ lượt nào: không hàng nào lưu
+  theo người, mã chống trùng băm theo tác phẩm của người đó tự hết hạn sau 24 giờ, biên nhận không
+  có người đọc.
 - **Mốc ngày của tổng theo ngày:** dùng `Asia/Ho_Chi_Minh` như quy ước hiển thị ngày của Web.
   Đây là ràng buộc thiết kế, không phải lời chốt riêng; lượt có biểu đồ có thể hỏi lại.
 - **Log:** đường ghi Lượt xem không đưa IP thô hay mã khách chưa băm vào dữ liệu hoặc log của
@@ -279,8 +282,9 @@ OQ-1..4, UX-01..10, D-01/D-02 trên Bàn viết, số chỉ tác giả thấy �
 
 **Ngoài phạm vi:** số công khai ở Reader, Khám phá hay hồ sơ; danh sách người xem; dashboard và
 biểu đồ; xếp hạng; Notifications; CMP/native; export; văn bản chính sách quyền riêng tư hay cookie
-nói chung; route xóa tác phẩm/tài khoản hoặc admin gỡ cả bài (`OQ-2`/`OQ-4` gắn điều kiện vào PR
-tương ứng). Các mục này cần quyết định/PR riêng trước khi làm.
+nói chung; route xóa tác phẩm hoặc admin gỡ cả bài (`OQ-2`/`OQ-4` gắn điều kiện vào PR
+tương ứng, `CONDITIONAL_DEFERRED`). Các mục này cần quyết định/PR riêng trước khi làm. Xóa tài
+khoản tác giả đã vào runtime ở #550 và gọi xóa số liệu (L-11).
 
 ## 12. Owner và bằng chứng
 

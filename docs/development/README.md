@@ -608,7 +608,7 @@ production đỏ; model mutant tạo OFF→old ON resurrection. Harness và kế
   `D-02` bỏ nút Đọc ở Bàn viết; [VDR-WORK-VIEWS@r2](../../decisions/proposals/VDR-WORK-VIEWS.r2.toml) `PENDING`).
   #341 có đường ghi `domain::work_view` + bảng `work_view_*` + dọn hạn trong `vink-worker`; #342 có đọc
   của tác giả (`views` trong `GET /api/v1/author/works`); #343 nối HTTP intake, cookie khách, Reader
-  visibility tracker và retry hữu hạn; #514 tích hợp giao diện Bàn viết Design r3 (`AuthorWorkRow`, `#views-explainer`) và đồng bộ `docs/design/*`. Route xóa tác phẩm/tài khoản (`OQ-2`) và admin gỡ cả bài (`OQ-4`) chưa có ở runtime.
+  visibility tracker và retry hữu hạn; #514 tích hợp giao diện Bàn viết Design r3 (`AuthorWorkRow`, `#views-explainer`) và đồng bộ `docs/design/*`. Xóa tài khoản tác giả (#550) xóa số liệu theo `OQ-2` (race và rollback kiểm ở [registry §13](work-views.md#13-vòng-đời-và-xóa-tài-khoản-oq-1oq-2oq-4)); route xóa tác phẩm (`OQ-2`) và admin gỡ cả bài (`OQ-4`) chưa có ở runtime (`CONDITIONAL_DEFERRED`, owner Publication).
 - Autosave, bản khôi phục cục bộ, paste từ Word/Docs, IME thật trên thiết bị (WR-01/WR-02, S-01).
   Undo/redo và composition mô phỏng đã có trong editor CodeMirror, chưa phải bằng chứng IME hệ
   điều hành.
