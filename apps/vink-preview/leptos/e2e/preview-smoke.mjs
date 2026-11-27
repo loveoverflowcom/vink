@@ -908,6 +908,14 @@ async function components(page) {
   `AuthorByline: medium name above smaller regular metadata, decorative avatar and one name (${JSON.stringify(byline)})`);
   const size = await page.eval(`document.querySelector('[data-byline=reader] .vk-ui-avatar').getBoundingClientRect().width`);
   check(size === 44, `AuthorByline: reader avatar is 44px wide on a wide screen (${size})`);
+  check(await page.eval(`(() => {
+    const row = document.querySelector('[data-byline=relationship]');
+    const link = row.querySelector('a[href]');
+    return row.querySelectorAll('a, button').length === 1 &&
+      link.querySelector('.vk-ui-avatar').getAttribute('aria-hidden') === 'true' &&
+      link.querySelector('.vk-ui-byline__handle').textContent === '@mau-an-nhien' &&
+      link.getAttribute('aria-label').endsWith('(@mau-an-nhien)');
+  })()`), 'AuthorIdentity: relationship row has one target and announces its handle');
 
   for (const [theme, label] of [['light', 'Sáng'], ['dark', 'Tối']]) {
     await page.choose('theme', label);

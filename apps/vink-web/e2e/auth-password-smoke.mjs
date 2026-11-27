@@ -823,7 +823,7 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
     base, check, openPage, other, userA, principalA: A.principal_id, principalB: B.principal_id,
   });
   await authorFollows(page, other, {
-    base, openPage, check, holdAnswer, textContrast, switchActor,
+    base, openPage, check, holdAnswer, textContrast, switchActor, chooseAppearance,
   });
   await followingFeed(page, other, {
     base, openPage, check, holdAnswer, switchActor, textContrast,
@@ -1105,6 +1105,17 @@ export async function standalone(page, {args, check, openPage}) {
     'CSR mounts the profile and its actual icon-capable select');
   await page.click('#profile-back');
   await page.waitFor("document.activeElement?.id === 'edit-profile-link'", 'CSR Back restores the account entry');
+  const authorPath = '/@' + author.data.handle;
+  const followingPath = authorPath + '/dang-theo-doi';
+  await page.goto(base + followingPath);
+  await page.waitFor(`${q('#relationship-empty img')} && ${q('#relationship-count')}?.textContent === '0'`,
+    'CSR deep link loads the confirmed owner empty list from the App');
+  check(await page.eval(`${q('#rel-back-profile')}?.getAttribute('href') === ${JSON.stringify(authorPath)} &&
+    ${q('#rel-other-direction')}?.getAttribute('href') === ${JSON.stringify(authorPath + '/nguoi-theo-doi')}`),
+    'CSR owner projection shows the two canonical destinations');
+  await page.click('#rel-back-profile');
+  await page.waitFor(`location.pathname === ${JSON.stringify(authorPath)} &&
+    document.activeElement?.id === 'author-profile-heading'`, 'CSR shared Back focuses the canonical profile');
   await page.goto(base + '/?mode=following');
   const discoveryLink = q('[data-feed-state="no-follows"] a[href="/?mode=authors"]');
   await page.waitFor(`${discoveryLink}?.textContent.trim() === 'Khám phá tác giả'`, 'signed-in CSR shows the empty Following CTA');
@@ -1166,6 +1177,10 @@ export async function standalone(page, {args, check, openPage}) {
     'the second account can open the public author profile');
   check(!await page.eval("document.body.textContent.includes('Bản thảo trên Vink')"),
     'a pending work stays off the public author profile');
+  await page.goto(base + followingPath);
+  await page.waitFor(q('#relationship-private'), 'CSR second member cannot open the owner’s private Following');
+  check(await page.eval(`!${q('#relationship-count, #relationship-empty, #rel-other-direction')}`),
+    'CSR denied list does not expose a count, empty illustration or alternative direction');
   await standaloneWorkViewCheck(page, { args, check });
   // #388 starts signed out and measures baseline text in this disposable Chrome profile.
   // The appearance checks above deliberately saved settings for one of its readers.

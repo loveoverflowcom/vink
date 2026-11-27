@@ -4,11 +4,11 @@ use leptos::prelude::*;
 use leptos_meta::{Link, Meta, Title};
 use leptos_router::hooks::{use_params_map, use_query_map};
 use vink_ui::{
-    ActionState, AvatarSize, Button, ButtonVariant, Heading, HeadingLevel, IconName,
-    Link as UiLink, LinkVariant,
+    ActionState, AvatarSize, BackLink, Button, ButtonVariant, Heading, HeadingLevel,
+    Link as UiLink, LinkVariant, TypeRole,
 };
 
-use crate::ui::empty_state::EmptyState;
+use crate::ui::empty_state::{EmptyArtwork, EmptyState};
 use crate::ui::patterns::{Author as BylineAuthor, AuthorIdentity, ProfileLink};
 
 use crate::account::Session;
@@ -344,24 +344,14 @@ fn RelationshipList(direction: FollowDirection) -> impl IntoView {
     }
 }
 
-fn direction_heading(direction: FollowDirection, pen_name: &str) -> String {
+fn direction_label(direction: FollowDirection) -> &'static str {
     match direction {
-        FollowDirection::Followers => format!("Người theo dõi {pen_name}"),
-        FollowDirection::Following => format!("{pen_name} đang theo dõi"),
+        FollowDirection::Followers => "Người theo dõi",
+        FollowDirection::Following => "Đang theo dõi",
     }
 }
 
-fn count_copy(direction: FollowDirection, count: i64) -> String {
-    match direction {
-        FollowDirection::Followers => format!("{} người theo dõi", format_vi_count(count)),
-        FollowDirection::Following => format!("{} đang theo dõi", format_vi_count(count)),
-    }
-}
-
-fn empty_copy(direction: FollowDirection, continued: bool) -> &'static str {
-    if continued {
-        return "Trang này không còn người nào.";
-    }
+fn zero_relationships_copy(direction: FollowDirection) -> &'static str {
     match direction {
         FollowDirection::Followers => "Chưa có người theo dõi.",
         FollowDirection::Following => "Chưa theo dõi tác giả nào.",
@@ -474,7 +464,7 @@ fn RelationshipListProjection(
             LiveListState::Page { author, is_own, .. } => Some((
                 author.handle.clone(),
                 author.pen_name.clone(),
-                author.href.clone(),
+                author.valid_href().map(str::to_owned),
                 *is_own,
             )),
             _ => None,
@@ -511,7 +501,7 @@ const RELATIONSHIP_PAGE_CLASS: &str =
 fn RelationshipResults(
     handle: String,
     pen_name: String,
-    href: String,
+    #[prop(optional_no_strip)] href: Option<String>,
     direction: FollowDirection,
     is_own: bool,
     continued: bool,
@@ -521,7 +511,9 @@ fn RelationshipResults(
     on_append: Callback<()>,
     on_first: Callback<()>,
 ) -> impl IntoView {
-    let title = direction_heading(direction, &pen_name);
+    let heading = format!("{pen_name} · {}", direction_label(direction));
+    let back_label = format!("Hồ sơ {pen_name}");
+    let public_handle = href.as_ref().map(|_| format!("@{handle}"));
     let list_url = StoredValue::new(format!("/@{handle}/{}", direction.web_segment()));
     let canonical = crate::canonical_url(&list_url.get_value());
     let count = Memo::new(move |_| {
@@ -581,29 +573,34 @@ fn RelationshipResults(
     });
 
     view! {
-        <Title text=format!("{title} · Vink") />
+        <Title text=format!("{heading} · Vink") />
         {if is_own {
             view! { <Meta name="robots" content="noindex" /> }.into_any()
         } else {
             view! { <Link rel="canonical" href=canonical /> }.into_any()
         }}
-        <section id="relationship-list" class=RELATIONSHIP_PAGE_CLASS aria-labelledby="relationship-title">
-            <UiLink
-                variant=LinkVariant::Standalone
-                attr:id="rel-back-profile"
-                attr:data-profile-return="true"
-                href=href>
-                "Quay lại hồ sơ"
-            </UiLink>
-            <Heading id="relationship-title" level=HeadingLevel::H1 attr:tabindex="-1">
-                {title}
-            </Heading>
-            <RelationshipDirections handle direction is_own append_generation />
-            {move || count.get().map(|n| view! {
-                <p id="relationship-count" class="vk-rel-count m-0 text-vk-on-surface-variant">{count_copy(direction, n)}</p>
-            })}
+        <section id="relationship-list"
+            class="vk-rel-page vk-rel-page--results vk-state-page mx-auto flex w-full box-border flex-col gap-vk-3 py-vk-3"
+            aria-labelledby="relationship-title">
+            <header class="flex min-w-0 items-start gap-vk-3 min-[760px]:flex-col [&>.vk-ui-back-link:hover]:no-underline">
+                {href.map(|href| view! {
+                    <BackLink href label=back_label
+                        attr:id="rel-back-profile" attr:data-profile-return="true" />
+                })}
+                <div class="grid min-w-0 gap-vk-1 self-center min-[760px]:self-start">
+                    <Heading id="relationship-title" level=HeadingLevel::H1 role=TypeRole::Title
+                        attr:tabindex="-1" attr:aria-label=heading
+                        attr:class="m-0 font-vk-ui text-vk-page-title max-[759px]:text-vk-size-page-title-narrow wrap-anywhere">
+                        {pen_name}
+                    </Heading>
+                    {public_handle.map(|handle| view! {
+                        <p class="m-0 font-vk-ui text-vk-caption text-vk-on-surface-variant wrap-anywhere">{handle}</p>
+                    })}
+                </div>
+            </header>
+            <RelationshipDirections handle direction is_own count append_generation />
             <Show when=move || rows.with(Vec::is_empty) fallback=move || view! {
-                <ul class="vk-rel-list">
+                <ul class="vk-rel-list m-0 grid list-none gap-vk-1 p-0">
                     <For
                         each=move || rows.get()
                         key=|row| (row.author.handle.clone(), row.author.pen_name.clone(),
@@ -618,10 +615,13 @@ fn RelationshipResults(
                                 neutral: false,
                             };
                             view! {
-                                <li class="vk-rel-item" data-rel-cursor=row.return_cursor>
+                                <li class=r"vk-rel-item flex min-w-0 flex-wrap items-center gap-vk-2 py-vk-2 [&>.vk-ui-byline]:flex-[1_1_12rem] [&_.vk-ui-byline\_\_identity]:w-full"
+                                    data-rel-cursor=row.return_cursor>
                                     <AuthorIdentity author id=Some(row_id) size=AvatarSize::Medium />
                                     {(is_own && row.mutual).then(|| view! {
-                                        <span class="vk-follow-mutual">"Theo dõi lẫn nhau"</span>
+                                        <span class="vk-follow-mutual bg-transparent px-0 font-vk-ui text-vk-caption text-vk-on-surface-variant">
+                                            "Theo dõi lẫn nhau"
+                                        </span>
                                     })}
                                 </li>
                             }
@@ -629,8 +629,35 @@ fn RelationshipResults(
                     />
                 </ul>
             }>
-                <EmptyState compact=true id="relationship-empty" hook="vk-rel-empty"
-                    icon=IconName::PersonOutline message=empty_copy(direction, continued) />
+                {move || state.with(|state| {
+                    match state {
+                        LiveListState::Page { people, count, next_cursor: None, .. }
+                            if !continued && people.is_empty() =>
+                        {
+                            let title = if *count == Some(0) {
+                                zero_relationships_copy(direction)
+                            } else {
+                                "Danh sách chưa có mục để hiển thị."
+                            };
+                            view! {
+                                <div class=r"vk-state-slot [&_.vk-empty-state\_\_title]:font-vk-ui">
+                                    <EmptyState id="relationship-empty" hook="vk-rel-empty"
+                                        artwork=EmptyArtwork::NoResults heading=HeadingLevel::H2 title />
+                                </div>
+                            }.into_any()
+                        }
+                        _ => {
+                            let message = if continued {
+                                "Trang này không còn người nào."
+                            } else {
+                                "Danh sách chưa có mục để hiển thị."
+                            };
+                            view! {
+                                <EmptyState compact=true id="relationship-empty" message />
+                            }.into_any()
+                        }
+                    }
+                })}
             </Show>
             <Show when=move || has_previous_page.get()>
                 <UiLink variant=LinkVariant::Standalone attr:id="rel-first-page"
@@ -648,7 +675,7 @@ fn RelationshipResults(
                 </UiLink>
             </Show>
             <Show when=move || cursor.with(Option::is_some)>
-                <div class="vk-rel-pagination">
+                <div class="vk-rel-pagination grid justify-items-start gap-vk-2">
                     <Show when=move || hydrated.get() fallback=move || {
                         cursor.get().map(|c| view! {
                             <UiLink variant=LinkVariant::Standalone attr:id="rel-next-link"
@@ -673,7 +700,31 @@ fn RelationshipResults(
 }
 
 const RELATIONSHIP_DIRECTIONS_CLASS: &str =
-    "vk-rel-directions flex flex-wrap items-center gap-x-vk-4 gap-y-vk-2";
+    "vk-rel-directions flex flex-wrap items-baseline gap-x-vk-4 gap-y-vk-1";
+
+#[component]
+fn CurrentRelationshipDirection(
+    direction: FollowDirection,
+    count: Memo<Option<i64>>,
+    #[prop(optional)] selected: bool,
+) -> impl IntoView {
+    let class = if selected {
+        "relative inline-flex min-h-[48px] min-w-0 max-w-full flex-wrap items-center gap-vk-2 py-vk-2 font-vk-ui text-vk-label text-vk-primary after:absolute after:inset-x-0 after:bottom-0 after:h-[3px] after:rounded-vk-full after:bg-vk-primary forced-colors:after:bg-[Highlight]"
+    } else {
+        "inline-flex min-h-[48px] min-w-0 max-w-full flex-wrap items-center gap-vk-2 py-vk-2 font-vk-ui text-vk-label"
+    };
+    view! {
+        <span class=class aria-current=selected.then_some("page")>
+            <span class="min-w-0 wrap-anywhere">{direction_label(direction)}</span>
+            {move || count.get().map(|count| view! {
+                <span id="relationship-count"
+                    class="rounded-vk-full bg-vk-secondary-container px-vk-2 font-vk-ui text-vk-caption text-vk-on-secondary-container tabular-nums">
+                    {format_vi_count(count)}
+                </span>
+            })}
+        </span>
+    }
+}
 
 // The public author projection already carries the two independent list grants.
 #[component]
@@ -681,19 +732,12 @@ fn RelationshipDirections(
     handle: String,
     direction: FollowDirection,
     is_own: bool,
+    count: Memo<Option<i64>>,
     append_generation: ReadSignal<u64>,
 ) -> impl IntoView {
-    let (opposite, current_label, other_label) = match direction {
-        FollowDirection::Followers => (
-            FollowDirection::Following,
-            "Người theo dõi",
-            "Đang theo dõi",
-        ),
-        FollowDirection::Following => (
-            FollowDirection::Followers,
-            "Đang theo dõi",
-            "Người theo dõi",
-        ),
+    let opposite = match direction {
+        FollowDirection::Followers => FollowDirection::Following,
+        FollowDirection::Following => FollowDirection::Followers,
     };
     let expected = format!("/@{handle}/{}", opposite.web_segment());
     let (generation, advance) = signal(0);
@@ -706,7 +750,7 @@ fn RelationshipDirections(
     });
     let data = (!is_own).then(|| crate::api::author_resource(handle.clone(), None, generation));
     view! {
-        <Suspense fallback=|| ()>
+        <Suspense fallback=move || view! { <CurrentRelationshipDirection direction count /> }>
             {move || {
                 let result = if is_own { Some(Ok(true)) } else {
                     data.and_then(|read| read.get()).and_then(|(stamp, result)| {
@@ -725,25 +769,39 @@ fn RelationshipDirections(
                     })
                 };
                 match result {
-                    Some(Ok(true)) => view! {
-                        <nav class=RELATIONSHIP_DIRECTIONS_CLASS aria-label="Danh sách theo dõi">
-                            <span aria-current="page">{current_label}</span>
+                    Some(Ok(true)) => {
+                        let current = view! { <CurrentRelationshipDirection direction count selected=true /> };
+                        let other = view! {
                             <UiLink variant=LinkVariant::Standalone attr:id="rel-other-direction"
-                                attr:data-profile-return="true" href=expected.clone()>
-                                {other_label}
+                                attr:data-profile-return="true"
+                                attr:class="inline-flex min-h-[48px] min-w-0 max-w-full items-center py-vk-2 font-vk-ui text-vk-label text-vk-on-surface-variant no-underline hover:underline"
+                                href=expected.clone()>
+                                {direction_label(opposite)}
                             </UiLink>
-                        </nav>
-                    }.into_any(),
+                        };
+                        let (left, right) = match direction {
+                            FollowDirection::Followers => (current.into_any(), other.into_any()),
+                            FollowDirection::Following => (other.into_any(), current.into_any()),
+                        };
+                        view! {
+                            <nav class=RELATIONSHIP_DIRECTIONS_CLASS aria-label="Danh sách theo dõi">
+                                {left}{right}
+                            </nav>
+                        }.into_any()
+                    }
                     Some(Err(())) => view! {
-                        <div class=RELATIONSHIP_DIRECTIONS_CLASS>
-                            <p role="status">"Chưa kiểm tra được danh sách theo dõi còn lại."</p>
-                            <Button id="rel-direction-retry" variant=ButtonVariant::Tonal
-                                on_press=Callback::new(move |()| advance.update(|n| *n += 1))>
-                                "Thử lại"
-                            </Button>
+                        <div>
+                            <CurrentRelationshipDirection direction count />
+                            <div class=RELATIONSHIP_DIRECTIONS_CLASS>
+                                <p class="m-0" role="status">"Chưa kiểm tra được danh sách theo dõi còn lại."</p>
+                                <Button id="rel-direction-retry" variant=ButtonVariant::Tonal
+                                    on_press=Callback::new(move |()| advance.update(|n| *n += 1))>
+                                    "Thử lại"
+                                </Button>
+                            </div>
                         </div>
                     }.into_any(),
-                    _ => ().into_any(),
+                    _ => view! { <CurrentRelationshipDirection direction count /> }.into_any(),
                 }
             }}
         </Suspense>
