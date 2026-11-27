@@ -433,7 +433,6 @@ fn DiscoverShell(context: Memo<ExploreContext>) -> impl IntoView {
                 <div id="explore-heading" class=EXPLORE_HEADING_CLASS>
                     <h1 class="vk-ui-heading vk-ui-type-page-title">"Khám phá"</h1>
                 </div>
-                <crate::notifications::MobileBell />
                 <div class=DISCOVERY_TOOLBAR_CLASS>
                     {move || view! {
                         <SearchDockLauncher id="open-public-search"

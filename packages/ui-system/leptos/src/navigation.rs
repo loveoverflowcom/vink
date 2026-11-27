@@ -314,6 +314,9 @@ pub fn NavItem(
     visible_label: Option<Signal<String>>,
     #[prop(optional)] on_navigate: Option<Callback<String>>,
     #[prop(optional, into)] leading: Option<ViewFn>,
+    #[prop(optional)] active_icon: Option<IconName>,
+    #[prop(optional, into)] accessible_label: Option<Signal<String>>,
+    #[prop(optional, into)] badge: Option<ViewFn>,
 ) -> impl IntoView {
     let NavDestination {
         key,
@@ -322,14 +325,19 @@ pub fn NavItem(
         href,
     } = destination;
     let dispatched = key.clone();
-    let accessible_label = visible_label.is_some().then(|| label.clone());
+    let fallback_label = visible_label.is_some().then(|| label.clone());
+    let name = move || {
+        accessible_label
+            .map(|label| label.get())
+            .or_else(|| fallback_label.clone())
+    };
     let visible_label = visible_label.unwrap_or_else(|| Signal::stored(label));
     view! {
         <a
             class="vk-ui-nav-item"
             href=href
             data-destination=key
-            aria-label=accessible_label
+            aria-label=name
             aria-current=move || active.get().then_some("page")
             on:click=move |event: leptos::ev::MouseEvent| {
                 if let Some(navigate) = on_navigate
@@ -342,7 +350,7 @@ pub fn NavItem(
         >
             <span class="vk-ui-nav-item__indicator">
                 {leading.map_or_else(|| (move || {
-                    let name = if active.get() { icon } else {
+                    let name = if active.get() { active_icon.unwrap_or(icon) } else {
                         match icon {
                             IconName::Explore => IconName::ExploreOutline,
                             IconName::Edit => IconName::EditOutline,
@@ -354,6 +362,7 @@ pub fn NavItem(
                 }).into_any(), |leading| leading.run())}
             </span>
             <span class="vk-ui-nav-item__label">{move || visible_label.get()}</span>
+            {badge.map(|badge| view! { <span class="vk-ui-nav-item__badge">{badge.run()}</span> })}
         </a>
     }
 }

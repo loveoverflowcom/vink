@@ -248,14 +248,13 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
       return new Set([...range.getClientRects()].map(rect => Math.round(rect.top))).size === 1;
     });
     const avatar = title.closest('.vk-account-status').querySelector('.vk-account-avatar');
-    const bell = title.closest('.vk-account-status').querySelector('.vk-notif-mobile-bell');
     const identity = title.getBoundingClientRect();
-    const bottom = Math.max(avatar.getBoundingClientRect().bottom, bell?.getBoundingClientRect().bottom ?? 0);
+    const bottom = avatar.getBoundingClientRect().bottom;
     return {wholeWords, stacked: identity.top >= bottom-1, fits: root.scrollWidth<=root.clientWidth+1,
       scale: getComputedStyle(root).fontSize};
   })()`);
   check(stress.wholeWords && stress.stacked && stress.fits && stress.scale === '32px',
-    `320px Account root 200% keeps the long name readable and clear of avatar/bell (${JSON.stringify(stress)})`);
+    `320px Account root 200% keeps the long name readable and clear of avatar (${JSON.stringify(stress)})`);
   await page.capture('r5-account-320-stress-200', {
     textScale:200, textScaleLane:'dom-override-geometry-only', requiredTargets:['#me-title'],
   });

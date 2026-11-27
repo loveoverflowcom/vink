@@ -67,10 +67,10 @@ Preview và CMP đặt `NavLayout` tường minh (`data-layout="rail:compact"`�
 | Component | Leptos | CMP | Ghi chú |
 | --- | --- | --- | --- |
 | `NavDestination` | `{ key, label, icon, href }` | `NavDestination(key, label, icon)` | `key` ổn định cho test/active; Web có `href` thật |
-| `NavItem` | `<a href aria-current=page>` | `onNavigate(key)` | Web: không chặn click — router/guard của host nhận link; modifier/middle click, copy link, tab mới giữ nguyên |
+| `NavItem` | `<a href aria-current=page>`, có thể nhận glyph đã chọn, badge trang trí và tên truy cập từ host | `onNavigate(key)` | Web: không chặn click — router/guard của host nhận link; modifier/middle click, copy link, tab mới giữ nguyên |
 | `NavUtility` | `<button aria-haspopup=dialog aria-expanded>` | `onOpen()` | Primitive nút tiện ích chung trên rail; từng mở dialog Giao diện ở chân rail Web trước #413. |
 | `NavigationRail` | `expanded: Signal<bool>`, `on_toggle` | `expanded`, `onToggle` | Toggle luôn hiện (cả khi thu), ≥44 CSS px / 48dp, nhãn + tooltip hover/focus, Escape ẩn tooltip; icon `menu` ↔ `menu-open` |
-| `BottomNavigation` | ≥`size.bottom-bar`, safe-area, đo chiều cao → `--vk-ui-bar-height` | `NavigationBar` | Đích chia đều, nhãn xuống dòng, không cắt chữ 200% |
+| `BottomNavigation` | ≥`size.bottom-bar`, safe-area, đo chiều cao → `--vk-ui-bar-height` | `NavigationBar` | Đích chia đều, nhãn xuống dòng, không cắt chữ 200%. Host có thể dùng slot đuôi cho đích động. [Chính sách Web](../../../docs/design/notifications.md#2-shell-rail-chuông-thanh-dưới) quyết định đích theo phiên. |
 | `TopBar` | `<header>` brand + actions | `VinkTopBar` | Không chứa đích chính |
 | `AdaptiveScaffold` | `ScaffoldLayout::Auto { context }` \| `Fixed(NavLayout)` | `layout: NavLayout` | Đổi khung chỉ đổi khung: `#main` và editor không remount |
 

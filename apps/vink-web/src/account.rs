@@ -392,7 +392,6 @@ pub(crate) fn AccountHub(children: Children) -> impl IntoView {
                                 </vink_ui::Text>
                             </Show>
                         </div>
-                        <crate::notifications::MobileBell />
                     </div>
                     <Show when=move || session.profile_scope.with(Option::is_some)>
                         <crate::pages::profile::ProfileActions />

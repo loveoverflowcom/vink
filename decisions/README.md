@@ -48,7 +48,11 @@ Cả ba proposal mới đang ở trạng thái `PENDING` và chờ signoff đún
 
 [VDR-NOTIFICATIONS-DESIGN@r1](proposals/VDR-NOTIFICATIONS-DESIGN.r1.toml) đề xuất badge đỏ
 và đặt chuông dưới Bàn viết theo [LayoutSpec R4](../docs/design/notifications.md).
-Revision này `PENDING` chờ signoff đúng revision/SHA-256.
+Revision này `PENDING` chờ signoff đúng revision/SHA-256. Phần mobile của r1 ghi thiết kế trước
+[#608](https://github.com/loveoverflowcom/vink/issues/608).
+[VDR-NOTIFICATIONS-MOBILE-NAV@r1](proposals/VDR-NOTIFICATIONS-MOBILE-NAV.r1.toml) ghi lời chốt #608
+về bốn đích mobile và phạm vi thay thế. Bản ghi này chờ signoff revision/SHA-256 riêng với đề xuất
+màu badge và vị trí rail của R4.
 
 ## Nhận xét R4
 

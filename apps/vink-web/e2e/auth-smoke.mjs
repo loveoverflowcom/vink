@@ -198,7 +198,7 @@ export async function authWeb(page, { args, check, openPage }) {
   check(await page.eval(`document.querySelectorAll('main h1').length === 1 &&
     document.querySelector('#page-account h1#me-title')?.textContent === 'Tài khoản' &&
     document.querySelector('.vk-auth-heading h2')?.textContent === 'Đăng nhập' &&
-    !document.querySelector('.vk-account-status, #notification-bell-mobile')`),
+    !document.querySelector('.vk-account-status, #bottom-navigation [data-destination=notifications]')`),
   '#520 guest /toi retains the semantic page title and the visible sign-in heading');
   check(await page.eval(`!document.querySelector('#sign-in-email')`), 'only one guest form is visible');
   // A real email-only deployment: the App gate is open, but the Identity method is unavailable.

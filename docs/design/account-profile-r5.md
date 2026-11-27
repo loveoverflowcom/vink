@@ -8,7 +8,7 @@ dùng dữ liệu minh họa. Product dùng token Vink và dữ liệu của phi
 
 | Vùng | Bố cục và điểm cố định |
 | --- | --- |
-| A1 Nhận diện | Avatar, bút danh và chuông hiện có. Dùng [tóm tắt danh tính hai dòng](redesign-r4/layout-spec.md#tóm-tắt-danh-tính-r5-605) cho bút danh. Giữ các đích xem và chỉnh hồ sơ. |
+| A1 Nhận diện | Avatar và bút danh. Đích Thông báo thuộc [thanh điều hướng](notifications.md#2-shell-rail-chuông-thanh-dưới). Dùng [tóm tắt danh tính hai dòng](redesign-r4/layout-spec.md#tóm-tắt-danh-tính-r5-605) cho bút danh. Giữ các đích xem và chỉnh hồ sơ. |
 | A2 Cài đặt | Hàng phẳng, icon trung tính cùng trục. Quyền riêng tư là link toàn hàng với chevron dẫn tới section của form. Tên đăng nhập và mật khẩu có chevron theo trạng thái disclosure. Email hiển thị địa chỉ đã xác minh. [Giao diện](me-preferences-r1-209.md#giao-diện-thành-viên-413-576) là nhóm con, Đăng xuất là nút chữ. [Xóa tài khoản](account-deletion.md) mở vùng quản lý riêng. |
 | R1 Đầu trang | Một Back về Tài khoản. Pill có chữ trên desktop, tròn 48 CSS px trên mobile. Link về entry của Tài khoản có sẵn khi mở trang trực tiếp. |
 | R2 Nội dung | Avatar chữ từ phiên đã xác minh, Bút danh với trợ giúp ngắn, địa chỉ cạnh action Thiết lập/Đổi địa chỉ, Giới thiệu với ô nhiều dòng. |

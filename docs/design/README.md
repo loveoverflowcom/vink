@@ -284,7 +284,9 @@ dấu câu đứng riêng); không có tên thật thì trả dấu trung tính.
 - Từ 1100px mặc định 220px, riêng editor mặc định 96px. Tùy chọn rail của thành viên
   đã xác nhận có thể ghi đè ngữ cảnh ở lớp cửa sổ này. Ở 760–1099px, xem [hợp đồng rail Medium](../../packages/ui-system/shared/navigation.md#chọn-khung-navlayoutresolve).
   Rail compact đặt icon trên nhãn và cuộn khi thiếu chiều cao.
-- Dưới 760px rail ẩn và bottom bar có ba đích. Editor ẩn bottom bar,
+- Dưới 760px rail ẩn. [Điều hướng Web #608](notifications.md#2-shell-rail-chuông-thanh-dưới)
+  thêm Thông báo giữa Bàn viết và Tài khoản khi phiên có quyền. Khách và phiên chưa đủ quyền
+  có ba đích công khai. Editor ẩn bottom bar,
   giữ đường Về Bàn viết hiện có. `ResizeObserver` đo chiều cao bar (gồm safe area) để dành đáy,
   cả khi tăng chữ 200%; không dùng chiều cao cứng làm khoảng bù.
 - **Lịch sử.** [Giao diện R1 (#209)](me-preferences-r1-209.md) dùng cùng ba nhóm radio ở `/toi` và panel

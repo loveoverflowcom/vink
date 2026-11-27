@@ -129,7 +129,7 @@ thường trực, giữ `#retry-drafts`, `#reconcile-drafts`, `#restart-drafts` 
 có tên.
 
 **Tìm trong kho riêng (#531, lựa chọn triển khai).** Khi mở, kính lúp đổi thành nút
-“Đóng ô tìm tác phẩm” ở cùng vị trí. H1, khóa, chuông, Select định dạng và nút tạo giữ
+“Đóng ô tìm tác phẩm” ở cùng vị trí. H1, khóa, Select định dạng và nút tạo giữ
 nguyên vị trí (sai số 1 CSS px tại cùng viewport và cỡ chữ). Sort vẫn ở vùng danh sách.
 Form ở hàng kế dưới header, căn cuối, rộng tối đa 32rem và thu theo bề rộng còn lại.
 Áp dụng cho 320/390/834/1440 px, sáng/tối, cỡ chữ 100%/150% và stress 200%. Nền tonal
@@ -156,8 +156,8 @@ Select giữ giá trị hiện tại (“Mặc định” hoặc “Markdown”)
 trong cây trợ năng. Nhãn nhìn thấy vẫn thuộc vùng tạo bản thảo đầu tiên.
 
 Khi hẹp hoặc tăng cỡ chữ, cho các control xuống dòng theo thứ tự đọc và cho CTA tăng chiều cao
-để chứa nguyên nhãn. Ở đầu trang mobile có chuông và thiếu chỗ, chuông ở cùng hàng tiêu đề,
-hàng control dùng toàn bề rộng. Giữ focus và node nhập của dock theo §5.1.
+để chứa nguyên nhãn. [#608](../notifications.md#2-shell-rail-chuông-thanh-dưới) chuyển Thông báo
+vào thanh dưới. Giữ focus và node nhập của dock theo §5.1.
 Nguồn là yêu cầu của chủ sản phẩm ghi tại #522 về căn hàng và để nút tìm “cùng màu nền”.
 Ảnh crop trong issue ghi nhận lỗi ban đầu. Mốc thị giác của delta là `NO_APPROVED_REFERENCE`.
 
