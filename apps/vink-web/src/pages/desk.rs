@@ -531,9 +531,6 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
                             expanded=dock_open controls="desk-search-form"
                             on_press=Callback::new(move |()| if dock_open.get_untracked() { close_dock.run(()) } else { open_dock() }) />
                     </span>
-                    <Show when=move || ready.get() && !first_use.get()>
-                        <CreateDraftControls creation can_create create create_format />
-                    </Show>
                 </div>
                 <form id="desk-search-form" role="search" class="vk-draft-search basis-full [min-inline-size:0]"
                     inert=move || !dock_open.get()
@@ -576,6 +573,7 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
                     <CreateNotice creation loading refresh />
                     // The tools/input retain one owner through loading, empty, query and error.
                     <DraftListView pages show_tools sort loading appending ready page_error load_error restarted
+                        filtered=Signal::derive(move || applied.with(|q| !crate::draft_list::search_key(q).is_empty()))
                         first_use no_results creation can_create create create_format clear more refresh refresh_disabled open_review explainer_open />
                 </div>
                 <p class="vk-desk-privacy vk-muted">"Bản nháp của bạn là riêng tư. Số liệu chỉ mình bạn thấy; Thấm và Nhận xét thuộc bản đang công khai."</p>
@@ -772,6 +770,7 @@ fn DraftListView(
     create: Callback<()>,
     create_format: RwSignal<DocumentFormatDto>,
     show_tools: Signal<bool>,
+    filtered: Signal<bool>,
     sort: RwSignal<DraftSort>,
     loading: RwSignal<bool>,
     appending: RwSignal<bool>,
@@ -809,9 +808,13 @@ fn DraftListView(
     view! {
         <div class="vk-draft-list gap-vk-3 [min-inline-size:0]">
             <div class="vk-draft-controls flex flex-wrap items-center justify-between gap-[8px] [min-inline-size:0]">
+                <Show when=move || ready.get() && !first_use.get()>
+                    <CreateDraftControls creation can_create create create_format />
+                </Show>
                 <div class="vk-draft-controls__status flex flex-wrap items-center gap-y-vk-1 gap-x-vk-2 [min-inline-size:0]">
-                    <p id="draft-scope" class="vk-muted" class:vk-ui-visually-hidden=move || first_use.get()
-                        hidden=opening role=move || (!opening()).then_some("status") aria-atomic="true" data-testid="draft-result-count">
+                    <p id="draft-scope" class="vk-muted" class:vk-ui-visually-hidden=move || first_use.get() || (!stale() && !loading.get() && !no_results.get() && !filtered.get() && pages.with(|p| p.chain.pages <= 1 && p.chain.next_cursor.is_none() && p.part <= 1))
+                        hidden=move || opening() || (load_error.with(Option::is_some) && !pages.with(|p| p.loaded))
+                        role=move || (!opening()).then_some("status") aria-atomic="true" data-testid="draft-result-count">
                         <span data-testid=move || stale().then_some("author-work-stale")>
                             {move || if loading.get() && !appending.get() && pages.with(|p| p.loaded) { "Đang tải lại…".into() }
                             else if loading.get() && !appending.get() { "Đang tìm tác phẩm…".into() }
@@ -892,7 +895,7 @@ fn DraftListView(
                             .map(adapters::author_work_summary).unwrap_or_else(|| fallback.clone())));
                         let review_work_id = draft.work_id.clone();
                         view! {
-                            <li id=format!("draft-row-{}", draft.work_id) class="vk-draft-row [min-inline-size:0]" data-testid="draft-row">
+                            <li id=format!("draft-row-{}", draft.work_id) class="vk-draft-row [min-inline-size:0] [&>.vk-author-work]:bg-transparent [&>.vk-author-work:has(a:hover)]:bg-vk-bg-inset [&>.vk-author-work]:rounded-none" data-testid="draft-row">
                                 <AuthorWorkRow work review_action=Box::new(move || view! {
                                     <ReviewTrigger work_id=review_work_id title=Signal::derive(move || work.with(|w| w.title.clone())) open=open_review />
                                 }.into_any()) />
@@ -917,7 +920,7 @@ fn DraftListView(
                     </Button>
                 </Show>
                 <Show when=move || pages.with(|p| p.loaded && p.chain.next_cursor.is_none() && (!p.drafts.is_empty() || p.part > 1)) && !loading.get() && load_error.get().is_none()>
-                    <p id="draft-end" class="vk-muted">"Đã xem hết kết quả."</p>
+                    <p id="draft-end" class="vk-ui-visually-hidden">"Đã xem hết kết quả."</p>
                 </Show>
                 <Show when=move || pages.with(|p| p.part > 1)>
                     <p class="vk-muted">{move || format!("Đang xem phần {}.", pages.with(|p| p.part))}</p>
@@ -2411,7 +2414,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                 if confirming() {
                     "Bỏ thay đổi và rời trang?"
                 } else {
-                    "Rời trang khi còn thay đổi?"
+                    "Lưu trước khi rời đi?"
                 }
                 .to_string()
             });
@@ -3027,9 +3030,9 @@ fn leave_message(
             notice: Some(LeaveNotice::NotSaved),
         }) => not_saved,
         _ if blocked => not_saved,
-        _ if tags_unsaved && !text_unsaved => "Thẻ đã chọn chưa được máy chủ xác nhận. Ở lại để chọn tiếp, hoặc lưu rồi rời trang.".into(),
-        _ if tags_unsaved => "Chữ và thẻ gần nhất chưa được máy chủ xác nhận. Ở lại để viết tiếp, hoặc lưu rồi rời trang.".into(),
-        _ => "Những thay đổi gần nhất chưa được máy chủ xác nhận. Ở lại để viết tiếp, hoặc lưu rồi rời trang.".into(),
+        _ if tags_unsaved && !text_unsaved => "Thẻ đã chọn chưa lưu.".into(),
+        _ if tags_unsaved => "Chữ và thẻ đã chọn chưa lưu.".into(),
+        _ => "Bạn có thay đổi chưa lưu.".into(),
     }
 }
 
@@ -3663,7 +3666,7 @@ mod editor_presentation_tests {
         );
         assert!(
             leave_message(None, SaveStatus::Unsaved, Some(&saved), (true, false))
-                .starts_with("Những thay đổi gần nhất")
+                .starts_with("Bạn có thay đổi chưa lưu")
         );
         let notice = Some(LeaveStage::Choosing {
             notice: Some(LeaveNotice::NotSaved),

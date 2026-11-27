@@ -668,7 +668,7 @@ a {
   margin: 0 auto;
 }
 
-/* Bàn viết: create at the heading, then one compact list. R4.2 (#402): the same page column as
+/* Bàn viết: search at the heading, creation with list tools. R4.2 (#402): the same page column as
  * Khám phá, so both titles share a left edge. */
 .vk-desk--index { max-width: var(--vk-size-page-column); container: vk-desk-index / inline-size; }
 /* R4.2 (#402): one fixed narrow gutter for Khám phá and Bàn viết; text enlargement uses the
@@ -724,9 +724,9 @@ a {
 .vk-desk-heading :is(.vk-search-launcher, .vk-search-close) { --vk-ui-control-radius: var(--vk-radius-control-48); }
 .vk-desk-heading .vk-search-launcher, .vk-desk-heading .vk-search-close { display: inline-flex; }
 .vk-desk-heading [hidden], .vk-draft-controls [hidden] { display: none; }
-/* Let Search, the format Select and the CTA align and wrap in one flex row. */
-.vk-desk-heading__actions > .vk-desk-create { display: contents; }
-.vk-desk-heading__actions .vk-desk-create > .vk-ui-field { position: relative; }
+/* Creation belongs with list tools; the heading keeps its stable search launcher. */
+.vk-draft-controls > .vk-desk-create { flex-wrap: wrap; }
+.vk-draft-controls .vk-desk-create > .vk-ui-field { position: relative; }
 /* The loading and empty-state placement rules switch these wrappers to flex. */
 .vk-drafts-region, .vk-desk-works, .vk-draft-list { display: grid; }
 .vk-empty-state__actions > a {
@@ -771,7 +771,7 @@ a {
 .vk-desk-create #create-draft-note { display: none; }
 .vk-draft-tools > .vk-ui-field { margin: 0; }
 .vk-draft-tools .vk-ui-select { border-radius: var(--vk-radius-control-48); }
-.vk-desk-heading__actions .vk-desk-create .vk-ui-field__label,
+.vk-draft-controls .vk-desk-create .vk-ui-field__label,
 .vk-draft-tools label,
 .vk-draft-search #draft-search-help {
   position: absolute; inline-size: 1px; block-size: 1px; padding: 0; margin: -1px;
@@ -2607,15 +2607,6 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
   .vk-explore__top:has(> .vk-notif-mobile-bell) > .vk-discovery-toolbar,
   .vk-desk-heading:has(> .vk-notif-mobile-bell) > .vk-desk-heading__actions { grid-area: 1 / 2; }
   .vk-desk-heading:has(> .vk-notif-mobile-bell) > .vk-draft-search { grid-column: 1 / -1; }
-  @container vk-desk-index (max-width: 32rem) {
-    .vk-desk-heading:has(> .vk-notif-mobile-bell) {
-      grid-template-columns: minmax(0, 1fr) 48px;
-    }
-    .vk-desk-heading > .vk-notif-mobile-bell { grid-area: 1 / 2; }
-    .vk-desk-heading:has(> .vk-notif-mobile-bell) > .vk-desk-heading__actions {
-      grid-area: 2 / 1 / auto / -1;
-    }
-  }
 }
 
 @media (max-width: 759px) {
