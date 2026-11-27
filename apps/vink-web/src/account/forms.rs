@@ -349,13 +349,14 @@ fn GuestPassword(
     #[prop(optional)] registration: Option<(String, Millis)>,
 ) -> impl IntoView {
     let session = Session::current();
-    let (operation, purpose, title, form_id, submit_id) = match mode {
+    let (operation, purpose, title, form_id, submit_id, glyph) = match mode {
         Mode::Register => (
             Operation::PasswordRegister,
             PasswordUse::Register,
             "Tạo tài khoản",
             "password-register",
             "password-register-submit",
+            IconName::PersonAdd,
         ),
         _ => (
             Operation::PasswordLogin,
@@ -363,19 +364,10 @@ fn GuestPassword(
             "Đăng nhập",
             "password-login",
             "password-login-submit",
+            IconName::Lock,
         ),
     };
     let is_register = mode == Mode::Register;
-    let (account_prompt, switch_id, switch_label, next_mode) = if is_register {
-        ("Đã có tài khoản?", "use-password", "Đăng nhập", Mode::Login)
-    } else {
-        (
-            "Chưa có tài khoản?",
-            "use-registration",
-            "Tạo tài khoản",
-            Mode::Register,
-        )
-    };
     let reader = use_context::<ReaderPresentation>().filter(|_| !is_register);
     let heading = reader.map_or(title, |reader| reader.title);
     let lead = reader.and_then(|reader| reader.lead);
@@ -466,7 +458,7 @@ fn GuestPassword(
             }}
             <div class="vk-account-actions gap-vk-2">
                 <Button id=submit_id variant=ButtonVariant::Filled kind=ButtonKind::Submit
-                    state=Signal::derive(move || if can_submit() { state.get() } else { ActionState::Disabled { reason: None } })>{title}</Button>
+                    leading=glyph pending_in_leading=true state=Signal::derive(move || if can_submit() { state.get() } else { ActionState::Disabled { reason: None } })>{title}</Button>
                 {move || (result.get() != GuestResult::Ready).then(|| view! {
                     <Button id="password-check-session" variant=ButtonVariant::Tonal
                         state=Signal::derive(move || if session.checking.get() {
@@ -475,7 +467,7 @@ fn GuestPassword(
                         on_press=move |_| session.refresh()>"Kiểm tra phiên"</Button>
                 })}
                 {move || (!is_register && result.get() != GuestResult::Ready).then(|| view! {
-                    <Button id="password-login-retry" variant=ButtonVariant::Text
+                    <Button id="password-login-retry" variant=ButtonVariant::Text leading=IconName::Lock
                         state=Signal::derive(move || if session.checking.get() || session.auth.with(|g| g.needs_check()) {
                             ActionState::Disabled { reason: None }
                         } else { ActionState::Enabled })
@@ -486,13 +478,37 @@ fn GuestPassword(
                         on_press=move |_| switch.run(Mode::Email)>"Dùng mã email"</Button>
                 })}
             </div>
-            <div class="vk-auth-account-switch mt-vk-1 flex min-w-0 flex-wrap items-center justify-center gap-x-vk-1 gap-y-0 text-center text-vk-label text-vk-on-surface-variant">
-                <span>{account_prompt}</span>
-                <Button id=switch_id variant=ButtonVariant::Text
-                    attr:class="[&>button]:min-h-[48px] [&>button]:px-vk-2"
-                    on_press=move |_| switch.run(next_mode)>{switch_label}</Button>
-            </div>
+            <AuthAccountSwitch to_login=is_register switch />
         </form>
+    }
+}
+
+#[component]
+fn AuthAccountSwitch(to_login: bool, switch: Callback<Mode>) -> impl IntoView {
+    let (prompt, id, label, leading, next) = if to_login {
+        (
+            "Đã có tài khoản?",
+            "use-password",
+            "Đăng nhập",
+            IconName::Lock,
+            Mode::Login,
+        )
+    } else {
+        (
+            "Chưa có tài khoản?",
+            "use-registration",
+            "Tạo tài khoản",
+            IconName::PersonAdd,
+            Mode::Register,
+        )
+    };
+    view! {
+        <div class="vk-auth-account-switch mt-vk-1 flex min-w-0 flex-wrap items-center justify-center gap-x-vk-1 gap-y-0 text-center text-vk-label text-vk-on-surface-variant">
+            <span>{prompt}</span>
+            <Button id variant=ButtonVariant::Text leading
+                attr:class="[&>button]:min-h-[48px] [&>button]:px-vk-2"
+                on_press=move |_| switch.run(next)>{label}</Button>
+        </div>
     }
 }
 
@@ -623,10 +639,11 @@ fn EmailSignIn(
                     })}
                     <div class="vk-account-actions">
                         <Button id="sign-in-complete" variant=ButtonVariant::Filled kind=ButtonKind::Submit
-                            state=Signal::derive(move || if response_uncertain.get() {
+                            leading=IconName::Lock pending_in_leading=true state=Signal::derive(move || if response_uncertain.get() {
                                 ActionState::Disabled { reason: None }
                             } else { complete_state.get() })>"Đăng nhập"</Button>
-                        <Button id="sign-in-resend" variant=ButtonVariant::Text state=send_state
+                        <Button id="sign-in-resend" variant=ButtonVariant::Text
+                            leading=IconName::Mail pending_in_leading=true state=send_state
                             on_press=move |_| request(address.get_untracked())>"Gửi lại mã"</Button>
                         <Button id="sign-in-change" variant=ButtonVariant::Text
                             state=Signal::derive(move || if session.auth.with(|g| g.active().is_some()) {
@@ -662,7 +679,7 @@ fn EmailSignIn(
                     })}
                     <div class="vk-account-actions">
                         <Button id="sign-in-send" variant=ButtonVariant::Filled kind=ButtonKind::Submit
-                            state=send_state>"Gửi mã đăng nhập"</Button>
+                            leading=IconName::Mail pending_in_leading=true state=send_state>"Gửi mã đăng nhập"</Button>
                     </div>
                 </form>
             }.into_any()
@@ -977,7 +994,7 @@ pub(super) fn SignOut(
             <Button id="sign-out"
                 variant=if in_settings { ButtonVariant::Text } else { ButtonVariant::Tonal }
                 attr:class=in_settings.then_some("vk-account-setting-action")
-                leading=IconName::Close state=state
+                leading=IconName::Logout pending_in_leading=true state=state
                 on_press=move |_| {
                     if let Some(before) = before { before.run(()); }
                     session.dispatch(epoch, Command::SignOut, move |outcome| { error.try_set(outcome.err()); });

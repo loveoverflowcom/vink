@@ -2517,11 +2517,12 @@ async function assertNavIcons(page, scope, activeDestination, { guest = false, l
         avatar: Boolean(link?.querySelector('[data-kind="account"]')),
       };
     };
-    return { present: true, explore: inspect('explore'), desk: inspect('desk'), me: inspect('me') };
+    const signInOpen = Boolean(document.querySelector('meta[name=vink-sign-in]'));
+    return { present: true, signInOpen, explore: inspect('explore'), desk: inspect('desk'), me: inspect('me') };
   })()`);
   const wantExplore = activeDestination === 'explore' ? 'explore' : 'explore-outline';
   const wantDesk = activeDestination === 'desk' ? 'edit' : 'edit-outline';
-  const wantMe = activeDestination === 'me' ? 'person' : 'person-outline';
+  const wantMe = report.signInOpen ? 'lock' : (activeDestination === 'me' ? 'person' : 'person-outline');
   const meOk = guest === true
     ? report.me?.icon === wantMe && Boolean(report.me?.path)
     : guest === false

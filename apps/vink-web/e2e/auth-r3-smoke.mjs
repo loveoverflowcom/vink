@@ -2,14 +2,14 @@
 // theme and text size, and decides which matched scenes to capture.
 const modes = {
   login: { form: '#password-login', inputs: ['#password-login-username', '#password-login-password'],
-    icons: ['person-outline', 'lock'], primary: ['#password-login-submit', 'Đăng nhập'],
+    icons: ['person-outline', 'lock'], primary: ['#password-login-submit', 'Đăng nhập', 'lock'],
     method: ['#use-email-code', 'Dùng mã email', 'mail'],
-    account: ['#use-registration', 'Tạo tài khoản', 'Chưa có tài khoản?'] },
+    account: ['#use-registration', 'Tạo tài khoản', 'Chưa có tài khoản?', 'person-add'] },
   registration: { form: '#registration-email', inputs: ['#registration-address'],
-    icons: [null], primary: ['#registration-send', 'Gửi mã xác minh'],
-    account: ['#use-password', 'Đăng nhập', 'Đã có tài khoản?'] },
+    icons: [null], primary: ['#registration-send', 'Gửi mã xác minh', 'mail'],
+    account: ['#use-password', 'Đăng nhập', 'Đã có tài khoản?', 'lock'] },
   email: { form: '#sign-in-email', inputs: ['#sign-in-address'], icons: [null],
-    primary: ['#sign-in-send', 'Gửi mã đăng nhập'], method: ['#use-password', 'Dùng mật khẩu', 'lock'] },
+    primary: ['#sign-in-send', 'Gửi mã đăng nhập', 'mail'], method: ['#use-password', 'Dùng mật khẩu', 'lock'] },
 };
 
 function inspectAuth(mode) {
@@ -47,6 +47,11 @@ function inspectAuth(mode) {
   };
   const icon = (el) => el.querySelector('svg[data-icon][aria-hidden="true"]');
   const box = (el) => el.getBoundingClientRect();
+  const leading = (el) => {
+    const glyph = icon(el);
+    return glyph && box(glyph).right <= box(el.querySelector('.vk-ui-button__label')).left
+      ? glyph.dataset.icon : null;
+  };
   const centered = (el) => Math.abs(box(el).left + box(el).width / 2 - (bounds.left + bounds.width / 2)) <= 1;
   const sameColumn = (el) => Math.abs(box(el).left - bounds.left) <= 1 && Math.abs(box(el).width - bounds.width) <= 1;
   const order = [...fields, ...buttons, ...(accountRow ? [accountRow] : [])];
@@ -69,6 +74,7 @@ function inspectAuth(mode) {
     actionGap: !mode.method || Math.abs(gap(buttons[0], buttons[1]) - unit / 2) <= 1,
     account: account && accountRow ? {
       text: account.textContent.trim(), prompt: accountRow.firstElementChild.textContent.trim(),
+      leading: leading(account),
       variant: account.classList.contains('vk-ui-button--text'),
       type: account.type, height: box(account).height, width: box(account).width,
       contrast: contrast(getComputedStyle(account).color, host),
@@ -111,7 +117,7 @@ function inspectAuth(mode) {
         tonal: el.classList.contains('vk-ui-button--tonal'),
         filled: el.classList.contains('vk-ui-button--filled'),
         fill: style.backgroundColor, contrast: contrast(style.color, style.backgroundColor),
-        icon: glyph?.dataset.icon, iconContrast: glyph ? contrast(getComputedStyle(glyph).color, style.backgroundColor) : null,
+        icon: leading(el), iconContrast: glyph ? contrast(getComputedStyle(glyph).color, style.backgroundColor) : null,
         clip: el.scrollWidth > el.clientWidth + 1,
       };
     }),
@@ -133,11 +139,12 @@ export async function checkAuthR31(page, check, scene, mode = 'login') {
       (f.revealContrast === null || f.revealContrast >= 3) &&
       (f.icon ?? null) === spec.icons[i] && (f.iconContrast === null || f.iconContrast >= 3) && f.native && f.labelFits) &&
     buttons.every(b => b.height >= 48 && b.border === '0px' && b.contrast >= 4.5 && !b.clip) &&
-    buttons[0].filled && buttons[0].text === spec.primary[1] && buttons[0].type === 'submit' &&
+    buttons[0].filled && buttons[0].text === spec.primary[1] &&
+    buttons[0].icon === spec.primary[2] && buttons[0].iconContrast >= 3 && buttons[0].type === 'submit' &&
     (!spec.method || buttons[1].tonal && buttons[1].text === spec.method[1] &&
       buttons[1].icon === spec.method[2] && buttons[1].iconContrast >= 3 && buttons[1].type === 'button') &&
     (spec.account ? account?.variant && account.type === 'button' && account.prompt === spec.account[2] &&
-      account.text === spec.account[1] && account.height >= 48 && account.width < buttons[0].width &&
+      account.text === spec.account[1] && account.leading === spec.account[3] && account.height >= 48 && account.width < buttons[0].width &&
       account.contrast >= 4.5 && account.promptContrast >= 4.5 && account.fits && account.spacing : !account),
     '#559 ' + scene + ': ' + mode + ' geometry, hierarchy and contrast ' + JSON.stringify(result));
   return result;
@@ -170,4 +177,40 @@ export async function checkModeSwitches(page, check, scene) {
   } finally {
     page.cdp.listeners = page.cdp.listeners.filter(item => item !== listener);
   }
+}
+
+const authSnapshot = function (selector) {
+  const button = document.querySelector(selector);
+  const label = button.querySelector('.vk-ui-button__label');
+  const glyph = button.querySelector('svg[data-icon][aria-hidden=true]');
+  const spinner = button.querySelector('.vk-ui-arc');
+  const box = (node) => {
+    const { x, y, width, height } = node.getBoundingClientRect();
+    return [x, y, width, height];
+  };
+  return {
+    button: box(button), label: box(label), text: label.textContent.trim(),
+    focus: document.activeElement.id, icon: glyph?.dataset.icon,
+    spinnerCount: button.querySelectorAll('.vk-ui-arc').length,
+    leadingSpinner: !!spinner?.closest('[data-slot=leading]') &&
+      spinner.getBoundingClientRect().right <= label.getBoundingClientRect().left,
+    busy: button.getAttribute('aria-busy'),
+    disabled: button.getAttribute('aria-disabled'),
+    status: document.getElementById(button.getAttribute('aria-describedby'))?.textContent.trim(),
+  };
+};
+
+export async function snapshotAuthAction(page, selector) {
+  return page.eval('(' + authSnapshot.toString() + ')(' + JSON.stringify(selector) + ')');
+}
+
+export async function checkAuthPending(page, check, selector, idle, icon, label, focus) {
+  const pending = await snapshotAuthAction(page, selector);
+  const stable = (a, b) => a.every((value, i) => Math.abs(value - b[i]) <= 1);
+  check(idle.icon === icon && idle.spinnerCount === 0 && idle.text === label &&
+    pending.icon === undefined && pending.spinnerCount === 1 && pending.leadingSpinner &&
+    pending.text === label && pending.focus === focus && pending.busy === 'true' &&
+    pending.disabled === 'true' && pending.status &&
+    stable(idle.button, pending.button) && stable(idle.label, pending.label),
+    '#625 ' + selector + ' holds geometry and focus with one leading pending indicator ' + JSON.stringify(pending));
 }

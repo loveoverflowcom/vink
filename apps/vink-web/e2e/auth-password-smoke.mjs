@@ -2,7 +2,7 @@
 // The mail carrier is a local outbox. Faults delay/drop a real response or explicitly inject
 // a refusal; no synthetic success is used. Don't log request bodies, credentials or cookies.
 
-import { checkAuthR31, checkModeSwitches } from './auth-r3-smoke.mjs';
+import { checkAuthR31, checkModeSwitches, snapshotAuthAction, checkAuthPending } from './auth-r3-smoke.mjs';
 import { accountDeletionFixtureSql } from './author-fixtures.mjs';
 import { randomUUID } from 'node:crypto';
 import { wakeDesk } from './desk-lifecycle.mjs';
@@ -561,11 +561,14 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   })()`), 'Enter during simulated composition is canceled at the input and sends no form or network request');
   await page.eval(`${q(REGISTER + '-username')}.dispatchEvent(new CompositionEvent('compositionend', {bubbles: true}))`);
 
+  const registerAction = await snapshotAuthAction(page, REGISTER + '-submit');
   await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
   await page.key('Enter');
   check(await page.eval('window.authComposition.submits === 1'), 'Enter after composition submits the registration form once');
   check(await heldRegistration.held() === 200, 'registration commits through the App with DOM autofill and Unicode NFD');
   await page.waitFor(`${q(REGISTER + '-submit')}.getAttribute('aria-busy') === 'true'`, 'registration pending');
+  await checkAuthPending(page, check, REGISTER + '-submit', registerAction, 'person-add', 'Tạo tài khoản',
+    REGISTER.slice(1) + '-username');
   const motion = await page.eval(`(() => {
     const arc = ${q(REGISTER + '-submit .vk-ui-arc svg')};
     if (!arc) return { found: false };
@@ -586,6 +589,9 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   check(await page.eval(`!${q(REGISTER + '-password')} && !${q('#password-credential')} &&
     document.querySelectorAll('.vk-auth-entry form').length === 1 && ${q('#pen-name-save')}.textContent.trim() === 'Lưu bút danh'`),
     '#327 the server-confirmed needs_principal replaces the credentials with one pen-name form; no credential remains');
+  check((await snapshotAuthAction(page, '#sign-out')).icon === 'logout' &&
+    await page.eval("document.querySelector('#sign-out').classList.contains('vk-ui-button--tonal')"),
+    '#625 pen-name gate offers Tonal Logout');
   await matrix(page, 'pen-name', '#pen-name-form', check);
   const unbound = captureRequest(page, 'GET', '/api/v1/author/works');
   await page.goto(base+'/ban-viet');
@@ -714,7 +720,19 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   await page.waitFor(`${openInbox} && ${q(notificationTab)}?.getAttribute('aria-current') === 'page'`, '#608 valid session selects Inbox');
   await page.click('#bottom-navigation a[href="/toi"]');
   await page.waitFor(q('#sign-out'), 'Account is ready after leaving Inbox');
-  check((await signOut(page, base)).includes(204), 'real 204 confirms logout');
+  const logoutPath = '/api/v1/auth/session';
+  const logoutRequests = captureRequest(page, 'DELETE', logoutPath);
+  const logoutResponse = await holdAnswer(page, 'DELETE', logoutPath);
+  const logout = await snapshotAuthAction(page, '#sign-out');
+  check(await page.eval("document.querySelector('#sign-out').classList.contains('vk-ui-button--text')"),
+    '#625 Settings offers Text Logout');
+  await page.click('#sign-out');
+  check(await logoutResponse.held() === 204, 'real 204 confirms logout');
+  await checkAuthPending(page, check, '#sign-out', logout, 'logout', 'Đăng xuất', 'sign-out');
+  await page.key('Space');
+  check(logoutRequests.count() === 1, '#625 click then Space during pending sends one logout');
+  await logoutResponse.finish();
+  logoutRequests.close();
   await page.waitFor(guestTabs, '#608 confirmed logout restores exactly the three public destinations');
   const revoked = await notificationGateway(page, beforeLogout.notification_scope);
   check(revoked.current.status === 401 && revoked.current.noStore, '#608 the real Gateway fences the scope after logout');
@@ -899,8 +917,11 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   const lostLogin = await holdAnswer(page, 'POST', `${API}/login`);
   const loginLoss = captureRequest(page, 'POST', `${API}/login`);
   await credentials(page, LOGIN, userA, SECRET_A);
+  const login = await snapshotAuthAction(page, LOGIN + '-submit');
   await page.click(LOGIN + '-submit');
   check(await lostLogin.held() === 200, 'the server issued a session before the login ACK is lost');
+  await checkAuthPending(page, check, LOGIN + '-submit', login, 'lock', 'Đăng nhập', 'password-login-submit');
+  await page.key('Enter');
   await lostLogin.finish(true);
   await page.waitFor(`${STANDING} === 'active' || (${q('#password-login-retry')} && ${q('#password-login-retry')}.getAttribute('aria-disabled') !== 'true')`, 'login readback finished');
   const actual = (await read(page, '/api/v1/auth/session')).data;

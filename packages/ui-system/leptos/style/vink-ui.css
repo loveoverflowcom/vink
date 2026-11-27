@@ -233,6 +233,14 @@
   color: var(--vk-action-primary-content);
 }
 
+.vk-ui-action__leading {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  inline-size: var(--vk-size-icon-sm);
+  block-size: var(--vk-size-icon-sm);
+}
+
 .vk-ui-button__label {
   min-inline-size: 0;
   overflow-wrap: anywhere;
@@ -345,6 +353,16 @@
   font-size: var(--vk-type-label-size);
   font-weight: var(--vk-type-label-weight);
   text-decoration-line: none;
+}
+
+.vk-ui-link--standalone > .vk-ui-action__leading {
+  margin-inline-end: var(--vk-space-2);
+}
+
+.vk-ui-link--standalone > .vk-ui-action__leading > .vk-ui-icon {
+  inline-size: var(--vk-size-icon-sm);
+  block-size: var(--vk-size-icon-sm);
+  margin: 0;
 }
 
 .vk-ui-link--standalone:hover { text-decoration-line: underline; }

@@ -34,6 +34,8 @@ export async function deskGuest(page, {args, check}, signInOpen) {
         const login=document.querySelector('#desk-sign-in');
         return login.textContent.trim()==='Đăng nhập' && login.getAttribute('href')==='/toi?next=/ban-viet' &&
           login.classList.contains('vk-ui-button--filled') &&
+          login.firstElementChild.matches('svg[data-icon=lock][aria-hidden=true]') &&
+          login.firstElementChild.getBoundingClientRect().right <= login.lastElementChild.getBoundingClientRect().left &&
           document.querySelectorAll('.vk-desk-access .vk-ui-button--filled').length===1;
       })()`), '#411 the primary guest action signs in and returns to the Desk');
     }
@@ -92,12 +94,14 @@ export async function deskGuest(page, {args, check}, signInOpen) {
       };
       return { explore: get('explore'), desk: get('desk'), me: get('me') };
     })()`);
+    const inactiveAccountIcon = signInOpen ? 'lock' : 'person-outline';
+    const activeAccountIcon = signInOpen ? 'lock' : 'person';
     const guestDeskRail = await guestIcons('#navigation');
     const guestDeskBar = await guestIcons('#bottom-navigation');
     check(guestDeskRail.explore.icon === 'explore-outline' && guestDeskRail.desk.icon === 'edit' && guestDeskRail.desk.current &&
-      guestDeskRail.me.icon === 'person-outline' && !guestDeskRail.me.current && Boolean(guestDeskRail.me.path) &&
-      guestDeskBar.explore.icon === 'explore-outline' && guestDeskBar.desk.icon === 'edit' && guestDeskBar.me.icon === 'person-outline',
-      `#427 AC-04 guest /ban-viet uses outlined Explore/Account and filled Desk icons (${JSON.stringify({ guestDeskRail, guestDeskBar })})`);
+      guestDeskRail.me.icon === inactiveAccountIcon && !guestDeskRail.me.current && Boolean(guestDeskRail.me.path) &&
+      guestDeskBar.explore.icon === 'explore-outline' && guestDeskBar.desk.icon === 'edit' && guestDeskBar.me.icon === inactiveAccountIcon,
+      `#427 AC-04 guest /ban-viet uses outlined Explore, filled Desk and the gate-appropriate account icon (${JSON.stringify({ guestDeskRail, guestDeskBar })})`);
     check(await page.eval(`!document.querySelector('#profile-trigger, #navigation .vk-ui-nav-utility')`),
       'no appearance utility button remains on the rail');
     await page.key('Tab');
@@ -110,10 +114,10 @@ export async function deskGuest(page, {args, check}, signInOpen) {
     const guestMeRail = await guestIcons('#navigation');
     const guestMeBar = await guestIcons('#bottom-navigation');
     check(guestMeRail.explore.icon === 'explore-outline' && guestMeRail.desk.icon === 'edit-outline' &&
-      guestMeRail.me.icon === 'person' && guestMeRail.me.current && Boolean(guestMeRail.me.path) &&
-      guestMeRail.me.path !== guestDeskRail.me.path && guestMeRail.desk.path !== guestDeskRail.desk.path &&
-      guestMeBar.explore.icon === 'explore-outline' && guestMeBar.desk.icon === 'edit-outline' && guestMeBar.me.icon === 'person',
-      `#427 AC-04 guest /toi uses filled person icon with distinct SVG path from person-outline (${JSON.stringify({ guestMeRail, guestMeBar })})`);
+      guestMeRail.me.icon === activeAccountIcon && guestMeRail.me.current && Boolean(guestMeRail.me.path) &&
+      (guestMeRail.me.path === guestDeskRail.me.path) === signInOpen && guestMeRail.desk.path !== guestDeskRail.desk.path &&
+      guestMeBar.explore.icon === 'explore-outline' && guestMeBar.desk.icon === 'edit-outline' && guestMeBar.me.icon === activeAccountIcon,
+      `#427 AC-04 guest /toi selects Account and keeps the correct gate-specific icon (${JSON.stringify({ guestMeRail, guestMeBar })})`);
     check(await page.eval(`!document.querySelector('#page-appearance, #auth-appearance') &&
       !document.documentElement.dataset.text && getComputedStyle(document.documentElement).fontSize === '16px'`),
       '#576 guest settings are absent and leave the default text size');

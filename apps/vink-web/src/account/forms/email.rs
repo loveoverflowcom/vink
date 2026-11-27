@@ -53,7 +53,8 @@ pub(super) fn RegistrationForm(
                 <GuestPassword epoch now focus=true switch mode=Mode::Register registration=proof.clone() />
                 {problem}
                 <div class="vk-account-actions">
-                    <Button id="registration-resend" variant=ButtonVariant::Text state=state
+                    <Button id="registration-resend" variant=ButtonVariant::Text
+                        leading=IconName::Mail pending_in_leading=true state=state
                         on_press=move |_| send(proof.0.clone())>"Gửi lại mã"</Button>
                     <Button id="registration-back" variant=ButtonVariant::Text
                         on_press=move |_| { issued.set(None); error.set(None); email.focus_on_mount(true); }>"Dùng email khác"</Button>
@@ -68,11 +69,11 @@ pub(super) fn RegistrationForm(
                         kind=TextKind::Email required=true max_length=254 variant=FieldVariant::AuthTonal
                         input_ref=email.node value=empty_value() on_input=email.edit() error=field_error(error, |e| *e == AuthError::InvalidEmail) />
                     {problem}
-                    <div class="vk-account-actions"><Button id="registration-send" variant=ButtonVariant::Filled kind=ButtonKind::Submit state=state>"Gửi mã xác minh"</Button></div>
-                    <div class="vk-auth-account-switch mt-vk-1 flex min-w-0 flex-wrap items-center justify-center gap-x-vk-1 gap-y-0 text-center text-vk-label text-vk-on-surface-variant">
-                        <span>"Đã có tài khoản?"</span>
-                        <Button id="use-password" variant=ButtonVariant::Text attr:class="[&>button]:min-h-[48px] [&>button]:px-vk-2" on_press=move |_| switch.run(Mode::Login)>"Đăng nhập"</Button>
+                    <div class="vk-account-actions">
+                        <Button id="registration-send" variant=ButtonVariant::Filled kind=ButtonKind::Submit
+                            leading=IconName::Mail pending_in_leading=true state=state>"Gửi mã xác minh"</Button>
                     </div>
+                    <AuthAccountSwitch to_login=true switch />
                 </form>
             }.into_any(),
         }

@@ -1,7 +1,9 @@
 //! The account-scoped results region of Khám phá.
 use leptos::prelude::*;
 use leptos_meta::{Link, Meta, Title};
-use vink_ui::{Button, ButtonVariant, Heading, HeadingLevel, IconName, Link as UiLink};
+use vink_ui::{
+    Button, ButtonVariant, Heading, HeadingLevel, Icon, IconName, IconSize, Link as UiLink,
+};
 
 use crate::{
     account::Session,
@@ -116,7 +118,7 @@ fn GuestAccess(sign_in_open: bool) -> impl IntoView {
                 view! {
                     <EmptyState icon=IconName::PersonAdd title="Gần hơn với tác giả" announce=true
                         message="Theo dõi những cây bút bạn yêu thích và đón đọc tác phẩm mới.">
-                        <FeedAccountLink label="Đăng nhập" />
+                        <FeedAccountLink />
                     </EmptyState>
                 }.into_any()
             } else {
@@ -135,17 +137,25 @@ fn AccountRecovery(sign_in_open: bool, #[prop(optional)] needs_name: bool) -> im
                     else { "Phiên đã hết. Đăng nhập lại để xem tác phẩm đang theo dõi." }}
             </p>
             {(needs_name || sign_in_open).then(|| view! {
-                <FeedAccountLink label=if needs_name { "Hoàn tất bút danh" } else { "Đăng nhập" } />
+                <FeedAccountLink needs_name />
             })}
         </div>
     }
 }
 
 #[component]
-fn FeedAccountLink(label: &'static str) -> impl IntoView {
+fn FeedAccountLink(#[prop(optional)] needs_name: bool) -> impl IntoView {
     let href = format!("/toi?next={}", encode(ExploreMode::FOLLOWING_HREF));
+    let label = if needs_name {
+        "Hoàn tất bút danh"
+    } else {
+        "Đăng nhập"
+    };
     view! {
-        <a id="feed-sign-in" class=ButtonVariant::Filled.classes() href=href>{label}</a>
+        <a id="feed-sign-in" class=ButtonVariant::Filled.classes() href=href>
+            {(!needs_name).then(|| view! { <Icon name=IconName::Lock size=IconSize::Small /> })}
+            <span class="vk-ui-button__label">{label}</span>
+        </a>
     }
 }
 
@@ -181,12 +191,23 @@ mod tests {
             let needs_name =
                 view! { <AccountRecovery sign_in_open=false needs_name=true /> }.to_html();
             let expired = view! { <AccountRecovery sign_in_open=false /> }.to_html();
+            let reauth = view! { <AccountRecovery sign_in_open=true /> }.to_html();
 
-            assert!(guest.contains("Gần hơn với tác giả") && guest.contains(">Đăng nhập<"));
+            assert!(guest.contains("Gần hơn với tác giả"));
+            for action in [&guest, &reauth] {
+                let (_, link) = action
+                    .split_once("id=\"feed-sign-in\"")
+                    .expect("sign-in CTA");
+                let (link, _) = link.split_once("</a>").expect("end of CTA");
+                assert!(
+                    link.find("data-icon=\"lock\"").unwrap() < link.find(">Đăng nhập<").unwrap()
+                );
+            }
             assert!(closed.contains("Vink chưa mở đăng nhập.") && !closed.contains("feed-sign-in"));
             assert!(
                 needs_name.contains(r#"data-feed-state="guest""#)
                     && needs_name.contains(">Hoàn tất bút danh<")
+                    && !needs_name.contains("data-icon=\"lock\"")
             );
             for view in [&guest, &needs_name] {
                 assert!(view.contains(r#"href="/toi?next=%2F%3Fmode%3Dfollowing""#));

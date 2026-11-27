@@ -256,7 +256,6 @@ a {
 .vk-account-setting-action > .vk-ui-button[data-state="disabled"] { color: var(--vk-disabled-content); }
 .vk-account-setting-action > .vk-ui-button[data-state="disabled"] .vk-ui-icon { color: inherit; }
 .vk-account-setting-email__body { display: grid; gap: var(--vk-space-2); padding-inline: var(--vk-space-3); }
-.vk-account-setting-action > #sign-out { padding-inline-end: var(--vk-space-6); }
 .vk-account-setting .vk-account-form { margin-block-start: var(--vk-space-2); }
 .vk-account-settings :is(h2, h3) { margin: 0; }
 /* Centre the 32px avatar on the shared icon axis, including in the expanded rail. */

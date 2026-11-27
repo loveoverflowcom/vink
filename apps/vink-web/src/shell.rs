@@ -334,14 +334,18 @@ fn restore_inbox_focus() {
 
 #[component]
 fn AccountLink(guest: Signal<bool>, current: Signal<bool>) -> impl IntoView {
-    let label = if crate::api::sign_in_open() {
-        "Đăng nhập"
+    let (label, icon) = if crate::api::sign_in_open() {
+        ("Đăng nhập", IconName::Lock)
     } else {
-        "Tài khoản"
+        ("Tài khoản", IconName::Person)
     };
     move || {
         if guest.get() {
-            view! { <NavItem destination=NavDestination::new(Destination::Me.key(), label, IconName::Person, "/toi") active=current /> }.into_any()
+            view! {
+                <NavItem destination=NavDestination::new(Destination::Me.key(), label, icon, "/toi")
+                    active=current accessible_label=Signal::stored(label.to_owned()) />
+            }
+            .into_any()
         } else {
             let destination = Destination::Me.nav();
             let label = Signal::stored(destination.label.clone());

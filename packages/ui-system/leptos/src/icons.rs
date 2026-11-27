@@ -60,6 +60,8 @@ pub enum IconName {
     Info,
     /// Cần đăng nhập, phiên hết hạn
     Lock,
+    /// Đăng xuất
+    Logout,
     /// Dùng mã email
     Mail,
     /// Mở rộng rail điều hướng
@@ -105,7 +107,7 @@ pub enum IconName {
 }
 
 impl IconName {
-    pub const ALL: [IconName; 46] = [Self::Add, Self::ArrowBack, Self::Block, Self::Bookmark, Self::BookmarkBorder, Self::Cancel, Self::ChatBubbleOutline, Self::Check, Self::Close, Self::ContentCopy, Self::DoneAll, Self::Download, Self::Edit, Self::EditOutline, Self::Error, Self::ExpandMore, Self::Explore, Self::ExploreOutline, Self::FilterList, Self::Heart, Self::HeartOutline, Self::Help, Self::Image, Self::Info, Self::Lock, Self::Mail, Self::Menu, Self::MenuOpen, Self::Notifications, Self::NotificationsNone, Self::OpenInNew, Self::PenFlight, Self::Person, Self::PersonAdd, Self::PersonOutline, Self::Public, Self::Refresh, Self::Reply, Self::Schedule, Self::Search, Self::Send, Self::VerifiedUser, Self::Visibility, Self::VisibilityOff, Self::VisibilityOutline, Self::Warning];
+    pub const ALL: [IconName; 47] = [Self::Add, Self::ArrowBack, Self::Block, Self::Bookmark, Self::BookmarkBorder, Self::Cancel, Self::ChatBubbleOutline, Self::Check, Self::Close, Self::ContentCopy, Self::DoneAll, Self::Download, Self::Edit, Self::EditOutline, Self::Error, Self::ExpandMore, Self::Explore, Self::ExploreOutline, Self::FilterList, Self::Heart, Self::HeartOutline, Self::Help, Self::Image, Self::Info, Self::Lock, Self::Logout, Self::Mail, Self::Menu, Self::MenuOpen, Self::Notifications, Self::NotificationsNone, Self::OpenInNew, Self::PenFlight, Self::Person, Self::PersonAdd, Self::PersonOutline, Self::Public, Self::Refresh, Self::Reply, Self::Schedule, Self::Search, Self::Send, Self::VerifiedUser, Self::Visibility, Self::VisibilityOff, Self::VisibilityOutline, Self::Warning];
 
     pub const fn id(self) -> &'static str {
         match self {
@@ -134,6 +136,7 @@ impl IconName {
             Self::Image => "image",
             Self::Info => "info",
             Self::Lock => "lock",
+            Self::Logout => "logout",
             Self::Mail => "mail",
             Self::Menu => "menu",
             Self::MenuOpen => "menu-open",
@@ -185,6 +188,7 @@ impl IconName {
             Self::Image => "M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z",
             Self::Info => "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z",
             Self::Lock => "M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z",
+            Self::Logout => "M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z",
             Self::Mail => "M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z",
             Self::Menu => "M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z",
             Self::MenuOpen => "M3 18h13v-2H3v2zm0-5h10v-2H3v2zm0-7v2h13V6H3zm18 9.59L17.42 12 21 8.41 19.59 7l-5 5 5 5L21 15.59z",
@@ -236,6 +240,7 @@ impl IconName {
             Self::Image => "src/image/image/materialicons/24px.svg",
             Self::Info => "src/action/info/materialicons/24px.svg",
             Self::Lock => "src/action/lock/materialicons/24px.svg",
+            Self::Logout => "src/action/logout/materialicons/24px.svg",
             Self::Mail => "src/content/mail/materialicons/24px.svg",
             Self::Menu => "src/navigation/menu/materialicons/24px.svg",
             Self::MenuOpen => "src/navigation/menu_open/materialicons/24px.svg",

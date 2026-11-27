@@ -57,12 +57,12 @@ Divider #divider               — <hr> có nghĩa | trang trí (aria-hidden)
 
 Button #action
   Control #control             — <button type=button|submit> / Material Button; một target
-    Slot #leading              — Icon trang trí (tùy chọn)
+    Slot #leading              — Icon trang trí (tùy chọn), Web có thể dùng cùng ô cho MicroArc
     Label #label               — chữ luôn đọc được, không đổi khi pending
     Slot #status               — chỗ dành cho chỉ báo của UIS-03 (rỗng trong UIS-02)
   Note #note                   — lý do disabled / chữ trạng thái pending (id `{id}-note`)
 IconButton #action             — Icon + label bắt buộc (accessible name), pressed tùy chọn
-Link #link                     — <a href> thật; NewTab thêm icon + "(mở tab mới)"
+Link #link                     — <a href> thật; Web Standalone có thể có leading; NewTab báo "(mở tab mới)"
 FilterChip #chip               — toggle (aria-pressed / selected), dấu ✓ khi chọn
 
 Field #field
@@ -263,6 +263,11 @@ Tên dùng chung; Leptos viết `snake_case` và component không tiền tố (`
 `preventDefault` nên Submit không gửi form. CMP: `Disabled` dùng `enabled = false` (TalkBack vẫn đọc),
 `Pending` giữ node có focus, bỏ qua click và đặt `stateDescription`. Bề rộng không đổi khi pending
 (label giữ nguyên, slot status có kích thước cố định).
+Web `Button.pending_in_leading` cho phép thay glyph trang trí bằng cùng MicroArc UIS-03
+trong ô `size.icon-sm`. Cách này dùng một ô duy nhất; tên, đích focus và
+`aria-describedby` tới ghi chú của owner giữ nguyên quan hệ khi chuyển trạng thái.
+Khi không có leading hoặc không bật tùy chọn, Button dùng ô status cuối như mặc định.
+Web `Link.leading` áp dụng cho `Standalone`; tên truy cập vẫn đến từ nhãn của anchor.
 
 `FieldMode`: `Editable` · `ReadOnly` (chọn/copy được, không sửa; Web `readonly`, CMP `readOnly`)
 · `Disabled` (không focus). Error rỗng hoặc chỉ khoảng trắng **không** tạo invalid.

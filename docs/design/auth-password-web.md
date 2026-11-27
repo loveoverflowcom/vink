@@ -39,6 +39,18 @@ Từ [#576](https://github.com/loveoverflowcom/vink/issues/576), vùng Auth ch�
 đăng nhập, tạo tài khoản và bút danh hiện có. Bút danh giữ thao tác thoát phiên ngoài form.
 Cuộn theo trang; ở 200% ưu tiên reflow, lỗi và hành động tới được bằng bàn phím.
 
+**Biểu tượng hành động · R5 (#625).** Lock đứng trước Đăng nhập, bao gồm gửi mật khẩu/mã,
+chuyển từ đăng ký về đăng nhập, thử đăng nhập lại và các liên kết thực sự yêu cầu đăng nhập.
+PersonAdd đứng trước Tạo tài khoản ở cả nút chuyển mode Text và nút submit Filled sau xác minh.
+Mail dành cho dùng mã email, gửi và gửi lại mã. Dùng mật khẩu giữ Lock. Đăng xuất dùng Logout
+trên hàng Text ở Cài đặt và nút Tonal khi cần bút danh hoặc phiên bị tạm khóa. NavItem dùng Lock
+khi nhãn là Đăng nhập, biểu tượng tài khoản khi gate đóng và avatar khi có phiên đã xác nhận.
+Liên kết giữ đích thật và các thao tác mở trong thẻ mới của trình duyệt.
+Nút gửi và đăng xuất dùng MicroArc của UIS-03 trong ô leading `size.icon-sm`. Khe `space-2`,
+tọa độ nút và nhãn giữ ổn định khi chờ với sai số đo tối đa 1 CSS px. Ghi chú pending liên kết
+bằng `aria-describedby`; reduced motion hiển thị arc tĩnh. Nút mở Auth từ một ý định như
+Gửi, Lưu hoặc Theo dõi giữ vai trò và biểu tượng của ý định đó.
+
 **Màu và trạng thái.** [R5 #605](https://github.com/loveoverflowcom/vink/issues/605) thay góc
 `radius-xl` và viền lúc nghỉ của R3.1. Biến thể chung `AuthTonal` dùng hai token theo theme,
 `color.auth-field-fill` và `color.on-auth-field`. Nền field cần đạt 3:1 với cả trang `bg-page`

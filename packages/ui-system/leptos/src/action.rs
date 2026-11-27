@@ -1,6 +1,6 @@
 //! Actions: Button, IconButton, Link, FilterChip. One native target each, one dispatch per
 //! activation, none while disabled or pending. Fetching, retrying and permission stay with the
-//! caller; a pending Button shows the UIS-03 `LoadingIndicator` in its reserved status slot.
+//! caller; a pending Button shows the UIS-03 `LoadingIndicator` in a reserved slot.
 
 use leptos::prelude::*;
 
@@ -172,6 +172,9 @@ pub fn Button(
     #[prop(optional, into)] state: Signal<ActionState>,
     #[prop(optional)] kind: ButtonKind,
     #[prop(optional)] leading: Option<IconName>,
+    /// Show pending progress in place of the leading icon, if one is present.
+    #[prop(optional)]
+    pending_in_leading: bool,
     /// Needed to link a disabled reason or pending status (`{id}-note`).
     #[prop(optional, into)]
     id: Option<String>,
@@ -193,6 +196,8 @@ pub fn Button(
 ) -> impl IntoView {
     let note_id = id.as_ref().map(|id| format!("{id}-note"));
     let described = note_id.clone();
+    let leading_pending = pending_in_leading && leading.is_some();
+    let pending = move || state.with(|s| matches!(s, ActionState::Pending { .. }));
     view! {
         <span class="vk-ui-action">
             <button
@@ -216,15 +221,27 @@ pub fn Button(
                 }
                 on:click=press_handler(state, on_press)
             >
-                {leading.map(|name| view! { <Icon name=name size=IconSize::Small /> })}
+                {leading.map(|name| {
+                    if leading_pending {
+                        view! {
+                            <span class="vk-ui-action__leading" data-slot="leading" aria-hidden="true">
+                                {move || if pending() {
+                                    view! { <LoadingIndicator /> }.into_any()
+                                } else {
+                                    view! { <Icon name size=IconSize::Small /> }.into_any()
+                                }}
+                            </span>
+                        }.into_any()
+                    } else {
+                        view! { <Icon name size=IconSize::Small /> }.into_any()
+                    }
+                })}
                 <span class="vk-ui-button__label">{children()}</span>
-                <span class="vk-ui-button__status" data-slot="status" aria-hidden="true">
-                    {move || {
-                        state
-                            .with(|s| matches!(s, ActionState::Pending { .. }))
-                            .then(|| view! { <LoadingIndicator /> })
-                    }}
-                </span>
+                {(!leading_pending).then(|| view! {
+                    <span class="vk-ui-button__status" data-slot="status" aria-hidden="true">
+                        {move || pending().then(|| view! { <LoadingIndicator /> })}
+                    </span>
+                })}
             </button>
             {note_view(state, note_id)}
         </span>
@@ -335,6 +352,9 @@ pub fn Link(
     #[prop(into)] href: Signal<String>,
     #[prop(optional)] target: LinkTarget,
     #[prop(optional)] variant: LinkVariant,
+    /// Decorative leading icon for a standalone link.
+    #[prop(optional)]
+    leading: Option<IconName>,
     children: Children,
 ) -> impl IntoView {
     let class = match variant {
@@ -343,6 +363,9 @@ pub fn Link(
     };
     let target_href = Signal::derive(move || href.with(|h| safe_href(h).map(str::to_string)));
     let new_tab = target == LinkTarget::NewTab;
+    let leading = (variant == LinkVariant::Standalone)
+        .then_some(leading)
+        .flatten();
     view! {
         <a
             class=class
@@ -351,6 +374,9 @@ pub fn Link(
             target=new_tab.then_some("_blank")
             rel=new_tab.then_some("noopener noreferrer")
         >
+            {leading.map(|name| view! {
+                <span class="vk-ui-action__leading" data-slot="leading"><Icon name size=IconSize::Small /></span>
+            })}
             {children()}
             {new_tab.then(|| view! {
                 <Icon name=IconName::OpenInNew size=IconSize::Small />
