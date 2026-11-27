@@ -595,7 +595,7 @@ không thấy tác phẩm. Ghi một lượt không đổi byte hay `ETag` của
 
 Chạy trên nhánh `fix/work-views-lifecycle` (base `develop@91191186`), Linux x86_64 (không phải
 Mac mini như prompt ghi), PostgreSQL `17.11-alpine` tạm trên loopback, build trong scope giới hạn
-RAM 12 GB. SHA commit ghi trong PR.
+RAM 12 GB. Regression cuối chạy trên commit `e9b4bbfc`; commit sau chỉ thêm dòng kết quả này.
 
 | Lệnh | Ranh giới | Kết quả |
 | --- | --- | --- |
@@ -605,6 +605,7 @@ RAM 12 GB. SHA commit ghi trong PR.
 | `cargo fmt --all -- --check`, `cargo clippy -p vink-app --test postgres -- -D warnings` | format, lint | PASS |
 | `cargo xtask decision validate` | registry | PASS, 156 revision, snapshot `eb01b0eb95e1d0247f37215b62f7273388ffbfd063977d675bd540e1b858e541` |
 | `cargo xtask decision query VDR-WORK-VIEWS --history` | registry | `r1` `PRODUCT_CONFIRMED` `cfb789cc…`; `r2` `PENDING` `f6a3bcb7b8d27b188d18878e68efa1c04bb776ccaf0a06c3f27c57aded904a60` |
+| `cargo xtask verify changed --base 91191186 --head e9b4bbfc --expect 7675449f62ed26eb` (`RUST_TEST_THREADS=4`) | static docs, check app ×3, unit app (446) + `document_budget` + `ssr_boundary`, unit notifications, unit web, postgres app (319 PASS, 7 ignored) | **PASS** 10/10 check đã chọn; không phải PASS toàn lane hay merge gate |
 
 Không chạy Kani/Quint: không đổi luật thuần `decide_view`/`read_view_count` hay mô hình nào.
 Không chạy browser: không đổi Web.
