@@ -231,6 +231,17 @@ export async function authorHandles(page, { base, openPage, check, holdAnswer, t
     ),
     'public zero-work profile without owner controls',
   );
+  // #587: the true empty carries the shared artwork inside the works region, with no action,
+  // and stays in the region's flow instead of turning the page into a centring column.
+  check(
+    await guest.eval(`(() => {
+      const state = ${has('section[aria-labelledby="author-works-heading"] .vk-author-works-empty.vk-empty-state--region')};
+      const art = state?.querySelector('img.vk-empty-state__art');
+      return !!art && art.getAttribute('alt') === '' && art.getAttribute('src').endsWith('/vink-empty-no-public-works.webp')
+        && !state.querySelector('a, button') && !getComputedStyle(${has('.vk-main')}).display.includes('flex');
+    })()`),
+    '#587 zero-work profile shows the region artwork without a CTA or page-wide centring',
+  );
   await fill(tab, field, initial);
   await tab.click(submit);
   await tab.waitFor(`${has('#author-handle-error')}?.textContent.includes('địa chỉ cũ')`, 'cannot rename back to an own alias');

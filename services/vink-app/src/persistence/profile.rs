@@ -1,13 +1,17 @@
 //! Standing, profile CAS and display-name update commit under the same principal fence.
 use sqlx::types::Json;
 use sqlx::{PgConnection, Postgres, Transaction};
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::{
-    PgStore, discussion::read_snapshot, handle::ready, postgres::classify,
+    PgStore,
+    discovery::{CardRow, project_cards},
+    discussion::read_snapshot,
+    handle::ready,
+    postgres::classify,
     principal::require_active,
 };
+use crate::application::discovery::summary;
 use crate::application::handle::{AuthorRef, Resolution};
 use crate::application::profile::{
     OwnProfile, ProfileError, ProfileWork, ProfileWorks, SaveProfile,
@@ -193,6 +197,30 @@ impl PgStore {
     }
 }
 
+/// One profile page (#587): the owner's currently public works, newest pointer first. Visibility
+/// is the `publications` join itself (set-private, withdrawal and hiding remove the pointer);
+/// `working_drafts` is never named, so a draft can neither match nor supply text. Each row reads
+/// exactly what a discovery card reads (`CardRow`): the pointed revision, the bound metadata
+/// snapshot and an `exact` first-publication fact. Ownership, pointer and keyset are applied
+/// before `LIMIT`; only the returned page is projected (excerpts, then two batched tag reads).
+/// `$1` owner, `$2`/`$3` the position to start after (or NULL), `$4` the rows to read.
+/// Public only so that the PostgreSQL test can `EXPLAIN` exactly this statement.
+pub const PROFILE_WORKS_SQL: &str = "
+    SELECT p.work_id, r.title, r.document, a.display_name, a.handle, a.retired,
+           p.published_at, p.metadata_snapshot_id, s.digest, f.first_published_at
+      FROM works w
+      JOIN publications p ON p.work_id = w.id
+      JOIN revisions r ON r.work_id = p.work_id AND r.id = p.revision_id
+      JOIN public_author_attribution a ON a.id = w.owner_id
+      LEFT JOIN work_first_publications f ON f.work_id = p.work_id AND f.provenance = 'exact'
+      LEFT JOIN work_metadata_snapshots s
+             ON s.work_id = p.work_id AND s.id = p.metadata_snapshot_id
+     WHERE w.owner_id = $1
+       AND ($2::timestamptz IS NULL OR p.published_at < $2
+            OR (p.published_at = $2 AND p.work_id > $3::uuid))
+     ORDER BY p.published_at DESC, p.work_id
+     LIMIT $4";
+
 async fn public_works(
     tx: &mut Transaction<'_, Postgres>,
     owner: Uuid,
@@ -208,32 +236,26 @@ async fn public_works(
         },
     };
     let size = PageSize::DEFAULT;
-    let rows: Vec<(Uuid, String, OffsetDateTime)> = sqlx::query_as(
-        "SELECT p.work_id, r.title, p.published_at
-           FROM works w JOIN publications p ON p.work_id = w.id
-           JOIN revisions r ON r.work_id = p.work_id AND r.id = p.revision_id
-          WHERE w.owner_id = $1
-            AND ($2::timestamptz IS NULL OR p.published_at < $2
-                 OR (p.published_at = $2 AND p.work_id > $3::uuid))
-          ORDER BY p.published_at DESC, p.work_id
-          LIMIT $4",
-    )
-    .bind(owner)
-    .bind(after.map(|pos| pos.published_at))
-    .bind(after.map(|pos| pos.work_id.as_uuid()))
-    .bind(size.fetch() as i64)
-    .fetch_all(&mut **tx)
-    .await
-    .map_err(classify)?;
+    let rows: Vec<CardRow> = sqlx::query_as(PROFILE_WORKS_SQL)
+        .bind(owner)
+        .bind(after.map(|pos| pos.published_at))
+        .bind(after.map(|pos| pos.work_id.as_uuid()))
+        .bind(size.fetch() as i64)
+        .fetch_all(&mut **tx)
+        .await
+        .map_err(classify)?;
+    // The extra row only decides the cursor; it is cut before any excerpt or tag is projected.
     let (rows, next) = cut_page(rows, size, scope, |row| PagePosition {
-        work_id: WorkId::from_uuid(row.0),
-        published_at: row.2,
+        work_id: WorkId::from_uuid(row.work_id),
+        published_at: row.published_at,
     });
+    let (cards, catalog) = project_cards(tx, rows).await?;
+    let works = cards
+        .into_iter()
+        .map(|card| summary(card, &catalog).map(ProfileWork::from))
+        .collect::<Result<Vec<_>, _>>()?;
     Ok(ProfileWorks::Page {
-        works: rows
-            .into_iter()
-            .map(|(work_id, title, _)| ProfileWork { work_id, title })
-            .collect(),
+        works,
         next_cursor: next.map(|cursor| cursor.encode()),
     })
 }

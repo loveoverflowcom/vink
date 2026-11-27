@@ -161,6 +161,26 @@ hồ sơ tác giả.
   `verify web --scenario password` và seed hai tác giả bằng phiên thật cùng corpus bài/bình luận
   kiểm soát trong database tạm. [Bằng chứng #292/#293](evidence/author-profile-292-293/README.md)
   ghi kết quả theo từng AC, ảnh và phiếu thử tay.
+- **Item tác phẩm trên hồ sơ #587.** CHOICE-02 (#587) = B (`DESIGN_PROPOSED`: agent chọn khi
+  triển khai, chưa phải quyết định của owner): giữ endpoint hồ sơ, thêm field tùy chọn thay vì
+  tái dùng renderer Khám phá. Mức `persistence-api`:
+  [trang hồ sơ](../../services/vink-app/src/persistence/profile.rs) đọc cùng `CardRow` và
+  `project_cards` của Discovery, gồm một query trang (lọc chủ, pointer, keyset trước `LIMIT 13`)
+  rồi hai lượt đọc batched snapshot/catalog. Item thêm `excerpt`, `first_published_at` (chỉ
+  mốc `exact`) và `tags` ([hợp đồng](../../services/vink-app/contracts/http/v1/social-graph.md#hồ-sơ-và-bút-danh-292293)),
+  không có byline, số Thấm/nhận xét hay lượt xem. Kiểm chứng `postgres` (`cargo xtask verify
+  postgres app --filter profile_items_carry`, cây làm việc chưa commit trên `74757cb2`):
+  [profile_works.rs](../../services/vink-app/tests/postgres/profile_works.rs) kiểm metadata
+  đầy đủ, bài legacy, nháp sửa sau khi công khai, set-private qua đường thật, gỡ pointer bằng
+  fixture SQL (chưa đi qua đường ẩn của kiểm duyệt) và trang 2. Khẳng định `EXPLAIN` và tập
+  khóa của item thêm sau lần chạy đó còn `NOT_RUN`.
+- **Vùng Tác phẩm Web #587.** Mức `web` ([hồ sơ công khai](../../apps/vink-web/src/pages/handle.rs)).
+  CHOICE-01 (#587) = B (`DESIGN_PROPOSED`, cùng nguồn như trên): empty thật của trang đầu dùng
+  `EmptyState region` với artwork `NoPublicWorks` và một câu, không action; biến thể này ở
+  trong luồng của vùng và bị loại
+  khỏi chuỗi căn giữa toàn trang ([LayoutSpec #258](../design/empty-artwork-258.md)). Trang
+  continuation rỗng, restart và lỗi đọc giữ nhánh riêng, không artwork. Item là một link nhan đề
+  phủ cả hàng, dòng meta (thẻ đầu, ngày công khai lần đầu) và trích đoạn chỉ hiện khi API có.
 
 ### Mở và quay lui
 

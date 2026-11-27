@@ -2094,23 +2094,24 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index) { scrollbar-gut
  * margins fall back to top alignment when content is taller. Page scroll stays the only scroll:
  * no fixed height, overlay or nested scroller. Owners: Desk, Explore and, since #558, any page
  * marked `.vk-state-page` (through at most one `.vk-state-slot`). A full-size state lives only
- * inside one of those owners. Region states (`--compact`) stay in normal flow. */
-.vk-main:has(.vk-empty-state:not(.vk-empty-state--compact), .vk-desk-loading),
-.vk-main:has(.vk-empty-state:not(.vk-empty-state--compact), .vk-desk-loading) :is(.vk-desk--index, .vk-drafts-region, .vk-desk-works, .vk-draft-list,
+ * inside one of those owners. Region states (`--compact`, and `--region` with artwork since
+ * #587) stay in normal flow. */
+.vk-main:has(.vk-empty-state:not(.vk-empty-state--compact, .vk-empty-state--region), .vk-desk-loading),
+.vk-main:has(.vk-empty-state:not(.vk-empty-state--compact, .vk-empty-state--region), .vk-desk-loading) :is(.vk-desk--index, .vk-drafts-region, .vk-desk-works, .vk-draft-list,
   .vk-discovery, #community-stream, #public-collection, #public-results,
   .vk-rel-wrapper:has(.vk-rel-empty), .vk-state-page, .vk-state-page > .vk-state-slot) {
   display: flex;
   flex-direction: column;
 }
-.vk-main:has(.vk-empty-state:not(.vk-empty-state--compact), .vk-desk-loading) :is(.vk-desk--index, .vk-drafts-region, .vk-desk-works, .vk-draft-list,
+.vk-main:has(.vk-empty-state:not(.vk-empty-state--compact, .vk-empty-state--region), .vk-desk-loading) :is(.vk-desk--index, .vk-drafts-region, .vk-desk-works, .vk-draft-list,
   .vk-discovery, #community-stream, #public-collection, #public-results,
   .vk-rel-wrapper:has(.vk-rel-empty), .vk-state-page, .vk-state-page > .vk-state-slot) {
   flex: 1 0 auto;
 }
 /* Auto inline margins disable flex stretch, so keep each owner's measure instead of shrinking to content. */
-.vk-main:has(.vk-empty-state:not(.vk-empty-state--compact), .vk-desk-loading) > :is(.vk-desk--index, .vk-discovery, .vk-state-page) { inline-size: 100%; }
+.vk-main:has(.vk-empty-state:not(.vk-empty-state--compact, .vk-empty-state--region), .vk-desk-loading) > :is(.vk-desk--index, .vk-discovery, .vk-state-page) { inline-size: 100%; }
 .vk-main :is(#public-results, .vk-draft-list) > :has(> .vk-empty-state) { margin-block: auto; }
-.vk-main :is(.vk-state-page, .vk-state-page > .vk-state-slot) > .vk-empty-state:not(.vk-empty-state--compact) { margin-block: auto; }
+.vk-main :is(.vk-state-page, .vk-state-page > .vk-state-slot) > .vk-empty-state:not(.vk-empty-state--compact, .vk-empty-state--region) { margin-block: auto; }
 .vk-desk--index > :is(.vk-desk-access, .vk-desk-loading),
 .vk-draft-list > .vk-desk-loading { margin-block: auto; }
 /* Only real rows need room below the error. Empty retained results still center the state. */
@@ -2182,6 +2183,16 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index) { scrollbar-gut
 }
 @media (max-width: 759px) {
   .vk-empty-state__art { inline-size: min(192px, 100%); }
+}
+/* Region state with artwork (#587, CHOICE-01 B): the public profile's true-empty works region.
+ * Same artwork → sentence group as a full-size state, centred on the region's inline axis with
+ * its own breathing room in normal block flow; no card, border or gradient. The `:has` chain
+ * above excludes it, so the profile header and `.vk-main` keep their block layout. */
+.vk-empty-state--region { padding-block: var(--vk-space-8) var(--vk-space-12); }
+.vk-empty-state--region .vk-empty-state__art { inline-size: min(192px, 100%); }
+@media (max-width: 759px) {
+  .vk-empty-state--region { padding-block: var(--vk-space-6) var(--vk-space-8); }
+  .vk-empty-state--region .vk-empty-state__art { inline-size: min(160px, 100%); }
 }
 @media (forced-colors: active) {
   .vk-empty-state__art { visibility: hidden; }
@@ -2311,32 +2322,53 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index) { scrollbar-gut
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-.vk-author-works > li { border-block-end: 1px solid var(--vk-outline-variant); }
-.vk-author-works .vk-ui-link {
+/* #587 editorial works list: borderless rows split by a hairline, no card, chevron or byline.
+ * The title link's overlay covers the row (one focus stop named by the title); the meta line
+ * follows the heading in the DOM and is drawn above it. Typography reuses the discovery row. */
+.vk-author-works { margin: 0 0 var(--vk-space-4); padding: 0; list-style: none; }
+.vk-profile-work {
+  position: relative;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--vk-space-4);
-  min-block-size: 4rem;
-  padding-block: var(--vk-space-3);
-  box-sizing: border-box;
-  color: var(--vk-on-surface);
-  font: var(--vk-type-title-weight) var(--vk-type-title-size)/var(--vk-type-title-line-height) var(--vk-type-title-font);
-  text-decoration: none;
+  flex-direction: column;
+  min-inline-size: 0;
+  padding-block: var(--vk-space-4);
+  border-block-end: 1px solid var(--vk-outline-variant);
   overflow-wrap: anywhere;
 }
-.vk-author-works .vk-ui-link:hover { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.18em; }
-/* A drawn chevron keeps the row a navigation target without another icon asset. */
-.vk-author-works .vk-ui-link::after {
-  content: "";
-  flex: none;
-  inline-size: 0.5rem;
-  block-size: 0.5rem;
-  margin-inline-end: var(--vk-space-2);
-  border-block-end: 2px solid var(--vk-on-surface-variant);
-  border-inline-end: 2px solid var(--vk-on-surface-variant);
-  transform: rotate(-45deg);
+.vk-profile-work__title { margin: 0; min-inline-size: 0; overflow-wrap: anywhere; }
+/* Back/Tab scroll the inline title into view: leave room for the meta line drawn above it and
+ * the row ring, and (below 760px) for the bottom bar, as Explore's row link does. */
+.vk-profile-work__link {
+  color: inherit;
+  text-decoration: none;
+  scroll-margin-block-start: calc(var(--vk-space-4) + 1.5em);
 }
+.vk-profile-work__link::after { content: ""; position: absolute; inset: 0; }
+.vk-profile-work__link:hover {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.16em;
+}
+.vk-profile-work__link:focus-visible { outline: none; }
+.vk-profile-work__link:focus-visible::after {
+  outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring);
+  outline-offset: var(--vk-size-focus-offset);
+}
+.vk-profile-work__meta { order: -1; margin: 0 0 var(--vk-space-1); overflow-wrap: anywhere; }
+/* Prose keeps three lines and line-broken text (verse) four, the excerpt owner's line budget.
+ * The clamp only hides overflow; the text itself is never shortened here. */
+.vk-profile-work__excerpt {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  max-inline-size: 60ch;
+  margin-block-start: var(--vk-space-2);
+  color: var(--vk-on-surface-variant);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.vk-profile-work__excerpt--lines { -webkit-line-clamp: 4; }
 @container (min-width: 40rem) {
   .vk-author-identity { column-gap: var(--vk-space-6); }
   .vk-author-public .vk-author-identity > .vk-author-seal { inline-size: 4.5rem; block-size: 4.5rem; font-size: var(--vk-text-profile-monogram-wide); }
@@ -2362,6 +2394,9 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index) { scrollbar-gut
   }
   .vk-profile-actions {
     inset-block-end: max(var(--vk-ui-bar-height, var(--vk-size-bottom-bar)), var(--vk-profile-keyboard-inset, 0px));
+  }
+  .vk-profile-work__link {
+    scroll-margin-block-end: calc(var(--vk-ui-bar-height, var(--vk-size-bottom-bar)) + var(--vk-space-4));
   }
 }
 

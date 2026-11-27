@@ -1,0 +1,39 @@
+{
+  "state": "current",
+  "author": {
+    "pen_name": "Lê Thu",
+    "handle": "le-thu",
+    "href": "/@le-thu"
+  },
+  "has_public_works": true,
+  "publications": {
+    "state": "page",
+    "works": [
+      {
+        "work_id": "33333333-3333-4333-8333-000000000001",
+        "title": "Mưa tháng Bảy",
+        "excerpt": "Trời ngả chiều qua mái ngói cũ.\nGió về chậm qua hiên.",
+        "first_published_at": "2026-10-29T08:00:00Z",
+        "tags": [
+          {
+            "tag_id": "a0000000-0000-4000-8000-000000000001",
+            "facet": "form",
+            "label": "Tản văn",
+            "slug": "tản-văn"
+          },
+          {
+            "tag_id": "a0000000-0000-4000-8000-000000000011",
+            "facet": "theme",
+            "label": "Ký ức",
+            "slug": "ký-ức"
+          }
+        ]
+      },
+      {
+        "work_id": "33333333-3333-4333-8333-000000000002",
+        "title": "Những lá thư không gửi",
+        "tags": []
+      }
+    ]
+  }
+}

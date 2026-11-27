@@ -144,7 +144,7 @@ Các lỗi 409 gồm `version_conflict`, `handle_taken`, `handle_alias_reserved`
 | --- | --- |
 | `GET /api/v1/me/profile` | Phiên active đọc hồ sơ của chính mình. [Own Profile](fixtures/author.profile.own.json) gồm `principal_id`, bút danh, Bio, tám policy, `profile_version` và hai fact setup/quota Handle. `no-store`. |
 | `PUT /api/v1/me/profile` | JSON `principal_id`, `expected_version`, `pen_name`, `bio` (chuỗi hoặc null), `policies` (đủ tám trường). Actor lấy từ phiên. Principal trong payload là điều kiện của form bắt đầu lệnh. `200` trả Own Profile sau commit, `409 version_conflict` trả version quan sát được, `422 validation_failed` chỉ trường lỗi. Body sai kiểu, thiếu khóa `bio` hoặc có trường lạ như `date_of_birth` trả `422 validation_failed` với `field=body`; phiên được kiểm trước body. `no-store`. |
-| `GET/HEAD /api/v1/authors/{handle}?cursor=…` | Actor-free. [Current](fixtures/author.profile.current.json) giữ `author` và `has_public_works`, bổ sung `bio` nếu có quyền và đã điền. `publications` có `state: page`, tối đa 12 `works` (ID tác phẩm, nhan đề) và `next_cursor` nếu còn trang. `state: restart` yêu cầu mở trang đầu khi cursor sai hoặc thuộc địa chỉ khác. |
+| `GET/HEAD /api/v1/authors/{handle}?cursor=…` | Actor-free. [Current](fixtures/author.profile.current.json) giữ `author` và `has_public_works`, bổ sung `bio` nếu có quyền và đã điền. `publications` có `state: page`, tối đa 12 `works` và `next_cursor` nếu còn trang. `state: restart` yêu cầu mở trang đầu khi cursor sai hoặc thuộc địa chỉ khác. Mỗi item luôn có `work_id`, `title`, `tags` (#587, [Có tác phẩm](fixtures/author.profile.works.json)); `excerpt` và `first_published_at` chỉ có khi đọc được từ publication hiện hành. |
 
 Profile dùng lại parser bút danh (trim, NFC, 1–80 ký tự). Bio tối đa 500 ký tự Unicode, bỏ
 khoảng trắng hai đầu, giữ xuống dòng và chuẩn hóa CRLF thành LF. Chuỗi trống xóa Bio. Tám
@@ -156,6 +156,22 @@ Trong phạm vi này, mọi lần rút quyền `everyone → self` được ghi 
 ngược trả `422` với `field=policies` trong khi SOC-OPEN-01 còn mở. Ngày sinh chỉ có policy
 mặc định `self`; body có giá trị ngày sinh bị từ chối. API chỉ giữ policy Avatar, các giá trị
 list/count chưa được phục vụ và phần ảnh phụ thuộc quyết định SOC-OPEN-04.
+
+**Item tác phẩm trên hồ sơ (#587).** Chỉ tác phẩm còn publication pointer của đúng chủ hồ sơ
+mới vào trang; set-private, rút hoặc ẩn bài gỡ pointer nên bài và trích đoạn biến mất cùng
+lần đọc. Item dùng cùng projection với WorkCard của Khám phá, gồm một query trang và hai lượt
+đọc batched snapshot/catalog, không đọc riêng từng bài:
+
+| Field | Quy tắc |
+| --- | --- |
+| `work_id`, `title` | Bắt buộc, như trước #587. Nhan đề lấy từ revision đang công khai. |
+| `excerpt` | Tùy chọn, trích từ revision đang công khai, không bao giờ từ bản nháp. Giữ xuống dòng của thơ. Bỏ field khi revision không có chữ sau nhan đề. |
+| `first_published_at` | Tùy chọn, RFC 3339. Chỉ có khi lịch sử Publication ghi mốc `exact`. Bỏ field với bài legacy hoặc chưa rõ lịch sử, không thay bằng `published_at` của pointer. |
+| `tags` | Luôn có. Thẻ đang hoạt động của metadata snapshot gắn với publication, dạng trước rồi chủ đề, như `WorkCard.tags`. `[]` khi publication không có snapshot. |
+
+Item không mang byline (trang đã nêu tác giả), `published_at` của pointer, số Thấm/nhận xét
+hay lượt xem riêng. Client trước #587 bỏ qua field mới; client mới đọc item chỉ có nhan đề
+như mọi field tùy chọn đều vắng.
 
 Lấy Handle, lifecycle, Bio đã lọc và bài đang public cùng một snapshot PostgreSQL. Trang
 lọc ownership và publication pointer trước LIMIT. Cursor thuộc địa chỉ canonical công khai,

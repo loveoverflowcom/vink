@@ -90,6 +90,8 @@ mod outbox;
 mod post_review;
 #[path = "postgres/principal.rs"]
 mod principal;
+#[path = "postgres/profile_works.rs"]
+mod profile_works;
 #[path = "postgres/publication.rs"]
 mod publication;
 #[path = "postgres/publication_policy.rs"]

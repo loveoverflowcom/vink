@@ -1,7 +1,10 @@
 //! Own profile commands and actor-free projections belong to Profile.
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
+use super::PublicWorkSummary;
+use super::catalog::PublicTag;
 use super::ports::StoreError;
 use crate::domain::profile::ProfilePolicies;
 
@@ -31,10 +34,37 @@ pub struct SaveProfile {
     pub policies: ProfilePolicies,
 }
 
-#[derive(Debug, Serialize)]
+/// One currently public work on an author's own profile (#587). The page names its author, so
+/// no byline is repeated; no counter or private view count is projected. Optional facts are
+/// omitted when the publication cannot establish them: a title-only reader keeps working.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ProfileWork {
     pub work_id: Uuid,
     pub title: String,
+    /// Projected from the published revision only, as on a discovery card.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub excerpt: Option<String>,
+    /// Present only for an exact first-publication fact (never a legacy pointer time).
+    #[serde(
+        with = "time::serde::rfc3339::option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub first_published_at: Option<OffsetDateTime>,
+    /// Active public tags of the bound metadata snapshot: form first, then themes.
+    pub tags: Vec<PublicTag>,
+}
+
+impl From<PublicWorkSummary> for ProfileWork {
+    /// Drops the author attribution and the pointer time: neither is part of the profile item.
+    fn from(work: PublicWorkSummary) -> Self {
+        Self {
+            work_id: work.work_id.as_uuid(),
+            title: work.title.as_str().to_owned(),
+            excerpt: work.excerpt,
+            first_published_at: work.first_published_at,
+            tags: work.tags.iter().map(PublicTag::from).collect(),
+        }
+    }
 }
 
 #[derive(Debug, Serialize)]

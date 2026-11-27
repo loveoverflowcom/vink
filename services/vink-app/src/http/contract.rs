@@ -63,14 +63,8 @@ pub struct TagFilterView {
     pub tag: Option<TagView>,
 }
 
-/// A tag as a public card or reader shows it: always active, current label.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub struct PublicTag {
-    pub tag_id: String,
-    pub facet: &'static str,
-    pub label: String,
-    pub slug: String,
-}
+/// A tag as a public card, reader or author profile shows it: always active, current label.
+pub use crate::application::catalog::PublicTag;
 
 /// Additive attribution in HTTP v1. Legacy labels come from the same projection.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -1017,17 +1011,6 @@ impl From<crate::application::follow::FollowObserved> for FollowObservedDto {
             mutual: observed.mutual,
             pair_version: observed.pair_version,
             accepted_order: observed.accepted_order,
-        }
-    }
-}
-
-impl From<&CatalogTag> for PublicTag {
-    fn from(tag: &CatalogTag) -> Self {
-        Self {
-            tag_id: tag.id().to_string(),
-            facet: facet_code(tag.facet()),
-            label: tag.label().as_str().to_owned(),
-            slug: tag.slug().as_str().to_owned(),
         }
     }
 }
@@ -2768,6 +2751,55 @@ mod tests {
 
         fn mua() -> CatalogTag {
             tag(14, TagFacet::Theme, "Mùa", None)
+        }
+
+        #[test]
+        fn author_profile_works_match_fixture() {
+            use crate::application::handle::{AuthorRef, Resolution};
+            use crate::application::profile::{ProfileWork, ProfileWorks};
+
+            let card = |n: u64,
+                        title: &str,
+                        excerpt: Option<&str>,
+                        first: Option<OffsetDateTime>,
+                        tags: Vec<CatalogTag>| PublicWorkSummary {
+                work_id: WorkId::parse(&format!("33333333-3333-4333-8333-{n:012}")).unwrap(),
+                title: Title::parse(title).unwrap(),
+                excerpt: excerpt.map(str::to_string),
+                author: AuthorAttribution::project("Lê Thu".into(), Some("le-thu".into()), false),
+                published_at: AT,
+                first_published_at: first,
+                tags,
+            };
+            let works = vec![
+                card(
+                    1,
+                    "Mưa tháng Bảy",
+                    Some("Trời ngả chiều qua mái ngói cũ.\nGió về chậm qua hiên."),
+                    Some(AT - time::Duration::days(1)),
+                    vec![tan_van(), ky_uc()],
+                ),
+                // Legacy publication: no snapshot, no exact first fact, no text after the title.
+                card(2, "Những lá thư không gửi", None, None, vec![]),
+            ];
+            let resolution = Resolution::Current {
+                author: AuthorRef::new("Lê Thu".into(), "le-thu".into()),
+                bio: None,
+                publications: ProfileWorks::Page {
+                    works: works.into_iter().map(ProfileWork::from).collect(),
+                    next_cursor: None,
+                },
+                has_public_works: true,
+                relationships: Box::default(),
+            };
+            assert_matches("author.profile.works.json", &resolution);
+            // The card projection's byline and pointer time never reach a profile item.
+            let json = serde_json::to_value(&resolution).unwrap();
+            for item in json["publications"]["works"].as_array().unwrap() {
+                for key in ["author", "author_display_name", "published_at"] {
+                    assert!(item.get(key).is_none(), "{key}");
+                }
+            }
         }
 
         #[test]
