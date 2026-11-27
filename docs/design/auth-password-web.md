@@ -20,8 +20,8 @@ Trang `/toi` giữ rail/thanh dưới. Thứ tự đọc cũng là thứ tự fo
                              Dùng mã email (Tonal, thư) → Chưa có tài khoản? Tạo tài khoản (Text)
     #registration-email      Email → Gửi mã xác minh (Filled)
     #password-register       Mã xác minh → Tên đăng nhập → Mật khẩu → Tạo tài khoản (Filled)
-                             Gửi lại mã / Dùng email khác
                              Đã có tài khoản? Đăng nhập (Text)
+                             Gửi lại mã / Dùng email khác
     #sign-in-email           Email → Gửi mã đăng nhập (Filled) → Dùng mật khẩu (Tonal, khóa)
     #sign-in-code            Mã → Đăng nhập → Gửi lại mã / Dùng email khác → Dùng mật khẩu
     #pen-name-form           chỉ khi máy chủ yêu cầu: Bút danh + trợ giúp → Lưu bút danh

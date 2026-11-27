@@ -561,8 +561,9 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   })()`), 'Enter during simulated composition is canceled at the input and sends no form or network request');
   await page.eval(`${q(REGISTER + '-username')}.dispatchEvent(new CompositionEvent('compositionend', {bubbles: true}))`);
 
-  const registerAction = await snapshotAuthAction(page, REGISTER + '-submit');
   await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+  await page.eval('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
+  const registerAction = await snapshotAuthAction(page, REGISTER + '-submit');
   await page.key('Enter');
   check(await page.eval('window.authComposition.submits === 1'), 'Enter after composition submits the registration form once');
   check(await heldRegistration.held() === 200, 'registration commits through the App with DOM autofill and Unicode NFD');

@@ -186,7 +186,7 @@ const authSnapshot = function (selector) {
   const spinner = button.querySelector('.vk-ui-arc');
   const box = (node) => {
     const { x, y, width, height } = node.getBoundingClientRect();
-    return [x, y, width, height];
+    return [x + scrollX, y + scrollY, width, height];
   };
   return {
     button: box(button), label: box(label), text: label.textContent.trim(),
@@ -212,5 +212,5 @@ export async function checkAuthPending(page, check, selector, idle, icon, label,
     pending.text === label && pending.focus === focus && pending.busy === 'true' &&
     pending.disabled === 'true' && pending.status &&
     stable(idle.button, pending.button) && stable(idle.label, pending.label),
-    '#625 ' + selector + ' holds geometry and focus with one leading pending indicator ' + JSON.stringify(pending));
+    '#625 ' + selector + ' holds geometry and focus with one leading pending indicator ' + JSON.stringify({ idle, pending }));
 }
