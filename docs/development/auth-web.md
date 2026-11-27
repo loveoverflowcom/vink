@@ -167,11 +167,22 @@ khi giữa hai tài khoản có một lúc đăng xuất.
 | A → B với hai/ba tab, câu trả lời của A bị giữ rồi thả muộn, reload | Thật (câu trả lời thật bị giữ ở trình duyệt) |
 | Reader #328: modal/Back/Escape, mã sai, đóng khi phản hồi thành công tới muộn, bút danh, giữ cả hai ô soạn, chỉ một POST nhận xét sau khi bấm Gửi | Chrome + App/Identity/PostgreSQL thật; dữ liệu khởi tạo gồm nhận xét công khai và một bài đã khóa nhận xét |
 
-Riêng Auth R3 [#559](https://github.com/loveoverflowcom/vink/issues/559), chạy
-`cargo xtask verify web --scenario auth --scenario password`. Hai scenario dùng App và Identity
-thật, đo màu và hình học ở Reader (nhận xét, Lưu) và `/toi`, đồng thời kiểm các bước đăng ký,
-mã email, bút danh, focus và phản hồi lỗi. `--capture checks` giữ assertion và bỏ PNG.
-Cảnh 200% là stress qua cỡ chữ gốc. Ảnh preview thiết kế nằm trong issue.
+Auth R3.1 [#559](https://github.com/loveoverflowcom/vink/issues/559) dùng
+`cargo xtask verify web --scenario auth --scenario password --scenario standalone`. Chrome chạy
+với App, Identity và PostgreSQL scratch. Các scenario kiểm Reader (nhận xét, Lưu) và `/toi`,
+hình học, tương phản, đổi mode bằng bàn phím không gửi request Auth, đăng ký, mã email,
+bút danh, focus và phản hồi lỗi. Dùng `--capture full` để đối chiếu ảnh. Ma trận khách
+dùng cỡ chữ mặc định 100%, fixture cho CSS 150% của Product và stress cỡ chữ gốc 200% riêng.
+[LayoutSpec](../design/auth-password-web.md) dẫn tới preview đã duyệt.
+
+Nguồn của nhóm hành động là `GuestAuth` và [Button](../../packages/ui-system/leptos/src/action.rs).
+CSS Auth giới hạn hình học trong `.vk-auth-entry`; Filled, Tonal, Text và focus dùng recipe chung.
+Field dùng `FloatingTonal` và alias Auth `field-container` → `surface-container-highest`,
+cùng đường nhận biết `field-outline` từ R3. Reader giữ native `dialog` với CSS sheet.
+Nguồn shared được rà soát theo consumer. TextField dùng ở Auth và Chỉnh hồ sơ. TextArea ở
+Chỉnh hồ sơ và luồng review, Select ở Chỉnh hồ sơ, SearchField ở Khám phá và Bàn viết,
+FilterChip ở Khám phá. Dialog/Sheet của UI System tiếp tục phục vụ các overlay khác.
+Delta R3.1 chỉ chạm form Auth, không đổi primitive, token sinh, preview hoặc CMP.
 
 Quyết định thuần có unit test trong `session.rs` (`cargo test -p vink-web --lib --features ssr`).
 

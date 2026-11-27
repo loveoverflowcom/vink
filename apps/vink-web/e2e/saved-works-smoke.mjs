@@ -3,7 +3,7 @@
 // count replace only the count text in the DOM (`dom-override-geometry-only`).
 import { HYDRATED, fill, q } from './auth-smoke.mjs';
 import { captureRequest, holdAnswer } from './auth-browser-network.mjs';
-import { checkLoginR3 } from './auth-r3-smoke.mjs';
+import { checkAuthR31, checkModeSwitches } from './auth-r3-smoke.mjs';
 import { savedProfileJourney, savedProfilePrivacy } from './saved-profile-smoke.mjs';
 import { savedProfileLifecycle } from './saved-profile-lifecycle.mjs';
 
@@ -165,8 +165,11 @@ export async function readerSave(page, { args, check, openPage, reader, other })
     check(sheet.modal && sheet.heading === 'Đăng nhập để lưu bài' &&
       sheet.lead === 'Bài sẽ nằm trong danh sách Đã lưu riêng trên hồ sơ của bạn.' && sheet.described === 'reader-auth-lead',
       `#388 D2: “Đăng nhập để lưu bài” sheet with its contextual lead (${JSON.stringify(sheet)})`);
-    const loginR3 = await checkLoginR3(page, check, 'standalone Reader save 1280/light/100');
+    const loginR3 = await checkAuthR31(page, check, 'standalone Reader save 1280/light/100');
     await page.capture('reader-save-guest-sheet-1280-light', { boundary: 'real-reader-save-guest-sheet', loginR3 });
+    await checkModeSwitches(page, check, 'standalone Reader save');
+    check(await page.eval(`${q('#reader-auth-title')}.textContent === 'Đăng nhập để lưu bài' && !!${q('#reader-auth-lead')}`),
+      '#559 mode switching returns to the contextual title and lead for Lưu');
     await page.key('Escape');
     await page.waitFor(`!${isOpen} && ${active('save-work')}`, 'Escape returns focus to Lưu');
     await page.key('Space');

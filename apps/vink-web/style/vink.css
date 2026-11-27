@@ -292,28 +292,14 @@ a {
 }
 .vk-auth-entry .vk-ui-field__reveal { inset-block: 0; inset-inline-end: var(--vk-space-1); }
 .vk-auth-entry .vk-ui-field__reveal .vk-ui-icon-button:focus-visible { outline-offset: -2px; }
-.vk-auth-entry .vk-account-actions, .vk-auth-alternatives { display: grid; gap: var(--vk-space-3); }
-.vk-auth-entry .vk-account-actions { margin-block-start: var(--vk-space-1); }
-.vk-auth-entry :is(.vk-account-actions, .vk-auth-alternatives) > .vk-ui-action {
+.vk-auth-entry .vk-account-actions { display: grid; gap: var(--vk-space-3); margin-block-start: var(--vk-space-1); }
+.vk-auth-entry .vk-account-actions > .vk-ui-action {
   min-inline-size: 0;
   align-items: stretch;
 }
-.vk-auth-entry :is(.vk-account-actions, .vk-auth-alternatives) .vk-ui-button { min-block-size: 48px; }
-.vk-auth-entry .vk-auth-divider {
-  display: flex;
-  align-items: center;
-  gap: var(--vk-space-3);
-  margin: 0;
-  color: var(--vk-on-surface-variant);
-  font: var(--vk-type-label-weight) var(--vk-type-label-size)/var(--vk-type-label-line-height) var(--vk-type-label-font);
-}
-.vk-auth-divider::before, .vk-auth-divider::after {
-  content: "";
-  flex: 1;
-  border-block-start: 1px solid var(--vk-outline-variant);
-}
+.vk-auth-entry .vk-account-actions .vk-ui-button { min-block-size: 48px; }
 @media (forced-colors: none) {
-  .vk-auth-entry :is(.vk-account-actions, .vk-auth-alternatives) .vk-ui-button { border-width: 0; }
+  .vk-auth-entry :is(.vk-account-actions, .vk-auth-account-switch) .vk-ui-button { border-width: 0; }
 }
 @media (forced-colors: active) {
   .vk-auth-entry { --vk-auth-field-edge: ButtonText; }

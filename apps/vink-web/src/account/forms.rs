@@ -365,6 +365,16 @@ fn GuestPassword(
         ),
     };
     let is_register = mode == Mode::Register;
+    let (account_prompt, switch_id, switch_label, next_mode) = if is_register {
+        ("Đã có tài khoản?", "use-password", "Đăng nhập", Mode::Login)
+    } else {
+        (
+            "Chưa có tài khoản?",
+            "use-registration",
+            "Tạo tài khoản",
+            Mode::Register,
+        )
+    };
     let reader = use_context::<ReaderPresentation>().filter(|_| !is_register);
     let heading = reader.map_or(title, |reader| reader.title);
     let lead = reader.and_then(|reader| reader.lead);
@@ -437,7 +447,7 @@ fn GuestPassword(
                     <p class="vk-account-error" role="alert">"Chưa xác nhận được việc đăng nhập. Hãy kiểm tra phiên trước khi thử lại."</p>
                 }.into_any(),
             }}
-            <div class="vk-account-actions">
+            <div class="vk-account-actions gap-vk-2">
                 <Button id=submit_id variant=ButtonVariant::Filled kind=ButtonKind::Submit
                     state=Signal::derive(move || if can_submit() { state.get() } else { ActionState::Disabled { reason: None } })>{title}</Button>
                 {move || (result.get() != GuestResult::Ready).then(|| view! {
@@ -454,28 +464,18 @@ fn GuestPassword(
                         } else { ActionState::Enabled })
                         on_press=move |_| result.set(GuestResult::Ready)>"Thử đăng nhập lại"</Button>
                 })}
-            </div>
-        </form>
-        {if is_register {
-            view! {
-                <div class="vk-auth-alternatives">
-                    <Button id="use-password" variant=ButtonVariant::Text
-                        on_press=move |_| switch.run(Mode::Login)>"Đăng nhập"</Button>
-                    <Button id="use-email-code" variant=ButtonVariant::Text leading=IconName::Mail
-                        on_press=move |_| switch.run(Mode::Email)>"Dùng mã email"</Button>
-                </div>
-            }.into_any()
-        } else {
-            view! {
-                <p class="vk-auth-divider">"Hoặc"</p>
-                <div class="vk-auth-alternatives">
+                {(!is_register).then(|| view! {
                     <Button id="use-email-code" variant=ButtonVariant::Tonal leading=IconName::Mail
                         on_press=move |_| switch.run(Mode::Email)>"Dùng mã email"</Button>
-                    <Button id="use-registration" variant=ButtonVariant::Tonal leading=IconName::PersonAdd
-                        on_press=move |_| switch.run(Mode::Register)>"Tạo tài khoản"</Button>
-                </div>
-            }.into_any()
-        }}
+                })}
+            </div>
+            <div class="vk-auth-account-switch mt-vk-1 flex min-w-0 flex-wrap items-center justify-center gap-x-vk-1 gap-y-0 text-center text-vk-label text-vk-on-surface-variant">
+                <span>{account_prompt}</span>
+                <Button id=switch_id variant=ButtonVariant::Text
+                    attr:class="[&>button]:min-h-[48px] [&>button]:px-vk-2"
+                    on_press=move |_| switch.run(next_mode)>{switch_label}</Button>
+            </div>
+        </form>
     }
 }
 
@@ -556,9 +556,8 @@ fn EmailSignIn(
     };
     let send_state = session.action(Operation::EmailChallenge, now);
     let complete_state = session.action(Operation::EmailCode, now);
-    view! {
-        <AuthHeading title="Đăng nhập bằng email" />
-        {move || if entered_code.get() {
+    let email_form = move || {
+        if entered_code.get() {
             code.focus_on_mount(focus_code.get_value());
             view! {
                 <form id="sign-in-code" class="vk-account-form" method="post" novalidate
@@ -650,10 +649,16 @@ fn EmailSignIn(
                     </div>
                 </form>
             }.into_any()
-        }}
-        <div class="vk-auth-alternatives">
-            <Button id="use-password" variant=ButtonVariant::Text
-                on_press=move |_| switch.run(Mode::Login)>"Dùng mật khẩu"</Button>
+        }
+    };
+    view! {
+        <AuthHeading title="Đăng nhập bằng email" />
+        <div class="grid min-w-0 gap-vk-2 has-[#sign-in-code]:gap-vk-6">
+            {email_form}
+            <div class="vk-account-actions mt-0">
+                <Button id="use-password" variant=ButtonVariant::Tonal leading=IconName::Lock
+                    on_press=move |_| switch.run(Mode::Login)>"Dùng mật khẩu"</Button>
+            </div>
         </div>
     }
 }
