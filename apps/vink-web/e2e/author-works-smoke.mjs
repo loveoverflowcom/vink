@@ -89,10 +89,10 @@ export async function authorWorks(page, {args,check,DraftGate,sleep}) {
       const review = buttons[0];
       const noReaderLink = !row.querySelector('.vk-author-work__reader') && ![...links].some(a => a.pathname.startsWith('/tac-pham/') || a.textContent.trim()==='Đọc');
       return noReaderLink && buttons.length === 1 && review.id === 'desk-review-trigger-' + workId &&
-        review.classList.contains('vk-ui-button--tonal') &&
+        review.classList.contains('vk-ui-button--text') &&
         Boolean(review.querySelector('[data-icon=verified-user]')) &&
         review.getAttribute('aria-haspopup') === 'dialog' && review.textContent.trim() === 'Xem kiểm duyệt';
-    })`), '#514 D-02 zero Read button/link and every row exposes one tonal verified-user review button');
+    })`), '#514 D-02 zero Read button/link and every row exposes one quiet verified-user review button (#593)');
     check(await page.eval(`(() => {
       const row=document.querySelector('#draft-row-${works[0].work_id}');
       const title=row.querySelector('.vk-draft-row__title'), metadata=row.querySelector('.vk-author-work__status');
@@ -100,6 +100,9 @@ export async function authorWorks(page, {args,check,DraftGate,sleep}) {
       return editor.contains(title) && editor.contains(metadata) && !row.querySelector('.vk-author-work__reader') &&
         editor.getAttribute('href')==='/ban-viet/${works[0].work_id}';
     })()`), '#514 D-02 editor link covers status, title and metrics with no sibling Read link');
+    // #593 compares the resting row, independently of the prior pointer position.
+    await page.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:0,y:0});
+    await page.eval(`Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{})))`);
     check(await page.eval(`(() => {
       const cards=[...document.querySelectorAll('.vk-author-work')], first=cards[0];
       const [tham,comments,views]=first.querySelectorAll('.vk-author-work__count');
@@ -107,7 +110,7 @@ export async function authorWorks(page, {args,check,DraftGate,sleep}) {
       const rT=tham.getBoundingClientRect(), rC=comments.getBoundingClientRect(), rV=views.getBoundingClientRect();
       const labels=[...first.querySelectorAll('.vk-author-work__label')];
       const zeroViews=document.querySelector('#draft-row-${works[2].work_id} [data-testid=author-work-views]');
-      return shape.borderRadius==='20px' && shape.backgroundColor!=='rgba(0, 0, 0, 0)' &&
+      return shape.borderRadius==='0px' && shape.backgroundColor==='rgba(0, 0, 0, 0)' &&
         getComputedStyle(document.querySelector('#draft-results')).rowGap==='8px' &&
         getComputedStyle(tham).fontVariantNumeric==='tabular-nums' &&
         getComputedStyle(views).fontVariantNumeric==='tabular-nums' &&
@@ -119,7 +122,7 @@ export async function authorWorks(page, {args,check,DraftGate,sleep}) {
         comments.querySelector('[data-icon=chat-bubble-outline]').getBoundingClientRect().width===20 &&
         views.querySelector('[data-icon=visibility-outline]').getBoundingClientRect().width===20 &&
         labels.length===3 && labels.map(l=>l.dataset.tone).join(',')==='ok,quiet,attn';
-    })()`), '#514 r3 cards: 20px radius, 8px gap, tabular Vietnamese grouping, D-01 horizontal order, 22/20/20 icons and selective tonal badges');
+    })()`), '#593 flat Desk rows: transparent resting surface, 8px gap, tabular Vietnamese grouping, D-01 horizontal order, 22/20/20 icons and selective tonal badges');
 
     // #514 UX-07 accessible Views explainer trigger & dialog (desktop light + mobile dark captures).
     await page.viewport(1440);

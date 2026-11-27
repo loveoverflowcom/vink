@@ -182,6 +182,31 @@ export async function deskEmptyState(page, { args, check, DraftGate, textContras
     if (!baseline) {
       await page.viewport(1440);
       await page.goto(args.base + '/ban-viet');
+      await gate.fulfill(await gate.next('gets'), 503, {error:{code:'dependency_unavailable'}});
+      await settled();
+      check(await page.eval(`document.querySelectorAll('[data-testid=desk-error][role=alert]').length===1 &&
+        !document.querySelector('#draft-scope').checkVisibility() &&
+        document.querySelector('#draft-sort').checkVisibility() &&
+        document.querySelector('#open-draft-search').checkVisibility()`),
+        '#593 initial failure has one error owner while stable search/sort remain available');
+      const { nodes: errorAx } = await page.send('Accessibility.getFullAXTree');
+      check(!errorAx.some(node => !node.ignored && node.name?.value === 'Chưa tải được kết quả.'),
+        '#593 initial error does not duplicate the alert in the accessibility tree');
+      for (const [width,theme,scale] of [[390,'light',100],[320,'dark',200]]) {
+        await page.viewport(width);
+        await page.eval(`document.documentElement.dataset.theme='${theme}'; document.documentElement.style.fontSize='${scale}%';
+          document.querySelector('#retry-drafts').focus(); document.querySelector('#retry-drafts').scrollIntoView({block:'center'}); document.fonts.ready`);
+        await page.capture(`desk-initial-error-${width}-${theme}-${scale}`, {scenario:'#593-initial-error',target:'[data-testid=desk-error]',boundary:'intercepted-private-summary-transport'});
+      }
+      await page.viewport(1440);
+      await page.eval(`document.documentElement.style.fontSize='100%'; document.documentElement.dataset.theme='light'`);
+      await page.click('#retry-drafts');
+      await gate.answerGet(await gate.next('gets'));
+      await settled();
+      check(await page.eval(`!document.querySelector('[data-testid=desk-error]') &&
+        document.querySelector('[data-testid=draft-empty]') && !document.querySelector('#draft-scope').hidden`),
+        '#593 retry clears the error and restores the settled live status');
+      await page.reload();
       const rail = '#navigation-primary a[href="/ban-viet"]';
       for (const selector of ['#open-draft-search', '#draft-sort', rail]) {
         const held = await gate.next('gets');
