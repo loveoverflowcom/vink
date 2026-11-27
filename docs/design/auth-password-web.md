@@ -6,30 +6,33 @@ Mỗi bước cho thấy một việc chính có thể làm ngay.
 
 **References.** [Auth Web R2](https://drive.google.com/drive/folders/1FqKCK6Z3Znej_RYehYFE66v5qd5OQjL9) là mốc Web **đã duyệt** ngày 19/11/2026 cho khách và bút danh ([#327](https://github.com/loveoverflowcom/vink/issues/327)). Ba ảnh: đăng nhập mobile tối, bút danh mobile sáng, đăng nhập desktop sáng. Đây là thiết kế, không phải ảnh trình duyệt hay bằng chứng phiên. Phần tài khoản đang hoạt động và Giao diện kế thừa [Tôi R5](me-preferences-r5.md); dùng [FloatingTonal](../../packages/ui-system/shared/components.md) và [quy tắc phản hồi](state-and-feedback.md).
 
-**Hierarchy · R3 Vertical Tonal.** Chủ sản phẩm duyệt hướng hình thức ngày 26/11/2026.
-[Issue #559](https://github.com/loveoverflowcom/vink/issues/559) lưu LayoutSpec, [ảnh duyệt](https://drive.google.com/file/d/1Rd6so1t6J7RU9CADcw5NcfTAiJPcS5c3/view)
-và [HTML preview](https://drive.google.com/file/d/1drUHZAuUnJcIdhe_YZRsTAnopx1-AXU2/view).
-Ảnh và HTML minh họa hướng thiết kế. Browser Product chạy theo nguồn Web thật.
+**Hierarchy · R3.1.** Chủ sản phẩm duyệt bố cục hành động ngày 27/11/2026 trong
+[issue #559](https://github.com/loveoverflowcom/vink/issues/559). [HTML preview R3.1](https://drive.google.com/file/d/1PC5meJCs_J_5ig3jwaZT-OEP6RzSAUY3/view)
+minh họa thứ tự và khoảng cách. Trường và surface của R3 ngày 26/11 được giữ theo
+[PR #571](https://github.com/loveoverflowcom/vink/pull/571). Product dùng logo, font và màu Vink.
 Trang `/toi` giữ rail/thanh dưới. Thứ tự đọc cũng là thứ tự form:
 
 ```text
 #page-account / #account-session
   .vk-auth-entry             vùng phẳng, không có thẻ trạng thái khách
-    V-pen → tiêu đề          Đăng nhập / Tạo tài khoản / Dùng mã email / Chọn bút danh
+    V-pen → tiêu đề          Đăng nhập / Tạo tài khoản / Đăng nhập bằng email / Chọn bút danh
     #password-login          Tên đăng nhập → Mật khẩu (hiện/ẩn) → Đăng nhập (Filled)
-    Hoặc                    Dùng mã email (Tonal, thư) → Tạo tài khoản (Tonal, thêm người)
-    #password-register       chỉ hai trường và hướng dẫn → Tạo tài khoản → Quay lại đăng nhập
-    #sign-in-email / -code   một form ở mỗi bước → Quay lại đăng nhập
+                             Dùng mã email (Tonal, thư) → Chưa có tài khoản? Tạo tài khoản (Text)
+    #password-register       hai trường và hướng dẫn → Tạo tài khoản (Filled)
+                             Đã có tài khoản? Đăng nhập (Text)
+    #sign-in-email           Email → Gửi mã đăng nhập (Filled) → Dùng mật khẩu (Tonal, khóa)
+    #sign-in-code            Mã → Đăng nhập → Gửi lại mã / Dùng email khác → Dùng mật khẩu
     #pen-name-form           chỉ khi máy chủ yêu cầu: Bút danh + trợ giúp → Lưu bút danh
   Đã hoạt động               trạng thái, Bàn viết, thêm mật khẩu, đăng xuất như trước
 ```
 
 **Responsive.** Cột form căn giữa phần nội dung, tối đa 24rem, lề mobile 20px tại 390px.
-Logo và tiêu đề Literata căn giữa. Trường, nút chính và hai lựa chọn Tonal cùng trục, mỗi
-điều khiển một hàng toàn chiều rộng. Trường dùng FloatingTonal, cao ít nhất 56 px và góc
-`radius-xl`. Nút dùng recipe Button, cao ít nhất 48 px, với khe chuẩn `space-3` giữa các điều khiển
-cùng nhóm. Hai trường mật khẩu khách dùng biểu tượng người/khóa ở đầu và nút hiện/ẩn riêng ở cuối
-ô mật khẩu. Đăng ký giữ cả đường quay lại đăng nhập và lối dùng mã email hiện có.
+Logo và tiêu đề Literata căn giữa. Trường FloatingTonal cao ít nhất 56 px, góc `radius-xl`.
+Nút Filled và Tonal cùng trục, mỗi nút một hàng toàn chiều rộng, cao ít nhất 48 px. Nhóm hành
+động chính dùng khe `space-2` (8 px ở cỡ chữ mặc định). Hàng chuyển tài khoản cách nhóm
+`space-4` (16 px), căn giữa, có thể xuống dòng và giữ đích bấm tối thiểu 48 px chiều cao.
+Hai trường mật khẩu khách dùng biểu tượng người/khóa và nút hiện/ẩn riêng ở cuối ô mật khẩu.
+Từ đăng ký, chọn Đăng nhập để về Login rồi chọn Dùng mã email khi cần.
 Từ [#576](https://github.com/loveoverflowcom/vink/issues/576), vùng Auth chỉ trình bày các tác vụ
 đăng nhập, tạo tài khoản và bút danh hiện có. Bút danh giữ thao tác thoát phiên ngoài form.
 Cuộn theo trang; ở 200% ưu tiên reflow, lỗi và hành động tới được bằng bàn phím.
@@ -46,15 +49,17 @@ Enrollment không hỏi email; xác nhận yêu cầu gửi mã đã được gh
 đã có mật khẩu thì chỉ hiện trạng thái, không suy tên đăng nhập. Thiếu phương thức ở deployment
 không gỡ các lựa chọn khác.
 
-**Interaction và accessibility.** Mode đổi do người dùng chọn đưa focus tới ô đầu. Refresh
-nền giữ focus và chữ khi phiên không đổi. Nhãn HTML và mô tả nối với trường; nút hiện/ẩn có tên
+**Interaction và accessibility.** `GuestAuth` dùng chung cho `/toi` và Reader. Nút Text và
+Tonal đổi mode tới đích xác định, đưa focus tới ô đầu. Các mode cùng một URL.
+Refresh nền giữ focus và chữ khi phiên không đổi. Nhãn HTML và mô tả nối với trường; nút hiện/ẩn có tên
 và trạng thái nhấn, không submit; click khi đang nhập giữ focus/selection, bàn phím giữ focus ở
 nút. Enter gửi đúng form ngoài composition; paste và giá trị do autofill điền được đọc từ input.
 Không autosubmit mã. Disclosure ở ngay trong trang, không tạo modal hoặc chiếm Escape/Back.
 Rời bước xóa input; request đã đi vẫn cần đối soát với máy chủ.
 
 **Invariants và Compare.** Dùng Chrome ở 320/390/834/1440 CSS px, sáng/tối theo hệ thống
-và chữ 100%, thêm lượt stress 200% bằng ghi đè cỡ chữ gốc. Kiểm tràn ngang, thứ tự focus,
+và cỡ chữ 100%/150% theo CSS Product, thêm lượt stress 200% bằng ghi đè cỡ chữ gốc.
+Cảnh khách 150% dùng fixture áp dụng `data-text="150"` trên CSS Product. Kiểm tràn ngang, thứ tự focus,
 nhãn, lỗi, hành động và tải font Be Vietnam Pro. Thành viên chỉnh Giao diện trong
 [Cài đặt của Tôi](me-preferences-r1-209.md).
 Đối chiếu vị trí và phân cấp khi mở ảnh viewport; ảnh không thay kiểm focus, motion hoặc lưu dữ

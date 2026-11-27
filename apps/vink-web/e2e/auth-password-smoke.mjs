@@ -2,7 +2,7 @@
 // The mail carrier is a local outbox. Faults delay/drop a real response or explicitly inject
 // a refusal; no synthetic success is used. Don't log request bodies, credentials or cookies.
 
-import { checkLoginR3 } from './auth-r3-smoke.mjs';
+import { checkAuthR31, checkModeSwitches } from './auth-r3-smoke.mjs';
 import { accountDeletionFixtureSql } from './author-fixtures.mjs';
 import { randomUUID } from 'node:crypto';
 import { wakeDesk } from './desk-lifecycle.mjs';
@@ -201,9 +201,10 @@ async function chooseAppearance(page, group, value) {
 
 async function matrix(page, scenario, anchor, check) {
   const path = JSON.stringify(anchor);
+  const authMode = ['login', 'registration', 'email'].includes(scenario);
   const actions = ({
     login: ['#password-login-submit', '#use-email-code', '#use-registration'],
-    registration: ['#password-register-submit', '#use-password', '#use-email-code'],
+    registration: ['#password-register-submit', '#use-password'],
     email: ['#sign-in-send', '#use-password'],
     'pen-name': ['#pen-name-save'],
     closed: [],
@@ -212,7 +213,7 @@ async function matrix(page, scenario, anchor, check) {
   const boundary = scenario === 'closed' ? 'App (sign-in disabled) + scratch PostgreSQL' :
     'native Identity + App + scratch PostgreSQL';
   const widths = guest ? [320, 390, 834, 1440] : [320, 390, 1280];
-  for (const width of widths) for (const theme of ['light', 'dark']) for (const scale of [100, 200]) {
+  for (const width of widths) for (const theme of ['light', 'dark']) for (const scale of authMode ? [100, 150, 200] : [100, 200]) {
     await page.viewport(width, width === 834 ? 600 : 900);
     await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: theme }] });
     await page.eval("document.documentElement.style.fontSize = ''");
@@ -220,6 +221,7 @@ async function matrix(page, scenario, anchor, check) {
     await page.waitFor(APPEARANCE_SETTLED, 'Auth appearance colours settle');
     const endTarget = actions?.at(-1) ?? anchor;
     const measured = await page.eval(`(async () => {
+      if (${scale} === 150) document.documentElement.dataset.text = '150';
       if (${scale} === 200) document.documentElement.style.fontSize = '200%';
       const panel = ${q(PANEL)}, section = document.querySelector(${path});
       if (${guest}) scrollTo({top: 0, behavior: 'instant'});
@@ -274,14 +276,14 @@ async function matrix(page, scenario, anchor, check) {
     if (guest) check(measured.logoVisible && measured.logoAsset.includes(`/brand/vpen-r1-lockup-${theme}.svg`) &&
       measured.singleColumn && measured.ordered, `#327 ${scenario} ${width}/${theme}/${scale}: theme asset and one-column reading order`);
     check(measured.rootSize === `${16 * scale / 100}px`, 'Auth uses the expected root text size');
-    const loginR3 = scenario === 'login' ? await checkLoginR3(page, check, `/toi ${width}/${theme}/${scale}`) : undefined;
-    const textScaleLane = scale === 200 ? 'dom-override-geometry-only' : 'default-100';
-    if (scenario === 'login' || (width === 390 && scale === 100) || (width === 320 && scale === 200 && theme === 'dark') ||
-        (scenario === 'email' && width === 1440 && scale === 100) || (width === 1280 && scale === 100 && theme === 'light')) {
+    const actionsR31 = authMode ? await checkAuthR31(page, check, `/toi ${width}/${theme}/${scale}`, scenario) : undefined;
+    const textScaleLane = scale === 100 ? 'default-100' : 'dom-override-geometry-only';
+    if (((width === 390 || authMode && width === 1440) && scale === 100) || (width === 320 && scale === 200 && theme === 'dark') ||
+        (width === 1280 && scale === 100 && theme === 'light')) {
       await page.capture(`auth-password-${scenario}-${width}-${theme}-${scale}`, {
         boundary,
         requiredTargets: measured.partial ? [] : [anchor],
-        scenario, textScale: scale, textScaleLane, font: 'Be Vietnam Pro', ...measured, loginR3,
+        scenario, textScale: scale, textScaleLane, font: 'Be Vietnam Pro', ...measured, actionsR31,
       });
       if (measured.partial) {
         await page.eval(`(() => {
@@ -293,6 +295,7 @@ async function matrix(page, scenario, anchor, check) {
         });
       }
     }
+    if (authMode && scale === 150) await page.eval("delete document.documentElement.dataset.text");
     if (guest && width <= 390 && scale === 200) {
       check(await page.eval(`(() => {
         const nav = document.querySelector('#bottom-navigation'), barTop = nav?.getClientRects().length ? nav.getBoundingClientRect().top : innerHeight;
@@ -423,6 +426,20 @@ async function authR3Login(page, check, openPage) {
   await nativeAccountZoom(page, openPage, check, false);
   await page.click('#use-password');
   await page.waitFor(q(LOGIN), 'password mode after email');
+  const { browserContextId } = await page.cdp.send('Target.createBrowserContext');
+  try {
+    const direct = await openPage(browserContextId);
+    await openAccount(direct, await page.eval('location.origin'), 'anonymous');
+    // A fresh CDP target can retain its initial about:blank entry.
+    await direct.send('Page.resetNavigationHistory');
+    const { entries, currentIndex } = await direct.send('Page.getNavigationHistory');
+    check(entries.length === 1 && currentIndex === 0 && new URL(entries[0].url).pathname === '/toi',
+      '#559 /toi is the only entry in the direct-entry fixture');
+    await checkModeSwitches(direct, check, '/toi from direct entry');
+  } finally {
+    await page.cdp.send('Target.disposeBrowserContext', { browserContextId });
+    await page.send('Page.bringToFront');
+  }
 }
 
 async function memberAppearance(page, { base, check, openPage, other, userA, principalA, principalB }) {
@@ -1085,6 +1102,8 @@ export async function standalone(page, {args, check, openPage}) {
   await page.goto(base + '/toi');
   await page.waitFor(q('#use-registration'), 'anonymous password form');
   await expectDefaultAppearance(page, check, 'CSR guest after mount');
+  await checkAuthR31(page, check, 'standalone /toi');
+  await checkModeSwitches(page, check, 'standalone /toi');
   await page.click('#use-registration');
   const username = 'spa' + Date.now().toString(36);
   await credentials(page, REGISTER, username, SECRET_A);
