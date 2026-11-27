@@ -47,7 +47,8 @@ trên hàng Text ở Cài đặt và nút Tonal khi cần bút danh hoặc phiê
 khi nhãn là Đăng nhập, biểu tượng tài khoản khi gate đóng và avatar khi có phiên đã xác nhận.
 Liên kết giữ đích thật và các thao tác mở trong thẻ mới của trình duyệt.
 Nút gửi và đăng xuất dùng MicroArc của UIS-03 trong ô leading `size.icon-sm`. Khe `space-2`,
-tọa độ nút và nhãn giữ ổn định khi chờ với sai số đo tối đa 1 CSS px. Ghi chú pending liên kết
+tọa độ nút và nhãn giữ ổn định khi chờ với sai số đo tối đa 1 CSS px. Trang Tài khoản giữ chỗ cho
+thanh cuộn dọc khi ghi chú chờ gửi lại mã thay đổi chiều cao trang. Ghi chú pending liên kết
 bằng `aria-describedby`; reduced motion hiển thị arc tĩnh. Nút mở Auth từ một ý định như
 Gửi, Lưu hoặc Theo dõi giữ vai trò và biểu tượng của ý định đó.
 

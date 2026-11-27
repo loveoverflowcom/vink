@@ -1533,7 +1533,7 @@ a {
   margin-inline: auto;
 }
 /* Stable mode geometry also keeps the R4 page column aligned with the Desk index. */
-html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index) { scrollbar-gutter: stable; }
+html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index, .vk-me) { scrollbar-gutter: stable; }
 .vk-explore__top {
   display: flex;
   padding-block: 16px 12px;
