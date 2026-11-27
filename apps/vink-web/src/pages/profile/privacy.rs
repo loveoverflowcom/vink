@@ -47,9 +47,10 @@ pub(crate) fn PrivacySelect(
         if locked.get() {
             let private = visibility_choice(Visibility::Owner);
             let label_id = format!("{id}-label");
+            let group_label = label_id.clone();
             return view! {
                 <div class="vk-profile-policy vk-profile-policy--locked flex min-w-0 flex-wrap items-center gap-x-vk-3 gap-y-vk-1"
-                    role="group" aria-labelledby=label_id.clone() aria-describedby=lock_description_id>
+                    role="group" aria-labelledby=group_label aria-describedby=lock_description_id>
                     <span id=label_id class="flex-[1_1_10rem] text-vk-label">{label}</span>
                     <span id=id class="inline-flex min-h-[48px] min-w-[min(11rem,100%)] flex-[0_1_11rem] items-center gap-vk-2 px-vk-3 text-vk-label text-vk-on-surface-variant">
                         {private.icon.map(|name| view! { <Icon name size=IconSize::Small /> })}
