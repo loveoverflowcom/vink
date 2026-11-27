@@ -124,13 +124,12 @@ those registries rather than duplicating long status narratives across skills.
   screens, precise Reader links and the public Thấm dialog/page
   ([Web evidence](docs/development/notifications.md#11-web-r4-486)). Production OCI/Compose wiring is defined in [the runbook](infra/production/README.md); VPS activation is separate.
   `admin.notice.reserved` stays type-only.
-- **Work views (“Lượt xem”, #340–#343; [spec](docs/architecture/work-views.md),
-  [registry](docs/development/work-views.md)):** `VDR-WORK-VIEWS@r1` is `PRODUCT_CONFIRMED`. #341
-  adds the write path only: `domain::work_view`, `work_view_*` tables (keyed reader digests,
-  reader-free event receipts, 24-hour retention in `vink-worker`), CHOICE-02/03/06
-  `DESIGN_PROPOSED`. #342 adds the author-only read (`views` on `GET /api/v1/author/works`:
-  `counted`/`not_started`/`never_public`/`unavailable`, CHOICE-05 A `DESIGN_PROPOSED`). No HTTP
-  ingest, Reader signal or Desk number exists yet.
+- **Work views (“Lượt xem”, #323, #340–#343, #514).** The Web Reader sends a candidate after the
+  shared foreground threshold. The App writes keyed windows and event receipts in PostgreSQL.
+  Only the author sees the work total in Bàn viết through `GET /api/v1/author/works`.
+  `VDR-WORK-VIEWS@r1` is active and `PRODUCT_CONFIRMED`. The foreground and lifecycle delta in
+  `@r2` awaits signoff. See the [spec](docs/architecture/work-views.md) and the
+  [registry](docs/development/work-views.md) for the four read states, retention and verification.
 - **Discussion ([ownership ADR](docs/architecture/discussion-ownership.md),
   [core](docs/development/discussion-core.md), [admission](docs/architecture/discussion-admission.md),
   [post-review](docs/development/discussion-post-review.md),

@@ -16,7 +16,7 @@ Nguồn: [Epic #323](https://github.com/loveoverflowcom/vink/issues/323),
 | Quyết định sản phẩm | VIEW-01..12 `r1` là `PRODUCT_CONFIRMED` ngày 21/11/2026 ([VDR-WORK-VIEWS@r1](../../decisions/proposals/VDR-WORK-VIEWS.r1.toml) + [signoff](../../decisions/signoffs/VDR-WORK-VIEWS.r1.toml), revision đang kích hoạt của marker VDR). Delta 25/11/2026 (`#323`/`#340`: ngưỡng 5 giây foreground cấu hình tập trung, `OQ-1=A`, `OQ-2`, `OQ-3A/B`, `OQ-4`, `UX-01..10`, giữ riêng tư, `D-01` Thấm → Nhận xét → Lượt xem, `D-02` bỏ nút Đọc ở Bàn viết) được chủ sản phẩm chốt trên issue và ghi thành [VDR-WORK-VIEWS@r2](../../decisions/proposals/VDR-WORK-VIEWS.r2.toml) (`PENDING` chờ signoff đúng payload/SHA-256 theo `VDR-DECISION-SIGNOFF@r1`). |
 | Quyết định kiến trúc | CHOICE-02 A, CHOICE-03 và CHOICE-06 A `DESIGN_PROPOSED` bởi #341 (§7.1); CHOICE-05 A `DESIGN_PROPOSED` bởi #342 (§9.1); CHOICE-01, CHOICE-04 và CHOICE-POLICY `DESIGN_PROPOSED` bởi #343 (§10). Thiết kế r3 Bàn viết ([LayoutSpec](../design/work-views.md)) giữ `DESIGN_PROPOSED`; `DQ-05` và `DQ-10` giữ `OPEN`. Chưa lựa chọn kiến trúc nào `Accepted`. |
 | Mức triển khai | Đường ghi #341: `core` + PostgreSQL + dọn hạn `vink-worker`. Đọc #342: `persistence-api` (`views` của `GET /api/v1/author/works`). #343: `vink-work-view-policy` + HTTP `POST /api/v1/works/{work_id}/views` + cookie khách + Reader visibility tracker & retry hữu hạn. #514 (ghép thêm commit trong PR #519 theo yêu cầu chủ sản phẩm): UI Bàn viết Design r3 (`AuthorWorkRow`, `DeskIndex`, `#views-explainer`), bỏ nút Đọc (`D-02`), thứ tự `Thấm → Nhận xét → Lượt xem` (`D-01`), và đồng bộ `docs/design/*`. Xóa tài khoản tác giả (#550) gọi `erase_work` trong giao dịch fence (`OQ-2`); race, rollback và tài khoản người đọc kiểm ở §13. Route xóa tác phẩm và admin gỡ cả bài: `CONDITIONAL_DEFERRED` (owner Publication). |
-| Bằng chứng | #340 r1: kiểm tài liệu (§6); #341: unit + PostgreSQL (§7.6); #342: unit/contract + PostgreSQL qua HTTP (§9.5); #343 & #514: cập nhật tại §10.3 và §11 sau khi chạy scoped checks + Chrome thực trên `HEAD` cuối. |
+| Bằng chứng | #340 r1: kiểm tài liệu (§6); #341: unit + PostgreSQL (§7.6); #342: unit/contract + PostgreSQL qua HTTP (§9.5); #519 tại §12, vòng đời xóa tài khoản tại §13 và nghiệm thu Web của #323 tại §14. |
 
 ## 2. Snapshot quyết định
 
@@ -629,7 +629,7 @@ Chỉ khi có câu trả lời của chính chủ sản phẩm cho đúng câu n
 `cargo xtask decision signoff VDR-WORK-VIEWS@r2 f6a3bcb7… <INPUT>` và trích nguyên văn câu đó.
 Tới lúc đó `r2` giữ `PENDING`, marker `active VDR-WORK-VIEWS@r1` giữ nguyên.
 
-### 13.7 Phần còn mở
+### 13.7 Phần còn mở tại PR #611
 
 | Mục | Trạng thái | Owner |
 | --- | --- | --- |
@@ -638,3 +638,92 @@ Tới lúc đó `r2` giữ `PENDING`, marker `active VDR-WORK-VIEWS@r1` giữ ng
 | Signoff `r2` | `PENDING` | Chủ sản phẩm |
 | Mất phản hồi sau commit ở trình duyệt (AC-08) | `NOT_RUN` | Web (`#343` owner) |
 | `O-08` purge vật lý | `OPEN`, tách khỏi OQ-2 | Publication |
+
+## 14. Nghiệm thu Web của Epic #323 trên Mac mini
+
+Bản đối chứng là `develop@95dcca81` (đã có [PR #611](https://github.com/loveoverflowcom/vink/pull/611)).
+Cùng kịch bản Chrome với PostgreSQL 17.11 trên loopback đã chỉ ra hai lỗi. Ở CSR, timer đầu tiên
+được đặt khi thân bài còn chưa gắn vào DOM. Ở Bàn viết, sau tín hiệu đổi cookie và trước khi
+phiên mới được xác nhận, tác phẩm của tài khoản trước vẫn hiện. Bản sửa `e07f5cdd` bắt đầu tính
+giờ trong effect sau render và khóa danh sách theo phạm vi phiên đã xác minh. Ca kiểm ngưỡng
+trong trình duyệt ở `acfead02`.
+
+### Kịch bản và kết quả
+
+- **Thời gian đọc và điều hướng.** Chrome đi từ Khám phá bằng chuột, Enter và sự kiện chạm CDP,
+  mở URL trực tiếp và URL chia sẻ trong tab thứ hai, tải lại, Back và Forward. Trong cùng cookie
+  khách, 5 lần mở đủ ngưỡng tạo 5 mã khác nhau và tổng giữ nguyên trong cửa sổ 24 giờ. Với
+  đồng hồ monotonic và cờ prerender điều khiển ở fixture, 4.999 ms sau kích hoạt có 0 request,
+  5.000 ms có 1 ứng viên. Các ca ẩn/hiện, đổi revision, ẩn → công khai nền và đổi phiên chạy
+  qua cùng tracker. CSR kiểm đổi WorkId bằng link fixture trong cùng document sang trang ẩn thật.
+  [Điều hướng](../../apps/vink-web/e2e/work-view-navigation.mjs) · [Vòng đời](../../apps/vink-web/e2e/work-views-smoke.mjs)
+- **Mất ACK sau commit.** CDP giữ phản hồi thật ở pha Response. Trước khi làm rớt `204`,
+  API tác giả đọc được +1. Lần gửi lại dùng đúng UUIDv7. Với hai tài khoản Identity độc lập,
+  tác giả đọc 1 trên API và Bàn viết, PostgreSQL có đúng 1 lượt và 1 receipt sau retry.
+  Bốn lần làm rớt liên tiếp cho đúng 4 POST cùng mã, sau đó không còn POST trong 9,5 giây quan sát.
+  Một ca riêng trả `503` trước ghi để kiểm timer backoff đã được đặt và được gỡ khi rời Reader.
+  [HTTP intake](../../services/vink-app/src/http/work_views.rs) · [Hai phiên thật](../../apps/vink-web/e2e/work-view-author.mjs)
+- **Quyền và số liệu.** Chỉ tác giả thấy số. Sau thao tác chuyển riêng tư qua API thật,
+  hàng trên Bàn viết giữ số cũ. Ca đổi tài khoản giữ phản hồi thành công của danh sách cũ và
+  trì hoãn xác nhận phiên mới. Hàng cũ biến mất ngay khi nhận tín hiệu và không hiện lại sau
+  khi giải phóng phản hồi. Khách nhận `401`, tài khoản khác nhận danh sách của chính mình.
+  Validator công khai tiếp tục cho `304`. Scenario Desk bao phủ 0, chưa bắt đầu, chưa từng công
+  khai, lịch sử và lỗi số liệu bằng fixture có nhãn. Sheet giải thích 5 giây, 24 giờ, khách,
+  tự xem và no-JS có thao tác chạm CDP, Enter, Escape và trả focus.
+  [Bàn viết](../../apps/vink-web/src/pages/desk.rs) · [Ma trận trạng thái](../../apps/vink-web/e2e/author-works-smoke.mjs)
+
+### Kiểm chứng cục bộ
+
+Mac mini `Mac16,10` (arm64), Chrome `158.0.8127.89`, PostgreSQL `17.11`. App và Identity dùng hai DB riêng trên loopback. Runtime ở `e07f5cdd`, probe cuối ở `acfead02`. Run đối chứng `1795784525688374000-28014` ghi được hai lỗi nêu trên. Run tích hợp sau sửa `1795785124568746000-31560` đạt cả năm pha. Các lệnh Cargo ở bảng giữ nguyên bộ lọc dùng khi chạy.
+
+| Lệnh | Boundary và kết quả |
+| --- | --- |
+| `cargo xtask verify web --scenario reader --scenario standalone --scenario desk --capture checks` | **PASS** cho `reader`, `reader-views`, `desk`, `desk-guest`, `standalone`. SSR/hydration, CSR standalone, App, Identity và PostgreSQL thật. |
+| `cargo xtask verify unit web --filter work_view` | **8/8** gồm ngưỡng, retry, thay quyền và DTO số liệu. |
+| `cargo test --locked -p vink-work-view-policy` | **3/3**. Giá trị override đổi cả điều kiện tính và nội dung giải thích. |
+| `cargo xtask verify postgres app --filter work_view` | **27/27** giao dịch, HTTP, quyền đọc, dedup, retention và vòng đời. Xóa tài khoản xem phép chạy riêng ở §13.4. |
+| `cargo xtask decision query VDR-WORK-VIEWS --history` | `r1` đang áp dụng, `r2` vẫn `PENDING`. |
+
+| UX | Kết quả trên Web |
+| --- | --- |
+| Functional | **PASS** từ Reader đến số trên Bàn viết và sau khi rút công khai, kể cả retry sau commit. |
+| Geometry | **PASS** kiểm tràn của từng hàng và thứ tự ba số trong scenario Desk. Ma trận 30/30 và viewport xem §12. |
+| Visual | **PASS** khi mở hai ảnh CSR 1280 × 813 chụp trong run tích hợp. [Tác phẩm riêng tư còn 1 lượt](evidence/work-views-web-323/author-historical-one.png) · [Bàn viết của tài khoản kế tiếp](evidence/work-views-web-323/other-account-empty.png) |
+| Accessibility/Responsive | **PASS** các assertion tên control, hit target, focus và reflow tới 200% trong Desk. Đọc bằng trình đọc màn hình vật lý `NOT_RUN`. |
+| Interaction | **PASS** Enter/Escape, trả focus, chạm qua CDP, Back/Forward. Thiết bị cảm ứng vật lý `NOT_RUN`. |
+
+### Độ trễ và tài nguyên
+
+So sánh bộ dev trên cùng host, cùng bài công khai và cấu hình. Chạy pha `reader-startup` của `browser-smoke.mjs` ba lần cho mỗi renderer/build. Mỗi lần đo mở lạnh, tải lại, mở tab mới ở CPU 1× và throttle 4×, tổng cộng 72 mẫu. Bảng ghi trung vị thời điểm frame đầu có văn bản, tính bằng mili giây từ khi bắt đầu điều hướng. [Mẫu gốc và request waterfall theo từng lần mở](evidence/work-views-web-323/timings.jsonl)
+
+| Renderer | CPU | Mở lạnh, trước → sau | Tải lại | Tab mới |
+| --- | --- | --- | --- | --- |
+| SSR | 1× | 50,1 → 46,8 | 20,6 → 20,0 | 26,9 → 30,2 |
+| SSR | 4× | 51,9 → 49,9 | 44,5 → 43,1 | 84,7 → 84,9 |
+| CSR | 1× | 647,0 → 636,0 | 581,7 → 567,2 | 685,3 → 661,3 |
+| CSR | 4× | 917,6 → 922,0 | 948,4 → 950,1 | 1268,0 → 1273,8 |
+
+Ở CSR 4×, trung vị tăng 1,7–5,8 ms. Ba mẫu mỗi ô chỉ mô tả lần đo trên host này. Trong ca độc lập có phiên đăng nhập thật, thời điểm thấy chữ CSR là 553 → 661 ms. Waterfall có cùng các route API, timer mới bắt đầu sau khi thân bài đã lên DOM. Ở ca SSR mở liên kết chia sẻ, frame chữ tới ở 44 → 31 ms, rồi POST duy nhất bắt đầu ở 5.612 → 5.748 ms. Không có request thu nhận lượt trên đường hiển thị văn bản.
+
+Cả trước và sau sửa, mỗi lần mở đủ ngưỡng trong ca điều hướng có một POST. Trong ba chu kỳ mở/rời, mỗi lần mount thêm một timer 5 giây, một listener `prerenderingchange` và một `pagehide`. Sau khi rời, timer theo dõi về 0, hai nhóm listener về mức nền 0 và 2. Ca lỗi riêng xác nhận timer retry đang chờ cũng về 0 ngay sau khi điều hướng. Tracker tiếp tục dùng timer một lần, không thêm heartbeat hay polling.
+
+### Đối chiếu acceptance
+
+| #323 | Nguồn và phép đối chiếu | Kết quả và phần còn mở |
+| --- | --- | --- |
+| AC-01 | Đặc tả §3–§6, P-01..05, bảng ví dụ và signoff r1 tại §2 registry này | Đã ghi nguồn quyết định. Ngưỡng mới theo AC-07. |
+| AC-02 | P-06..08, ma trận vòng đời §13, test đọc sau rút, tái xuất bản và xóa tài khoản | Quyền đọc và WorkId có bằng chứng PostgreSQL. Route xóa tác phẩm và admin gỡ cả bài còn thuộc owner ở §13.7. |
+| AC-03 | P-09..11, §7.6/§9.5, test mốc đếm, dọn hạn và lỗi đọc riêng từng metric | Đã đối chiếu. Không có dữ liệu để suy người đọc duy nhất hay lịch sử trước mốc. |
+| AC-04 | §7.1/§9.1/§10, đối chiếu CHOICE-01..06 với tracker, HTTP, giao dịch PG và DTO tác giả | Sáu lựa chọn có owner, lý do và mức `DESIGN_PROPOSED`. |
+| AC-05 | Ma trận ở §5, test race, replay và cửa sổ ở §7.6, Chrome ở §12 và §14 | Phân biệt fixture thời gian/visibility với commit thật. Mất ACK đã có đối chứng sau ghi. |
+| AC-06 | §4, dependency #340 → #341/#342 → #343/#514, lịch sử PR #519 | Đối chiếu bàn giao và phạm vi của từng phần. |
+| AC-07 | PRD §17, §2/§13.5, crate chính sách chung và ca override | **Mở.** `VDR-WORK-VIEWS@r2` còn thiếu signoff của chủ sản phẩm cho hash ở §13.6. |
+| AC-08 | #519 §12, #550/#611 §13.2–§13.4 và các kiểm chứng §14 | **Đạt trong phạm vi Web và PG đã chạy.** 4.999/5.000 ms, quyền, 24 giờ, CSR/SSR, mất ACK sau commit, đọc lại bằng hai phiên thật và waterfall. Dữ liệu thời gian theo host ở trên. |
+| AC-09 | LayoutSpec r3, #514, §11–§12 và hai phiên ở §14 | Số riêng, 0/dấu gạch, số cũ, giải thích và refresh. Đã kiểm geometry 30/30 tại `6057b8f1`. |
+| AC-10 | D-01/D-02 trong PRD và LayoutSpec, Chrome Desk đọc số liệu rồi mở editor | Thấm → Nhận xét → Lượt xem. Hàng mở editor, đã kiểm bỏ đích Đọc. |
+
+Phạm vi host cho #343 AC-02/06 gồm Chrome desktop, sự kiện touch qua CDP, đồng hồ/cờ
+prerender và visibility điều khiển được. Không có lần chạy trên màn hình cảm ứng vật lý.
+AC-07 của Epic vẫn cần chủ sản phẩm. Route xóa tác phẩm do Publication sở hữu, route admin
+gỡ cả bài thuộc Publication/Moderation. Xóa **tài khoản** đã có bằng chứng ở
+[PR #550](https://github.com/loveoverflowcom/vink/pull/550) và [PR #611](https://github.com/loveoverflowcom/vink/pull/611).
