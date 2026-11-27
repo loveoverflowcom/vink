@@ -380,7 +380,7 @@ pub(crate) fn AccountHub(children: Children) -> impl IntoView {
                         <crate::appearance::AccountAvatar />
                         <div class="vk-account-identity min-w-0 wrap-anywhere">
                             <vink_ui::Heading id="me-title" level=vink_ui::HeadingLevel::H1
-                                role=vink_ui::TypeRole::Title attr:tabindex="-1" attr:class="vk-ui-identity-name">
+                                role=vink_ui::TypeRole::Title attr:tabindex="-1" class:vk-ui-identity-name=true>
                                 {move || standing.with(|current| match current {
                                     Standing::Active(account) => account.display_name.clone(),
                                     _ => "Tài khoản".into(),

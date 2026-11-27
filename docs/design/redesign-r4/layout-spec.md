@@ -82,7 +82,7 @@ Tham chiếu là hướng bố cục đã chọn trong #521. LayoutSpec R4.3 gi�
 ## 4. Khám phá
 
 - [Delta DQ-03 của #530](../redesign-r4-ban-viet-kham-pha.md#dq-03-cập-nhật-ngày-25112026) dùng
-  chung H1 Khám phá, nút tìm, vị trí Lọc thẻ và logo. Một thanh Primary Tabs gồm các link Tất cả /
+  chung H1 Khám phá, nút tìm và logo. Một thanh Primary Tabs gồm các link Tất cả /
   Đang theo dõi / Tác giả, giữ feature flag của Đang theo dõi, `aria-current` và node của từng link
   qua các lần đổi chế độ. [#566](https://github.com/loveoverflowcom/vink/issues/566) cập nhật
   riêng hình học thanh tab. Các link căn trái theo header và danh sách, rộng theo nhãn và padding,
@@ -101,19 +101,20 @@ Tham chiếu là hướng bố cục đã chọn trong #521. LayoutSpec R4.3 gi�
 - Theo [#522](https://github.com/loveoverflowcom/vink/issues/522), nút mở tìm ở Khám phá và Bàn viết
   dùng `IconButton` Standard. Khi nghỉ, icon nằm trực tiếp trên nền cha. Khám phá giữ vùng bấm
   56 px trên desktop và 48 px trên mobile. Nút quay lại và xóa chữ dùng nền của ô tìm đang mở.
-  Giữ mặt nền ô nhập, nền tertiary của Lọc thẻ và các trạng thái hover, pressed, focus-visible,
+  Giữ mặt nền ô nhập và các trạng thái hover, pressed, focus-visible,
   forced-colors và reduced motion.
 - Một hàng/thẻ dùng thể loại và ngày công khai đầu (Asia/Ho_Chi_Minh khi xác định được), nhan đề,
-  trích đoạn và byline với avatar tròn. Dùng tertiary cho dòng thông tin và tertiary-container cho
-  nút Lọc thẻ. Hàng phải đọc được ở màn hẹp kể cả khi nhan đề dài.
-- Sheet dùng chip theo bề rộng chữ, bo 12 px, trạng thái chọn có dấu. “Bỏ chọn” chỉ xóa draft của
-  sheet. “Áp dụng” submit GET, tối đa 4 thẻ, kết hợp AND. Link xóa các thẻ đã áp dụng giữ q, bỏ
-  cursor cũ. Giữ fallback GET trước JS.
+  trích đoạn và byline với avatar tròn. Dòng thông tin dùng tertiary.
+- [#603](https://github.com/loveoverflowcom/vink/issues/603) thay phần lọc Web của DQ-07/10.
+  Cuối hàng tab Tất cả có một IconButton Standard dùng FilterList. Khi thiếu chỗ, nút xuống hàng
+  sau nhóm tab. Mỗi link trong hai nhóm catalog chọn đúng một thẻ, giữ q, bỏ cursor và đóng
+  sheet. Chip × nằm ở hàng thẻ đang áp dụng. Trước hydration, details chứa cùng các đích GET.
+  URL nhiều thẻ cũ hiện đủ nhãn và điều kiện AND cho đến khi người đọc thay hoặc gỡ thẻ.
 - **R4-INV-06.** Ở chế độ Tất cả, SSR `/?q=…` mở dock và hiện q. Đóng bằng nút hoặc Esc bỏ q
   và cursor, giữ bộ lọc thẻ đã áp dụng và trả focus theo ngữ cảnh. Trang chi tiết `/the/:slug`
   dùng trường “Tìm trong thẻ” riêng, ngoài hợp đồng mở/đóng dock này.
 - **#427 AC-01/02, theo delta DQ-03.** Ở 320/390 px, Mặc định 100% và Lớn 150%, thanh tab giữ
-  đủ nhãn. Khi dock đóng ở Tất cả, logo, nút Tìm và nút Lọc thẻ cùng một hàng và trang không
+  đủ nhãn. Khi dock đóng ở Tất cả, logo và nút Tìm cùng một hàng, nút Lọc thẻ theo hàng tab và trang không
   cuộn ngang. Chrome Tab lần lượt qua mỗi link một lần. Cây trợ năng có một vùng
   “Chế độ Khám phá” với đúng các link theo thứ tự. Kiểm stress 200% riêng.
 

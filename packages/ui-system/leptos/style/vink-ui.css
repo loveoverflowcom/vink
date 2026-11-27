@@ -349,6 +349,29 @@
 
 .vk-ui-link--standalone:hover { text-decoration-line: underline; }
 
+.vk-ui-back-link, .vk-ui-back-link:hover {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: start;
+  align-self: start;
+  gap: var(--vk-space-2);
+  min-inline-size: 48px;
+  min-block-size: 48px;
+  max-inline-size: 100%;
+  padding-inline: var(--vk-space-2);
+  border-radius: var(--vk-radius-full);
+  color: var(--vk-on-surface-variant);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.vk-ui-back-link:hover { background: var(--vk-state-hover); }
+.vk-ui-back-link > .vk-ui-icon { flex: none; margin: 0; inline-size: var(--vk-size-icon); block-size: var(--vk-size-icon); }
+@media (max-width: 759px) {
+  .vk-ui-back-link:not([data-full-label]) { inline-size: 48px; padding: 0; }
+  .vk-ui-back-link:not([data-full-label]) > span { display: none; }
+}
+
 .vk-ui-link[data-invalid-href] {
   color: inherit;
   text-decoration-line: none;

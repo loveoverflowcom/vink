@@ -14,6 +14,20 @@ Theo [quy ước LayoutSpec](../../.agents/skills/vink-layout-spec/references/la
 | Specimen | `composition.notifications/default` và `composition.notifications/badges` trong preview Leptos. Dữ liệu mẫu từ Ví dụ 2–4 của [hợp đồng Gateway v1](../../services/vink-app/contracts/http/v1/notifications.md) và [fixture dòng nhận xét](../../services/vink-app/contracts/http/v1/fixtures/notifications-gateway.json). Dòng Ưng minh họa theo #365. Chuông trong preview mở dialog mẫu để trình diễn trạng thái và focus. |
 | Điều kiện runtime | Phiên hợp lệ, Gateway, socket inbox và worker relay. Shell, điều hướng, popover neo rail, polling và thao tác Seen/Read của #486 được ghi tại [registry](../development/notifications.md#11-web-r4-486). Quyền mở quyết định và danh sách Thấm do owner dữ liệu kiểm tra theo hợp đồng. |
 
+### Trạng thái và điều hướng Web (#603)
+
+| Tình huống | Nội dung và hành động |
+| --- | --- |
+| Lỗi đọc đầu trang hoặc quyết định | Glyph Error, heading của vùng, nút tonal “Thử lại”. Trang căn giữa khoảng trống, popover dùng biến thể compact trong vùng cuộn. |
+| Lỗi khi đã có snapshot | Notice ở cạnh danh sách. Owner giữ dữ liệu, scope và snapshot của mutation khi thử lại. |
+| Không có kết quả | Artwork hoặc mark của EmptyState và câu trạng thái đúng phạm vi đọc. |
+| Không tìm thấy | H1 Literata Title, mô tả, một link tonal có la bàn Explore trước nhãn “Về Khám phá”. Route sở hữu href, status và robots. |
+| Quay về | Back theo history dùng ArrowBack và fallback hiện có. Up là BackLink native tới parent. Close và Escape đóng overlay và trả focus. |
+
+Guest Inbox của #608 dùng NotFoundContent. #621 kế thừa EmptyState và bộ lọc đã áp dụng.
+#624 kế thừa ReadFailure khi xử lý loading và DiscoveryFailure riêng.
+Ở 320 × 540 với chữ 200%, kiểm thứ tự Tab và hit-test CTA sau khi cuộn.
+
 ## 1. Hướng thiết kế và quyết định mở
 
 Final giữ danh sách segmented, cookie/burst và chuông đổi glyph từ hướng Expressive. Nền trang

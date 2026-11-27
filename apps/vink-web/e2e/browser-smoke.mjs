@@ -2105,7 +2105,7 @@ async function textContrast(page, theme, surface = 'shell', targets) {
     outline: ['#editor-outline-title', '.vk-editor-outline__item--title', '#editor-outline-panel [aria-current="location"] button'],
     desk: ['.vk-desk-create .vk-ui-button', '.vk-draft-row__title', '.vk-draft-row .vk-draft-meta', '.vk-draft-search input', '#draft-sort', '#draft-sort-label', '#draft-scope'],
     explore: ['#public-query', '#explore-heading h1', '#open-tag-filters', '.vk-public-row__eyebrow', '.vk-feed-date', '.vk-public-row__title', '.vk-public-row__byline .vk-ui-byline__name', '.vk-public-row__byline .vk-ui-avatar', '.vk-public-row__excerpt', '.vk-public-scope'],
-    filter: ['#modal-tag-help', '#tag-selection-count', '#modal-tag-form legend', '#modal-tag-form .vk-ui-choice__label', '#modal-tag-form button[type=submit]'],
+    filter: ['#modal-tag-form legend', '#modal-tag-form a'],
     empty: ['.vk-empty-state__message', '.vk-empty-state__actions .vk-ui-button'],
     'desk-empty': ['.vk-empty-state__message', '.vk-empty-state__actions .vk-ui-button', '.vk-desk-privacy'],
     reader: ['#reader-return', '#reader-header h1', '#reader-header .vk-work-byline', '#reader-header .vk-ui-type-caption', '.vk-reader .vk-block'],
@@ -2246,7 +2246,8 @@ async function preferenceSurfaces(page) {
       document.querySelectorAll('main h1').length === 1 &&
       document.querySelector('#me').firstElementChild.id === 'page-account' &&
       document.querySelector('#page-account').firstElementChild.classList.contains('vk-account-hero') &&
-      document.querySelector('#page-account .vk-account-status h1.vk-ui-type-title')?.textContent === 'Tác giả mẫu (dữ liệu phát triển)' &&
+      document.querySelector('#page-account .vk-account-status h1.vk-ui-type-title.vk-ui-identity-name')?.textContent === 'Tác giả mẫu (dữ liệu phát triển)' &&
+      getComputedStyle(document.querySelector('#me-title')).webkitLineClamp === '2' &&
       !document.querySelector('#page-account .vk-account-illustration')`),
       `${theme}: truthful account without prototype footer banner`);
   }
@@ -2366,20 +2367,21 @@ async function accountAppearance(page) {
     await page.viewport(width);
     await editorLayoutReady(page);
     const layout = await page.eval(`(() => {
-      const tools = ['#open-public-search', '#open-tag-filters', '#discovery-tools .vk-brand']
+      const tools = ['#open-public-search', '#discovery-tools .vk-brand']
         .map(selector => document.querySelector(selector)?.getBoundingClientRect());
       const mid = rect => (rect.top + rect.bottom) / 2;
       return {
         visible: tools.every(rect => rect?.width > 0 && rect.left >= 0 && rect.right <= innerWidth),
+        filterVisible: (() => { const r = document.querySelector('#open-tag-filters').getBoundingClientRect(); return r.width >= 48 && r.left >= 0 && r.right <= innerWidth; })(),
         oneRow: tools.every(rect => rect && tools[0] && Math.abs(mid(rect) - mid(tools[0])) <= 2),
         toolRects: tools.map(rect => rect?.toJSON()),
         tabs: [...document.querySelectorAll('.vk-explore-modes a')].map(tab => tab.getBoundingClientRect().height),
         overflow: document.documentElement.scrollWidth - innerWidth,
       };
     })()`);
-    check(layout.visible && layout.oneRow && layout.tabs.length >= 2 &&
+    check(layout.visible && layout.oneRow && layout.filterVisible && layout.tabs.length >= 2 &&
       layout.tabs.every(height => height >= 48) && layout.overflow <= 0,
-      `AC-07 ${width}px at Lớn 150% keeps the logo and both tools in one row with every mode reachable (${JSON.stringify(layout)})`);
+      `AC-07 ${width}px at Lớn 150% keeps the search and logo in one row with a reachable filter and every mode reachable (${JSON.stringify(layout)})`);
   }
   await page.viewport(1440);
   await page.click('.vk-ui-rail a[href="/ban-viet"]');
@@ -3069,11 +3071,12 @@ async function adaptiveShell(page) {
   await assertBrandPlacement(page);
   await page.eval(`document.querySelector('.vk-ui-skip-link').focus()`);
   await page.key('Tab');
-  check(await page.eval(`document.activeElement.matches('#open-public-search:focus-visible') && getComputedStyle(document.activeElement).outlineStyle === 'solid'`), 'at 320px / 150% Lớn text, Tab reaches the search icon with a visible focus ring (#404 order: tìm → Lọc thẻ → logo)');
+  check(await page.eval(`document.activeElement.matches('#open-public-search:focus-visible') && getComputedStyle(document.activeElement).outlineStyle === 'solid'`), 'at 320px / 150% Lớn text, Tab reaches the search icon with a visible focus ring');
   await page.key('Tab');
-  check(await page.eval(`document.activeElement.matches('#open-tag-filters:focus-visible') && getComputedStyle(document.activeElement).outlineStyle === 'solid'`), 'the next Tab reaches Lọc thẻ with a visible focus ring');
+  check(await page.eval(`document.activeElement.matches('.vk-brand:focus-visible') && getComputedStyle(document.activeElement).outlineStyle === 'solid'`), 'Tab reaches the Explore brand after search');
+  await page.eval("document.querySelector('#explore-mode-authors').focus()");
   await page.key('Tab');
-  check(await page.eval(`document.activeElement.matches('.vk-brand:focus-visible') && getComputedStyle(document.activeElement).outlineStyle === 'solid'`), 'the next Tab reaches the Explore brand with a visible focus ring');
+  check(await page.eval(`document.activeElement.matches('#open-tag-filters:focus-visible') && getComputedStyle(document.activeElement).outlineStyle === 'solid'`), 'Tab reaches the filter after the final mode');
   await page.click('.vk-ui-bottom-nav a[href="/toi"]');
   await page.waitFor(`location.pathname === '/toi'`, 'mobile Tôi screen');
   await chooseTheme(page, 'system', 'page-theme');

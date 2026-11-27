@@ -767,6 +767,8 @@ a {
   background: var(--vk-bg-inset);
   color: var(--vk-on-surface-variant);
 }
+.vk-empty-state__icon > .vk-ui-icon { inline-size: 32px; block-size: 32px; }
+.vk-read-failure .vk-empty-state__icon,
 .vk-desk-list-error .vk-empty-state__icon {
   background: var(--vk-error-container);
   color: var(--vk-on-error-container);
@@ -1577,7 +1579,7 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index) { scrollbar-gut
 }
 .vk-discovery .vk-public-search { flex: 0 1 328px; --vk-ui-control-radius: var(--vk-radius-control-48); }
 .vk-discovery .vk-public-search > .vk-ui-field { margin: 0; }
-.vk-discovery:not(.vk-discovery--tag) .vk-public-search .vk-ui-search__shell {
+.vk-discovery .vk-public-search .vk-ui-search__shell {
   min-block-size: 56px;
   padding: 0 4px;
   background: var(--vk-surface-container-highest);
@@ -1587,14 +1589,12 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index) { scrollbar-gut
 .vk-discovery--tag .vk-discovery-toolbar {
   justify-content: flex-start;
   margin-block-end: var(--vk-space-2);
-  --vk-ui-control-radius: initial;
-  --vk-ui-search-radius: initial;
+  --vk-ui-search-radius: var(--vk-radius-control-56);
 }
-.vk-discovery--tag .vk-public-search { flex: 1 1 16rem; --vk-ui-control-radius: initial; }
+.vk-discovery--tag .vk-public-search { flex: 1 1 16rem; }
 .vk-discovery-tools { display: inline-flex; }
 .vk-search-launcher,
 .vk-search-close { display: none; }
-.vk-discovery-filter-slot { min-inline-size: 56px; }
 #discovery-search-dock {
   margin-block-end: var(--vk-space-4);
   --vk-ui-search-radius: var(--vk-radius-control-56);
@@ -1606,32 +1606,6 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index) { scrollbar-gut
 /* Khám phá keeps its 56 px wide-window and 48 px phone targets (R4.2 semi-square). */
 .vk-search-launcher .vk-ui-icon-button,
 .vk-tag-launcher .vk-ui-icon-button { inline-size: 56px; block-size: 56px; }
-/* DQ-10: Lọc thẻ is the tertiary (rose) action; its badge counts the applied tags. */
-.vk-tag-launcher .vk-ui-icon-button { background: var(--vk-tertiary-container); color: var(--vk-on-tertiary-container); }
-.vk-tag-launcher { position: relative; }
-.vk-tag-launcher__badge {
-  position: absolute;
-  inset-block-start: -4px;
-  inset-inline-end: -4px;
-  box-sizing: border-box;
-  min-inline-size: 20px;
-  block-size: 20px;
-  padding-inline: 5px;
-  border-radius: 6px;
-  background: var(--vk-tertiary);
-  color: var(--vk-on-tertiary);
-  box-shadow: 0 0 0 2px var(--vk-bg-page);
-  /* A fixed 12px count inside the fixed 20px badge (half the icon box), like the icon it marks. */
-  font-family: var(--vk-font-ui);
-  font-size: calc(var(--vk-size-icon) / 2);
-  font-weight: var(--vk-type-page-title-weight);
-  line-height: 20px;
-  text-align: center;
-  pointer-events: none;
-}
-@media (forced-colors: active) {
-  .vk-tag-launcher__badge { forced-color-adjust: none; background: Highlight; color: HighlightText; box-shadow: none; }
-}
 .vk-discovery #community-stream { display: block; align-items: stretch; }
 .vk-discovery #public-collection, .vk-discovery #public-results { display: block; }
 .vk-discovery .vk-public-scope { text-align: start; margin-block: 0 var(--vk-space-2); }
@@ -1667,27 +1641,39 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index) { scrollbar-gut
   font-weight: var(--vk-type-label-weight);
 }
 .vk-discovery-filter-form p, .vk-discovery-catalog-error p { margin: 0; color: var(--vk-on-surface-variant); overflow-wrap: anywhere; }
-.vk-discovery-filter-footer { font-size: var(--vk-type-label-size); }
-.vk-discovery-filter-actions { --vk-ui-control-radius: var(--vk-radius-control-48); }
-.vk-discovery-filter-actions .vk-ui-button--text { padding-inline: var(--vk-space-3); }
-
-/* R4.2 (#406, DQ-07): text-width wrapping chips, 12px radius, primary selected + symmetric
- * check tracks so toggling never changes a chip's bounding rect (>1 CSS px). */
-.vk-discovery-option .vk-ui-choice { min-inline-size: 0; max-inline-size: 100%; }
-/* Equal fixed mark/end tracks center the label itself, independent of checked state. */
-.vk-discovery-option .vk-ui-choice__target { display:inline-grid; grid-template-columns:1em minmax(0,1fr) 1em; align-items:center; inline-size:fit-content; min-inline-size:var(--vk-density-control-height); max-inline-size:100%; min-block-size:var(--vk-density-control-height); gap:var(--vk-space-1); padding:var(--vk-space-2); border-radius:var(--vk-radius-control-40); background:var(--vk-surface-container-highest); color:var(--vk-on-surface); }
-.vk-discovery-option .vk-ui-choice__input { position:absolute; inline-size:1px; block-size:1px; opacity:0; }
-.vk-discovery-option .vk-ui-choice__label { min-width:0; text-align:center; overflow-wrap:anywhere; font-weight:var(--vk-type-label-weight); }
-.vk-discovery-option .vk-ui-choice__target::before { content:"✓" / ""; inline-size:1em; visibility:hidden; }
-.vk-discovery-option .vk-ui-choice__target::after { content:""; inline-size:1em; }
-.vk-discovery-option .vk-ui-choice__target:has(input:checked) { background:var(--vk-primary); color:var(--vk-on-primary); }
-.vk-discovery-option .vk-ui-choice__target:has(input:checked)::before { visibility:visible; }
-.vk-discovery-option .vk-ui-choice__target:has(input:focus-visible) { outline:var(--vk-size-focus-ring) solid var(--vk-focus-ring); outline-offset:var(--vk-size-focus-offset); }
-.vk-discovery-option .vk-ui-choice__target:has(input:disabled) { opacity:0.6; cursor:default; }
-@media (forced-colors: active) {
-  .vk-discovery-option .vk-ui-choice__target { border: 1px solid ButtonText; }
-  .vk-discovery-option .vk-ui-choice__target:has(input:checked) { forced-color-adjust: none; background: Highlight; color: HighlightText; border-color: Highlight; }
+.vk-discovery-option {
+  display: inline-grid;
+  grid-template-columns: 1em minmax(0, 1fr) 1em;
+  align-items: center;
+  gap: var(--vk-space-1);
+  min-inline-size: 48px;
+  min-block-size: 48px;
+  max-inline-size: 100%;
+  padding: var(--vk-space-2);
+  border-radius: var(--vk-radius-control-40);
+  color: var(--vk-on-surface);
+  background: var(--vk-surface-container-highest);
+  font-weight: var(--vk-type-label-weight);
+  text-align: center;
+  overflow-wrap: anywhere;
+  text-decoration: none;
 }
+.vk-discovery-option::before { content: "✓" / ""; visibility: hidden; }
+.vk-discovery-option[aria-current] { background: var(--vk-primary); color: var(--vk-on-primary); }
+.vk-discovery-option[aria-current]::before { visibility: visible; }
+@media (forced-colors: active) {
+  .vk-discovery-option { border: 1px solid ButtonText; }
+  .vk-discovery-option[aria-current] { forced-color-adjust: none; background: Highlight; color: HighlightText; }
+}
+.vk-discovery-mode-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vk-space-1);
+  margin-block: var(--vk-space-2) var(--vk-space-6);
+}
+.vk-discovery-mode-row > .vk-explore-modes { margin: 0; }
+.vk-discovery-mode-row > :is(.vk-tag-launcher, .vk-tag-dock) { margin-inline-start: auto; }
 .vk-discovery[data-enhanced=true] .vk-tag-dock { display: none; }
 .vk-discovery[data-enhanced=true] .vk-tag-launcher { display: inline-flex; }
 #tag-picker { inline-size: min(30rem, calc(100% - 2 * var(--vk-overlay-margin))); background-color: var(--vk-bg-content); }
@@ -2042,7 +2028,6 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index) { scrollbar-gut
   .vk-discovery-toolbar { gap: 8px; --vk-ui-control-radius: var(--vk-radius-control-48); }
   .vk-search-launcher .vk-ui-icon-button,
   .vk-tag-launcher .vk-ui-icon-button { inline-size: 48px; block-size: 48px; }
-  .vk-discovery-filter-slot { min-inline-size: 48px; }
   .vk-discovery[data-enhanced="true"][data-search="open"] .vk-public-scope {
     position: static;
     inline-size: auto;
@@ -2756,8 +2741,8 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
 }
 
 .vk-notif-body { display: grid; gap: calc(var(--vk-space-4) + var(--vk-space-1)); min-inline-size: 0; }
+.vk-read-failure-inline,
 .vk-notif-note,
-.vk-notif-error,
 .vk-notif-more {
   display: flex;
   flex-wrap: wrap;
@@ -2765,14 +2750,14 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
   gap: var(--vk-space-2);
   margin: 0;
 }
+.vk-read-failure-inline,
 .vk-notif-note {
   padding: var(--vk-space-3);
   border-radius: var(--vk-radius-lg);
   background: var(--vk-surface-container);
 }
-.vk-notif-error { padding-block: var(--vk-space-3); }
-.vk-notif-error p { margin: 0; }
-.vk-notif-more > .vk-notif-error { flex: 1 1 100%; }
+.vk-read-failure p { margin: 0; }
+.vk-notif-more > .vk-read-failure { flex: 1 1 100%; }
 .vk-notif-loading {
   display: grid;
   gap: var(--vk-space-2);
@@ -2790,7 +2775,6 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
   --vk-ui-shape-size: 56px;
   --vk-ui-shape-icon-size: var(--vk-size-notification-system-icon);
 }
-.vk-notif-back { display: inline-grid; align-items: center; min-block-size: var(--vk-size-hit-target); }
 .vk-notif-decision { max-inline-size: min(100%, 48rem); }
 .vk-notif-decision__panel,
 .vk-notif-decision__reason { border-radius: var(--vk-radius-lg); }

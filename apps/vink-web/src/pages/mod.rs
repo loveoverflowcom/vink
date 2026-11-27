@@ -438,12 +438,6 @@ fn read_retry_state(ready: bool) -> vink_ui::ActionState {
     }
 }
 
-/// HTML omits an unnamed submitter from a GET query; `leptos::form::form_data_from_event` appends
-/// it as an empty pair, turning `?q=…` into `?q=…&=`. Drop that pair before the router navigates.
-fn drop_unnamed_submitter(data: &leptos::web_sys::FormData) {
-    data.delete("");
-}
-
 /// The recovery control can unmount as its state resolves. Focus an enduring field/heading
 /// after that render; never scroll a different route in response to a stale frame.
 fn focus_recovery(id: impl Into<String>) {

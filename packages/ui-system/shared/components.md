@@ -16,6 +16,17 @@ UIS-05 bổ sung seam cho consumer thật, không đổi owner dữ liệu: Web 
 SSR và editor dùng cùng primitive mà giữ focus/giới hạn 200. `Button.button_ref` là điểm trả
 focus của host; vẫn một target và chặn activation khi disabled/pending.
 
+## Inventory Web của #603
+
+| Component | Owner và consumer |
+| --- | --- |
+| `BackLink` | Leptos. Link native tới parent cho Account, Profile, quan hệ, quyết định và trang thẻ. ArrowBack, target 48 CSS px, focus ring. `show_destination` giữ nhãn trên mobile. |
+| `EmptyState`, `ReadFailure` | Product Web. Trang, vùng hoặc compact. ReadFailure nhận thông điệp và callback thử lại. Biến thể inline giữ các hàng đã tải. |
+| `NotFoundContent`, `ExploreRecovery` | Product Web. Route cung cấp href. SVG Explore trang trí đứng trước tên đích trong cùng link tonal. |
+| `DiscoveryFilters` | Product Web. Catalog động và link GET một thẻ trong Dialog/Sheet hoặc details trước hydration. |
+
+[LayoutSpec recovery](../../../docs/design/notifications.md) · [LayoutSpec filter](../../../docs/design/redesign-r4/layout-spec.md#4-khám-phá).
+
 ## Nguyên tắc chung
 
 - **Controlled:** giá trị đến từ caller (`Signal`/tham số), component chỉ phát intent qua callback.

@@ -115,8 +115,8 @@ export async function discoveryReading(page, { args, check, textContrast }) {
         return {order: modes.top >= top.bottom - 1 && row.top >= modes.bottom,
           closed: explore.dataset.search==='closed' && input.getClientRects().length===0 && launcherEl.getAttribute('aria-expanded')==='false' && launcherEl.getAttribute('aria-label')==='Tìm tác phẩm',
           title: h1.textContent==='Khám phá' && font.fontWeight==='600' && font.fontFamily.startsWith('"Be Vietnam Pro"') && font.fontSize===(${wide}?'24px':'22px') && title.width>1,
-          row: title.right < launcher.left && Math.abs(mid(title)-mid(launcher))<=2 && Math.abs(launcher.top-filter.top)<1 && Math.abs(mid(brand)-mid(launcher))<=2,
-          gaps: [filter.left-launcher.right, brand.left-filter.right],
+          row: title.right < launcher.left && Math.abs(mid(title)-mid(launcher))<=2 && Math.abs(mid(modes)-mid(filter))<=2 && filter.left>=modes.right-1 && Math.abs(mid(brand)-mid(launcher))<=2,
+          gaps: [brand.left-launcher.right],
           size: [launcher.width, launcher.height, filter.width, filter.height],
           radius: getComputedStyle(launcherEl).borderTopLeftRadius,
           label: input.labels[0].textContent==='Tìm theo tên hoặc tác giả'};
@@ -125,12 +125,12 @@ export async function discoveryReading(page, { args, check, textContrast }) {
       check(header.order && header.closed && header.title && header.row && header.label &&
         header.gaps.every(value => Math.abs(value - gap) <= 1) && header.size.every(value => Math.abs(value - side) < 1) &&
         header.radius === (wide ? '16px' : '14px'),
-        '#404 header: page title left, [tìm][Lọc thẻ] + logo on one row above the mode group and results ' + [theme,width,JSON.stringify(header)].join('/'));
+        '#404 header: page title left, search and logo in header, filter trailing the modes above results ' + [theme,width,JSON.stringify(header)].join('/'));
     }
     if ([320,390].includes(width) && [100,150].includes(scale)) {
       const mobile = await page.eval(`(() => {
         const h1=document.querySelector('#explore-heading h1').getBoundingClientRect();
-        const items=['#open-public-search','#open-tag-filters','#discovery-tools .vk-brand'].map(s=>document.querySelector(s).getBoundingClientRect());
+        const items=['#open-public-search','#discovery-tools .vk-brand'].map(s=>document.querySelector(s).getBoundingClientRect());
         const first=document.querySelector('.vk-public-row__title').getBoundingClientRect();
         const mid=r=>(r.top+r.bottom)/2;
         return {hidden: h1.width<=1,
@@ -146,7 +146,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
       const narrow = await page.eval(`(() => {
         const top=document.querySelector('.vk-explore__top').getBoundingClientRect();
         const h1=document.querySelector('#explore-heading h1').getBoundingClientRect();
-        const items=['#open-public-search','#open-tag-filters','#discovery-tools .vk-brand'].map(s=>document.querySelector(s).getBoundingClientRect());
+        const items=['#open-public-search','#discovery-tools .vk-brand'].map(s=>document.querySelector(s).getBoundingClientRect());
         const first=document.querySelector('.vk-public-row__title').getBoundingClientRect();
         return {hidden: h1.width<=1, oneRow: items.every(r=>Math.abs(r.top+r.height/2-(items[0].top+items[0].height/2))<=2),
           firstTop: first.top + scrollY, usable: innerHeight - (document.querySelector('#bottom-navigation')?.getBoundingClientRect().height ?? 0), top: top.height};
@@ -166,16 +166,14 @@ export async function discoveryReading(page, { args, check, textContrast }) {
       check(await page.eval(`(() => {
         const button=document.querySelector('#open-tag-filters'), r=button.getBoundingClientRect();
         const icon=button.querySelector('svg[data-icon=filter-list][aria-hidden=true]');
-        const probe=document.createElement('span'); probe.style.background='var(--vk-tertiary-container)'; document.body.append(probe);
-        const tertiary=getComputedStyle(probe).backgroundColor; probe.remove();
         return button.type==='button' && button.getAttribute('aria-label')==='Lọc thẻ' && button.textContent==='' && !!icon &&
           button.querySelectorAll('svg').length===1 && button.classList.contains('vk-ui-icon-button') &&
-          getComputedStyle(button).backgroundColor===tertiary && button.getAttribute('aria-expanded')==='false' &&
+          getComputedStyle(button).backgroundColor==='rgba(0, 0, 0, 0)' && getComputedStyle(button).boxShadow==='none' && button.getAttribute('aria-expanded')==='false' &&
           !document.querySelector('.vk-tag-launcher__badge') &&
           icon.getBoundingClientRect().left>=r.left && icon.getBoundingClientRect().right<=r.right &&
           !button.hasAttribute('aria-pressed') && !button.querySelector('button,a,input') &&
           r.width>=48 && r.height>=48 && r.left>=0 && r.right<=innerWidth;
-      })()`), '#225/#404 Lọc thẻ is one named tertiary icon target >=48px '+[theme,width,scale].join('/'));
+      })()`), '#225/#404 Lọc thẻ is one named borderless icon target >=48px '+[theme,width,scale].join('/'));
     }
     check(await page.eval("(() => { const heading=document.querySelector('#explore-heading h1'); if(heading.getBoundingClientRect().width<=1) return true; const walker=document.createTreeWalker(heading,NodeFilter.SHOW_TEXT); for(let node=walker.nextNode();node;node=walker.nextNode()) for(const word of node.textContent.matchAll(/\\S+/g)) { const range=document.createRange(); range.setStart(node,word.index); range.setEnd(node,word.index+word[0].length); const rects=[...range.getClientRects()]; if(rects.some(r=>Math.abs(r.top-rects[0].top)>1)) return false; } return true; })()"), 'Vietnamese heading words remain intact '+[theme,width,scale].join('/'));
 
@@ -336,105 +334,33 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   })()`), '#308 r1 never highlights inside excerpt and shows result count on mobile search');
   await page.waitFor("document.querySelector('#open-tag-filters')", 'catalog for the applied query');
   await page.click('#open-tag-filters');
-  await page.waitFor("document.querySelector('#tag-picker')?.open && document.querySelector('#modal-tag-form input[type=checkbox]')", 'tag picker');
-  const captureSelection = async count => {
-    for (const [width,scale,theme] of [[390,100,'light'],[320,200,'dark']]) {
-      await page.viewport(width);
-      await page.eval(`document.documentElement.dataset.theme=${JSON.stringify(theme)}; document.documentElement.style.fontSize='${scale}%'; document.fonts.ready`);
-      // Theme changes animate action colors; inspect the settled surface, not an in-flight frame.
-      await page.eval("new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))");
-      await page.eval("Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{})))");
-      await textContrast(page, theme, 'filter');
-      check(await page.eval(`(() => {
-        const form=document.querySelector('#modal-tag-form'), help=document.getElementById(form.getAttribute('aria-describedby'));
-        return help.textContent==='Khớp tất cả thẻ' && help.getBoundingClientRect().width>0 &&
-          form.querySelector('#tag-selection-count').textContent.trim()==='Đã chọn '+${count}+'/4' &&
-          form.querySelectorAll('input:checked').length===${count} && document.documentElement.scrollWidth<=innerWidth;
-      })()`), '#225 helper retains AND/max4 and selection at '+[count,width,scale,theme].join('/'));
-      await page.capture('action225-filter-'+[count,width,scale,theme].join('-'), {boundary:'real-public-api',scenario:'tag-draft-selection'});
-    }
-    await page.viewport(390);
-    await page.eval("document.documentElement.style.fontSize='100%'");
-  };
-  await captureSelection(0);
+  const choices = await page.eval(`[...document.querySelectorAll('#modal-tag-form fieldset')].map(group => {
+    const link = group.querySelector('a');
+    return {id: link.id, href: link.href, label: link.textContent.trim()};
+  })`);
+  check(choices.length === 2, '#603 live catalog offers form and theme destinations');
   const before = await page.eval('location.href');
-  check(await page.eval(`(() => {
-    const form=document.querySelector('#modal-tag-form'), apply=form.querySelector('button[type=submit]');
-    return form.method==='get' && form.querySelectorAll('button[type=submit]').length===1 &&
-      apply.textContent==='Áp dụng' && apply.getAttribute('aria-disabled')==='true' &&
-      !apply.querySelector('button,a,input') && !form.querySelector('[name=cursor]') &&
-      [...form.querySelectorAll('input[type=checkbox]')].every(i=>i.name==='tag' && !!i.labels?.length);
-  })()`), '#308 Apply is disabled until a change; one native GET submit with labeled checkboxes');
-  // Count outside the page: a native GET may replace its Window and erase page globals.
-  let applySubmits = 0;
-  await page.send('Runtime.addBinding', {name:'action225Submit'});
-  const countApply = message => {
-    if (message.sessionId===page.sessionId && message.method==='Runtime.bindingCalled' &&
-        message.params.name==='action225Submit') applySubmits++;
-  };
-  page.cdp.listeners.push(countApply);
-  const choices = await page.eval(`(() => {
-    const form=document.querySelector('#modal-tag-form');
-    window.__action225Choice=form.querySelector('input[type=checkbox]');
-    window.__action225Changes=0; window.__action225Submits=0;
-    form.addEventListener('change',()=>window.__action225Changes++);
-    document.addEventListener('submit',e=>{if(e.target.id==='modal-tag-form'){window.__action225Submits++;window.action225Submit('apply')}},true);
-    return [...form.querySelectorAll('input[type=checkbox]')].slice(0,4).map(i=>i.id);
-  })()`);
-  await page.eval('window.__action225Choice.focus()');
-  await page.key('Space');
-  check(await page.eval(`window.__action225Changes===1 && window.__action225Submits===0 &&
-    window.__action225Choice===document.getElementById(${JSON.stringify(choices[0])}) &&
-    document.querySelector('#modal-tag-form button[type=submit]').getAttribute('aria-disabled')!=='true'`),
-    '#308 one Space changes one stable checkbox and enables Apply');
-  await captureSelection(1);
-  check(await page.eval('location.href') === before, 'draft selection does not change applied URL');
-  check(choices.length===4, '#225 catalog has at least four real choices for the max4 browser check');
-  for (const id of choices.slice(1)) await page.click('label:has(#'+id+')');
-  check(await page.eval(`document.querySelectorAll('#modal-tag-form input[type=checkbox]:checked').length===4 &&
-    document.querySelectorAll('#modal-tag-form input[type=checkbox]:not(:checked)').length>0 &&
-    [...document.querySelectorAll('#modal-tag-form input[type=checkbox]:not(:checked)')].every(i=>i.disabled) &&
-    [...document.querySelectorAll('#modal-tag-form input[type=checkbox]:checked')].every(i=>!i.disabled)`),
-    '#225 max4 blocks extra choices while selected choices remain removable');
-  await page.click('#modal-tag-form label:has(input:disabled)');
-  check(await page.eval("document.querySelectorAll('#modal-tag-form input:checked').length===4 && window.__action225Submits===0"), '#225 attempting a fifth tag cannot select or submit');
-  await captureSelection(4);
-  check(await page.eval(`(() => {
-    const clear = document.querySelector('#clear-tag-draft');
-    return clear?.type === 'button' && clear.textContent === 'Bỏ chọn' && clear.getAttribute('aria-disabled') !== 'true';
-  })()`), '#406 AC-02 Bỏ chọn is enabled when draft has selections');
-  await page.click('#clear-tag-draft');
-  check(await page.eval(`document.querySelectorAll('#modal-tag-form input[type=checkbox]:checked').length===0 &&
-    document.querySelectorAll('#modal-tag-form input[type=checkbox]:disabled').length===0 &&
-    document.querySelector('#tag-selection-count').textContent.trim()==='Đã chọn 0/4' &&
-    document.querySelector('#clear-tag-draft').getAttribute('aria-disabled')==='true' &&
-    document.querySelector('#modal-tag-form button[type=submit]').getAttribute('aria-disabled')==='true' &&
-    window.__action225Submits===0 && location.href===${JSON.stringify(before)}`),
-    '#406 AC-02 Bỏ chọn clears draft in sheet without submitting GET and disables Apply');
-  await page.click('label:has(#'+choices[0]+')');
-  await page.click('label:has(#'+choices[0]+')');
-  check(await page.eval(`document.querySelectorAll('#modal-tag-form input[type=checkbox]:checked').length===0 &&
-    document.querySelector('#modal-tag-form button[type=submit]').getAttribute('aria-disabled')==='true'`),
-    '#308 reverting to the applied set disables Apply');
-  await page.click('label:has(#'+choices[0]+')');
   await page.key('Escape');
-  await page.waitFor("!document.querySelector('#tag-picker').open && document.activeElement.id === 'open-tag-filters'", 'Escape restores filter trigger');
+  await page.waitFor("!document.querySelector('#tag-picker').open && document.activeElement.id==='open-tag-filters'", 'Escape returns to trigger');
   await page.click('#open-tag-filters');
-  await page.waitFor("document.querySelector('#tag-picker').open && !document.querySelector('#modal-tag-form input:checked')", '#308 Escape discards the uncommitted choice');
-  await page.click('label:has(#'+choices[0]+')');
   await page.eval('history.back()');
-  await page.waitFor("!document.querySelector('#tag-picker').open && document.activeElement.id === 'open-tag-filters'", '#308 Back closes before leaving the query');
-  check(await page.eval('location.href') === before, '#308 Back leaves the applied URL intact');
-  await page.click('#open-tag-filters');
-  check(await page.eval("!document.querySelector('#modal-tag-form input:checked')"), '#308 Back discards the uncommitted choice');
-  await page.click('label:has(#'+choices[0]+')');
-  await page.eval("document.querySelector('#modal-tag-form button[type=submit]').focus()");
-  await page.key('Enter');
-  await page.waitFor("new URL(location.href).searchParams.has('tag') && new URL(location.href).searchParams.get('q')==='mua' && document.querySelector('#public-results') && !document.querySelector('#tag-picker').open", 'Apply changes the tags and preserves the query');
-  await page.waitFor("document.activeElement?.id==='community-stream'", '#258 Apply focuses results after the picker closes');
-  check(applySubmits===1, '#225 Enter on Apply submits exactly once, including native GET navigation (observed '+applySubmits+')');
-  page.cdp.listeners = page.cdp.listeners.filter(listener=>listener!==countApply);
-  await page.send('Runtime.removeBinding', {name:'action225Submit'});
+  await page.waitFor("!document.querySelector('#tag-picker').open && document.activeElement.id==='open-tag-filters'", 'Back closes picker before navigating');
+  check(await page.eval('location.href') === before, 'cancelling retains the query');
+  for (const choice of choices) {
+    await page.click('#open-tag-filters');
+    await textContrast(page, 'light', 'filter');
+    await page.eval(`document.getElementById(${JSON.stringify(choice.id)}).focus()`);
+    await page.key('Enter');
+    await page.waitFor(`location.href === ${JSON.stringify(choice.href)} && document.querySelectorAll('#applied-filters .vk-applied-tag').length === 1 &&
+      document.querySelector('#applied-filters .vk-applied-tag').getAttribute('aria-label') === ${JSON.stringify('Bỏ lọc '+choice.label)} &&
+      !document.querySelector('#tag-picker')?.open && document.activeElement.id === 'community-stream'`, 'Enter applies one tag, closes picker and focuses results');
+    const url = new URL(choice.href);
+    check(url.searchParams.get('q') === 'mua' && url.searchParams.getAll('tag').length === 1 && !url.searchParams.has('cursor'), 'replacement retains query and resets cursor');
+  }
+  await page.eval('history.back()');
+  await page.waitFor(`location.href === ${JSON.stringify(choices[0].href)} && document.querySelector('#applied-filters a')?.getAttribute('aria-label') === ${JSON.stringify('Bỏ lọc '+choices[0].label)}`, 'Back restores first tag');
+  await page.eval('history.forward()');
+  await page.waitFor(`location.href === ${JSON.stringify(choices[1].href)} && document.querySelector('#applied-filters a')?.getAttribute('aria-label') === ${JSON.stringify('Bỏ lọc '+choices[1].label)}`, 'Forward restores replacement tag');
   check(await page.eval("document.querySelectorAll('#applied-filters .vk-applied-tag').length === 1"), 'applied filter is visible and removable');
   await page.waitFor("document.querySelector('#open-tag-filters')", 'applied catalog');
   await page.click('#open-tag-filters');
@@ -485,6 +411,27 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   await page.click('#close-public-search');
   await page.waitFor("location.search==='' && document.querySelector('#explore').dataset.search==='closed' && document.activeElement?.id==='open-public-search' && getComputedStyle(document.querySelector('#bottom-navigation')).display!=='none'", '#308 r1 close-public-search returns to browse with focus on launcher');
 
+  const poetry = '/the/' + encodeURIComponent('thơ');
+  await goto(poetry);
+  await page.waitFor("document.querySelector('.vk-empty-state__art')?.naturalWidth === 512", 'c049 true empty tag retains artwork');
+  for (const [width,height,scale,theme] of [[390,844,100,'light'],[320,540,150,'light'],[320,540,200,'dark'],[1440,900,100,'dark']]) {
+    await page.viewport(width,height);
+    await page.eval(`document.documentElement.dataset.theme=${JSON.stringify(theme)}; document.documentElement.style.fontSize='${scale}%'; document.fonts.ready`);
+    check(await page.eval(`(() => {
+      const a=document.querySelector('.vk-ui-back-link'), h=document.querySelector('#explore-heading h1'),
+        input=document.querySelector('#public-query'), search=input.closest('form'), main=document.querySelector('#community-stream');
+      return a.getAttribute('href')==='/' && a.textContent.trim()==='Về Khám phá' && a.firstElementChild.matches('[data-icon=arrow-back][aria-hidden=true]') &&
+        h.textContent==='Thơ' && a.getBoundingClientRect().bottom<=h.getBoundingClientRect().top+1 &&
+        search.getBoundingClientRect().top>=h.getBoundingClientRect().bottom-1 && input.labels[0].textContent==='Tìm trong thẻ' &&
+        !document.querySelector('#open-tag-filters,.vk-explore-modes') && !main.querySelector('a[href="/"]') &&
+        document.documentElement.scrollWidth<=innerWidth;
+    })()`), 'c049 parent, separate heading, native search and sole recovery '+[width,scale,theme]);
+    await page.capture('603-c049-'+[width,scale,theme].join('-'), {scenario:'tag-empty',boundary:'Product SSR + hydrated Chrome',requestedScene:{width,height,scale,theme}});
+  }
+  await goto(poetry+'?q=muc-603');
+  check(await page.eval(`new URL(document.querySelector('#clear-public-tags').href).searchParams.get('q')==='muc-603' &&
+    document.querySelector('#clear-public-results').getAttribute('href')===${JSON.stringify(poetry)}`), 'tag page clear-filter retains q and clear-query retains tag');
+
   const catalog = await (await fetch(args.base + '/api/v1/tags')).json();
   const tag = catalog.tags.find(t => t.label === 'Ký ức');
   const route = '/the/' + encodeURIComponent(tag.slug);
@@ -531,7 +478,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   await page.send('Emulation.setScriptExecutionDisabled', { value:true });
   try {
     await page.goto(args.base + '/?q=mua');
-    check(await page.eval("document.getElementById(document.querySelector('#dock-tag-form').getAttribute('aria-describedby')).textContent==='Khớp tất cả thẻ · Tối đa 4'"), '#225 no-JS filter explains AND/max4 before choosing');
+    check(await page.eval("[...document.querySelectorAll('#dock-tag-form a')].length>0 && [...document.querySelectorAll('#dock-tag-form a')].every(a=>new URL(a.href).searchParams.getAll('tag').length===1 && new URL(a.href).searchParams.get('q')==='mua')"), '#603 SSR exposes one-tag destinations retaining q');
     check(await page.eval("document.querySelector('.vk-public-row__link').href.includes('?q=mua')"), 'no-JS SSR supplies contextual reader links');
     await page.eval("document.querySelector('#public-query').value='khong-co-ket-qua-100'");
     const point = await page.eval("(() => { const b=document.querySelector('#public-search button[type=submit]'); b.scrollIntoView(); const r=b.getBoundingClientRect(); return {x:r.x+r.width/2,y:r.y+r.height/2}; })()");
@@ -541,12 +488,12 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     check(await page.eval("document.querySelector('.vk-empty-state__art').naturalWidth===0 && document.documentElement.dataset.hydrated!=='true' && document.querySelector('.vk-empty-state__message').textContent==='Không có tác phẩm khớp “khong-co-ket-qua-100”.' && document.querySelector('#clear-public-results').getAttribute('href')==='/' && document.querySelectorAll('#public-results [role=status]').length===1"), '#258/#405 blocked artwork before hydration leaves useful HTML and GET recovery');
     // page.click waits for animation frames; those callbacks do not run with page JS disabled.
     // Use the same native pointer path as the no-JS search above, without a JS click fallback.
-    for (const selector of ['#tag-dock summary', '#dock-tag-form label:has(input[type=checkbox])', '#dock-tag-form button[type=submit]']) {
+    for (const selector of ['#tag-dock summary', '#dock-tag-form a']) {
       const target = await page.eval(`(() => { const el=document.querySelector(${JSON.stringify(selector)}); el.scrollIntoView(); const r=el.getBoundingClientRect(); const x=r.x+r.width/2,y=r.y+r.height/2; return {x,y,hit:el.contains(document.elementFromPoint(x,y))}; })()`);
       check(target.hit, '#225 no-JS pointer hits the native filter target '+selector);
       for (const type of ['mousePressed','mouseReleased']) await page.send('Input.dispatchMouseEvent',{type,x:target.x,y:target.y,button:'left',clickCount:1});
     }
-    await page.waitFor("new URL(location.href).searchParams.get('q')==='khong-co-ket-qua-100' && new URL(location.href).searchParams.getAll('tag').length===1 && !new URL(location.href).searchParams.has('cursor')", '#225 no-JS checkbox + Apply preserves q/tag through native GET and resets cursor');
+    await page.waitFor("new URL(location.href).searchParams.get('q')==='khong-co-ket-qua-100' && new URL(location.href).searchParams.getAll('tag').length===1 && !new URL(location.href).searchParams.has('cursor')", '#225 no-JS catalog link preserves q/tag through native GET and resets cursor');
     // A corrupt response before hydration must not own any state meaning or recovery.
     let corruptRequests=0;
     const corruptArt = ({sessionId,method,params}) => {
@@ -915,14 +862,9 @@ export async function discoveryCorpus(page, { args, check }) {
   await page.viewport(1440);
   await page.waitFor("document.querySelector('#open-tag-filters')", '#308 filter entry on the second page');
   await page.click('#open-tag-filters');
-  await page.waitFor("document.querySelector('#tag-picker')?.open && document.querySelector('#modal-tag-form input:checked')", '#308 dialog with applied real tags');
-  const appliedChoice = '#modal-tag-form label:has(input[value='+JSON.stringify(form.slug)+'])';
-  await page.click(appliedChoice);
-  check(await page.eval("document.querySelector('#modal-tag-form button[type=submit]').getAttribute('aria-disabled')!=='true'"), '#308 removing an applied choice enables Apply');
-  await page.click(appliedChoice);
-  check(await page.eval("document.querySelector('#modal-tag-form button[type=submit]').getAttribute('aria-disabled')==='true' && location.pathname+location.search==="+JSON.stringify(context)), '#308 reordering the same applied set leaves Apply disabled and preserves the URL');
-  await page.click(appliedChoice);
-  await page.click('#modal-tag-form button[type=submit]');
+  await page.waitFor("document.querySelector('#tag-picker')?.open && document.querySelector('#modal-tag-form a')", 'legacy URL opens single-tag picker');
+  check(await page.eval("document.querySelectorAll('#applied-filters .vk-applied-tag').length===2 && !document.querySelector('#modal-tag-form [aria-current]')"), 'legacy AND results retain both labels, with no single active option');
+  await page.click('#modal-tag-form a[href*='+JSON.stringify(encodeURIComponent(form.slug))+']');
   await page.waitFor("!new URL(location.href).searchParams.has('cursor') && new URL(location.href).searchParams.get('q')==='kiem thu' && new URL(location.href).searchParams.getAll('tag').length===1 && document.querySelector('#public-results')", '#225 changed Apply resets second-page cursor and keeps q plus remaining tag');
 
   // Verify real non-zero browse scroll restoration on 390px across open -> close search.
@@ -972,9 +914,8 @@ export async function discoveryCorpus(page, { args, check }) {
     check(await page.eval("!document.querySelector('.vk-empty-state__art')"), '#258 unresolved read never mounts absence artwork');
     await page.waitFor("document.querySelector('#open-tag-filters')", 'filter entry available while A is pending');
     await page.click('#open-tag-filters');
-    await page.waitFor("document.querySelector('#tag-picker')?.open && document.querySelector('#modal-tag-form input[type=checkbox]')", 'filter controls available while A is pending');
+    await page.waitFor("document.querySelector('#tag-picker')?.open && document.querySelector('#modal-tag-form a')", 'filter controls available while A is pending');
     await page.click('#modal-tag-form .vk-discovery-option');
-    await page.click('#modal-tag-form button[type=submit]');
     await page.waitFor("new URL(location.href).searchParams.has('tag') && document.querySelector('[data-testid=public-no-results]')",'B filter completes while A remains held');
     const body={...found,filters:{q:'race-100-a',tags:[]},works:[{...found.works[0],title:'STALE RACE RESULT #100'}]};
     await page.send('Fetch.fulfillRequest',{requestId:held.shift(),responseCode:200,responseHeaders:[{name:'Content-Type',value:'application/json'},{name:'Cache-Control',value:'no-store'}],body:Buffer.from(JSON.stringify(body)).toString('base64')});

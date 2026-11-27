@@ -206,7 +206,7 @@ pub(super) fn ExactDeskDecision(session: Session) -> impl IntoView {
     });
     view! {
         <section class="vk-notif-page vk-notif-decision" aria-label="Kết quả kiểm duyệt">
-            <a id="desk-decision-back" class="vk-ui-link vk-notif-back" href="/ban-viet">"← Kết quả kiểm duyệt"</a>
+            <vink_ui::BackLink attr:id="desk-decision-back" href="/ban-viet" label="Kết quả kiểm duyệt" />
             <For each=move || session.profile_scope.get().zip(target.with(exact_target)) key=Clone::clone
                 children=move |(scope, target)| view! { <ReviewDetails target session scope /> } />
             <Show when=move || session.profile_scope.with(Option::is_none)>
