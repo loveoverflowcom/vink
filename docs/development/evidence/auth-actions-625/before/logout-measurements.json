@@ -1,0 +1,538 @@
+[
+  {
+    "sha": "8a3d6a5ab3ca67030eb7f9b47e85750e60f7413c",
+    "fixture": "loopback needs-principal session + logout 503, Product SPA",
+    "route": "/toi",
+    "screen": "logout",
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "scale": 100,
+    "initial": {
+      "button": [
+        112.65625,
+        664,
+        149.6875,
+        48
+      ],
+      "label": [
+        165.65625,
+        677.84375,
+        71.6875,
+        20.296875
+      ],
+      "icon": "close",
+      "glyph": [
+        137.65625,
+        678,
+        20,
+        20
+      ],
+      "busy": null,
+      "arcCount": 0,
+      "arcBeforeLabel": false,
+      "text": "Đăng xuất",
+      "href": null,
+      "focus": "",
+      "nav": [
+        [
+          "—\nTài khoản",
+          null,
+          "page"
+        ]
+      ],
+      "rootPx": "16px",
+      "overflow": -15
+    },
+    "pending": {
+      "button": [
+        112.65625,
+        664,
+        149.6875,
+        48
+      ],
+      "label": [
+        165.65625,
+        677.84375,
+        71.6875,
+        20.296875
+      ],
+      "icon": "close",
+      "glyph": [
+        137.65625,
+        678,
+        20,
+        20
+      ],
+      "busy": "true",
+      "status": "Đang đăng xuất…",
+      "arcCount": 1,
+      "arcBeforeLabel": false,
+      "animation": "vk-ui-spin",
+      "iterations": "infinite",
+      "text": "Đăng xuất",
+      "href": null,
+      "focus": "sign-out",
+      "nav": [
+        [
+          "—\nTài khoản",
+          null,
+          "page"
+        ]
+      ],
+      "rootPx": "16px",
+      "overflow": -15
+    },
+    "reduced": {
+      "button": [
+        112.65625,
+        664,
+        149.6875,
+        48
+      ],
+      "label": [
+        165.65625,
+        677.84375,
+        71.6875,
+        20.296875
+      ],
+      "icon": "close",
+      "glyph": [
+        137.65625,
+        678,
+        20,
+        20
+      ],
+      "busy": "true",
+      "status": "Đang đăng xuất…",
+      "arcCount": 1,
+      "arcBeforeLabel": false,
+      "animation": "vk-ui-spin",
+      "iterations": "0",
+      "text": "Đăng xuất",
+      "href": null,
+      "focus": "sign-out",
+      "nav": [
+        [
+          "—\nTài khoản",
+          null,
+          "page"
+        ]
+      ],
+      "rootPx": "16px",
+      "overflow": -15
+    },
+    "forced": {
+      "button": [
+        112.65625,
+        664,
+        149.6875,
+        48
+      ],
+      "label": [
+        165.65625,
+        677.84375,
+        71.6875,
+        20.296875
+      ],
+      "icon": "close",
+      "glyph": [
+        137.65625,
+        678,
+        20,
+        20
+      ],
+      "busy": "true",
+      "status": "Đang đăng xuất…",
+      "arcCount": 1,
+      "arcBeforeLabel": false,
+      "animation": "vk-ui-spin",
+      "iterations": "0",
+      "text": "Đăng xuất",
+      "href": null,
+      "focus": "sign-out",
+      "nav": [
+        [
+          "—\nTài khoản",
+          null,
+          "page"
+        ]
+      ],
+      "rootPx": "16px",
+      "overflow": -15
+    },
+    "restored": {
+      "button": [
+        19.5,
+        664,
+        149.6875,
+        48
+      ],
+      "label": [
+        72.5,
+        677.84375,
+        71.6875,
+        20.296875
+      ],
+      "icon": "close",
+      "glyph": [
+        44.5,
+        678,
+        20,
+        20
+      ],
+      "busy": null,
+      "arcCount": 0,
+      "arcBeforeLabel": false,
+      "text": "Đăng xuất",
+      "href": null,
+      "focus": "sign-out",
+      "nav": [
+        [
+          "—\nTài khoản",
+          null,
+          "page"
+        ]
+      ],
+      "rootPx": "16px",
+      "overflow": -15
+    }
+  },
+  {
+    "sha": "8a3d6a5ab3ca67030eb7f9b47e85750e60f7413c",
+    "fixture": "loopback needs-principal session + logout 503, Product SPA",
+    "route": "/toi",
+    "screen": "logout",
+    "width": 390,
+    "height": 844,
+    "theme": "dark",
+    "scale": 100,
+    "initial": {
+      "button": [
+        112.65625,
+        664,
+        149.6875,
+        48
+      ],
+      "label": [
+        165.65625,
+        677.84375,
+        71.6875,
+        20.296875
+      ],
+      "icon": "close",
+      "glyph": [
+        137.65625,
+        678,
+        20,
+        20
+      ],
+      "busy": null,
+      "arcCount": 0,
+      "arcBeforeLabel": false,
+      "text": "Đăng xuất",
+      "href": null,
+      "focus": "",
+      "nav": [
+        [
+          "—\nTài khoản",
+          null,
+          "page"
+        ]
+      ],
+      "rootPx": "16px",
+      "overflow": -15
+    },
+    "pending": {
+      "button": [
+        112.65625,
+        664,
+        149.6875,
+        48
+      ],
+      "label": [
+        165.65625,
+        677.84375,
+        71.6875,
+        20.296875
+      ],
+      "icon": "close",
+      "glyph": [
+        137.65625,
+        678,
+        20,
+        20
+      ],
+      "busy": "true",
+      "status": "Đang đăng xuất…",
+      "arcCount": 1,
+      "arcBeforeLabel": false,
+      "animation": "vk-ui-spin",
+      "iterations": "infinite",
+      "text": "Đăng xuất",
+      "href": null,
+      "focus": "sign-out",
+      "nav": [
+        [
+          "—\nTài khoản",
+          null,
+          "page"
+        ]
+      ],
+      "rootPx": "16px",
+      "overflow": -15
+    },
+    "reduced": {
+      "button": [
+        112.65625,
+        664,
+        149.6875,
+        48
+      ],
+      "label": [
+        165.65625,
+        677.84375,
+        71.6875,
+        20.296875
+      ],
+      "icon": "close",
+      "glyph": [
+        137.65625,
+        678,
+        20,
+        20
+      ],
+      "busy": "true",
+      "status": "Đang đăng xuất…",
+      "arcCount": 1,
+      "arcBeforeLabel": false,
+      "animation": "vk-ui-spin",
+      "iterations": "0",
+      "text": "Đăng xuất",
+      "href": null,
+      "focus": "sign-out",
+      "nav": [
+        [
+          "—\nTài khoản",
+          null,
+          "page"
+        ]
+      ],
+      "rootPx": "16px",
+      "overflow": -15
+    },
+    "forced": {
+      "button": [
+        112.65625,
+        664,
+        149.6875,
+        48
+      ],
+      "label": [
+        165.65625,
+        677.84375,
+        71.6875,
+        20.296875
+      ],
+      "icon": "close",
+      "glyph": [
+        137.65625,
+        678,
+        20,
+        20
+      ],
+      "busy": "true",
+      "status": "Đang đăng xuất…",
+      "arcCount": 1,
+      "arcBeforeLabel": false,
+      "animation": "vk-ui-spin",
+      "iterations": "0",
+      "text": "Đăng xuất",
+      "href": null,
+      "focus": "sign-out",
+      "nav": [
+        [
+          "—\nTài khoản",
+          null,
+          "page"
+        ]
+      ],
+      "rootPx": "16px",
+      "overflow": -15
+    },
+    "restored": {
+      "button": [
+        19.5,
+        664,
+        149.6875,
+        48
+      ],
+      "label": [
+        72.5,
+        677.84375,
+        71.6875,
+        20.296875
+      ],
+      "icon": "close",
+      "glyph": [
+        44.5,
+        678,
+        20,
+        20
+      ],
+      "busy": null,
+      "arcCount": 0,
+      "arcBeforeLabel": false,
+      "text": "Đăng xuất",
+      "href": null,
+      "focus": "sign-out",
+      "nav": [
+        [
+          "—\nTài khoản",
+          null,
+          "page"
+        ]
+      ],
+      "rootPx": "16px",
+      "overflow": -15
+    }
+  },
+  {
+    "sha": "8a3d6a5ab3ca67030eb7f9b47e85750e60f7413c",
+    "fixture": "loopback needs-principal session + logout 503, Product SPA",
+    "route": "/toi",
+    "screen": "logout",
+    "width": 320,
+    "height": 800,
+    "theme": "dark",
+    "scale": 200,
+    "initial": {
+      "button": [
+        16,
+        512.765625,
+        273,
+        131.1875
+      ],
+      "label": [
+        101,
+        537.765625,
+        139,
+        81.1875
+      ],
+      "icon": "close",
+      "glyph": [
+        65,
+        568.359375,
+        20,
+        20
+      ],
+      "busy": null,
+      "arcCount": 0,
+      "arcBeforeLabel": false,
+      "text": "Đăng xuất",
+      "href": null,
+      "focus": "",
+      "nav": [
+        [
+          "—\nTài khoản",
+          null,
+          "page"
+        ]
+      ],
+      "rootPx": "32px",
+      "overflow": -15
+    }
+  },
+  {
+    "sha": "8a3d6a5ab3ca67030eb7f9b47e85750e60f7413c",
+    "fixture": "loopback needs-principal session + logout 503, Product SPA",
+    "route": "/toi",
+    "screen": "logout",
+    "width": 834,
+    "height": 900,
+    "theme": "light",
+    "scale": 150,
+    "initial": {
+      "button": [
+        358.234375,
+        795.5625,
+        213.53125,
+        68.4375
+      ],
+      "label": [
+        427.234375,
+        814.5625,
+        107.53125,
+        30.4375
+      ],
+      "icon": "close",
+      "glyph": [
+        395.234375,
+        819.78125,
+        20,
+        20
+      ],
+      "busy": null,
+      "arcCount": 0,
+      "arcBeforeLabel": false,
+      "text": "Đăng xuất",
+      "href": null,
+      "focus": "",
+      "nav": [
+        [
+          "—",
+          null,
+          "page"
+        ]
+      ],
+      "rootPx": "24px",
+      "overflow": 0
+    }
+  },
+  {
+    "sha": "8a3d6a5ab3ca67030eb7f9b47e85750e60f7413c",
+    "fixture": "loopback needs-principal session + logout 503, Product SPA",
+    "route": "/toi",
+    "screen": "logout",
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "scale": 100,
+    "initial": {
+      "button": [
+        755.15625,
+        828,
+        149.6875,
+        48
+      ],
+      "label": [
+        808.15625,
+        841.84375,
+        71.6875,
+        20.296875
+      ],
+      "icon": "close",
+      "glyph": [
+        780.15625,
+        842,
+        20,
+        20
+      ],
+      "busy": null,
+      "arcCount": 0,
+      "arcBeforeLabel": false,
+      "text": "Đăng xuất",
+      "href": null,
+      "focus": "",
+      "nav": [
+        [
+          "—\nTài khoản",
+          null,
+          "page"
+        ]
+      ],
+      "rootPx": "16px",
+      "overflow": 0
+    }
+  }
+]

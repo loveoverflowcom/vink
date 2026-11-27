@@ -1,0 +1,70 @@
+{
+  "sha": "9def42688c02a295e1856d2fc2a52fd84d7da797",
+  "results": [
+    {
+      "route": "/ban-viet",
+      "modalAx": {
+        "role": "link",
+        "name": "Đăng nhập"
+      },
+      "modalIcon": "lock"
+    },
+    {
+      "route": "/ban-viet",
+      "ax": {
+        "role": "link",
+        "name": "Đăng nhập"
+      }
+    },
+    {
+      "route": "/ban-viet",
+      "modifierTab": "http://127.0.0.1:18429/toi?next=/ban-viet"
+    },
+    {
+      "route": "/ban-viet",
+      "touchTarget": "http://127.0.0.1:18429/toi?next=/ban-viet"
+    },
+    {
+      "route": "/?mode=following",
+      "modalAx": {
+        "role": "link",
+        "name": "Đăng nhập"
+      },
+      "modalIcon": "lock"
+    },
+    {
+      "route": "/?mode=following",
+      "ax": {
+        "role": "link",
+        "name": "Đăng nhập"
+      }
+    },
+    {
+      "route": "/?mode=following",
+      "modifierTab": "http://127.0.0.1:18429/toi?next=%2F%3Fmode%3Dfollowing"
+    },
+    {
+      "route": "/?mode=following",
+      "touchTarget": "http://127.0.0.1:18429/toi?next=%2F%3Fmode%3Dfollowing"
+    },
+    {
+      "pendingLogin": {
+        "role": "button",
+        "name": "Đăng nhập",
+        "description": "Đang đăng nhập…",
+        "busy": 1
+      }
+    },
+    {
+      "retryAx": {
+        "role": "button",
+        "name": "Thử đăng nhập lại"
+      },
+      "retryIcon": "lock"
+    },
+    {
+      "retryReturnedToForm": true,
+      "previousRequests": 1
+    }
+  ]
+}

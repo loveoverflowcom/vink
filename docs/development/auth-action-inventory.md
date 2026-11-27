@@ -13,7 +13,7 @@ Hình thức biểu tượng thuộc LayoutSpec, nên công việc này không t
 | `/toi`, active, cần bút danh hoặc suspended | `SignedInSettings` và `AccountHub` → `SignOut`, `#sign-out` | Dùng Logout thay Close. Text ở Cài đặt, Tonal cho hai nhánh khác. Một MicroArc thay glyph khi chờ. Kiểm tra phiên, thêm mật khẩu và quản lý/xóa tài khoản là các thao tác riêng. |
 | Shell mọi route, rộng/hẹp/modal/bar | `AccountLink`, `a[data-destination=me]` | Đăng nhập + Lock khi gate mở, Tài khoản + Person/PersonOutline khi đóng, avatar sau xác nhận. Tên AX có ở rail thu gọn và `aria-current` tiếp tục theo route. |
 | Bàn viết, khách hoặc liên kết sâu; lỗi tải bản thảo khi hết phiên | `DeskAccess` hoặc adapter lỗi, `#desk-sign-in` | Thêm Lock vào anchor Filled hoặc Standalone với đích `next` hiện có. Khi gate đóng chỉ có Khám phá. Đặt bút danh, Mở Tài khoản khi bị tạm khóa và Kiểm tra lại phiên giữ mục đích riêng. |
-| Khám phá Đang theo dõi, URL trực tiếp khi khách hoặc expired | `FeedAccountLink`, `#feed-sign-in` | Lock cho Đăng nhập. Hoàn tất bút danh dùng chung anchor và đích nhưng không gắn Lock. Tab Đang theo dõi vẫn ẩn với khách; restricted chỉ dẫn Mở Tài khoản. |
+| Khám phá Đang theo dõi, URL trực tiếp khi bật feed, khách hoặc expired | `FeedAccountLink`, `#feed-sign-in` | Lock cho Đăng nhập. Hoàn tất bút danh dùng chung anchor và đích nhưng không gắn Lock. Tab Đang theo dõi vẫn ẩn với khách; restricted chỉ dẫn Mở Tài khoản. |
 | Hồ sơ tác giả và Theo dõi | `ProfileActionRegion`, `#follow-sign-in`; hồ sơ riêng `OwnProfileHost` | Theo dõi là anchor intent có đích quay lại hồ sơ, rồi dùng form Auth chung. Cần bút danh hiện hành động tương ứng. Hồ sơ riêng dùng Mở Tài khoản khi thiếu scope; không công khai overlay. |
 | Reader, Nhận xét và Đã lưu | `#save-work`, `#root-composer-send`, `#reply-composer-…-send`, `#reader-auth`, saved profile | CTA mở overlay vẫn là Lưu hoặc Gửi. Form Login trong overlay dùng cùng owner, còn Close vẫn đóng overlay. Không tự chạy ý định sau khi xác thực. Tắt đăng nhập giữ các lý do chặn; phần Đã lưu riêng phụ thuộc scope. |
 | Các guard còn lại | Inbox `.vk-notif-empty`, Desk review status, lỗi xuất bản và nhận xét, thông báo phiên | Mở Tài khoản là liên kết hỗ trợ, còn chỉ dẫn và tiêu đề là nội dung đọc. Không thêm CTA vào các trạng thái này. |
@@ -24,3 +24,5 @@ recovery chưa triển khai và không đưa lựa chọn email vào form đăng
 theo [UIS-02](../../packages/ui-system/shared/components.md), pending theo UIS-03 từ #624.
 Icon Logout đến từ đúng pin của [catalog](../../packages/ui-system/shared/icons.json) và được
 sinh cho cả Rust lẫn Kotlin.
+
+[Ảnh và kiểm chứng Chrome](evidence/auth-actions-625/README.md).
