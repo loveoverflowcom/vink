@@ -3415,12 +3415,12 @@ async function draftR6Hierarchy(page) {
       const rows=[...document.querySelectorAll('.vk-draft-row__link')], list=document.querySelector('#draft-results');
       return !document.querySelector('#resume, #resume-title-toggle') && document.documentElement.scrollWidth<=innerWidth &&
         getComputedStyle(list).backgroundColor==='rgba(0, 0, 0, 0)' && rows.every((row,i)=>
-          getComputedStyle(row.closest('.vk-author-work')).backgroundColor!=='rgba(0, 0, 0, 0)' &&
+          getComputedStyle(row.closest('.vk-author-work')).backgroundColor==='rgba(0, 0, 0, 0)' &&
           row.getAttribute('href')==='/ban-viet/'+${JSON.stringify(cards)}[i].work_id &&
           row.querySelector('.vk-draft-row__title').textContent===${JSON.stringify(cards)}[i].title &&
           !row.textContent.includes('Phiên bản') && getComputedStyle(row).paddingLeft===getComputedStyle(row).paddingRight &&
           row.querySelectorAll('a,button,input').length===0);
-    })()`), `#213 ${width}/${scale}/${theme}: no resume, separate card surfaces, full Unicode titles and exact IDs`);
+    })()`), `#213 ${width}/${scale}/${theme}: no resume, flat row surfaces, full Unicode titles and exact IDs (#593)`);
     await page.eval(`document.querySelector('#drafts').scrollIntoView({block:'start'})`);
     await page.capture(`r6-list-${width}-${scale}-${theme}`);
     await textContrast(page, theme, 'desk');
@@ -3553,7 +3553,8 @@ async function draftDashboard(page) {
       const [searchBox, formatBox, createBox] = rects;
       const centerY = box => (box.top + box.bottom) / 2;
       const aligned = box => Math.abs(centerY(box) - centerY(searchBox)) <= 1;
-      const sameRow = rects.every(aligned);
+      const createAligned = Math.abs(centerY(formatBox) - centerY(createBox)) <= 1;
+      const heading = document.querySelector('#heading').getBoundingClientRect();
       const standard = ${scale} === 100;
       const searchStyle = getComputedStyle(search);
       const title = document.querySelector('#desk-title').getBoundingClientRect();
@@ -3566,10 +3567,10 @@ async function draftDashboard(page) {
         searchStyle.boxShadow === 'none' && search.getAttribute('aria-expanded') === 'false' &&
         (!standard || searchBox.width === 48 && rects.every(box => Math.abs(box.height - 48) <= 1) &&
           [search, format, create].every(control => getComputedStyle(control).borderTopLeftRadius === '14px') &&
-          (${width} < 834 || sameRow && aligned(title) && aligned(lock)) &&
-          (!sameRow || Math.abs(formatBox.left - searchBox.right - 8) <= 1 &&
-            Math.abs(createBox.left - formatBox.right - 8) <= 1));
-    })()`), `#522 Desk ${theme} ${width}/${scale}: native format label, flat Search and aligned 48px controls that reflow`);
+          (${width} < 834 || createAligned && aligned(title) && aligned(lock)) &&
+          formatBox.top >= heading.bottom - 1 && createBox.top >= heading.bottom - 1 &&
+          (!createAligned || Math.abs(createBox.left - formatBox.right - 8) <= 1));
+    })()`), `#522 Desk ${theme} ${width}/${scale}: native format label, flat Search and 48px creation controls below the heading (#593)`);
     check(await page.eval(`(() => {
       const row=document.querySelector('.vk-draft-row__link'), work=row.closest('.vk-author-work'), title=row.querySelector('.vk-draft-row__title'), meta=work.querySelector('.vk-draft-meta');
       const t=title.getBoundingClientRect(), m=meta.getBoundingClientRect(), r=work.getBoundingClientRect(), h=document.querySelector('#heading').getBoundingClientRect();
@@ -3580,7 +3581,7 @@ async function draftDashboard(page) {
         ['#drafts','.vk-draft-controls','#draft-results'].every(s=>Math.abs(document.querySelector(s).getBoundingClientRect().left-h.left)<1);
     })()`), `#213 ${theme} ${width}/${scale}: two-line default, complete DOM title, metadata and common list/search axis`);
     await page.eval(`document.querySelector('#drafts').scrollIntoView({block:'start'})`);
-    const anchors = `['#desk-title','.vk-desk-heading__privacy','#create-draft-format','#create-draft','.vk-notif-mobile-bell']
+    const anchors = `['#desk-title','.vk-desk-heading__privacy','.vk-notif-mobile-bell']
       .map(s => document.querySelector('#heading ' + s)).filter(el => el?.checkVisibility())
       .map(el => { const r = el.getBoundingClientRect(); return [r.left, r.top + scrollY, r.width, r.height]; }).flat()`;
     const closed = await page.eval(anchors);
@@ -3589,7 +3590,7 @@ async function draftDashboard(page) {
     await page.eval(`Promise.all(document.querySelector('.vk-draft-search').getAnimations().map(a=>a.finished.catch(()=>{})))`);
     const opened = await page.eval(anchors);
     check(closed.length === opened.length && closed.every((v,i) => Math.abs(v-opened[i]) <= 1),
-      `#531 Desk ${theme} ${width}/${scale}: title, lock, bell, format and creation remain anchored`);
+      `#531 Desk ${theme} ${width}/${scale}: title, lock and bell remain anchored while the search dock pushes list tools below`);
     await searchBarGeometry(page,'#draft-search',`Desk ${width}/${scale}/${theme}`);
     if (([390,1440].includes(width) && scale === 100) || (width === 320 && scale === 200)) {
       await page.eval('scrollTo(0,0)');
@@ -3611,7 +3612,7 @@ async function draftDashboard(page) {
       const r=create.getBoundingClientRect(), label=create.querySelector('.vk-ui-button__label');
       const range=document.createRange(); range.selectNodeContents(label);
       const picks=['#create-draft-format','#draft-sort'].map(s=>document.querySelector(s));
-      return document.querySelectorAll('#create-draft').length===1 && create.type==='button' && create.closest('#heading') &&
+      return document.querySelectorAll('#create-draft').length===1 && create.type==='button' && create.closest('.vk-draft-controls') &&
         document.querySelectorAll('#desk h1').length===1 && document.querySelector('#drafts h2#draft-list-title')?.textContent==='Tác phẩm của bạn' &&
         picks.every(p=>getComputedStyle(p).appearance==='none' && getComputedStyle(p).backgroundImage==='none' && p.parentElement.dataset.selectVariant==='inset-16' && p.parentElement.querySelectorAll('svg[data-icon=expand-more]').length===1) &&
         getComputedStyle(picks[0].closest('.vk-ui-field').querySelector('.vk-ui-field__required')).display==='none' &&
