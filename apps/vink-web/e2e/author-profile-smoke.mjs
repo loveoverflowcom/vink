@@ -30,36 +30,39 @@ function literal(text) {
   return "'" + text.replaceAll("'", "''") + "'";
 }
 
+function publicFixtureWork(actor, id, title, source, tag) {
+  const rev = randomUUID();
+  const snapshot = tag ? randomUUID() : null;
+  const digest = createHash('sha256').update('vink-document-content');
+  for (const text of ['default', title, source]) {
+    const bytes = Buffer.from(text);
+    const length = Buffer.alloc(8);
+    length.writeBigUInt64BE(BigInt(bytes.length));
+    digest.update(length).update(bytes);
+  }
+  return `
+    INSERT INTO works(id,owner_id) VALUES (${literal(id)}, ${literal(actor)});
+    INSERT INTO revisions(id,work_id,title,document,content_hash,created_by)
+    VALUES (${literal(rev)},${literal(id)},${literal(title)},
+      ${literal(JSON.stringify({format:'default', source}))},${literal(digest.digest('hex'))},${literal(actor)});
+    ${tag ? `
+      INSERT INTO work_metadata_snapshots(id, work_id, metadata_version, digest)
+      VALUES (${literal(snapshot)},${literal(id)},1,work_metadata_digest(${literal(tag)}, ARRAY[]::uuid[]));
+      INSERT INTO work_metadata_snapshot_tags(snapshot_id, slot, tag_id, facet)
+      VALUES (${literal(snapshot)},0,${literal(tag)},'form');` : ''}
+    INSERT INTO publications(work_id,revision_id,generation,published_at,metadata_snapshot_id)
+    VALUES (${literal(id)},${literal(rev)},1,clock_timestamp(),${snapshot ? literal(snapshot) : 'NULL'});`;
+}
+
 function fixture(a, b) {
   const ids = {
     a: randomUUID(), b: randomUUID(), root: randomUUID(),
     reply: randomUUID(), tail: randomUUID(), thread: randomUUID(), tag: randomUUID()
   };
-  const works = [a, b].map((actor, i) => {
-    const id = i ? ids.b : ids.a;
-    const rev = randomUUID();
-    const snapshot = randomUUID();
-    const title = i ? 'Tác phẩm thứ hai của riêng người viết B' : 'Tác phẩm thứ nhất của riêng người viết A';
-    const source = 'Mưa bên bậc cửa rồi lặng.';
-    const digest = createHash('sha256').update('vink-document-content');
-    for (const text of ['default', title, source]) {
-      const bytes = Buffer.from(text);
-      const length = Buffer.alloc(8);
-      length.writeBigUInt64BE(BigInt(bytes.length));
-      digest.update(length).update(bytes);
-    }
-    return `
-      INSERT INTO works(id,owner_id) VALUES (${literal(id)}, ${literal(actor)});
-      INSERT INTO revisions(id,work_id,title,document,content_hash,created_by)
-      VALUES (${literal(rev)},${literal(id)},${literal(title)},
-        ${literal(JSON.stringify({format:'default', source}))},${literal(digest.digest('hex'))},${literal(actor)});
-      INSERT INTO work_metadata_snapshots(id, work_id, metadata_version, digest)
-      VALUES (${literal(snapshot)},${literal(id)},1,work_metadata_digest(${literal(ids.tag)}, ARRAY[]::uuid[]));
-      INSERT INTO work_metadata_snapshot_tags(snapshot_id, slot, tag_id, facet)
-      VALUES (${literal(snapshot)},0,${literal(ids.tag)},'form');
-      INSERT INTO publications(work_id,revision_id,generation,published_at,metadata_snapshot_id)
-      VALUES (${literal(id)},${literal(rev)},1,clock_timestamp(),${literal(snapshot)});`;
-  });
+  const works = [
+    publicFixtureWork(a, ids.a, 'Tác phẩm thứ nhất của riêng người viết A', 'Mưa bên bậc cửa rồi lặng.', ids.tag),
+    publicFixtureWork(b, ids.b, 'Tác phẩm thứ hai của riêng người viết B', 'Mưa bên bậc cửa rồi lặng.', ids.tag),
+  ];
   authorFixtureSql(`BEGIN;
     INSERT INTO tags(id,facet,label,slug,status) VALUES (${literal(ids.tag)},'form','Tản văn','tản-văn','active');
     INSERT INTO tag_names(slug,tag_id,kind) VALUES ('tản-văn',${literal(ids.tag)},'canonical');
@@ -164,6 +167,184 @@ async function accountR5Layouts(page, check) {
   await page.viewport(1280);
   await choose('theme', previous[0]);
   await choose('text', previous[1]);
+}
+
+// Use the actual member appearance controls for both states and the comparison captures.
+async function profileWorksLayouts(page, check, textContrast, base, emptyPath, populatedPath) {
+  const choose = async (group, value) => {
+    const selected = `${q('#page-' + group + ' input:checked')}?.value === ${JSON.stringify(value)}`;
+    if (!await page.eval(selected)) await page.click(`#page-${group} label:has(input[value="${value}"])`);
+    await page.waitFor(selected, 'profile works appearance choice applied');
+  };
+  await page.goto(base + '/toi');
+  await page.waitFor(q('#page-theme input:checked'), 'member appearance controls');
+  const previous = await page.eval("['theme','text'].map(group => document.querySelector('#page-' + group + ' input:checked').value)");
+  for (const [width, height] of [[320, 700], [390, 844], [834, 900], [1440, 900]]) {
+    await page.viewport(width, height);
+    for (const theme of ['light', 'dark']) {
+      for (const scale of ['100', '150']) {
+        await choose('theme', theme);
+        await choose('text', scale);
+        for (const [scenario, path, target] of [
+          ['empty', emptyPath, '.vk-author-works-empty'],
+          ['populated', populatedPath, '.vk-author-works a'],
+        ]) {
+          if (!path) continue;
+          await page.goto(base + path);
+          await page.waitFor(`${q(target)} && document.documentElement.dataset.theme === '${theme}' &&
+            (document.documentElement.dataset.text || '100') === '${scale}'`, 'profile works state with selected appearance');
+          await page.eval("document.fonts.ready.then(() => scrollTo(0, 0))");
+          await verifyWorksGeometry(page, check, scenario === 'empty', `${width}/${theme}/${scale}`);
+          if (width === 1440 && scale === '100') {
+            const targets = scenario === 'empty'
+              ? ['.vk-author-works-empty .vk-empty-state__message']
+              : ['.vk-author-work__metadata', '.vk-author-work__title', '.vk-author-work__excerpt'];
+            await textContrast(page, theme, `author-works-${scenario}`, targets);
+          }
+          if (width === 390 || width === 1440) {
+            await page.capture(`r8-profile-works-${scenario}-${width}-${theme}-${scale}`, {
+              textScale:Number(scale), textScaleLane:'app-appearance-control',
+              requiredTargets:['#author-works-heading', target],
+            });
+          }
+        }
+        await page.goto(base + '/toi');
+        await page.waitFor(q('#page-theme input:checked'), 'return to member appearance controls');
+      }
+    }
+  }
+  if (emptyPath) {
+    await choose('text', '100');
+    for (const width of [320, 834]) {
+      for (const theme of ['light', 'dark']) {
+        await choose('theme', theme);
+        await page.viewport(width);
+        await page.goto(base + emptyPath);
+        await page.waitFor(`${q('.vk-author-works-empty img')} &&
+          document.documentElement.dataset.theme === '${theme}'`, 'empty artwork on the chosen theme');
+        await page.eval("document.documentElement.style.fontSize='200%'");
+        await verifyWorksGeometry(page, check, true, `${width}/${theme}/200 root stress`);
+        await page.capture(`r8-profile-works-empty-${width}-${theme}-200`, {
+          textScale:200, textScaleLane:'dom-override-geometry-only', requiredTargets:['.vk-author-works-empty'],
+        });
+        await page.goto(base + '/toi');
+        await page.waitFor(q('#page-theme input:checked'), 'member appearance controls after the stress check');
+      }
+    }
+  }
+  await page.viewport(1280);
+  await choose('theme', previous[0]);
+  await choose('text', previous[1]);
+}
+
+async function verifyWorksGeometry(page, check, empty, scene) {
+  const facts = await page.eval(`(async () => {
+    const root = document.documentElement;
+    const rect = el => el.getBoundingClientRect();
+    const center = el => rect(el).left + rect(el).width / 2;
+    const inside = el => rect(el).left >= -1 && rect(el).right <= root.clientWidth + 1;
+    const shell = root.scrollWidth <= root.clientWidth + 1;
+    if (${empty}) {
+      const state = ${q('.vk-author-works-empty')};
+      const art = state.querySelector('img');
+      if (art) await art.decode();
+      const copy = state.querySelector('p');
+      return {shell, fits: inside(state), centered: !!art &&
+        Math.abs(center(art) - center(state)) <= 1 && Math.abs(center(copy) - center(state)) <= 1 &&
+        Math.abs((rect(art).top + rect(copy).bottom) / 2 - (rect(state).top + rect(state).bottom) / 2) <= 1,
+        local: getComputedStyle(state.closest('.vk-main')).display !== 'flex',
+        meaningful: !!art?.currentSrc.endsWith('/vink-empty-no-public-works.webp') && art.alt === '' &&
+          copy.textContent === 'Chưa có tác phẩm công khai.' && !state.querySelector('a,button')};
+    }
+    const rows = [...document.querySelectorAll('.vk-author-works > li')];
+    return {shell, fits: rows.length > 0 && rows.every(row => [row, ...row.querySelectorAll('a, h3, p')].every(inside)),
+      borderless: rows.every(row => getComputedStyle(row).borderBlockEndWidth === '0px' &&
+        getComputedStyle(row.querySelector('a'), '::after').content === 'none'),
+      title: rows.every(row => getComputedStyle(row.querySelector('h3')).fontFamily.includes('Literata')),
+      order: rows.every(row => {
+        const meta = row.querySelector('.vk-author-work__metadata'), title = row.querySelector('h3'),
+          excerpt = row.querySelector('.vk-author-work__excerpt');
+        return (!meta || rect(meta).bottom <= rect(title).top && getComputedStyle(meta).fontFamily.includes('Be Vietnam Pro')) &&
+          (!excerpt || rect(title).bottom <= rect(excerpt).top);
+      })};
+  })()`);
+  check(Object.values(facts).every(Boolean), `profile works ${empty ? 'empty' : 'editorial'} ${scene}: ${JSON.stringify(facts)}`);
+}
+
+async function editorialProfileWorks(guest, {base, aPath, bPath, actor, ids, check}) {
+  const workLink = '#profile-work-' + ids.a;
+  const reader = '/tac-pham/' + ids.a;
+  await guest.goto(base + bPath + '?cursor=invalid');
+  check(await guest.eval(`${q('.vk-author-public [role=alert]')} && !${q('.vk-author-works-empty img')}`),
+    'invalid cursor offers restart with no empty artwork');
+  await guest.goto(base + aPath);
+  check(await guest.eval(`(() => {
+    const link = ${q(workLink)}, title = link.querySelector('h3');
+    return link.href === new URL(${JSON.stringify(reader)}, location.origin).href &&
+      link.getAttribute('aria-labelledby') === title.id &&
+      link.getAttribute('data-profile-return') === 'true' &&
+      !link.querySelector('a,button') &&
+      link.querySelector('.vk-author-work__metadata span').textContent === 'Tản văn' &&
+      !!link.querySelector('time')?.dateTime &&
+      link.querySelector('.vk-author-work__excerpt').textContent === 'Mưa bên bậc cửa rồi lặng.' &&
+      !${q('#profile-mode-saved')};
+  })()`), 'public row has one named work link and only current publication facts');
+  const ssr = await fetch(base + aPath).then(r => r.text());
+  check(ssr.includes(`id="profile-work-${ids.a}"`) && ssr.includes('Mưa bên bậc cửa rồi lặng.') &&
+    !ssr.includes('id="profile-mode-saved"'), 'initial Product HTML contains the same public row without Saved');
+
+  const poem = {id:randomUUID(), title:'NhữngDòngMưa'.repeat(12), text:'Có những ngày trời không mưa\nMà lòng người vẫn ướt.\n\nNgọn đèn bên cửa.'};
+  authorFixtureSql(`BEGIN; ${publicFixtureWork(actor, poem.id, poem.title, poem.text)} COMMIT;`);
+  try {
+    const poemLink = '#profile-work-' + poem.id;
+    await guest.reload();
+    await guest.waitFor(q(poemLink), 'the public poem is present');
+    check(await guest.eval(`(() => {
+      const link = ${q(poemLink)}, excerpt = link.querySelector('.vk-author-work__excerpt');
+      return link.querySelector('h3').textContent === ${JSON.stringify(poem.title)} &&
+        excerpt.textContent === ${JSON.stringify(poem.text)} && getComputedStyle(excerpt).whiteSpace === 'pre-wrap' &&
+        !excerpt.classList.contains('vk-author-work__excerpt--prose') &&
+        !link.querySelector('.vk-author-work__metadata span') && !!link.querySelector('time') &&
+        !link.querySelector('img, svg, a, button');
+    })()`), 'long title, original poem lines, no art or invented form on the legacy metadata shape');
+    for (const width of [320, 834]) {
+      for (const theme of ['light', 'dark']) {
+        await guest.viewport(width);
+        await guest.eval(`(async () => {
+          document.documentElement.style.fontSize = '200%';
+          document.documentElement.dataset.theme = '${theme}';
+          await document.fonts.ready;
+        })()`);
+        await verifyWorksGeometry(guest, check, false, `${width}/${theme}/200 root stress`);
+        await guest.eval(`${q(poemLink)}.scrollIntoView({block:'center'})`);
+        await guest.capture(`r8-profile-works-poem-${width}-${theme}-200`, {
+          textScale:200, textScaleLane:'dom-override-geometry-only', requiredTargets:[poemLink],
+        });
+      }
+    }
+    await guest.eval("document.documentElement.style.fontSize=''; delete document.documentElement.dataset.theme");
+    await guest.viewport(390, 650);
+    await guest.eval(`${q('#author-works-heading')}.focus()`);
+    await guest.key('Tab');
+    check(await guest.eval(`document.activeElement === ${q(poemLink)} &&
+      getComputedStyle(document.activeElement).outlineStyle === 'solid' &&
+      parseFloat(getComputedStyle(document.activeElement).outlineWidth) >= 2`), 'Tab reaches the first work with a visible focus ring');
+    await guest.key('Tab');
+    check(await guest.eval(`document.activeElement === ${q(workLink)}`), 'each full work row has one tab stop');
+    await guest.eval(`${q(workLink)}.scrollIntoView({block:'center'})`);
+    await guest.key('Enter');
+    await guest.waitFor(`location.pathname===${JSON.stringify(reader)} && ${q('#reader-paper')}`, 'Enter opens the canonical WorkId Reader');
+    await guest.eval('history.back()');
+    await guest.waitFor(`location.pathname===${JSON.stringify(aPath)} && document.activeElement===${q(workLink)}`,
+      'Back restores the same profile row');
+    check(await guest.eval(`(() => {
+      const link = ${q(workLink)}, r = link.getBoundingClientRect();
+      return r.bottom > 0 && r.top < innerHeight && scrollX === 0;
+    })()`), 'the restored work link is in the viewport');
+  } finally {
+    authorFixtureSql(`DELETE FROM publications WHERE work_id=${literal(poem.id)};`);
+    await guest.viewport(1280);
+  }
 }
 
 // A synthetic persisted event exercises the live-document branch even on a Chrome
@@ -299,13 +480,21 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   const b = await own(other);
   await fill(other, NAME, SAME_NAME);
   await save(other);
-  const ids = fixture(a.principal_id, b.principal_id);
   const aPath = '/@' + a.handle;
   const bPath = '/@' + b.handle;
-  const profileApi = '/api/v1/authors/' + a.handle;
-  const readerPath = '/tac-pham/' + ids.a;
   const context = await page.cdp.send('Target.createBrowserContext', {disposeOnDetach:false});
   const guest = await openPage(context.browserContextId);
+  await guest.goto(base + bPath);
+  await verifyWorksGeometry(guest, check, true, 'guest without published works');
+  check(await guest.eval(`!${q('#profile-mode-saved')} && !${q('#own-profile-edit-link')}`),
+    'true-empty guest has no owner-only entry');
+  // Capture B before publication and A after publication with the same member settings.
+  await profileWorksLayouts(page, check, textContrast, base, bPath, null);
+  const ids = fixture(a.principal_id, b.principal_id);
+  await profileWorksLayouts(page, check, textContrast, base, null, aPath);
+  await edit(page, base);
+  const profileApi = '/api/v1/authors/' + a.handle;
+  const readerPath = '/tac-pham/' + ids.a;
   await guest.goto(base + aPath);
   await guest.waitFor(q('.vk-author-bio'), 'guest receives the public Bio');
   check(await guest.eval(`${q('.vk-author-bio')}.textContent===${JSON.stringify(bio)}
@@ -314,6 +503,8 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   await guest.waitFor("document.documentElement.dataset.hydrated==='true'", 'public profile hydrated');
   await guest.capture('author-public-desktop', {scenario:'guest with Bio and works', textScale:100});
   await captureLayouts(guest, check, 'public', '#author-profile-heading, .vk-author-bio, #author-works-heading, .vk-author-works a');
+  await editorialProfileWorks(guest, {base, aPath, bPath, actor:a.principal_id, ids, check});
+
   await guest.eval(`window.addEventListener('pageshow', event => {
     if (event.persisted) sessionStorage.setItem('fixture-public-bfcache', 'restored');
   });`);
@@ -392,7 +583,7 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   try {
     await guest.reload();
     await guest.waitFor(`${q('#author-profile-heading')}?.textContent==='Chưa tải được hồ sơ' &&
-      ${q('.vk-author-public button')}`, 'unavailable public profile offers retry');
+      ${q('.vk-author-public button')} && !${q('.vk-author-works-empty img')}`, 'unavailable profile offers retry without artwork');
     await guest.capture('author-public-retry', {scenario:'real read gate unavailable', textScale:100});
   } finally {
     check(authorFixtureSql('UPDATE author_handle_rollout SET ready=true WHERE singleton AND NOT ready RETURNING 1;') === '1',

@@ -5,7 +5,10 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::{
-    PgStore, discussion::read_snapshot, handle::ready, postgres::classify,
+    PgStore,
+    discussion::read_snapshot,
+    handle::ready,
+    postgres::{classify, content},
     principal::require_active,
 };
 use crate::application::handle::{AuthorRef, Resolution};
@@ -13,6 +16,7 @@ use crate::application::profile::{
     OwnProfile, ProfileError, ProfileWork, ProfileWorks, SaveProfile,
 };
 use crate::domain::discovery::{DiscoveryCursor, PagePosition, PageSize, SearchScope, cut_page};
+use crate::domain::document::{DocumentData, public_excerpt};
 use crate::domain::handle;
 use crate::domain::ids::{PrincipalId, WorkId};
 use crate::domain::principal::PenName;
@@ -207,11 +211,28 @@ async fn public_works(
             _ => return Ok(ProfileWorks::Restart),
         },
     };
+    #[derive(sqlx::FromRow)]
+    struct Row {
+        work_id: Uuid,
+        title: String,
+        document: Json<DocumentData>,
+        published_at: OffsetDateTime,
+        form: Option<String>,
+        first_published_at: Option<OffsetDateTime>,
+    }
+
+    // The sealed snapshot's primary key permits one form (slot 0). The date fact is
+    // also one per work. Neither join changes page membership or the pointer's cursor key.
     let size = PageSize::DEFAULT;
-    let rows: Vec<(Uuid, String, OffsetDateTime)> = sqlx::query_as(
-        "SELECT p.work_id, r.title, p.published_at
+    let rows: Vec<Row> = sqlx::query_as(
+        "SELECT p.work_id, r.title, r.document, p.published_at, t.label AS form,
+                f.first_published_at
            FROM works w JOIN publications p ON p.work_id = w.id
            JOIN revisions r ON r.work_id = p.work_id AND r.id = p.revision_id
+           LEFT JOIN work_metadata_snapshot_tags mt ON mt.snapshot_id = p.metadata_snapshot_id
+                                                    AND mt.slot = 0
+           LEFT JOIN tags t ON t.id = mt.tag_id AND t.status = 'active'
+           LEFT JOIN work_first_publications f ON f.work_id = p.work_id AND f.provenance = 'exact'
           WHERE w.owner_id = $1
             AND ($2::timestamptz IS NULL OR p.published_at < $2
                  OR (p.published_at = $2 AND p.work_id > $3::uuid))
@@ -226,14 +247,24 @@ async fn public_works(
     .await
     .map_err(classify)?;
     let (rows, next) = cut_page(rows, size, scope, |row| PagePosition {
-        work_id: WorkId::from_uuid(row.0),
-        published_at: row.2,
+        work_id: WorkId::from_uuid(row.work_id),
+        published_at: row.published_at,
     });
+    let works = rows
+        .into_iter()
+        .map(|row| {
+            let published = content(row.document, &row.title)?;
+            Ok(ProfileWork {
+                work_id: row.work_id,
+                title: row.title,
+                excerpt: public_excerpt(published.document()),
+                form: row.form,
+                first_published_at: row.first_published_at,
+            })
+        })
+        .collect::<Result<_, ProfileError>>()?;
     Ok(ProfileWorks::Page {
-        works: rows
-            .into_iter()
-            .map(|(work_id, title, _)| ProfileWork { work_id, title })
-            .collect(),
+        works,
         next_cursor: next.map(|cursor| cursor.encode()),
     })
 }

@@ -392,3 +392,193 @@ async fn profile_fields_upgrade_existing_handle_without_resetting_receipts(pool:
         receipt
     );
 }
+
+#[sqlx::test(migrations = false)]
+async fn profile_works_project_only_the_current_public_revision_and_keep_cursor(pool: PgPool) {
+    use super::conditional_reads::publish;
+    use super::first_publication::exact_time;
+    use time::{format_description::well_known::Rfc3339, macros::datetime};
+    use vink_app::persistence::MIGRATOR;
+
+    // Create a pre-cutover pointer so the migration classifies its date as legacy.
+    MIGRATOR
+        .run_to(CANONICAL_DOCUMENT_MIGRATION, &pool)
+        .await
+        .unwrap();
+    let owner = Uuid::new_v4();
+    sqlx::query("INSERT INTO principals (id,display_name) VALUES ($1,'Mùa hạ')")
+        .bind(owner)
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO principal_bindings (principal_id,authority,subject_id) VALUES ($1,'vink-identity','profile-works-587')")
+        .bind(owner)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let legacy = Uuid::from_u128(0x58702);
+    publish(
+        &pool,
+        legacy,
+        owner,
+        "Thư cũ",
+        "",
+        datetime!(2024-01-01 0:00 UTC),
+    )
+    .await;
+    MIGRATOR.run(&pool).await.unwrap();
+    let app = app(&pool).await;
+    backfill(&pool).await.unwrap();
+    let owner = PrincipalId::from_uuid(owner);
+    let store = PgStore::new(pool.clone());
+    let handle = store.own_handle(owner).await.unwrap().handle;
+
+    let pointer_at = datetime!(2025-01-01 00:00 UTC);
+    let target = Uuid::from_u128(0x58701);
+    publish(
+        &pool,
+        target,
+        owner.as_uuid(),
+        "Bản đầu",
+        "Đoạn bản đầu.",
+        datetime!(2024-12-01 0:00 UTC),
+    )
+    .await;
+    let first = exact_time(&pool, target).await.format(&Rfc3339).unwrap();
+    let poem = "Có những ngày trời không mưa\nMà lòng người vẫn ướt.";
+    publish(
+        &pool,
+        target,
+        owner.as_uuid(),
+        "Mùa chưa gọi tên",
+        poem,
+        pointer_at,
+    )
+    .await;
+
+    let vink = Vink::new(store.clone());
+    let draft = vink.create_draft(Some(owner)).await.unwrap().work_id;
+    vink.save_draft(
+        Some(owner),
+        save(draft, 1, "Chưa công khai", doc(&[&["Nháp riêng 587."]])),
+    )
+    .await
+    .unwrap();
+    let removed = Uuid::from_u128(0x58703);
+    publish(
+        &pool,
+        removed,
+        owner.as_uuid(),
+        "Đã rút",
+        "Đoạn đã rút.",
+        pointer_at,
+    )
+    .await;
+    sqlx::query("DELETE FROM publications WHERE work_id=$1")
+        .bind(removed)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let other = create(&pool, "profile-works-other", "Khác tác giả").await;
+    publish(
+        &pool,
+        Uuid::from_u128(0x58704),
+        other.as_uuid(),
+        "Bài của người khác",
+        "Đoạn khác.",
+        pointer_at,
+    )
+    .await;
+
+    let ties: Vec<_> = (0x58710..0x5871b).map(Uuid::from_u128).collect();
+    for id in &ties {
+        publish(
+            &pool,
+            *id,
+            owner.as_uuid(),
+            "Đồng thời",
+            "Một câu.",
+            pointer_at,
+        )
+        .await;
+    }
+    let path = format!("/api/v1/authors/{handle}");
+    let (status, _, body) = call(&app, "GET", &path, None, None, None).await;
+    assert_eq!(status, 200);
+    let (status, _, owner_body) = call(&app, "GET", &path, Some(owner.as_uuid()), None, None).await;
+    assert_eq!(status, 200);
+    let head = json(&body);
+    assert_eq!(
+        head,
+        json(&owner_body),
+        "profile publication data is actor-free"
+    );
+    for private in [
+        "Bản đầu",
+        "Đoạn bản đầu.",
+        "Chưa công khai",
+        "Nháp riêng 587.",
+        "Đã rút",
+        "Đoạn đã rút.",
+        "Bài của người khác",
+    ] {
+        assert!(
+            !body.contains(private),
+            "non-current or non-public text: {private}"
+        );
+    }
+    let works = head["publications"]["works"].as_array().unwrap();
+    let expected_ids: Vec<_> = std::iter::once(target)
+        .chain(ties)
+        .map(|id| json!(id))
+        .collect();
+    assert_eq!(
+        works
+            .iter()
+            .map(|item| item["work_id"].clone())
+            .collect::<Vec<_>>(),
+        expected_ids
+    );
+    assert_eq!(
+        works[0],
+        json!({
+            "work_id": target, "title": "Mùa chưa gọi tên", "excerpt": poem, "first_published_at": first
+        })
+    );
+    let cursor = head["publications"]["next_cursor"].as_str().unwrap();
+    let continuation = format!("{path}?cursor={cursor}");
+    let (status, _, body) = call(&app, "GET", &continuation, None, None, None).await;
+    assert_eq!(status, 200);
+    assert_eq!(
+        json(&body)["publications"],
+        json!({
+            "state": "page", "works": [{"work_id": legacy, "title": "Thư cũ"}]
+        }),
+        "legacy provenance and unbound metadata remain absent"
+    );
+    let other_handle = store.own_handle(other).await.unwrap().handle;
+    let (status, _, body) = call(
+        &app,
+        "GET",
+        &format!("/api/v1/authors/{other_handle}?cursor={cursor}"),
+        None,
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(status, 200);
+    assert_eq!(json(&body)["publications"], json!({"state": "restart"}));
+
+    sqlx::query("DELETE FROM publications WHERE work_id=$1")
+        .bind(legacy)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let (status, _, body) = call(&app, "GET", &continuation, None, None, None).await;
+    assert_eq!(status, 200);
+    assert_eq!(json(&body)["has_public_works"], true);
+    assert_eq!(
+        json(&body)["publications"],
+        json!({"state": "page", "works": []})
+    );
+}

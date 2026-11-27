@@ -1,0 +1,16 @@
+{
+  "state": "page",
+  "works": [
+    {
+      "work_id": "00000000-0000-0000-0000-000000058701",
+      "title": "Mùa chưa gọi tên",
+      "excerpt": "Có những ngày trời không mưa\nMà lòng người vẫn ướt.",
+      "form": "Thơ",
+      "first_published_at": "2026-11-26T19:00:00Z"
+    },
+    {
+      "work_id": "00000000-0000-0000-0000-000000058702",
+      "title": "Những lá thư không gửi"
+    }
+  ]
+}

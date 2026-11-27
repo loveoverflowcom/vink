@@ -144,7 +144,14 @@ Các lỗi 409 gồm `version_conflict`, `handle_taken`, `handle_alias_reserved`
 | --- | --- |
 | `GET /api/v1/me/profile` | Phiên active đọc hồ sơ của chính mình. [Own Profile](fixtures/author.profile.own.json) gồm `principal_id`, bút danh, Bio, tám policy, `profile_version` và hai fact setup/quota Handle. `no-store`. |
 | `PUT /api/v1/me/profile` | JSON `principal_id`, `expected_version`, `pen_name`, `bio` (chuỗi hoặc null), `policies` (đủ tám trường). Actor lấy từ phiên. Principal trong payload là điều kiện của form bắt đầu lệnh. `200` trả Own Profile sau commit, `409 version_conflict` trả version quan sát được, `422 validation_failed` chỉ trường lỗi. Body sai kiểu, thiếu khóa `bio` hoặc có trường lạ như `date_of_birth` trả `422 validation_failed` với `field=body`; phiên được kiểm trước body. `no-store`. |
-| `GET/HEAD /api/v1/authors/{handle}?cursor=…` | Actor-free. [Current](fixtures/author.profile.current.json) giữ `author` và `has_public_works`, bổ sung `bio` nếu có quyền và đã điền. `publications` có `state: page`, tối đa 12 `works` (ID tác phẩm, nhan đề) và `next_cursor` nếu còn trang. `state: restart` yêu cầu mở trang đầu khi cursor sai hoặc thuộc địa chỉ khác. |
+| `GET/HEAD /api/v1/authors/{handle}?cursor=…` | Actor-free. [Current](fixtures/author.profile.current.json) giữ `author` và `has_public_works`, bổ sung `bio` nếu có quyền và đã điền. `publications` có `state: page`, tối đa 12 `works` (ID tác phẩm, nhan đề và các trường công khai tùy chọn bên dưới) và `next_cursor` nếu còn trang. `state: restart` yêu cầu mở trang đầu khi cursor sai hoặc thuộc địa chỉ khác. |
+
+Mỗi mục tác phẩm có `work_id`, `title` và có thể kèm `excerpt` (tối đa 4 dòng,
+220 Unicode scalar từ revision công khai hiện hành), `form` (nhãn thể loại đang
+hoạt động ở snapshot metadata của publication) và `first_published_at` (RFC 3339, chỉ
+khi có provenance `exact` trong `work_first_publications`). Bỏ trường không có dữ liệu.
+Thứ tự và cursor vẫn dựa vào thời điểm của public pointer hiện hành và WorkId.
+Xem [trang tác phẩm công khai](fixtures/author.profile.works.json) có mục đủ dữ liệu và mục chỉ có nhan đề.
 
 Profile dùng lại parser bút danh (trim, NFC, 1–80 ký tự). Bio tối đa 500 ký tự Unicode, bỏ
 khoảng trắng hai đầu, giữ xuống dòng và chuẩn hóa CRLF thành LF. Chuỗi trống xóa Bio. Tám

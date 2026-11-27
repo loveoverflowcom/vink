@@ -1247,6 +1247,12 @@ pub enum ProfileWorks {
 pub struct ProfileWork {
     pub work_id: String,
     pub title: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub excerpt: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub form: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub first_published_at: Option<String>,
 }
 
 pub mod follow;
@@ -1261,6 +1267,21 @@ mod tests {
         env!("CARGO_MANIFEST_DIR"),
         "/../../services/vink-app/contracts/http/v1/fixtures"
     );
+
+    #[test]
+    fn profile_publication_fixture_round_trips_additive_fields() {
+        let ProfileWorks::Page { works, .. } = round_trip("author.profile.works.json") else {
+            panic!("expected a profile work page");
+        };
+        assert_eq!(works[0].form.as_deref(), Some("Thơ"));
+        assert_eq!(
+            works[0].excerpt.as_deref(),
+            Some("Có những ngày trời không mưa\nMà lòng người vẫn ướt.")
+        );
+        assert_eq!(works[1].excerpt, None);
+        assert_eq!(works[1].form, None);
+        assert_eq!(works[1].first_published_at, None);
+    }
 
     /// Decodes a provider fixture and checks that this representation keeps every field.
     fn round_trip<T: DeserializeOwned + Serialize>(name: &str) -> T {

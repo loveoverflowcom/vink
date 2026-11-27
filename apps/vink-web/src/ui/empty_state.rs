@@ -3,7 +3,8 @@
 //! Placement (#558): a full-size state centres itself in the free block space of its owner
 //! (Desk index, Explore, or a page marked `.vk-state-page`, optionally through one
 //! `.vk-state-slot`). A `compact` state belongs to a region that stays in normal flow
-//! (discussion, a dialog, a profile list) and never turns `.vk-main` into a flex column.
+//! (discussion, a dialog, a profile list). A regional artwork state keeps the full
+//! decoration within a caller-sized region. Neither turns `.vk-main` into a flex column.
 use leptos::prelude::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -42,6 +43,9 @@ pub fn EmptyState(
     /// Region-local state in normal flow: smaller decoration and rhythm, no artwork.
     #[prop(optional)]
     compact: bool,
+    /// Artwork can occupy a local region without changing the page's layout.
+    #[prop(optional)]
+    regional: bool,
     /// Stable caller hook (test id or legacy selector); never a style override.
     #[prop(optional)]
     id: Option<&'static str>,
@@ -52,12 +56,17 @@ pub fn EmptyState(
         !(compact && artwork.is_some()),
         "compact Empty States carry an icon or no decoration"
     );
-    let class = match (compact, hook) {
-        (false, None) => "vk-empty-state".to_owned(),
-        (true, None) => "vk-empty-state vk-empty-state--compact".to_owned(),
-        (false, Some(hook)) => format!("vk-empty-state {hook}"),
-        (true, Some(hook)) => format!("vk-empty-state vk-empty-state--compact {hook}"),
-    };
+    debug_assert!(!(compact && regional), "choose one regional layout");
+    let mut class = "vk-empty-state".to_owned();
+    if compact {
+        class.push_str(" vk-empty-state--compact");
+    } else if regional {
+        class.push_str(" vk-empty-state--regional");
+    }
+    if let Some(hook) = hook {
+        class.push(' ');
+        class.push_str(hook);
+    }
     let decoration = if let Some(artwork) = artwork {
         Some(view! {
             <img class="vk-empty-state__art" src=crate::asset_url(artwork.src()) alt="" width="512" height="427" decoding="async" />

@@ -2095,22 +2095,22 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index) { scrollbar-gut
  * no fixed height, overlay or nested scroller. Owners: Desk, Explore and, since #558, any page
  * marked `.vk-state-page` (through at most one `.vk-state-slot`). A full-size state lives only
  * inside one of those owners. Region states (`--compact`) stay in normal flow. */
-.vk-main:has(.vk-empty-state:not(.vk-empty-state--compact), .vk-desk-loading),
-.vk-main:has(.vk-empty-state:not(.vk-empty-state--compact), .vk-desk-loading) :is(.vk-desk--index, .vk-drafts-region, .vk-desk-works, .vk-draft-list,
+.vk-main:has(.vk-empty-state:not(.vk-empty-state--compact, .vk-empty-state--regional), .vk-desk-loading),
+.vk-main:has(.vk-empty-state:not(.vk-empty-state--compact, .vk-empty-state--regional), .vk-desk-loading) :is(.vk-desk--index, .vk-drafts-region, .vk-desk-works, .vk-draft-list,
   .vk-discovery, #community-stream, #public-collection, #public-results,
   .vk-rel-wrapper:has(.vk-rel-empty), .vk-state-page, .vk-state-page > .vk-state-slot) {
   display: flex;
   flex-direction: column;
 }
-.vk-main:has(.vk-empty-state:not(.vk-empty-state--compact), .vk-desk-loading) :is(.vk-desk--index, .vk-drafts-region, .vk-desk-works, .vk-draft-list,
+.vk-main:has(.vk-empty-state:not(.vk-empty-state--compact, .vk-empty-state--regional), .vk-desk-loading) :is(.vk-desk--index, .vk-drafts-region, .vk-desk-works, .vk-draft-list,
   .vk-discovery, #community-stream, #public-collection, #public-results,
   .vk-rel-wrapper:has(.vk-rel-empty), .vk-state-page, .vk-state-page > .vk-state-slot) {
   flex: 1 0 auto;
 }
 /* Auto inline margins disable flex stretch, so keep each owner's measure instead of shrinking to content. */
-.vk-main:has(.vk-empty-state:not(.vk-empty-state--compact), .vk-desk-loading) > :is(.vk-desk--index, .vk-discovery, .vk-state-page) { inline-size: 100%; }
+.vk-main:has(.vk-empty-state:not(.vk-empty-state--compact, .vk-empty-state--regional), .vk-desk-loading) > :is(.vk-desk--index, .vk-discovery, .vk-state-page) { inline-size: 100%; }
 .vk-main :is(#public-results, .vk-draft-list) > :has(> .vk-empty-state) { margin-block: auto; }
-.vk-main :is(.vk-state-page, .vk-state-page > .vk-state-slot) > .vk-empty-state:not(.vk-empty-state--compact) { margin-block: auto; }
+.vk-main :is(.vk-state-page, .vk-state-page > .vk-state-slot) > .vk-empty-state:not(.vk-empty-state--compact, .vk-empty-state--regional) { margin-block: auto; }
 .vk-desk--index > :is(.vk-desk-access, .vk-desk-loading),
 .vk-draft-list > .vk-desk-loading { margin-block: auto; }
 /* Only real rows need room below the error. Empty retained results still center the state. */
@@ -2311,31 +2311,44 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index) { scrollbar-gut
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-.vk-author-works > li { border-block-end: 1px solid var(--vk-outline-variant); }
+.vk-author-works-empty.vk-empty-state--regional {
+  min-block-size: min(15rem, 40svh);
+  align-content: center;
+}
+.vk-author-works-empty .vk-empty-state__art { inline-size: min(11rem, 192px, 100%); }
+.vk-author-works {
+  display: grid;
+  gap: var(--vk-space-3);
+}
 .vk-author-works .vk-ui-link {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--vk-space-4);
-  min-block-size: 4rem;
+  display: grid;
+  justify-items: start;
+  align-content: center;
+  gap: var(--vk-space-1);
+  min-block-size: var(--vk-size-hit-target);
   padding-block: var(--vk-space-3);
   box-sizing: border-box;
-  color: var(--vk-on-surface);
-  font: var(--vk-type-title-weight) var(--vk-type-title-size)/var(--vk-type-title-line-height) var(--vk-type-title-font);
   text-decoration: none;
   overflow-wrap: anywhere;
 }
-.vk-author-works .vk-ui-link:hover { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.18em; }
-/* A drawn chevron keeps the row a navigation target without another icon asset. */
-.vk-author-works .vk-ui-link::after {
-  content: "";
-  flex: none;
-  inline-size: 0.5rem;
-  block-size: 0.5rem;
-  margin-inline-end: var(--vk-space-2);
-  border-block-end: 2px solid var(--vk-on-surface-variant);
-  border-inline-end: 2px solid var(--vk-on-surface-variant);
-  transform: rotate(-45deg);
+.vk-author-works .vk-ui-link:hover .vk-author-work__title {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+.vk-author-work__title,
+.vk-author-work__metadata { margin: 0; }
+.vk-author-work__metadata { color: var(--vk-on-surface-variant); font-family: var(--vk-font-ui); }
+.vk-author-works .vk-author-work__excerpt {
+  max-inline-size: 58ch;
+  color: var(--vk-on-surface-variant);
+  white-space: pre-wrap;
+}
+.vk-author-work__excerpt--prose {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
 }
 @container (min-width: 40rem) {
   .vk-author-identity { column-gap: var(--vk-space-6); }

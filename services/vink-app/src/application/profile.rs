@@ -1,5 +1,6 @@
 //! Own profile commands and actor-free projections belong to Profile.
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::ports::StoreError;
@@ -35,6 +36,15 @@ pub struct SaveProfile {
 pub struct ProfileWork {
     pub work_id: Uuid,
     pub title: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub excerpt: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub form: Option<String>,
+    #[serde(
+        with = "time::serde::rfc3339::option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub first_published_at: Option<OffsetDateTime>,
 }
 
 #[derive(Debug, Serialize)]

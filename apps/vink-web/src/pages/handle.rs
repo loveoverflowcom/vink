@@ -1,10 +1,10 @@
-use crate::contract::{AuthorResolution, ProfileWorks};
+use crate::contract::{AuthorResolution, ProfileWork, ProfileWorks};
 use leptos::prelude::*;
 use leptos_meta::{Link, Meta, Title};
 use leptos_router::hooks::{use_params_map, use_query_map};
 use vink_ui::{HiddenField, Link as UiLink};
 
-use crate::ui::empty_state::{EmptyState, NotFoundContent};
+use crate::ui::empty_state::{EmptyArtwork, EmptyState, NotFoundContent};
 
 const NO_PUBLIC_WORKS: &str = "Chưa có tác phẩm công khai.";
 
@@ -76,6 +76,44 @@ fn PublicProfile(name: String, cursor: Option<String>) -> impl IntoView {
     }
 }
 
+#[component]
+fn NoPublicWorks() -> impl IntoView {
+    view! { <EmptyState regional=true hook="vk-author-works-empty"
+    artwork=EmptyArtwork::NoPublicWorks message=NO_PUBLIC_WORKS /> }
+}
+
+fn profile_work_row(work: ProfileWork) -> impl IntoView {
+    let title_id = format!("profile-work-title-{}", work.work_id);
+    let title_label = title_id.clone();
+    let date = work.first_published_at.and_then(|instant| {
+        vink_patterns::first_public_date_hcm(&instant).map(|label| {
+            view! { <time datetime=instant title="Công khai lần đầu">{label}</time> }
+        })
+    });
+    let separator = (work.form.is_some() && date.is_some()).then_some(" · ");
+    view! {
+        <li>
+            <UiLink attr:id=format!("profile-work-{}", work.work_id)
+                attr:data-profile-return="true" attr:aria-labelledby=title_label
+                href=format!("/tac-pham/{}", work.work_id)>
+                {(work.form.is_some() || date.is_some()).then(|| view! {
+                    <p class="vk-author-work__metadata vk-public-row__eyebrow">
+                        {work.form.map(|form| view! { <span>{form}</span> })}
+                        {separator}
+                        {date}
+                    </p>
+                })}
+                <h3 id=title_id class="vk-author-work__title vk-public-row__title">{work.title}</h3>
+                {work.excerpt.map(|text| {
+                    let single_line = !text.contains('\n');
+                    view! { <p class="vk-author-work__excerpt vk-public-row__excerpt"
+                        class:vk-author-work__excerpt--prose=single_line>{text}</p> }
+                })}
+            </UiLink>
+        </li>
+    }
+}
+
 fn render_profile(
     result: Result<AuthorResolution, crate::api::LoadError>,
     status: &super::ResponseStatus,
@@ -120,19 +158,20 @@ fn render_profile(
                         <super::saved_profile::PublicWorksSlot handle=author.handle.clone() />
                         {match publications {
                             Some(ProfileWorks::Page { works, next_cursor }) => {
-                                let items = works.into_iter().map(|work| view! {
-                                    <li><UiLink
-                                        attr:id=format!("profile-work-{}", work.work_id)
-                                        attr:data-profile-return="true"
-                                        href=format!("/tac-pham/{}", work.work_id)>{work.title}</UiLink></li>
-                                }).collect_view();
-                                let empty = items.is_empty();
+                                let body = if works.is_empty() {
+                                    if continued {
+                                        view! { <EmptyState compact=true hook="vk-author-works-empty"
+                                            message="Trang này không còn tác phẩm." /> }.into_any()
+                                    } else {
+                                        view! { <NoPublicWorks /> }.into_any()
+                                    }
+                                } else {
+                                    let items = works.into_iter().map(profile_work_row).collect_view();
+                                    view! { <ul role="list" class="vk-author-works [list-style:none] [margin:0_0_var(--vk-space-4)] p-0">{items}</ul> }.into_any()
+                                };
                                 let next = next_cursor.map(|cursor| format!("{}?cursor={cursor}", author.href));
                                 view! {
-                                    {empty.then(|| view! { <EmptyState compact=true hook="vk-author-works-empty" message=if continued {
-                                        "Trang này không còn tác phẩm."
-                                    } else { NO_PUBLIC_WORKS } /> })}
-                                    {(!empty).then(|| view! { <ul class="vk-author-works [list-style:none] [margin:0_0_var(--vk-space-4)] p-0">{items}</ul> })}
+                                    {body}
                                     {next.map(|href| view! { <UiLink href>"Trang tiếp"</UiLink> })}
                                     {continued.then(|| view! { <UiLink href=author.href>"Về trang đầu"</UiLink> })}
                                 }.into_any()
@@ -141,7 +180,7 @@ fn render_profile(
                                 <p role="alert">"Trang tác phẩm không còn khớp với hồ sơ này."</p>
                                 <UiLink href=author.href>"Về trang đầu"</UiLink>
                             }.into_any(),
-                            None if !has_public_works => view! { <EmptyState compact=true hook="vk-author-works-empty" message=NO_PUBLIC_WORKS /> }.into_any(),
+                            None if !continued && !has_public_works => view! { <NoPublicWorks /> }.into_any(),
                             None => view! {
                                 <p role="alert">"Chưa tải được danh sách tác phẩm."</p>
                                 <vink_ui::Button variant=vink_ui::ButtonVariant::Tonal
@@ -322,4 +361,26 @@ pub(super) fn ProfileIdentity(
 fn MobileBrand() -> impl IntoView {
     view! { <a class="vk-brand vk-handle-brand hidden [@media(max-width:759px)]:inline-flex [@media(max-width:759px)]:[margin-block-end:1rem]" href="/" aria-label="Vink — trang chủ">
     <span class="vk-brand__lockup" aria-hidden="true"></span></a> }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn profile_work_row_can_show_only_the_title() {
+        let work = ProfileWork {
+            work_id: "9de56a16-a077-49b3-9eae-07dea90b496c".into(),
+            title: "Những lá thư không gửi".into(),
+            form: None,
+            excerpt: None,
+            first_published_at: None,
+        };
+        let html = Owner::new().with(|| profile_work_row(work).to_html());
+        assert!(html.contains("Những lá thư không gửi"));
+        assert!(html.contains("data-profile-return=\"true\""));
+        assert_eq!(html.matches("<a ").count(), 1);
+        assert!(!html.contains("vk-author-work__metadata"));
+        assert!(!html.contains("vk-author-work__excerpt"));
+    }
 }
