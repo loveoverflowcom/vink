@@ -41,6 +41,12 @@
     {
       "renderer": "leptos",
       "source": "packages/ui-system/leptos/src/action.rs",
+      "symbol": "BackLink",
+      "entry": "field.select"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/action.rs",
       "symbol": "FilterChip",
       "entry": "action.filter-chip"
     },
