@@ -24,6 +24,17 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     await page.waitFor("document.querySelector('#public-results')", 'new query result');
   };
   await goto('/');
+  const otherModes = await page.eval(`[...document.querySelectorAll('.vk-explore-modes a')]
+    .filter(link => link.id !== 'explore-mode-works').map(link => link.id)`);
+  for (const mode of otherModes) {
+    await page.click('#' + mode);
+    await page.waitFor(`document.getElementById(${JSON.stringify(mode)})?.getAttribute('aria-current') === 'page'`,
+      'selected mode on its own URL');
+    check(await page.eval("!document.querySelector('#open-tag-filters, #tag-dock, #tag-picker')"),
+      'tag filter belongs only to All works: ' + mode);
+    await page.click('#explore-mode-works');
+    await page.waitFor("document.querySelector('#open-tag-filters')", 'returning to works restores tag launcher');
+  }
   check(await page.eval("document.querySelector('#public-query').placeholder === 'Tìm tác phẩm hoặc tác giả' && document.querySelector('#public-query').labels[0]?.textContent === 'Tìm theo tên hoặc tác giả' && !document.querySelector('#public-query-help, #explore-heading p')"), '#308 r1 search keeps distinct placeholder and accessible label without duplicate scope copy');
   await submit('không có tác phẩm này #100');
   await page.waitFor("document.querySelector('[data-testid=public-no-results]')", 'real no-results');

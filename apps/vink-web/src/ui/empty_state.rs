@@ -26,6 +26,28 @@ impl EmptyArtwork {
     }
 }
 
+// Native Tab can leave an already-visible link behind the fixed bottom navigation.
+// Scroll only a focused recovery control that actually intersects that navigation.
+fn reveal_recovery(_event: leptos::ev::FocusEvent) {
+    #[cfg(feature = "browser")]
+    {
+        let control = event_target::<leptos::web_sys::Element>(&_event);
+        request_animation_frame(move || {
+            if document().active_element().as_ref() != Some(&control) {
+                return;
+            }
+            if let Some(bar) = document().get_element_by_id("bottom-navigation") {
+                let bounds = bar.get_bounding_client_rect();
+                if bounds.height() > 0.0
+                    && control.get_bounding_client_rect().bottom() > bounds.top()
+                {
+                    control.scroll_into_view_with_bool(false);
+                }
+            }
+        });
+    }
+}
+
 /// One decoration (artwork, decorative mark, icon or none), an HTML title/message and real caller-owned actions.
 /// `announce` makes the text group (title + message, never the actions) one polite status;
 /// opt in only when the caller has no other result announcement.
@@ -98,7 +120,7 @@ pub fn EmptyState(
                     level=heading role=vink_ui::TypeRole::Title attr:id=title_id attr:tabindex=title_id.map(|_| "-1")>{title}</vink_ui::Heading> })}
                 {(!message.is_empty()).then(|| view! { <p class="vk-empty-state__message">{message}</p> })}
             </div>
-            {children.map(|children| view! { <div class="vk-empty-state__actions">{children()}</div> })}
+            {children.map(|children| view! { <div class="vk-empty-state__actions" on:focusin=reveal_recovery>{children()}</div> })}
         </div>
     }
 }

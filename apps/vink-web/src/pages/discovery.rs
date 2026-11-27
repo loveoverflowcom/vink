@@ -1536,64 +1536,57 @@ mod tests {
     }
 
     #[test]
-    fn filter_form_exposes_client_clear_only_in_modal_sheet() {
-        let tag_list = TagList {
-            tags: vec![TagDto {
-                tag_id: "11111111-1111-4111-8111-111111111111".into(),
-                facet: "form".into(),
-                label: "Thơ".into(),
-                slug: "tho".into(),
-                description: None,
-                status: "active".into(),
-                successor: None,
-            }],
-            truncated: false,
-        };
-        let render_form = |modal: bool, selected: Vec<String>| {
-            let list = tag_list.clone();
-            Owner::new().with(|| {
-                provide_context(leptos_router::location::RequestUrl::new("/"));
-                let draft = RwSignal::new(selected);
-                let initial = StoredValue::new(Vec::<String>::new());
-                let open = RwSignal::new(true);
-                view! {
-                    <leptos_router::components::Router>
-                        <FilterForm id=if modal { "modal" } else { "dock" } q=String::new() draft initial list open modal />
-                    </leptos_router::components::Router>
+    fn dock_and_sheet_offer_the_same_single_tag_get_links() {
+        let tags = [("form", "Thơ", "tho"), ("theme", "Ký ức", "ky-uc")];
+        for id in ["dock", "modal"] {
+            for selected in [
+                vec![],
+                vec!["tho".to_owned()],
+                vec!["tho".to_owned(), "ky-uc".to_owned()],
+            ] {
+                let one_selected = selected.len() == 1;
+                let html = Owner::new().with(|| {
+                    let mut ctx = context("mua", Some("old-page"));
+                    ctx.query.tags = selected;
+                    let context = StoredValue::new(ctx);
+                    let open = RwSignal::new(true);
+                    let list = TagList {
+                        tags: tags
+                            .iter()
+                            .map(|&(facet, label, slug)| TagDto {
+                                tag_id: slug.into(),
+                                facet: facet.into(),
+                                label: label.into(),
+                                slug: slug.into(),
+                                description: None,
+                                status: "active".into(),
+                                successor: None,
+                            })
+                            .collect(),
+                        truncated: false,
+                    };
+                    view! { <FilterForm id context list open /> }.to_html()
+                });
+                assert_eq!(html.matches("<a ").count(), 2, "{html}");
+                for (_, label, slug) in tags {
+                    assert!(
+                        html.contains(&format!(r#"href="/?q=mua&amp;tag={slug}""#)),
+                        "{html}"
+                    );
+                    assert!(html.contains(label), "{html}");
                 }
-                .to_html()
-            })
-        };
-        let dock = render_form(false, vec![]);
-        assert!(
-            !dock.contains("clear-tag-draft") && !dock.contains("Bỏ chọn"),
-            "{dock}"
-        );
-
-        let empty_modal = render_form(true, vec![]);
-        assert!(
-            empty_modal.contains("id=\"clear-tag-draft\"")
-                && empty_modal.contains("type=\"button\"")
-                && empty_modal.contains("Bỏ chọn")
-                && empty_modal.contains("aria-disabled=\"true\""),
-            "{empty_modal}"
-        );
-
-        let picked_modal = render_form(true, vec!["tho".into()]);
-        let clear_button = picked_modal
-            .split("id=\"clear-tag-draft\"")
-            .next()
-            .and_then(|before| before.rsplit('<').next())
-            .unwrap_or_default();
-        let clear_tail = picked_modal
-            .split("id=\"clear-tag-draft\"")
-            .nth(1)
-            .and_then(|after| after.split('>').next())
-            .unwrap_or_default();
-        assert!(
-            clear_button.contains("type=\"button\"")
-                && !clear_tail.contains("aria-disabled=\"true\""),
-            "{picked_modal}"
-        );
+                assert_eq!(
+                    html.matches(r#"aria-current="true""#).count(),
+                    usize::from(one_selected),
+                    "{html}"
+                );
+                assert!(
+                    !html.contains("old-page")
+                        && !html.contains("<input")
+                        && !html.contains("<button"),
+                    "{html}"
+                );
+            }
+        }
     }
 }

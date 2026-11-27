@@ -336,20 +336,32 @@ async function inboxSessionStates(page, { args, check }, controlled) {
     check(response.status === 404 && (await response.text()).includes('data-icon="explore"'), 'SSR exposes the existing 404 for '+scene);
     await page.goto(args.base + path);
     await page.waitFor(`document.documentElement.dataset.hydrated === 'true' && document.querySelector('${explore}')`, 'hydrated '+scene);
-    for (const [width, height, theme, scale] of [[390,844,'dark',100],[390,844,'light',150],[320,540,'dark',200],[1440,900,'light',100]]) {
+    for (const [width, height, theme, scale] of [[390,844,'dark',100],[390,844,'light',150],[390,844,'dark',200],
+      [320,540,'light',100],[320,540,'light',150],[320,540,'dark',200],[1440,900,'light',100]]) {
       await preferences(page,width,theme,scale,height);
+      await page.eval(`document.documentElement.dataset.theme=${JSON.stringify(theme)}`);
       await page.eval(`document.querySelector('${notFound} h1').focus()`);
       await page.key('Tab');
-      check(await page.eval(`(() => {
-        const a=document.activeElement, icon=a.firstElementChild, r=a.getBoundingClientRect();
-        const text=[...a.childNodes].find(n=>n.nodeType===Node.TEXT_NODE && n.textContent.trim());
-        if (!text || !icon) return false;
-        const label=document.createRange(); label.selectNodeContents(text);
-        const center=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);
-        return a.matches('${explore}:focus-visible') && a.textContent.trim()==='Về Khám phá' &&
-          icon.matches('svg[data-icon=explore][aria-hidden=true]') && icon.getBoundingClientRect().right <= label.getBoundingClientRect().left+1 &&
-          a.contains(center) && r.height>=48 && r.left>=0 && r.right<=innerWidth && document.documentElement.scrollWidth<=innerWidth;
-      })()`), 'keyboard reaches leading compass above navigation '+[scene,width,theme,scale]);
+      await page.eval('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
+      const recovery = await page.eval(`(() => {
+        const link = document.querySelector('${explore}');
+        const rect = link.getBoundingClientRect();
+        const icon = link.querySelector('svg[data-icon=explore][aria-hidden=true]');
+        const text = [...link.childNodes].find(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim());
+        const label = document.createRange();
+        if (text) label.selectNodeContents(text);
+        const hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+        return {
+          focus: link.matches(':focus-visible') && document.activeElement === link,
+          label: link.textContent.trim(), leading: !!icon && !!text && icon.getBoundingClientRect().right <= label.getBoundingClientRect().left + 1,
+          visible: link.contains(hit), hit: hit?.tagName + '.' + hit?.getAttribute('class'),
+          rect: rect.toJSON(), viewport: innerWidth, overflow: document.documentElement.scrollWidth - innerWidth,
+        };
+      })()`);
+      check(recovery.focus && recovery.label === 'Về Khám phá' && recovery.leading &&
+        recovery.visible && recovery.rect.height >= 48 && recovery.rect.left >= 0 &&
+        recovery.rect.right <= recovery.viewport && recovery.overflow <= 0,
+        'keyboard reaches leading compass above navigation '+[scene,width,theme,scale]+' '+JSON.stringify(recovery));
       await page.capture('603-'+[scene,width,theme,scale].join('-'), {scenario:scene,requestedScene:{width,height,theme,scale},boundary:'Product Chrome · synthetic session'});
     }
   }
@@ -783,7 +795,20 @@ export async function notifications(page, { args, check }) {
   check(await page.eval(`!document.body.textContent.includes('Không được xuất hiện')`), 'AC-04 removed comment body never renders');
   check(await page.eval(`parseFloat(getComputedStyle(document.querySelector('.vk-notif-decision__panel')).paddingInlineStart) >= 20`),
     'AC-05 decision panel preserves R4 inset');
+  const up = '.vk-notif-decision a.vk-ui-back-link';
+  check(await page.eval(`(() => {
+    const link = document.querySelector('${up}');
+    const style = getComputedStyle(link), rect = link.getBoundingClientRect();
+    return link.getAttribute('href') === '/thong-bao' && link.getAttribute('aria-label') === 'Về Thông báo' &&
+      link.firstElementChild.matches('svg[data-icon=arrow-back][aria-hidden=true]') &&
+      style.textDecorationLine === 'none' && rect.height >= 48 && rect.width >= 48;
+  })()`), 'direct decision URL exposes a named native parent link with a leading ArrowBack');
   await screenshot('notifications-comment-decision', 1440, 100, 'light');
+  await page.click(up);
+  await page.waitFor("location.pathname === '/thong-bao' && document.querySelector('main .vk-notif-row')", 'decision parent opens inbox');
+  await page.eval('history.back()');
+  await page.waitFor("document.body.textContent.includes('Lý do riêng của nhận xét')", 'browser Back restores the decision');
+
   state.checkFailure = true;
   await controlled.change('A');
   await page.waitFor(`document.querySelector('main [role=alert]')?.textContent.includes('Chưa kiểm tra được phiên đăng nhập.')

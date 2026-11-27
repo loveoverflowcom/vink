@@ -31,7 +31,7 @@ export async function discoveryChipGeometry(page, { args, check }) {
     const primary={bg:getComputedStyle(probe).backgroundColor, color:getComputedStyle(probe).color};
     probe.remove();
     const dialog=form.closest('dialog'), dr=dialog.getBoundingClientRect();
-    const actions=[...form.querySelectorAll('.vk-discovery-filter-actions button')].map(b=>{
+    const actions=[...form.querySelectorAll('button, input')].map(b=>{
       const r=b.getBoundingClientRect();
       return {id:b.id, fits:r.width>=48 && r.height>=48 && r.left>=dr.left-1 && r.right<=dr.right+1};
     });
