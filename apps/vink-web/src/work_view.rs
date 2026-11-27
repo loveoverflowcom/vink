@@ -457,16 +457,17 @@ mod browser {
     }
 
     pub(crate) fn track_publication_visit(
-        initial: &Publication,
         shown: RwSignal<Publication>,
         visit_eligible: RwSignal<bool>,
     ) {
         let ctrl: StoredValue<Controller, LocalStorage> = StoredValue::new_local(Controller {
-            tracker: ViewVisitTracker::new(
-                initial.work_id.clone(),
-                initial.revision_id.clone(),
-                WorkViewDurationPolicy::DEFAULT,
-            ),
+            tracker: shown.with_untracked(|initial| {
+                ViewVisitTracker::new(
+                    initial.work_id.clone(),
+                    initial.revision_id.clone(),
+                    WorkViewDurationPolicy::DEFAULT,
+                )
+            }),
             countdown_timer: None,
             retry_timer: None,
             retry_cancel: None,
@@ -498,7 +499,7 @@ mod browser {
             });
         }
 
-        Effect::new(move |_| {
+        Effect::new(move |previous: Option<()>| {
             let eligible = visit_eligible.get();
             let (work_id, rev_id) =
                 shown.with(|pub_state| (pub_state.work_id.clone(), pub_state.revision_id.clone()));
@@ -508,6 +509,11 @@ mod browser {
                     c.cancel();
                 }
             });
+            // Effects run after the article is rendered. Building PublicationView (especially
+            // in standalone CSR) is too early to start charging foreground time.
+            if previous.is_none() {
+                sync_controller(ctrl);
+            }
         });
 
         read_events::observe(move || sync_controller(ctrl));
@@ -541,8 +547,6 @@ mod browser {
                 });
             }
         });
-
-        sync_controller(ctrl);
     }
 }
 

@@ -293,7 +293,7 @@ pub const BROWSER_MODULES: &[(&str, &[Scenario], &[&str])] = {
             &[]),
         ("apps/vink-web/e2e/web-perf-baseline.mjs", &[S::PerfBaseline], &[]),
         ("apps/vink-web/e2e/web-request-ledger.mjs", &[S::Reader], &[]),
-        ("apps/vink-web/e2e/work-views-smoke.mjs", &[S::Reader], &[]),
+        ("apps/vink-web/e2e/work-views-smoke.mjs", &[S::Reader, S::Standalone], &[]),
         ("packages/ui-system/leptos/e2e/select-geometry.mjs", &[S::Desk], &[]),
     ]
 };

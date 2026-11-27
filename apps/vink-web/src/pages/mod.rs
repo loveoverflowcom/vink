@@ -209,13 +209,11 @@ fn PublicationView(
     visit_eligible: RwSignal<bool>,
 ) -> impl IntoView {
     let latest = live.data;
-    #[cfg(feature = "browser")]
-    let initial_for_views = publication.clone();
     #[cfg(not(feature = "browser"))]
     let _ = visit_eligible;
     let shown = RwSignal::new(publication);
     #[cfg(feature = "browser")]
-    crate::work_view::track_publication_visit(&initial_for_views, shown, visit_eligible);
+    crate::work_view::track_publication_visit(shown, visit_eligible);
     let update = Memo::new(move |_| {
         latest.with(|l| {
             shown.with(|s| {

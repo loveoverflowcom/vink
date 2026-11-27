@@ -241,7 +241,7 @@ Smoke kiểm hydration, hai khổ thơ, CSS, font và import module editor.
 | --- | --- | --- |
 | `main` (alias) | Hợp các suite từ `editor-first-draft` đến `storage` dưới đây | Tương thích với nhóm legacy kể cả storage và guest Desk |
 | `editor-first-draft` | App đã migrate và hai principal mới, một cho mỗi format | `firstDraftFormat`, CTA/radius/keyboard ở 320px text200, POST và reload |
-| `reader` | Sample work đã công khai, nháp riêng và tag catalog, loopback author | `serverHtml`, `readerBeforeHydration`, `conditionalPublicReads`, `tracePublicReadLifecycle`, 404/asset của Preview, `publicReading`, stanza/font/hydration và không tải editor runtime |
+| `reader` | Sample work đã công khai, nháp riêng và tag catalog, loopback author | `serverHtml`, `readerBeforeHydration`, `conditionalPublicReads`, `tracePublicReadLifecycle`, 404/asset của Preview, `publicReading`, stanza/font/hydration và không tải editor runtime. Pha `reader-views` dùng thêm App khách để kiểm điều hướng, ngưỡng, mất ACK sau commit và số riêng của tác giả |
 | `discussion` | Sample work và author, scratch writes cùng response fixture có nhãn | `discussionReadingAndWrites` (lost ACK, CAS, closed/copy, own remove, flat context, paging, theme/geometry) và `endorsementAsAuthor` |
 | `appearance` | Sample App, danh mục thẻ từ lệnh operator và loopback author | `adaptiveShell` + `bottomNavigationRegression`, brand, hydration/first paint, focus/overflow, theme/text, storage denied, forced colors/reduced motion |
 | `desk` | Sample App/author, response fixture có nhãn, browser context riêng và App khách tắt sign-in | `authorWorks`, `draftDashboard`, `deskEmptyState`, `draftR6Hierarchy`, `timestampPresentation`, `draftPagination`, `selectChevron`, `deskGuest` |
@@ -255,7 +255,7 @@ Smoke kiểm hydration, hai khổ thơ, CSS, font và import module editor.
 | `review` | Sample App, tag catalog, tác giả + admin + reviewer trong scratch | `review-withdrawn`, phản đối tại Bàn viết, quyền API ca/quyết định, snapshot Markdown và Reader SSR/hydrate |
 | `auth` | App scratch migrate/seed + Identity scratch/local outbox | `auth` với session thật |
 | `password` | App password scratch migrate + Identity native scratch/local outbox | `auth-password`, không cần phase auth/main |
-| `standalone` | Artifact CSR + proxy loopback, API-only, Identity và App DB scratch | Reader, tìm kiếm, lịch sử, mật khẩu, editor, bảo vệ bản nháp |
+| `standalone` | Artifact CSR + proxy loopback, API-only, Identity và App DB scratch | Reader, tìm kiếm, lịch sử, mật khẩu, editor, bảo vệ bản nháp và Lượt xem qua hai tài khoản thật (gửi lại sau commit, Bàn viết, đổi phiên) |
 | `author-search` | App password scratch và Identity native, fixture hồ sơ với bút danh trùng | `author-search`, SSR/no-JS, IME mô phỏng, Back, phân trang và Theo dõi theo phiên |
 | `publication` | App publication scratch migrate/seed/catalog + Identity scratch/local outbox | `publication-author` |
 | `notifications` | Sample App scratch với loopback author | `notifications` (chuông/popover/hộp thư/màn quyết định/ma trận đáp ứng R4) |

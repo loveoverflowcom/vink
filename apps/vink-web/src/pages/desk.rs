@@ -48,13 +48,13 @@ pub fn DeskIndex() -> impl IntoView {
         <Meta name="robots" content="noindex" />
         <Show when=move || review_target.with(|target| desk_review::exact_target(target).is_some()) fallback=move || view! {
         <section id="desk" class="vk-desk vk-desk--index" aria-labelledby="desk-title">
-            <Show when=move || session.scope.with(Option::is_none)>
+            <Show when=move || session.profile_scope.with(Option::is_none)>
                 <DeskHeading />
                 <noscript><p class="vk-desk-noscript">{DESK_UNAVAILABLE_SSR}</p></noscript>
                 <DeskSession session />
             </Show>
             // Each confirmed private scope owns its DOM, requests and input buffer.
-            <For each=move || session.scope.get() key=Clone::clone
+            <For each=move || session.profile_scope.get() key=Clone::clone
                 children=move |scope| view! { <DeskWorks scope session /> } />
         </section>
         }>
@@ -102,6 +102,7 @@ fn DeskSession(session: crate::account::Session) -> impl IntoView {
     move || {
         match session.standing.get() {
         Standing::Unknown => view! { <DeskLoading /> }.into_any(),
+        Standing::Active(_) if session.checking() => view! { <DeskLoading /> }.into_any(),
         Standing::Anonymous if sign_in_open => view! {
             <DeskAccess title="Đăng nhập để mở Bàn viết" message="Viết và mở bản thảo riêng của bạn.">
                 <a id="desk-sign-in" class=ButtonVariant::Filled.classes() href=sign_in>"Đăng nhập"</a>
@@ -123,7 +124,7 @@ fn DeskSession(session: crate::account::Session) -> impl IntoView {
                 <a class=ButtonVariant::Filled.classes() href="/toi">"Mở Tài khoản"</a>
             </DeskAccess>
         }.into_any(),
-        Standing::Unavailable => view! {
+        Standing::Unavailable | Standing::Active(_) => view! {
             <DeskAccess title="Chưa kiểm tra được phiên đăng nhập" message="Hãy kiểm tra kết nối rồi thử lại.">
                 <Button id="desk-session-retry" variant=ButtonVariant::Filled on_press=move |_| session.refresh()
                     state=Signal::derive(move || if session.checking() { ActionState::pending("Đang kiểm tra…") } else { ActionState::Enabled })>
@@ -131,7 +132,6 @@ fn DeskSession(session: crate::account::Session) -> impl IntoView {
                 </Button>
             </DeskAccess>
         }.into_any(),
-        Standing::Active(_) => ().into_any(),
     }
     }
 }
@@ -264,7 +264,7 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
     let in_scope = move || {
         scope.try_with_value(|bound| {
             session
-                .scope
+                .profile_scope
                 .try_with_untracked(|now| now.as_ref() == Some(bound))
         }) == Some(Some(true))
     };

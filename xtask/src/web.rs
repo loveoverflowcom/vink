@@ -559,7 +559,7 @@ fn auth_web(
                 chrome,
                 &origin,
                 state,
-                &[("VINK_SAVED_WORKS_SCRATCH".into(), scratch.1.clone())],
+                &[("VINK_STANDALONE_SCRATCH".into(), scratch.1.clone())],
             )
         }
         IdentityPhase::Auth => smoke(

@@ -1,29 +1,13 @@
-import { execFileSync } from 'node:child_process';
+import { standaloneFixtureSql as sql } from './author-fixtures.mjs';
 import { createHash, randomUUID } from 'node:crypto';
 import { captureRequest, holdAnswer } from './auth-browser-network.mjs';
 import { q } from './auth-smoke.mjs';
 
-const scratch = process.env.VINK_SAVED_WORKS_SCRATCH;
-delete process.env.VINK_SAVED_WORKS_SCRATCH;
 const list = '/api/v1/me/saved-works';
 const open = (id) => '#saved-open-' + id;
 const remove = (id) => '#saved-remove-' + id;
 const row = (id) => '#saved-row-' + id;
 const count = (n) => `document.querySelectorAll('#saved-list > li').length === ${n}`;
-
-function sql(input) {
-  const db = scratch && new URL(scratch);
-  if (!db || db.pathname !== '/vink_verify_web_password_auth' ||
-      !['127.0.0.1', 'localhost', '[::1]'].includes(db.hostname)) {
-    throw new Error('missing local standalone scratch database');
-  }
-  return execFileSync('psql', ['-XAtq', '-v', 'ON_ERROR_STOP=1'], {
-    env: { ...process.env,
-      PGDATABASE: db.pathname.slice(1), PGHOST: db.hostname.replace(/^\[(.*)\]$/, '$1'),
-      PGPORT: db.port, PGUSER: decodeURIComponent(db.username), PGPASSWORD: decodeURIComponent(db.password),
-    }, input, encoding: 'utf8',
-  }).trim();
-}
 
 function seed(principal) {
   if (!/^[0-9a-f-]{36}$/.test(principal)) throw new Error('expected a scratch principal UUID');
