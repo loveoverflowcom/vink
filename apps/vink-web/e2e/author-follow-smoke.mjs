@@ -216,14 +216,24 @@ async function relationshipR5Layouts(page, base, handle, {check, chooseAppearanc
       const slot = artwork?.closest('.vk-state-slot')?.getBoundingClientRect();
       const body = ${q('#relationship-list')};
       const wholeWords = element => {
-        const text = [...element.childNodes].find(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim());
-        if (!text) return false;
-        return [...text.textContent.matchAll(/\\S+/g)].every(word => {
+        // Test natural wrapping at the same measure. Range rects on the clamped element
+        // also describe the ellipsis and can omit the remaining characters altogether.
+        const probe = element.cloneNode(true);
+        probe.removeAttribute('id');
+        Object.assign(probe.style, {
+          position: 'absolute', visibility: 'hidden', display: 'block',
+          inlineSize: element.getBoundingClientRect().width + 'px',
+        });
+        element.after(probe);
+        const text = [...probe.childNodes].find(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim());
+        const intact = text && [...text.textContent.matchAll(/\\S+/g)].every(word => {
           const range = new Range();
           range.setStart(text, word.index);
           range.setEnd(text, word.index + word[0].length);
           return range.getClientRects().length === 1;
         });
+        probe.remove();
+        return Boolean(intact);
       };
       const names = [heading, ...body.querySelectorAll('.vk-ui-byline__name')];
       const handles = [...body.querySelectorAll('.vk-ui-identity-handle')];
