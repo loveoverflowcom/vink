@@ -12,14 +12,17 @@ path = "lib.rs"
 
 # Versions match the workspace Cargo.lock; only the domain's own imports are listed.
 [dependencies]
+hmac = "=0.13.0"
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = "=1.0.154"
 sha2 = "=0.11.1"
 thiserror = "=2.0.21"
-time = { version = "=0.3.55", features = ["formatting"] }
+time = { version = "=0.3.55", features = ["formatting", "macros"] }
 unicode-normalization = "=0.1.26"
+unicode-segmentation = "=1.13.3"
 vink-markdown-text = { path = "../../../packages/markdown-text" }
-uuid = { version = "=1.29.0", features = ["v7"] }
+vink-work-view-policy = { path = "../../../packages/work-view-policy" }
+uuid = { version = "=1.29.0", features = ["v4", "v7"] }
 
 [workspace]
 
