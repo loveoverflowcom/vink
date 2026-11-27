@@ -114,6 +114,8 @@ mod work_moderation;
 mod work_view;
 #[path = "postgres/work_view_intake.rs"]
 mod work_view_intake;
+#[path = "postgres/work_view_lifecycle.rs"]
+mod work_view_lifecycle;
 #[path = "postgres/work_view_reads.rs"]
 mod work_view_reads;
 
