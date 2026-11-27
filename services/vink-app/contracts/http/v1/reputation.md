@@ -15,8 +15,12 @@ Public guest and authenticated readers of eligible data have the same public vis
 Check current identity/standing/content privacy fences at read; invalidate or withhold unsafe
 stale projections and caches including historical growth. A fully suspended recipient is omitted
 from public total and all public statistics (including closed periods) until restored and eligible;
-no score reset. No raw component or private signals. Period availability/coverage/retention and
-version/correction contract OPEN; distinguish unavailable/expired from zero growth.
+no score reset. Actor suspension alone does not invalidate valid prior endorsements (Q14).
+Lifecycle removal of content changes current rating but does not itself generate negative growth;
+privacy/deletion/verified correction can invalidate historical statistics. No raw component/private signals.
+Period coverage: current period and up to 52 closed weeks / 12 closed months (Q15); expiry at period
+boundary, no historical result beyond retention, no fake coverage. Version/correction/typed error mapping
+OPEN; distinguish unavailable/expired from zero growth.
 Unready/disabled/forbidden/deleted differ from legitimate baseline; no unsafe stale fallback.
 Use indexed projection reads with deterministic tie/cursor candidate, no per-author source
 aggregation or N+1; profile integration vs dedicated API OPEN. API read only; no arbitrary

@@ -7,11 +7,11 @@ kind = "architecture"
 domain = "reputation"
 title = "Hướng backend Reputation V1 và các lựa chọn kỹ thuật mở"
 resolution = """
-Hướng đề xuất, chưa ACCEPTED: Rust Domain sở hữu policy/formula, PostgreSQL sở hữu nguồn và projection bền vững, worker xử lý batch bất đồng bộ, API chỉ đọc projection có guard visibility. Không bắt buộc thêm service, Redis, Kafka. Tách current score và period growth, hỗ trợ kỳ hiện tại/kỳ đã kết thúc với rating as-of end boundary, không dùng peak/current thay historical rating; signed growth gồm thu hồi tương tác cũ trong kỳ và bù re-like cùng kỳ, không credit re-like khác kỳ; tuần/tháng projection độc lập, không đồng nhất lifecycle restore với đóng góp mới; đình chỉ toàn bộ là public visibility gate (không xóa facts hợp lệ); giữ version formula, eligibility, projection độc lập. Chỉ accepted business transitions có effect; idempotency theo event và business key, lifecycle/reversal, reconciliation, rebuild và coherent cutover. Không dùng notification stream/retention thay nguồn authority. Privacy fail closed kể cả projection đang lag; đọc score/indexed top-k bounded, không aggregate toàn cục tại request.
-Các lựa chọn OPEN_TECHNICAL: audit outbox/dirty queue, ledger/entitlement, snapshot watermark/event-time kỳ và as-of rating reconstruction (bao gồm tác giả không biến động trong kỳ), semantic reversal cho growth, storage/retention, closed-period correction và privacy invalidation hiện hành (cả historical projections), index/top-k/cursor/freshness, backfill và version cutover. Owner quyết với benchmark và bằng chứng source/PG/HTTP; không hardcode candidate công thức hoặc chốt quy tắc sản phẩm mở.
+Hướng đề xuất, chưa ACCEPTED: Rust Domain sở hữu policy/formula, PostgreSQL sở hữu nguồn và projection bền vững, worker xử lý batch bất đồng bộ, API chỉ đọc projection có guard visibility. Không bắt buộc thêm service, Redis, Kafka. Tách current score và period growth, hỗ trợ kỳ hiện tại/kỳ đã kết thúc với rating as-of end boundary, không dùng peak/current thay historical rating; signed growth gồm thu hồi tương tác cũ trong kỳ và bù re-like cùng kỳ, không credit re-like khác kỳ; tuần/tháng projection độc lập, không biến lifecycle remove/restore thành community growth; đình chỉ toàn bộ là public visibility gate cho recipient, không cascade thu hồi endorsement hợp lệ của actor; retained closed periods 52 tuần/12 tháng + kỳ hiện tại, tách retention entitlement/ledger/fence khỏi aggregate; giữ version formula, eligibility, projection độc lập. Chỉ accepted business transitions có effect; idempotency theo event và business key, lifecycle/reversal, reconciliation, rebuild và coherent cutover. Không dùng notification stream/retention thay nguồn authority. Privacy fail closed kể cả projection đang lag; đọc score/indexed top-k bounded, không aggregate toàn cục tại request.
+Các lựa chọn OPEN_TECHNICAL: audit outbox/dirty queue, ledger/entitlement, snapshot watermark/event-time kỳ và as-of rating reconstruction (bao gồm tác giả không biến động trong kỳ), semantic reversal cho growth, storage/retention nguồn và bounded purge kỳ theo Q15, closed-period correction và privacy invalidation hiện hành (cả historical projections), index/top-k/cursor/freshness, backfill và version cutover. Owner quyết với benchmark và bằng chứng source/PG/HTTP; không hardcode candidate công thức hoặc chốt quy tắc sản phẩm mở.
 Phân rã đề xuất 6 PR: Shape/Research/SSOT; Pure Domain; DB/Sources; Worker/Recovery; Statistics/Period Aggregation; API/Qualification. Chưa tạo issue con; design/Web độc lập.
 """
-rationale = "Epic #600 và delta bốn lượt review 27/11/2026. Hướng ban đầu tránh ảnh hưởng nghiệp vụ và không suy signoff kiến trúc từ quyết định sản phẩm; cần đo thực tế."
+rationale = "Epic #600 và delta năm lượt review 27/11/2026. Hướng ban đầu tránh ảnh hưởng nghiệp vụ và không suy signoff kiến trúc từ quyết định sản phẩm; cần đo thực tế."
 requires = [
     "VDR-DECISION-SIGNOFF@r1",
     "VDR-REPUTATION@r1",
@@ -28,4 +28,6 @@ related_ids = [
     "REP-06",
     "REP-07",
     "REP-08",
+    "REP-09",
+    "REP-10",
 ]

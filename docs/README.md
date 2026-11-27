@@ -13,7 +13,7 @@
 
 Hướng kiến trúc: Vink sở hữu tác phẩm, vòng đời xuất bản **và thảo luận** trong PostgreSQL. Ngày 03/11/2026 chủ sản phẩm chốt bình luận hai tầng do Vink tự xây bằng Rust core ([ADR ownership](architecture/discussion-ownership.md)); Discourse chỉ là nguồn tham khảo. Leptos SSR và Axum phục vụ giao diện riêng; một worker xử lý kiểm duyệt nền. Các phần khác cần vượt qua thử nghiệm trong tài liệu quyết định trước khi chốt.
 
-**Điểm Vink (#600):** [PRD §19](../prd/requirements.md#19-điểm-vink-reputation-v1), [đặc tả](architecture/reputation.md), [registry](development/reputation.md). Backend-only; bốn lượt lựa chọn nghiệp vụ, proposal PENDING; chưa có runtime evidence.
+**Điểm Vink (#600):** [PRD §19](../prd/requirements.md#19-điểm-vink-reputation-v1), [đặc tả](architecture/reputation.md), [registry](development/reputation.md). Backend-only; năm lượt lựa chọn nghiệp vụ, proposal PENDING; chưa có runtime evidence.
 
 ## Đọc theo thứ tự nào
 
