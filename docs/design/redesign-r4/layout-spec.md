@@ -82,16 +82,18 @@ Tham chiếu là hướng bố cục đã chọn trong #521. LayoutSpec R4.3 gi�
 ## 4. Khám phá
 
 - [Delta DQ-03 của #530](../redesign-r4-ban-viet-kham-pha.md#dq-03-cập-nhật-ngày-25112026) dùng
-  chung H1 Khám phá, nút tìm và logo. Một thanh Primary Tabs gồm các link Tất cả /
-  Đang theo dõi / Tác giả, giữ feature flag của Đang theo dõi, `aria-current` và node của từng link
-  qua các lần đổi chế độ. [#566](https://github.com/loveoverflowcom/vink/issues/566) cập nhật
+  chung H1 Khám phá, nút tìm và logo. Thanh Primary Tabs luôn có Tất cả và Tác giả, với
+  `aria-current` và node ổn định qua các lần đổi chế độ. Theo [#621](https://github.com/loveoverflowcom/vink/issues/621),
+  Đang theo dõi đứng giữa hai link công khai khi feed bật và Session đã xác nhận scope đủ quyền.
+  SSR công khai và guest không dựng link riêng. [#566](https://github.com/loveoverflowcom/vink/issues/566) cập nhật
   riêng hình học thanh tab. Các link căn trái theo header và danh sách, rộng theo nhãn và padding,
   cao tối thiểu 48 CSS px. Khi thiếu chỗ, link xuống hàng trong thanh mode. Link hiện hành dùng chữ
   primary và gạch chân 3 CSS px bên dưới nhãn. Chỉ báo đổi tức thì và giữ màu hệ thống khi bật
   forced colors.
 - Dock mở dưới thanh tab. Tác giả tìm bút danh hoặc @handle. Gửi truy vấn từ Đang theo dõi chuyển
   sang Tất cả. Hai vùng tìm và kết quả theo chế độ trên URL.
-- **Guest State của Đang theo dõi (#566).** Sau khi phiên được xác nhận là khách, `EmptyState`
+- **Guard của URL trực tiếp Đang theo dõi (#566, #621).** Khi vào `/?mode=following` mà phiên
+  chưa được xác nhận, vùng kết quả chờ Session. Với khách đã xác nhận, không có tab hiện hành và `EmptyState`
   căn giữa trong vùng kết quả tính từ dưới tab và dock đến trước điều hướng dưới/safe area.
   Icon trang trí đứng trước tiêu đề “Gần hơn với tác giả” và lời mời theo dõi. Một link Filled
   bo tròn, cao tối thiểu 48 CSS px, mở Auth R3 tại `/toi?next=…`. Sau đăng nhập, đường “Quay lại
@@ -102,7 +104,8 @@ Tham chiếu là hướng bố cục đã chọn trong #521. LayoutSpec R4.3 gi�
   dùng `IconButton` Standard. Khi nghỉ, icon nằm trực tiếp trên nền cha. Khám phá giữ vùng bấm
   56 px trên desktop và 48 px trên mobile. Nút quay lại và xóa chữ dùng nền của ô tìm đang mở.
   Giữ mặt nền ô nhập và các trạng thái hover, pressed, focus-visible,
-  forced-colors và reduced motion.
+  forced-colors và reduced motion. [Search R5 #621](../search-r5.md#delta-khám-phá-621)
+  quy định search pill và trạng thái không tìm thấy tác phẩm.
 - Một hàng/thẻ dùng thể loại và ngày công khai đầu (Asia/Ho_Chi_Minh khi xác định được), nhan đề,
   trích đoạn và byline với avatar tròn. Dòng thông tin dùng tertiary.
 - [#603](https://github.com/loveoverflowcom/vink/issues/603) thay phần lọc Web của DQ-07/10.

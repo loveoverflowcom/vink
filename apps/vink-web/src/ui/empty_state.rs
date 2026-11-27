@@ -61,7 +61,7 @@ pub fn EmptyState(
     /// A named page heading can also receive focus from the route's navigation owner.
     #[prop(optional)]
     title_id: Option<&'static str>,
-    #[prop(optional, into)] message: String,
+    #[prop(optional, into)] message: Option<TextProp>,
     #[prop(optional)] announce: bool,
     /// Announce a failed read immediately, keeping retry outside the live region.
     #[prop(optional)]
@@ -118,7 +118,7 @@ pub fn EmptyState(
             <div class="vk-empty-state__text" role=if alert { Some("alert") } else { announce.then_some("status") } aria-atomic=(announce || alert).then_some("true")>
                 {title.map(|title| view! { <vink_ui::Heading class:vk-empty-state__title=true
                     level=heading role=vink_ui::TypeRole::Title attr:id=title_id attr:tabindex=title_id.map(|_| "-1")>{title}</vink_ui::Heading> })}
-                {(!message.is_empty()).then(|| view! { <p class="vk-empty-state__message">{message}</p> })}
+                {message.map(|message| view! { <p class="vk-empty-state__message">{move || message.get()}</p> })}
             </div>
             {children.map(|children| view! { <div class="vk-empty-state__actions" on:focusin=reveal_recovery>{children()}</div> })}
         </div>

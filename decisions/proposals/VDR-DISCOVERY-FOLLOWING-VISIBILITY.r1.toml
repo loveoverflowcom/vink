@@ -1,0 +1,16 @@
+version = 1
+id = "VDR-DISCOVERY-FOLLOWING-VISIBILITY"
+revision = 1
+
+[content]
+kind = "product"
+domain = "social-graph"
+title = "Hiển thị chế độ Đang theo dõi trong Khám phá Web"
+resolution = """
+Tất cả và Tác giả là hai đích công khai. Khám phá Web chỉ hiện link Đang theo dõi khi feed bật và session đã xác nhận principal đủ quyền xem feed. SSR công khai và phiên chưa xác nhận chỉ hiện hai đích công khai. URL Đang theo dõi vẫn giữ kiểm quyền, các hành động đăng nhập hoặc hoàn tất bút danh và đường quay lại.
+"""
+rationale = """
+Issue #621 (https://github.com/loveoverflowcom/vink/issues/621) ghi yêu cầu chủ sản phẩm ngày 27/11/2026 về việc ẩn hẳn tab Đang theo dõi trước đăng nhập. Delta thay cách guest tiếp cận mode của #566; giữ bố cục tab và quyền server của SOC-FEED-01.
+"""
+requires = ["VDR-DECISION-SIGNOFF@r1"]
+related_ids = ["SOC-FEED-01"]

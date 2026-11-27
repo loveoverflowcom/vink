@@ -257,10 +257,10 @@ export async function followingFeed(control, other, {base, openPage, check, hold
   const guest = await openPage(browserContextId);
   const page = await openPage(); // shares the App cookie with control, and listens for ACK broadcasts.
   await guest.goto(base + '/');
-  await guest.waitFor(q('#explore-mode-following'), 'Explore exposes Following mode');
-  await guest.eval(`${q('#explore-mode-following')}.focus()`);
-  await guest.key('Enter');
-  await guest.waitFor(state('guest'), 'keyboard opens the guest Feed gate');
+  await guest.waitFor(`${q('#explore')}?.dataset.enhanced === 'true'`, 'ordinary guest Explore hydrates');
+  check(await guest.eval(`!${q('#explore-mode-following')}`), '#621 guest Explore has no Following link');
+  await guest.goto(base + FEED);
+  await guest.waitFor(state('guest'), 'the direct URL still opens the protected guest Feed gate');
   const target = await guest.eval(`${q('#feed-sign-in')}.getAttribute('href')`);
   check(await guest.eval(`${q('#feed-sign-in')}.classList.contains('vk-ui-button--filled')`),
     '#405 guest Feed sign-in uses a filled primary button like guest Desk');
@@ -649,7 +649,8 @@ export async function followingFeed(control, other, {base, openPage, check, hold
   const logout = await page.eval("fetch('/api/v1/auth/session',{method:'DELETE'}).then(r=>r.status)");
   check(logout === 204, 'native authority revoked the active Feed session');
   await page.click('#feed-load-more');
-  await page.waitFor(`${state('expired')} && ${ROWS}===0`, 'a Feed 401 clears cards and has a distinct expired-session action');
+  await page.waitFor(`${state('expired')} && ${ROWS}===0 && !${q('#explore-mode-following')}`,
+    'a Feed 401 clears cards, removes the tab and offers the distinct expired-session action');
   await switchActor('a', control, 'anonymous');
 
   authorFixtureSql(`DELETE FROM publications WHERE work_id IN (${[...bWorks, ...aWorks].map(literal).join(',')});`);

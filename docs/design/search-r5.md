@@ -58,6 +58,23 @@ không tự announce thêm ngoài status kết quả. Plain tooltip chỉ chứa
 persistent, Escape đóng riêng nó và giữ focus. Native supporting details giữ toggle/focus
 bàn phím và khả năng no-JS. Không giấu warning, blocker hay unsaved state trong detail.
 
+## Delta Khám phá #621
+
+[#621](https://github.com/loveoverflowcom/vink/issues/621) chọn anatomy từ [preview R5](https://drive.google.com/file/d/1IDM3FWKPYF_LhwnIQZ4mNRa8z2LNZKPt/view).
+Bản chạy dùng `SearchField::Bar` sẵn có: nền field tonal và bán kính full từ UI System.
+Dock đã hydrate có nút Back, input Be Vietnam Pro regular một dòng, và link X khi có chữ
+hoặc khi q vẫn đang áp dụng. Mode Tác giả dùng cùng dock. Trang thẻ và HTML trước hydrate dùng
+submit icon native. Các đích icon cân bằng quanh ô nhập, giữ target 48 CSS px, min-height 56 px,
+và mỗi lần chỉ báo focus ở shell của input hoặc ở đích icon. Forced colors dùng viền hệ thống.
+
+Query miss dùng WebP NoResults trong `EmptyState`. Một status chứa tiêu đề “Không tìm thấy tác
+phẩm” và dòng “Thử một từ khóa khác.” Khi dùng snapshot cũ, dòng hỗ trợ báo đó là bản đã tải.
+Link tonal bo tròn có icon người và nhãn “Tìm tác giả”, chuyển nguyên q trong href. X trong trường
+là thao tác xóa q và cursor, giữ tag. Native href hoạt động trước hydrate. Hành động “Bỏ lọc thẻ”
+xử lý điều kiện lọc riêng. Trang kế rỗng, thẻ không khả dụng, corpus rỗng và lỗi tải có trạng thái riêng.
+
+Điều kiện hiện mode và guard URL trực tiếp thuộc [LayoutSpec Khám phá](redesign-r4/layout-spec.md#4-khám-phá).
+
 ## Owners và consumer tiếp theo
 
 - `field.rs` / `vink-ui.css`: single-row Bar, hidden native label và ListEnd không rule.

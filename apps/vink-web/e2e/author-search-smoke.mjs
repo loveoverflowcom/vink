@@ -1,4 +1,5 @@
-// #295, #354 and #566: real SSR, Chrome and native Identity against disposable PostgreSQL databases.
+// #295, #354, #566 and #621: real SSR, Chrome and native Identity against disposable PostgreSQL databases.
+import { searchR5 } from './discovery-smoke.mjs';
 import { fill, HYDRATED, mailedCode, q, registrationProof, STANDING } from './auth-smoke.mjs';
 import { authorFixtureSql } from './author-fixtures.mjs';
 
@@ -97,7 +98,6 @@ async function intercept(page, pattern, handler) {
 
 async function discoveryModeStability(page, base, check) {
   const works = '#explore-mode-works';
-  const following = '#explore-mode-following';
   const authors = '#explore-mode-authors';
   const mode = selector => `${q(selector)}?.getAttribute('aria-current') === 'page'`;
   const activate = async selector => {
@@ -108,7 +108,7 @@ async function discoveryModeStability(page, base, check) {
   for (const [width, scale] of [[1280, 100], [390, 100], [390, 150], [320, 150], [320, 200]]) {
     await page.viewport(width, 850);
     await page.goto(base + '/');
-    await page.waitFor(`${HYDRATED} && ${q(following)}`, 'shared discovery header');
+    await page.waitFor(`${HYDRATED} && ${q(authors)}`, 'shared discovery header');
     const labelFont = 'parseFloat(getComputedStyle(document.querySelector(".vk-explore-modes a")).fontSize)';
     const regularLabelFont = await page.eval(labelFont);
     await page.eval(`(() => {
@@ -165,11 +165,8 @@ async function discoveryModeStability(page, base, check) {
 
     await page.eval(`${q(works)}.focus()`);
     await page.key('Tab');
-    check(await page.eval(`document.activeElement === ${q(following)} && ${q(following)}.matches(':focus-visible')`),
-      `#473 ${width}px keyboard reaches Following`);
-    await page.key('Enter');
-    await page.waitFor(`${mode(following)} && ${q('[data-feed-state=guest]')}`, 'guest Following selected');
-    await stable('Following');
+    check(await page.eval(`document.activeElement === ${q(authors)} && ${q(authors)}.matches(':focus-visible') && !${q('#explore-mode-following')}`),
+      `#621 ${width}px guest keyboard goes directly from Tất cả to Tác giả`);
 
     const held = [];
     const release = await intercept(page, base + SEARCH + '*', params => held.push(params.requestId));
@@ -194,7 +191,7 @@ async function discoveryModeStability(page, base, check) {
           return {
             reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
             thickness: underline.height,
-            previousThickness: getComputedStyle(${q(following)}, '::after').height,
+            previousThickness: getComputedStyle(${q(works)}, '::after').height,
             moving: current.getAnimations({subtree: true}).some(animation =>
               animation.effect?.pseudoElement === '::after'),
           };
@@ -246,15 +243,27 @@ async function discoveryModeStability(page, base, check) {
   await page.viewport(1280);
 }
 
-async function followingGuest(page, base, check, textContrast, outbox) {
+async function followingGuest(page, base, check, textContrast, outbox, openSibling) {
   const feed = '/?mode=following';
   const action = '#feed-sign-in';
   const username = 'following_guest_566';
   const password = 'synthetic following browser fixture';
   const title = '#community-stream .vk-empty-state__title';
   const message = '#community-stream .vk-empty-state__message';
-  await page.goto(base + feed);
-  await page.waitFor(q(action), 'confirmed anonymous session sees the Following action');
+  let privateReads = 0;
+  const watchFeed = ({sessionId, method, params}) => {
+    if (sessionId === page.sessionId && method === 'Network.requestWillBeSent' &&
+        new URL(params.request.url).pathname === '/api/v1/me/following-feed') privateReads++;
+  };
+  page.cdp.listeners.push(watchFeed);
+  try {
+    await page.goto(base + feed);
+    await page.waitFor(q(action), 'confirmed anonymous session sees the Following action');
+    check(await page.eval(`!${q('.vk-explore-modes [aria-current], #explore-mode-following, #following-cards')}`)
+      && privateReads === 0, '#621 guest direct link has no false current tab or private feed request');
+  } finally {
+    page.cdp.listeners = page.cdp.listeners.filter(listener => listener !== watchFeed);
+  }
   check(await page.eval(`${hasCopy(title, 'Gần hơn với tác giả')} && ${hasCopy(action, 'Đăng nhập')}
     && ${q('#community-stream .vk-empty-state__icon svg[aria-hidden="true"]')}
     && document.querySelectorAll('#community-stream [role="status"]').length === 1
@@ -298,7 +307,7 @@ async function followingGuest(page, base, check, textContrast, outbox) {
       check(Math.abs(facts.centerX) <= 1 && Math.abs(facts.centerY) <= 1 && facts.xOverflow <= 1
         && facts.uiFont && facts.height >= 48 && facts.round && facts.borderless && (scale !== 100 || facts.visible),
         `#566 centered guest state ${scene} (${JSON.stringify(facts)})`);
-      if (scale === 100 && (width === 390 || width === 1440) || scale === 200 && width === 320) {
+      if (scale === 100 && (width === 390 || width === 1440 || width === 834 && theme === 'light') || scale === 200 && width === 320) {
         await textContrast(page, theme, 'following-guest', [title, message, action]);
         if (facts.actionBelowBar > 0) {
           await page.eval(`scrollBy(0, ${Math.ceil(facts.actionBelowBar) + 8})`);
@@ -350,7 +359,7 @@ async function followingGuest(page, base, check, textContrast, outbox) {
   await page.waitFor(`${STANDING} === 'needs_principal' && ${q('#pen-name-form')}`, 'Identity registration needs a principal');
   await page.goto(base + feed);
   await page.waitFor(hasCopy(action, 'Hoàn tất bút danh'), 'Following gives the registered session its own action');
-  check(await page.eval(`${q('[data-feed-state="guest"]')} && !${q(title)} && !${q('#community-stream button')}`),
+  check(await page.eval(`${q('[data-feed-state="guest"]')} && !${q(title)} && !${q('#community-stream button, #explore-mode-following')}`),
     '#566 the shared guest marker retains the distinct principal-completion UI');
   await page.click(action);
   await page.waitFor(`location.pathname === '/toi' && ${next} && ${q('#pen-name')}`, 'principal action retains Following return context');
@@ -358,15 +367,21 @@ async function followingGuest(page, base, check, textContrast, outbox) {
   await page.click('#pen-name-save');
   await page.waitFor(`${STANDING} === 'active' && ${q('#me-return-link')}`, 'real principal and safe return link');
   await page.click('#me-return-link');
-  await page.waitFor(`location.search === '?mode=following' && ${q('[data-feed-state="no-follows"]')}`,
-    'confirmed account returns to its own Following results');
+  await page.waitFor(`location.search === '?mode=following' && ${q('[data-feed-state="no-follows"]')}
+    && ${q('#explore-mode-following[aria-current="page"]')}`,
+    'confirmed account returns to its own Following results and gets the selected tab');
+  check(await page.eval(`fetch(location.href).then(response => response.text()).then(html =>
+    !html.includes('id="explore-mode-following"') && html.includes('data-feed-state="checking"'))`),
+    '#621 a valid cookie still leaves the pre-hydration document unconfirmed and without the tab');
 
-  await page.goto(base + '/toi');
-  await page.waitFor(q('#sign-out'), 'registered account can sign out');
-  await page.click('#sign-out');
-  await page.waitFor(`${STANDING} === 'anonymous'`, 'Identity confirms sign-out');
-  await page.goto(base + feed);
-  await page.waitFor(hasCopy(action, 'Đăng nhập'), 'guest gate returns after sign-out');
+  const sibling = await openSibling();
+  await sibling.goto(base + '/toi');
+  await sibling.waitFor(q('#sign-out'), 'registered account can sign out');
+  await sibling.click('#sign-out');
+  await sibling.waitFor(`${STANDING} === 'anonymous'`, 'Identity confirms sign-out');
+  await page.waitFor(`${hasCopy(action, 'Đăng nhập')} && !${q('#explore-mode-following, #following-cards')}`,
+    '#621 cross-tab sign-out fences the already mounted Following tab and private cards');
+  await page.send('Page.bringToFront');
   await page.click(action);
   await page.waitFor(`${next} && ${q('#password-login')}`, 'password sign-in retains Following return context');
   await fill(page, '#password-login-username', username);
@@ -604,13 +619,13 @@ export async function authorSearch(page, { args, check, openPage, textContrast }
   await page.send('Emulation.setScriptExecutionDisabled', { value: true });
   try {
     await page.goto(base + '/');
-    await page.waitFor(q('#explore-mode-following'), 'SSR supplies the native Following link');
-    await page.eval(`${q('#explore-mode-following')}.focus()`);
-    await enter(page);
-    await page.waitFor(`location.search === '?mode=following' &&
-      ${q('#explore-mode-following[aria-current="page"]')} &&
-      ${q('[data-feed-state="checking"]')} && !${q('#feed-sign-in')} && !(${HYDRATED})`,
-      'no-JS Following link keeps current state and waits for session authority');
+    check(await page.eval(`!${q('#explore-mode-following')} && document.querySelectorAll('.vk-explore-modes a').length === 2
+      && ${q('#explore-mode-works[aria-current="page"]')} && !(${HYDRATED})`),
+      '#621 ordinary guest SSR has only the two public modes');
+    await page.goto(base + '/?mode=following');
+    check(await page.eval(`location.search === '?mode=following' && !${q('.vk-explore-modes [aria-current]')}
+      && ${q('[data-feed-state="checking"]')} && !${q('#feed-sign-in, #following-cards')} && !(${HYDRATED})`),
+      '#621 direct Following URL remains guarded before JavaScript confirms the session');
     await page.goto(base + MODE);
     await page.waitFor(q(INPUT), 'SSR author search form before Web bundle');
     await fill(page, INPUT, pen);
@@ -623,10 +638,12 @@ export async function authorSearch(page, { args, check, openPage, textContrast }
     await page.send('Network.setBlockedURLs', { urls: [] });
   }
 
+  await searchR5(page, {base, check, textContrast});
   await discoveryModeStability(page, base, check);
   const { browserContextId } = await page.cdp.send('Target.createBrowserContext');
   try {
-    await followingGuest(await openPage(browserContextId), base, check, textContrast, args.outbox);
+    await followingGuest(await openPage(browserContextId), base, check, textContrast, args.outbox,
+      () => openPage(browserContextId));
   } finally {
     await page.cdp.send('Target.disposeBrowserContext', { browserContextId });
   }
@@ -634,8 +651,8 @@ export async function authorSearch(page, { args, check, openPage, textContrast }
   const entry = '#explore-mode-authors';
   await page.waitFor(`${HYDRATED} && ${q(entry)}`, 'author search mode in Khám phá');
   check(await page.eval(`${q('#explore-mode-works')}.parentElement === ${q(entry)}.parentElement
-    && ${q('#explore-mode-following')}.parentElement === ${q(entry)}.parentElement`),
-    'work, following and author modes share one navigation region');
+    && !${q('#explore-mode-following')}`),
+    'guest Works and Authors share one navigation region');
   await page.click(entry);
   await page.waitFor(`${HYDRATED} && ${HAS_ROWS} === 12`, 'guest author suggestions');
   presentation(await page.eval(`${hasCopy(HEADING, COPY.suggestions)}
