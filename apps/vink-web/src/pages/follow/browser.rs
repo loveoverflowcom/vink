@@ -329,7 +329,8 @@ pub(super) fn ActiveFollowRegion(
         if action_following.get() {
             ButtonVariant::Outlined
         } else {
-            ButtonVariant::Filled
+            // #588: Follow is a tonal action beside the counts, not the page's primary CTA.
+            ButtonVariant::Tonal
         }
     });
     let action_state = Signal::derive(move || {

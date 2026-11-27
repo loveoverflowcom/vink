@@ -122,6 +122,8 @@
   --vk-text-profile-input: 1.0625rem;
   --vk-text-profile-monogram: 1.625rem;
   --vk-text-profile-monogram-wide: 1.875rem;
+  --vk-text-profile-name: 1.25rem;
+  --vk-text-profile-name-wide: 1.375rem;
   --vk-text-rail-label: 0.75rem;
   --vk-text-reading: clamp(1.0625rem, 1rem + 0.25vw, 1.25rem);
   --vk-type-body-font: var(--vk-font-ui);

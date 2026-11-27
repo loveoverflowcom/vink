@@ -105,6 +105,8 @@
   --text-vk-size-profile-input: var(--vk-text-profile-input);
   --text-vk-size-profile-monogram: var(--vk-text-profile-monogram);
   --text-vk-size-profile-monogram-wide: var(--vk-text-profile-monogram-wide);
+  --text-vk-size-profile-name: var(--vk-text-profile-name);
+  --text-vk-size-profile-name-wide: var(--vk-text-profile-name-wide);
   --text-vk-size-rail-label: var(--vk-text-rail-label);
   --text-vk-size-reading: var(--vk-text-reading);
   --text-vk-body: var(--vk-type-body-size);

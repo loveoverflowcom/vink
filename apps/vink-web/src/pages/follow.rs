@@ -148,7 +148,9 @@ pub(super) fn ProfileActionRegion(
                             attr:id="follow-sign-in"
                             attr:data-profile-return="true"
                             href=href>
-                            "Đăng nhập để theo dõi"
+                            // #588: the guest sees the same action the member gets; Auth asks
+                            // for sign-in after the press and never follows on return.
+                            "Theo dõi"
                         </UiLink>
                     }.into_any()
                 }
@@ -258,7 +260,7 @@ pub(super) fn ProfileRelationships(
                             attr:id="profile-followers-link"
                             attr:data-profile-return="true"
                             href=href>
-                            {format!("{} người theo dõi", format_vi_count(c))}
+                            <span class="vk-rel-num">{format_vi_count(c)}</span>" người theo dõi"
                         </UiLink>
                     }.into_any(),
                     (Some(href), None) => view! {
@@ -272,7 +274,7 @@ pub(super) fn ProfileRelationships(
                     }.into_any(),
                     (None, Some(c)) => view! {
                         <span id="profile-followers-count" class="vk-rel-stat">
-                            {format!("{} người theo dõi", format_vi_count(c))}
+                            <span class="vk-rel-num">{format_vi_count(c)}</span>" người theo dõi"
                         </span>
                     }.into_any(),
                     (None, None) => view! { <span></span> }.into_any(),
@@ -284,7 +286,7 @@ pub(super) fn ProfileRelationships(
                             attr:id="profile-following-link"
                             attr:data-profile-return="true"
                             href=href>
-                            {format!("{} đang theo dõi", format_vi_count(c))}
+                            <span class="vk-rel-num">{format_vi_count(c)}</span>" đang theo dõi"
                         </UiLink>
                     }.into_any(),
                     (Some(href), None) => view! {
@@ -298,7 +300,7 @@ pub(super) fn ProfileRelationships(
                     }.into_any(),
                     (None, Some(c)) => view! {
                         <span id="profile-following-count" class="vk-rel-stat">
-                            {format!("{} đang theo dõi", format_vi_count(c))}
+                            <span class="vk-rel-num">{format_vi_count(c)}</span>" đang theo dõi"
                         </span>
                     }.into_any(),
                     (None, None) => view! { <span></span> }.into_any(),

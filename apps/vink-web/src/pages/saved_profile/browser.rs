@@ -92,14 +92,16 @@ pub(super) fn OwnSavedProfile(owner: VerifiedOwner) -> impl IntoView {
     let own = RwSignal::new(None);
     let (public, on_summary) = handle::profile_summary(profile.handle.clone(), Default::default());
     let name = profile.pen_name;
+    let action_handle = profile.handle.clone();
     view! {
         <Title text=format!("Đã lưu · {name} · Vink") />
         <Meta name="robots" content="noindex" />
         <article class="vk-author-public">
-            <handle::ProfileIdentity pen_name=name handle=profile.handle.clone() />
-            <follow::ProfileActionRegion handle=profile.handle.clone() on_summary own_relationships=own />
-            <follow::ProfileRelationships public=public.into() own=own.read_only()
-                on_retry=Callback::new(move |()| on_summary.run(None)) />
+            <handle::ProfileIdentity pen_name=name handle=profile.handle.clone()>
+                <follow::ProfileRelationships public=public.into() own=own.read_only()
+                    on_retry=Callback::new(move |()| on_summary.run(None)) />
+                <follow::ProfileActionRegion handle=action_handle on_summary own_relationships=own />
+            </handle::ProfileIdentity>
             {profile.bio.map(|bio| view! { <p class="vk-author-bio">{bio}</p> })}
             <section class="vk-saved-section" aria-labelledby="saved-heading">
                 <div id="profile-view-slot" class="vk-profile-view-slot">

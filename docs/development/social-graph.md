@@ -178,6 +178,12 @@ toàn dùng bản có cả migration lẫn redaction, ưu tiên tắt entry form
 - **Kiến trúc.** `CHOICE-02 = A`: lưu bảng cặp bền `author_follows` (trigger giữ hàng, parity `active == ((version % 2) = 1)`, tăng đơn điệu `accepted_order`) kèm ledger `author_follow_receipts` append-only. `CHOICE-03 = A`: tính live aggregate qua partial index `WHERE active` và join `author_profiles.current_handle IS NOT NULL` trong snapshot `REPEATABLE READ`. Thứ tự khóa chuẩn hóa theo cặp `PrincipalId` tăng dần giúp `set_follow` hai chiều và `persistence::handle::retire` (`retire_edges`) không deadlock. `VDR-SOCIAL-GRAPH@r1` và `VDR-SOCIAL-CONTRACT@r1` vẫn ở trạng thái `DESIGN_PROPOSED` / `PENDING`.
 - **Triển khai.** `core` ([domain/follow.rs](../../services/vink-app/src/domain/follow.rs)), `persistence-api` ([20261126000000_author_follows.sql](../../services/vink-app/migrations/20261126000000_author_follows.sql), [persistence/follow.rs](../../services/vink-app/src/persistence/follow.rs), [http/follow.rs](../../services/vink-app/src/http/follow.rs)), và `web` ([follow_state.rs](../../apps/vink-web/src/follow_state.rs), [pages/follow.rs](../../apps/vink-web/src/pages/follow.rs), route `/@{handle}/nguoi-theo-doi` và `/@{handle}/dang-theo-doi`, `/toi?next=…`). Bàn giao seam batch membership (`followed_in_tx`, `followed_principals_in`, `GET /api/v1/me/follows/membership`) cho #295/#296 và hook `retire_edges`/`retire_edges_batch` trong `handle::retire` cho #297.
 - **Kiểm chứng.** [Bằng chứng #294](evidence/author-follow-294/README.md) ghi lệnh và SHA, PostgreSQL thật, Web password với Follow/Profile/Handle/Auth, ma trận responsive và bốn ảnh đã xem. Cursor danh sách riêng bị ràng buộc theo phiên; response cũ không vượt rào A→B→A. Quyền hiện hành được kiểm trước cursor, HTTP validator và hiển thị danh sách/số đếm.
+- **Header hồ sơ #588.** `ProfileIdentity` nhận social row qua slot: bút danh Literata đậm
+  (`text.profile-name` 20px, `text.profile-name-wide` 22px), handle phụ, rồi số đếm/danh sách
+  được phép trước nút Theo dõi theo cả thứ tự nhìn và tab. Hàng gọn khi cột chữ đủ chỗ, xuống
+  dòng hoặc trải hết bề ngang khi hẹp/chữ lớn. Khách khi đăng nhập mở chỉ thấy link native
+  “Theo dõi” (tonal) tới `/toi?next=…`, không dialog mới và không tự theo dõi sau khi về;
+  Follow của thành viên dùng tonal, Bỏ theo dõi giữ outlined. State, quyền và ACK giữ owner cũ.
 
 ## Đang theo dõi trong Khám phá #296
 
