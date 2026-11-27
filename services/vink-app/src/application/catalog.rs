@@ -111,6 +111,28 @@ pub const fn facet_code(facet: TagFacet) -> &'static str {
     }
 }
 
+/// A tag as a public card, reader or author profile shows it: always active, current label.
+/// Owned here, next to [`facet_code`], so actor-free projections serialized by the application
+/// (the author profile) and HTTP v1 cards share one wire shape.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct PublicTag {
+    pub tag_id: String,
+    pub facet: &'static str,
+    pub label: String,
+    pub slug: String,
+}
+
+impl From<&CatalogTag> for PublicTag {
+    fn from(tag: &CatalogTag) -> Self {
+        Self {
+            tag_id: tag.id().to_string(),
+            facet: facet_code(tag.facet()),
+            label: tag.label().as_str().to_owned(),
+            slug: tag.slug().as_str().to_owned(),
+        }
+    }
+}
+
 pub fn parse_facet(raw: &str) -> Option<TagFacet> {
     match raw {
         "form" => Some(TagFacet::Form),

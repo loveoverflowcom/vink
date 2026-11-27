@@ -61,3 +61,15 @@ So sánh cùng q/tag/state, viewport 320/390/834/1440 × light/dark × text100/2
 bố cục; 200% là reflow/accessibility. Cần mở ảnh trước/sau, đo art/overflow/type/order, contrast,
 kiểm focus/GET riêng. OS IME, named screen reader và thiết bị thật là boundary riêng.
 [Evidence và giới hạn](../development/evidence/empty-webp-258/README.md).
+
+## Hồ sơ công khai (#587)
+
+CHOICE-01 (#587) = B (`DESIGN_PROPOSED`: agent chọn khi triển khai, chưa phải quyết định của
+owner): empty thật của trang đầu `/@handle` (trang `page` rỗng, không cursor và không
+`next_cursor`, hoặc `publications` vắng khi `has_public_works=false`) dùng `EmptyState region`
+với `NoPublicWorks` và một câu “Chưa có tác phẩm công khai.”, không action.
+`--region` nằm trong luồng của vùng Tác phẩm dưới header: căn giữa theo trục ngang, khoảng thở
+riêng, ảnh `min(192px, 100%)` (<760px `min(160px, 100%)`), không card/viền/gradient. Chuỗi
+`.vk-main:has(...)` loại `--region` như `--compact` vì một state full-size sẽ biến `.vk-main` thành
+flex cột và làm `.vk-author-public` (có `margin-inline: auto`) co theo nội dung. Trang continuation
+rỗng, restart, lỗi đọc danh sách và 404/410/503 không có artwork.

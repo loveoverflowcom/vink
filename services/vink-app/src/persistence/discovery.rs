@@ -80,7 +80,7 @@ pub(super) struct CardRow {
     display_name: String,
     handle: Option<String>,
     retired: bool,
-    published_at: OffsetDateTime,
+    pub(super) published_at: OffsetDateTime,
     first_published_at: Option<OffsetDateTime>,
     metadata_snapshot_id: Option<Uuid>,
     digest: Option<String>,

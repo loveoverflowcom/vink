@@ -1,10 +1,11 @@
-use crate::contract::{AuthorResolution, ProfileWorks};
+use crate::contract::{AuthorResolution, ProfileWork, ProfileWorks};
 use leptos::prelude::*;
 use leptos_meta::{Link, Meta, Title};
 use leptos_router::hooks::{use_params_map, use_query_map};
 use vink_ui::{HiddenField, Link as UiLink};
 
-use crate::ui::empty_state::{EmptyState, NotFoundContent};
+use crate::ui::empty_state::{EmptyArtwork, EmptyState, NotFoundContent};
+use crate::ui::patterns::first_public_date_hcm;
 
 const NO_PUBLIC_WORKS: &str = "Chưa có tác phẩm công khai.";
 
@@ -118,36 +119,7 @@ fn render_profile(
                     <section aria-labelledby="author-works-heading"
                         class="[margin-block-start:calc(var(--vk-space-8)_+_var(--vk-space-2))] [&>.vk-ui-link]:inline-block [&>.vk-ui-link]:[margin-inline-end:var(--vk-space-3)]">
                         <super::saved_profile::PublicWorksSlot handle=author.handle.clone() />
-                        {match publications {
-                            Some(ProfileWorks::Page { works, next_cursor }) => {
-                                let items = works.into_iter().map(|work| view! {
-                                    <li><UiLink
-                                        attr:id=format!("profile-work-{}", work.work_id)
-                                        attr:data-profile-return="true"
-                                        href=format!("/tac-pham/{}", work.work_id)>{work.title}</UiLink></li>
-                                }).collect_view();
-                                let empty = items.is_empty();
-                                let next = next_cursor.map(|cursor| format!("{}?cursor={cursor}", author.href));
-                                view! {
-                                    {empty.then(|| view! { <EmptyState compact=true hook="vk-author-works-empty" message=if continued {
-                                        "Trang này không còn tác phẩm."
-                                    } else { NO_PUBLIC_WORKS } /> })}
-                                    {(!empty).then(|| view! { <ul class="vk-author-works [list-style:none] [margin:0_0_var(--vk-space-4)] p-0">{items}</ul> })}
-                                    {next.map(|href| view! { <UiLink href>"Trang tiếp"</UiLink> })}
-                                    {continued.then(|| view! { <UiLink href=author.href>"Về trang đầu"</UiLink> })}
-                                }.into_any()
-                            }
-                            Some(ProfileWorks::Restart) => view! {
-                                <p role="alert">"Trang tác phẩm không còn khớp với hồ sơ này."</p>
-                                <UiLink href=author.href>"Về trang đầu"</UiLink>
-                            }.into_any(),
-                            None if !has_public_works => view! { <EmptyState compact=true hook="vk-author-works-empty" message=NO_PUBLIC_WORKS /> }.into_any(),
-                            None => view! {
-                                <p role="alert">"Chưa tải được danh sách tác phẩm."</p>
-                                <vink_ui::Button variant=vink_ui::ButtonVariant::Tonal
-                                    on_press=Callback::new(move |()| retry())>"Thử lại"</vink_ui::Button>
-                            }.into_any(),
-                        }}
+                        {works_region(publications, has_public_works, continued, author.href, retry)}
                     </section>
                 </article>
             }.into_any();
@@ -197,6 +169,116 @@ fn render_profile(
         </section>
     }
     .into_any()
+}
+
+/// Works region of a current public profile (#587). Only a settled, empty first page with no
+/// further page is a true empty and carries the literary artwork. A continuation or an
+/// unexpected empty head, a cursor restart and a failed list read keep their own text and
+/// recovery without artwork, so none of them passes for an author who never published.
+fn works_region(
+    publications: Option<ProfileWorks>,
+    has_public_works: bool,
+    continued: bool,
+    href: String,
+    retry: impl Fn() + Copy + Send + Sync + 'static,
+) -> AnyView {
+    match publications {
+        Some(ProfileWorks::Page { works, next_cursor }) => {
+            let next = next_cursor.map(|cursor| format!("{href}?cursor={cursor}"));
+            let body = if !works.is_empty() {
+                let items = works
+                    .into_iter()
+                    .map(|work| view! { <ProfileWorkItem work /> })
+                    .collect_view();
+                view! { <ul class="vk-author-works">{items}</ul> }.into_any()
+            } else if continued || next.is_some() {
+                view! { <EmptyState compact=true hook="vk-author-works-empty"
+                message="Trang này không còn tác phẩm." /> }
+                .into_any()
+            } else {
+                no_public_works()
+            };
+            view! {
+                {body}
+                {next.map(|href| view! { <UiLink href>"Trang tiếp"</UiLink> })}
+                {continued.then(|| view! { <UiLink href>"Về trang đầu"</UiLink> })}
+            }
+            .into_any()
+        }
+        Some(ProfileWorks::Restart) => view! {
+            <p role="alert">"Trang tác phẩm không còn khớp với hồ sơ này."</p>
+            <UiLink href>"Về trang đầu"</UiLink>
+        }
+        .into_any(),
+        None if !has_public_works => no_public_works(),
+        None => view! {
+            <p role="alert">"Chưa tải được danh sách tác phẩm."</p>
+            <vink_ui::Button variant=vink_ui::ButtonVariant::Tonal
+                on_press=Callback::new(move |()| retry())>"Thử lại"</vink_ui::Button>
+        }
+        .into_any(),
+    }
+}
+
+/// True empty: the shared artwork and one sentence, in the works region's own flow (CHOICE-01).
+/// No action: guests and other readers have nothing to do here, and the owner's way to write
+/// is the Desk destination the shell already offers.
+fn no_public_works() -> AnyView {
+    view! {
+        <EmptyState region=true artwork=EmptyArtwork::NoPublicWorks hook="vk-author-works-empty"
+            message=NO_PUBLIC_WORKS />
+    }
+    .into_any()
+}
+
+/// One editorial row (#587): the title is the only link and its overlay covers the row, so the
+/// row is one focus stop named by the title alone. The meta line (primary tag, first public
+/// date) and the excerpt are shown only when the public projection supplied them; the meta line
+/// follows the heading in the DOM and is drawn above it. No byline: the profile names the author.
+#[component]
+fn ProfileWorkItem(work: ProfileWork) -> impl IntoView {
+    let ProfileWork {
+        work_id,
+        title,
+        excerpt,
+        first_published_at,
+        tags,
+    } = work;
+    let primary_tag = tags.into_iter().next().map(|tag| tag.label);
+    let date = first_published_at.and_then(|instant| {
+        first_public_date_hcm(&instant).map(|label| {
+            view! { <time class="vk-feed-date" datetime=instant title="Công khai lần đầu">{label}</time> }
+        })
+    });
+    let separate = primary_tag.is_some() && date.is_some();
+    let meta = (primary_tag.is_some() || date.is_some()).then(|| {
+        view! {
+            <p class="vk-public-row__eyebrow vk-profile-work__meta">
+                {primary_tag.map(|tag| view! { <span class="vk-public-row__tag">{tag}</span> })}
+                {separate.then_some(" · ")}
+                {date}
+            </p>
+        }
+    });
+    // Line-broken text (verse, stanzas) keeps one more visible line than running prose.
+    let excerpt = excerpt.filter(|text| !text.trim().is_empty()).map(|text| {
+        let class = if text.contains('\n') {
+            "vk-public-row__excerpt vk-profile-work__excerpt vk-profile-work__excerpt--lines"
+        } else {
+            "vk-public-row__excerpt vk-profile-work__excerpt"
+        };
+        view! { <p class=class>{text}</p> }
+    });
+    view! {
+        <li class="vk-profile-work">
+            <h3 class="vk-public-row__title vk-profile-work__title">
+                <a class="vk-profile-work__link" id=format!("profile-work-{work_id}")
+                    data-profile-return="true" href=format!("/tac-pham/{work_id}")>{title}</a>
+            </h3>
+            {meta}
+            {excerpt}
+        </li>
+    }
 }
 
 // The public summary lives with the rendered profile. A viewer change affects the
@@ -322,4 +404,302 @@ pub(super) fn ProfileIdentity(
 fn MobileBrand() -> impl IntoView {
     view! { <a class="vk-brand vk-handle-brand hidden [@media(max-width:759px)]:inline-flex [@media(max-width:759px)]:[margin-block-end:1rem]" href="/" aria-label="Vink — trang chủ">
     <span class="vk-brand__lockup" aria-hidden="true"></span></a> }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::contract::PublicTagDto;
+
+    const ART: &str = "/pkg/empty/vink-empty-no-public-works.webp";
+
+    /// Drops the renderer's placeholder comments so assertions read the visible markup.
+    fn clean(html: String) -> String {
+        html.replace("<!---->", "").replace("<!>", "")
+    }
+
+    fn region(
+        publications: Option<ProfileWorks>,
+        has_public_works: bool,
+        continued: bool,
+    ) -> String {
+        clean(Owner::new().with(|| {
+            works_region(
+                publications,
+                has_public_works,
+                continued,
+                "/@le-thu".into(),
+                || {},
+            )
+            .to_html()
+        }))
+    }
+
+    fn page(works: Vec<ProfileWork>, next: Option<&str>) -> Option<ProfileWorks> {
+        Some(ProfileWorks::Page {
+            works,
+            next_cursor: next.map(str::to_owned),
+        })
+    }
+
+    fn work(id: &str, title: &str) -> ProfileWork {
+        ProfileWork {
+            work_id: id.into(),
+            title: title.into(),
+            excerpt: None,
+            first_published_at: None,
+            tags: vec![],
+        }
+    }
+
+    fn tag(facet: &str, label: &str) -> PublicTagDto {
+        PublicTagDto {
+            tag_id: format!("{facet}-{label}"),
+            facet: facet.into(),
+            label: label.into(),
+            slug: label.into(),
+        }
+    }
+
+    /// The whole public profile for one resolution, as the route renders it.
+    fn profile(
+        publications: serde_json::Value,
+        has_public_works: bool,
+        cursor: Option<&str>,
+    ) -> String {
+        let resolution: AuthorResolution = serde_json::from_value(serde_json::json!({
+            "state": "current",
+            "author": {"pen_name": "Lê Thu", "handle": "le-thu", "href": "/@le-thu"},
+            "has_public_works": has_public_works,
+            "publications": publications,
+        }))
+        .unwrap();
+        clean(Owner::new().with(|| {
+            leptos_meta::provide_meta_context();
+            crate::account::Session::provide();
+            let status = crate::pages::ResponseStatus::capture();
+            render_profile(
+                Ok(resolution),
+                &status,
+                "le-thu",
+                cursor.map(str::to_owned),
+                RwSignal::new(None),
+                || {},
+            )
+            .to_html()
+        }))
+    }
+
+    #[test]
+    fn true_empty_first_page_shows_artwork_inside_the_works_section() {
+        let out = profile(
+            serde_json::json!({"state": "page", "works": []}),
+            false,
+            None,
+        );
+        let section = out
+            .find("aria-labelledby=\"author-works-heading\"")
+            .expect("works section");
+        let heading = out
+            .find("id=\"author-works-heading\"")
+            .expect("works heading");
+        let state = out
+            .find("vk-empty-state--region vk-author-works-empty")
+            .expect("region state");
+        let art = out.find(ART).expect("artwork");
+        let message = out.find(NO_PUBLIC_WORKS).expect("message");
+        assert!(
+            section < heading && heading < state && state < art && art < message,
+            "{out}"
+        );
+        assert!(
+            out[section..].contains("</section>")
+                && message < section + out[section..].find("</section>").unwrap(),
+            "{out}"
+        );
+        // No call to action and no compact or page-wide placement for this state.
+        assert!(!out[state..].contains("vk-empty-state__actions"), "{out}");
+        assert!(
+            !out.contains("vk-empty-state--compact") && !out.contains("vk-state-page"),
+            "{out}"
+        );
+        assert_eq!(out.matches(ART).count(), 1, "{out}");
+    }
+
+    #[test]
+    fn only_a_settled_empty_head_is_a_true_empty() {
+        for out in [
+            region(page(vec![], None), false, false),
+            region(None, false, false),
+        ] {
+            assert!(
+                out.contains("vk-empty-state--region vk-author-works-empty"),
+                "{out}"
+            );
+            assert!(out.contains(ART) && out.contains(NO_PUBLIC_WORKS), "{out}");
+            assert!(
+                !out.contains("<a") && !out.contains("vk-ui-button") && !out.contains("role="),
+                "{out}"
+            );
+        }
+        let tail = region(page(vec![], None), false, true);
+        assert!(
+            tail.contains("vk-empty-state--compact vk-author-works-empty"),
+            "{tail}"
+        );
+        assert!(
+            tail.contains("Trang này không còn tác phẩm.") && tail.contains("Về trang đầu"),
+            "{tail}"
+        );
+        let head_with_next = region(page(vec![], Some("c2")), true, false);
+        assert!(
+            head_with_next.contains("Trang tiếp") && head_with_next.contains("?cursor=c2"),
+            "{head_with_next}"
+        );
+        let restart = region(Some(ProfileWorks::Restart), true, true);
+        assert!(
+            restart.contains("role=\"alert\"") && restart.contains("Về trang đầu"),
+            "{restart}"
+        );
+        let failed = region(None, true, false);
+        assert!(
+            failed.contains("Chưa tải được danh sách tác phẩm.")
+                && failed.contains("vk-ui-button")
+                && failed.contains("Thử lại"),
+            "{failed}"
+        );
+        for out in [&tail, &head_with_next, &restart, &failed] {
+            assert!(
+                !out.contains("vk-empty-state__art") && !out.contains(ART),
+                "{out}"
+            );
+            assert!(
+                !out.contains(NO_PUBLIC_WORKS) && !out.contains("vk-empty-state--region"),
+                "{out}"
+            );
+        }
+        for out in [&restart, &failed] {
+            assert!(!out.contains("vk-empty-state"), "{out}");
+        }
+        // The profile's unavailable pages keep their own branch without the works artwork.
+        for resolution in [
+            Ok(AuthorResolution::Gone),
+            Ok(AuthorResolution::Missing),
+            Err(crate::api::LoadError::Unavailable),
+        ] {
+            let out = Owner::new().with(|| {
+                leptos_meta::provide_meta_context();
+                let status = crate::pages::ResponseStatus::capture();
+                render_profile(
+                    resolution,
+                    &status,
+                    "le-thu",
+                    None,
+                    RwSignal::new(None),
+                    || {},
+                )
+                .to_html()
+            });
+            assert!(
+                !out.contains(ART) && !out.contains(NO_PUBLIC_WORKS),
+                "{out}"
+            );
+        }
+    }
+
+    #[test]
+    fn editorial_item_shows_only_supplied_public_facts_behind_one_link() {
+        let mut rich = work("w-1", "Mưa tháng Bảy");
+        rich.excerpt = Some("Trời ngả chiều qua mái ngói cũ.\nGió về chậm qua hiên.".into());
+        rich.first_published_at = Some("2026-10-29T18:00:00Z".into());
+        rich.tags = vec![tag("form", "Thơ"), tag("theme", "Ký ức")];
+        let mut prose = work("w-2", "Gió ngoài hiên");
+        prose.excerpt = Some("Chiều hôm ấy, gió trở về qua những tán cây.".into());
+        let long = "Mộtnhanđềrấtdàikhôngcókhoảngtrắngđểxuốngdòngtrênmànhìnhhẹp".repeat(3);
+        let out = region(
+            page(vec![rich, prose, work("w-3", &long)], None),
+            true,
+            false,
+        );
+        assert_eq!(out.matches("<li").count(), 3, "{out}");
+        assert_eq!(out.matches("<a").count(), 3, "{out}");
+        assert!(
+            !out.contains("vk-ui-button") && !out.contains("vk-ui-link"),
+            "{out}"
+        );
+        for (id, title) in [
+            ("w-1", "Mưa tháng Bảy"),
+            ("w-2", "Gió ngoài hiên"),
+            ("w-3", long.as_str()),
+        ] {
+            let link = format!(
+                "<a id=\"profile-work-{id}\" data-profile-return=\"true\" href=\"/tac-pham/{id}\" class=\"vk-profile-work__link\">{title}</a>"
+            );
+            assert!(out.contains(&link), "{out}");
+        }
+        // Each anchor holds only its title: meta and excerpt sit outside and no link nests.
+        for chunk in out.split("<a ").skip(1) {
+            let inner = &chunk[..chunk.find("</a>").unwrap()];
+            assert!(
+                !inner.contains("<p") && !inner.contains("<time") && !inner.contains("<a"),
+                "{inner}"
+            );
+        }
+        let first = &out[..out.find("profile-work-w-2").unwrap()];
+        assert!(first.contains("<span class=\"vk-public-row__tag\">Thơ</span> · <time datetime=\"2026-10-29T18:00:00Z\" title=\"Công khai lần đầu\" class=\"vk-feed-date\">30/10/2026</time>"), "{first}");
+        assert!(
+            !first.contains("Ký ức"),
+            "only the primary tag is shown: {first}"
+        );
+        // Line breaks of verse survive the render; prose gets the shorter clamp.
+        assert!(first.contains("vk-profile-work__excerpt--lines\">Trời ngả chiều qua mái ngói cũ.\nGió về chậm qua hiên.</p>"), "{first}");
+        let second =
+            &out[out.find("profile-work-w-2").unwrap()..out.find("profile-work-w-3").unwrap()];
+        assert!(
+            second
+                .contains("class=\"vk-public-row__excerpt vk-profile-work__excerpt\">Chiều hôm ấy"),
+            "{second}"
+        );
+        assert!(
+            !second.contains("vk-profile-work__meta") && !second.contains("<time"),
+            "{second}"
+        );
+        let third = &out[out.find("profile-work-w-3").unwrap()..];
+        assert!(
+            !third.contains("vk-profile-work__meta") && !third.contains("vk-profile-work__excerpt"),
+            "{third}"
+        );
+        assert!(
+            !out.contains("vk-empty-state") && !out.contains(ART),
+            "{out}"
+        );
+        // No invented counters: the profile item carries no Thấm, comment or view number.
+        for counter in ["Thấm", "nhận xét", "Hữu ích", "lượt xem", "Lượt xem"] {
+            assert!(!out.contains(counter), "{counter}: {out}");
+        }
+        // Date alone, or tag alone, renders without a dangling separator.
+        let mut dated = work("w-4", "Chỉ có ngày");
+        dated.first_published_at = Some("2026-10-30T08:00:00Z".into());
+        let mut tagged = work("w-5", "Chỉ có thẻ");
+        tagged.tags = vec![tag("form", "Tản văn")];
+        let mut invalid = work("w-6", "Ngày hỏng");
+        invalid.first_published_at = Some("không phải ngày".into());
+        invalid.excerpt = Some("   ".into());
+        let out = region(page(vec![dated, tagged, invalid], None), true, false);
+        assert!(
+            out.contains("<p class=\"vk-public-row__eyebrow vk-profile-work__meta\"><time"),
+            "{out}"
+        );
+        assert!(
+            out.contains("<span class=\"vk-public-row__tag\">Tản văn</span></p>"),
+            "{out}"
+        );
+        assert!(!out.contains(" · "), "{out}");
+        let broken = &out[out.find("profile-work-w-6").unwrap()..];
+        assert!(
+            !broken.contains("vk-profile-work__meta")
+                && !broken.contains("vk-profile-work__excerpt"),
+            "{broken}"
+        );
+    }
 }

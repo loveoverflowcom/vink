@@ -59,7 +59,7 @@ async fn catalog_version(pool: &PgPool) -> CatalogVersion {
 }
 
 /// One accepted catalog change through the operator path.
-async fn curate(pool: &PgPool, change: CatalogChange) {
+pub(super) async fn curate(pool: &PgPool, change: CatalogChange) {
     let expected = catalog_version(pool).await;
     let outcome = change_catalog(
         pool,
@@ -74,7 +74,7 @@ async fn curate(pool: &PgPool, change: CatalogChange) {
     );
 }
 
-fn label(text: &str) -> TagLabel {
+pub(super) fn label(text: &str) -> TagLabel {
     TagLabel::parse(text).unwrap()
 }
 

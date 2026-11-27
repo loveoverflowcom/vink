@@ -47,6 +47,7 @@ pub use postgres::PgStore;
 pub use principal::{
     SuspensionOutcome, SuspensionRecord, active_suspensions, reinstate_principal, suspend_principal,
 };
+pub use profile::PROFILE_WORKS_SQL;
 pub use taxonomy::{SnapshotCapture, capture_metadata_snapshot, change_catalog};
 pub use vink_store_postgres::{MigrationError, MigrationReport, SchemaState, role_is_privileged};
 

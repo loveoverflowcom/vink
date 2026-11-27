@@ -4,6 +4,8 @@
 //! (Desk index, Explore, or a page marked `.vk-state-page`, optionally through one
 //! `.vk-state-slot`). A `compact` state belongs to a region that stays in normal flow
 //! (discussion, a dialog, a profile list) and never turns `.vk-main` into a flex column.
+//! A `region` state (#587) also stays in its region's normal flow, but keeps the full-size
+//! artwork → sentence group (the public profile's true-empty works region).
 use leptos::prelude::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -42,6 +44,10 @@ pub fn EmptyState(
     /// Region-local state in normal flow: smaller decoration and rhythm, no artwork.
     #[prop(optional)]
     compact: bool,
+    /// Region-local state in normal flow that may carry artwork with its own breathing room;
+    /// excluded from the page-centring chain like `compact` (#587). Never both.
+    #[prop(optional)]
+    region: bool,
     /// Stable caller hook (test id or legacy selector); never a style override.
     #[prop(optional)]
     id: Option<&'static str>,
@@ -52,11 +58,20 @@ pub fn EmptyState(
         !(compact && artwork.is_some()),
         "compact Empty States carry an icon or no decoration"
     );
-    let class = match (compact, hook) {
-        (false, None) => "vk-empty-state".to_owned(),
-        (true, None) => "vk-empty-state vk-empty-state--compact".to_owned(),
-        (false, Some(hook)) => format!("vk-empty-state {hook}"),
-        (true, Some(hook)) => format!("vk-empty-state vk-empty-state--compact {hook}"),
+    debug_assert!(
+        !(compact && region),
+        "a region Empty State is the in-flow variant with artwork, not a compact one"
+    );
+    let placement = if compact {
+        " vk-empty-state--compact"
+    } else if region {
+        " vk-empty-state--region"
+    } else {
+        ""
+    };
+    let class = match hook {
+        None => format!("vk-empty-state{placement}"),
+        Some(hook) => format!("vk-empty-state{placement} {hook}"),
     };
     let decoration = if let Some(artwork) = artwork {
         Some(view! {
@@ -153,5 +168,36 @@ mod tests {
             titled.contains("<h1") && !titled.contains("vk-empty-state__message"),
             "{titled}"
         );
+    }
+
+    #[test]
+    fn region_keeps_artwork_in_flow_without_compact_or_page_placement() {
+        let out = html(|| {
+            view! { <EmptyState region=true artwork=EmptyArtwork::NoPublicWorks
+            hook="vk-author-works-empty" message="Chưa có tác phẩm công khai." /> }
+            .into_any()
+        });
+        assert!(
+            out.contains("class=\"vk-empty-state vk-empty-state--region vk-author-works-empty\""),
+            "{out}"
+        );
+        assert!(!out.contains("vk-empty-state--compact"), "{out}");
+        assert!(
+            out.contains("class=\"vk-empty-state__art\"")
+                && out.contains("vink-empty-no-public-works.webp")
+                && out.contains("alt=\"\""),
+            "{out}"
+        );
+        let art = out.find("vk-empty-state__art").unwrap();
+        assert!(
+            art < out.find("Chưa có tác phẩm công khai.").unwrap(),
+            "{out}"
+        );
+        assert!(
+            !out.contains("role=\"status\"") && !out.contains("<h"),
+            "{out}"
+        );
+        let page = html(|| view! { <EmptyState message="x" /> }.into_any());
+        assert!(page.contains("class=\"vk-empty-state\""), "{page}");
     }
 }

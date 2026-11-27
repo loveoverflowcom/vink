@@ -1243,10 +1243,20 @@ pub enum ProfileWorks {
     Restart,
 }
 
+/// One public work on an author profile (#587). Every field after the title is optional public
+/// metadata: a title-only answer from an older App still decodes, absent facts stay absent.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProfileWork {
     pub work_id: String,
     pub title: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub excerpt: Option<String>,
+    /// Exact first-publication instant (RFC 3339); never a legacy pointer time.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub first_published_at: Option<String>,
+    /// Form first, then themes, as on a discovery card.
+    #[serde(default)]
+    pub tags: Vec<PublicTagDto>,
 }
 
 pub mod follow;
@@ -1373,6 +1383,51 @@ mod tests {
                 ..
             }
         ));
+        let AuthorResolution::Current {
+            has_public_works: true,
+            publications:
+                Some(ProfileWorks::Page {
+                    works,
+                    next_cursor: None,
+                }),
+            ..
+        } = round_trip::<AuthorResolution>("author.profile.works.json")
+        else {
+            panic!("populated profile fixture");
+        };
+        let [rich, legacy] = works.as_slice() else {
+            panic!("two profile works");
+        };
+        assert_eq!(
+            rich.excerpt.as_deref(),
+            Some("Trời ngả chiều qua mái ngói cũ.\nGió về chậm qua hiên.")
+        );
+        assert_eq!(
+            rich.first_published_at.as_deref(),
+            Some("2026-10-29T08:00:00Z")
+        );
+        assert_eq!(
+            rich.tags
+                .iter()
+                .map(|t| t.facet.as_str())
+                .collect::<Vec<_>>(),
+            ["form", "theme"]
+        );
+        assert_eq!(
+            (
+                &legacy.excerpt,
+                &legacy.first_published_at,
+                legacy.tags.len()
+            ),
+            (&None, &None, 0)
+        );
+        // A title-only item from an App before #587 still decodes with every fact absent.
+        let old: ProfileWork = serde_json::from_value(serde_json::json!({
+            "work_id": "33333333-3333-4333-8333-000000000002",
+            "title": "Những lá thư không gửi"
+        }))
+        .unwrap();
+        assert_eq!(old, legacy.clone());
     }
 
     #[test]

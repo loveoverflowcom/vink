@@ -312,8 +312,40 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
     && ${q(selector('profile-work-' + ids.a))} && !${q(selector('profile-work-' + ids.b))}
     && !${q('#own-profile-edit-link')}`), 'public profile lists the correct principal and no owner action');
   await guest.waitFor("document.documentElement.dataset.hydrated==='true'", 'public profile hydrated');
+  // #587: one editorial row per work. The title link is the only target, its overlay covers the
+  // row, and only the public facts the fixture has appear: the form tag, the exact first public
+  // time that the pointer insert recorded (read back from the public API) and the excerpt.
+  const row = await guest.eval(`(async () => {
+    const link = ${q(selector('profile-work-' + ids.a))}, item = link?.closest('li');
+    if (!item) return {};
+    const api = await fetch(${JSON.stringify(profileApi)}).then(r => r.json());
+    const first = api.publications?.works?.find(w => w.work_id === ${JSON.stringify(ids.a)})?.first_published_at ?? null;
+    item.scrollIntoView({block:'center'});
+    const meta = item.querySelector('.vk-profile-work__meta'), excerpt = item.querySelector('.vk-profile-work__excerpt');
+    const title = item.querySelector('h3'), r = excerpt?.getBoundingClientRect();
+    const hit = r && document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    const time = item.querySelector('time');
+    const label = time ? new Intl.DateTimeFormat('vi-VN', {timeZone:'Asia/Ho_Chi_Minh'}).format(new Date(time.dateTime)) : null;
+    return {
+      row: item.classList.contains('vk-profile-work'), heading: title?.contains(link),
+      name: link.textContent, href: link.getAttribute('href'), back: link.dataset.profileReturn,
+      targets: item.querySelectorAll('a, button').length, meta: meta?.textContent ?? null, first, label,
+      date: !!first && item.querySelectorAll('time').length === 1 && time.getAttribute('datetime') === first
+        && time.title === 'Công khai lần đầu' && !!meta?.contains(time) && !time.closest('a') && time.textContent === label,
+      excerpt: excerpt?.textContent ?? null,
+      above: !!meta && meta.getBoundingClientRect().bottom <= title.getBoundingClientRect().top + 1,
+      whole: hit === link, chevron: !!document.querySelector('.vk-author-works .vk-ui-link'),
+      noByline: !item.textContent.includes(${JSON.stringify(SAME_NAME)}),
+      noCounters: !item.textContent.includes('Thấm') && !item.textContent.includes('nhận xét'),
+    };
+  })()`);
+  check(row.row && row.heading && row.name === 'Tác phẩm thứ nhất của riêng người viết A' &&
+    row.href === readerPath && row.back === 'true' && row.targets === 1 &&
+    row.date && row.meta === 'Tản văn · ' + row.label && row.excerpt === 'Mưa bên bậc cửa rồi lặng.' &&
+    row.above && row.whole && !row.chevron && row.noByline && row.noCounters,
+    `#587 editorial row keeps one link and shows only public facts ${JSON.stringify(row)}`);
   await guest.capture('author-public-desktop', {scenario:'guest with Bio and works', textScale:100});
-  await captureLayouts(guest, check, 'public', '#author-profile-heading, .vk-author-bio, #author-works-heading, .vk-author-works a');
+  await captureLayouts(guest, check, 'public', '#author-profile-heading, .vk-author-bio, #author-works-heading, .vk-author-works a, .vk-profile-work__excerpt');
   await guest.eval(`window.addEventListener('pageshow', event => {
     if (event.persisted) sessionStorage.setItem('fixture-public-bfcache', 'restored');
   });`);
