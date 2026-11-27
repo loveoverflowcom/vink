@@ -64,12 +64,16 @@ Compare: artboards d-x-light/dark, d-c-light/dark, comp-rail, comp-bell, comp-ba
 
 ## 3. Popover thông báo
 
+[#602](https://github.com/loveoverflowcom/vink/issues/602) cập nhật đầu popover và trang hộp thư
+theo [HTML R1](https://drive.google.com/file/d/1wRQ9W1kNWNrRi6fdqioGqxsl-BKqLrgT/view).
+HTML là concept được chọn cho vùng này. App dùng glyph và token của Vink.
+
 ```text
 Overlay #notif-popover — dialog modal (OverlayLayer), neo #bell (đỉnh thẳng đỉnh chuông), nền surface, bo 32
   Column
     Row #pop-head — padding 16/8/8/22
       Heading #pt "Thông báo" (Literata 30; tabindex=-1; focus khi mở)
-      Button #read-all "Đọc tất cả" (tonal; chỉ khi có dòng chưa đọc)
+      IconButton #read-all Double Check (Standard; chỉ khi có dòng chưa đọc)
       IconButton #pop-close "Đóng thông báo" (48)
     Region #pop-body — cuộn riêng, đệm 6/8/8
       Ghi chú ngoại tuyến hoặc lỗi đếm; “Thử lại” chỉ hiện khi số đếm cũ hoặc chưa tải được
@@ -83,11 +87,14 @@ Sizing: rộng 400 (tối đa 100% − 24); cao tối đa viewport − 24 − đ
 Responsive: không dùng < 760 hoặc chữ ≥ 150% (chuyển sang §4)
 Scroll: #pop-body cuộn; header + footer cố định; vòng focus không bị cắt nhờ đệm ≥ 6 px
 Overlays: anchor = #bell; dismiss = Esc / Đóng / bấm ngoài (không scrim làm tối); focus vào #pt,
-  Tab xoay trong popover, đóng → trả focus #bell; resize < 760 → đóng, focus #noi-dung
+  Tab xoay trong popover. Đóng → trả focus #bell. Resize < 760 → đóng, focus #noi-dung.
+  Escape khi tooltip đang mở chỉ ẩn tooltip. Nếu nút mất sau khi xác nhận và đang giữ focus, trả về #pt.
 Themes: surface + hàng đọc surface-container-low + chưa đọc primary-container (sáng/tối cùng cấu trúc)
 States: tải, trống, 503, stale, offline, tải thêm lỗi, đang đánh dấu — comp-states-light/dark
 Interaction: mở → tải trang đầu → Seen(snapshot) → xác minh lại badge, dòng vẫn chưa đọc; bấm dòng → Read rồi tới đích;
-  số mới cập nhật trên chuông; lần mở kế tiếp lấy trang đầu mới. Danh sách đang mở giữ nguyên thứ tự, vị trí cuộn và mốc Seen;
+  Double Check gửi MarkAllRead theo snapshot. Trạng thái chưa đọc giữ đến khi đọc lại.
+  Tooltip và tên truy cập cùng dùng "Đánh dấu tất cả là đã đọc". Glyph 24 và vùng chạm ≥48 CSS px, nền trong suốt.
+  Số mới cập nhật trên chuông. Lần mở kế tiếp lấy trang đầu mới. Danh sách đang mở giữ thứ tự, vị trí cuộn và mốc Seen.
   scale .92 → 1 (320 ms, ease.spatial); reduced-motion: hiện ngay
 Accessibility: role=dialog aria-modal aria-labelledby=#pt; danh sách ul/li, mỗi dòng một link
 Invariants: một modal tại một lúc; popover không nằm trong cây AX khi đóng; Seen không đánh dấu Read
@@ -99,17 +106,20 @@ Compare: d-x-light/dark, d-c-light, d-c-dark(stale), comp-states-*, comp-inter, 
 ```text
 Screen #thong-bao — mặc định < 760 và deep link; desktop dùng cùng nội dung trong #noi-dung
   Column #np (≤ 640; gutter 24 | 16 hẹp)
-    Row #np-top — IconButton #back (mobile/có lịch sử) · khoảng trống · Button #read-all
-    Row #np-head — Heading h1 "Thông báo" (Literata 30) + Count "{n} chưa đọc" (neutral)
+    IconButton #back
+    Header #np-head
+      Row — Heading h1 "Thông báo" (Literata 30) · IconButton #read-all Double Check (Standard)
+      Count "{n} chưa đọc" (neutral)
     Region #np-body — giống #pop-body: note · groups · state · load-more
-Hierarchy: h1 → #read-all (hàng trên) → dòng chưa đọc
+Hierarchy: h1 → #read-all (cùng hàng với h1) → dòng chưa đọc
 Sizing: nhãn ngày chỉ khi > 1 nhóm; nhóm cách nhau 20; hàng đầu cao ≥ 48
 Responsive: dòng chuyển "xếp chồng" khi bề rộng danh sách / hệ số chữ < ≈ 215 px (320 px ≥ 150%);
-  "Đọc tất cả" xuống dòng được; h1 xuống dòng; thanh dưới giữ 3 ô, nhãn 2 dòng
+  h1 xuống dòng bên trái nút Double Check; thanh dưới giữ 3 ô, nhãn 2 dòng
 Scroll: cuộn trang chính; thanh dưới cố định; không có cuộn riêng
 Overlays: không có
 States: như §3 + lỗi tải thêm ngay dưới danh sách
-Interaction: vào trang → Seen; Back → trang trước, focus về #bell (hoặc #noi-dung)
+Interaction: vào trang → Seen; Back → trang trước, focus về #bell (hoặc #noi-dung).
+  Double Check cùng hợp đồng popover. Nếu nút mất khi đang giữ focus, trả về h1.
 Accessibility: một h1; landmark main = #noi-dung; không đích nào sáng ở mobile
 Invariants: không cuộn ngang ở 320 CSS px, chữ 200%; tối đa 3 dòng nhan đề; dấu tiếng Việt không bị cắt
 Compare: d-page-*, m-inbox-*, m-states, cmp-stress, m-inbox-200

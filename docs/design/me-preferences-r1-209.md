@@ -29,6 +29,11 @@ trong storage và bỏ qua. Một giá trị cỡ chữ `200` có scope hợp l�
 Sau lỗi đọc phiên hoặc tín hiệu đổi cookie, tùy chọn mặc định được áp dụng cho tới khi
 có xác nhận mới. Nếu storage bị chặn, lựa chọn vẫn áp dụng trong tài liệu đang mở.
 
+[#602](https://github.com/loveoverflowcom/vink/issues/602) dùng biểu tượng bảng màu trần và nhãn
+nhóm nhỏ hơn trong Cài đặt. Ba `RadioGroup` dùng hàng phân đoạn có thể xuống dòng, vùng chạm
+≥48 CSS px, màu trung tính mặc định và Lavender kèm dấu tick khi chọn. Nhãn/Arrow/Tab theo
+radio native. Trợ giúp rail nằm trong mô tả truy cập của nhóm, giữ ba lựa chọn hiện có.
+
 ## Kiểm chứng Web hiện hành
 
 Kiểm radio native tại `/toi` ở 320/390/1440 CSS px, sáng/tối, dùng Tab, Arrow và kiểm AX.

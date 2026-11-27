@@ -408,7 +408,7 @@ pub(crate) fn AccountHub(children: Children) -> impl IntoView {
 #[component]
 fn AccountAppearance() -> impl IntoView {
     view! {
-        <section id="page-appearance" class="vk-appearance-card grid min-w-0 gap-vk-4 border-t border-vk-outline-variant py-vk-4" aria-labelledby="page-appearance-title">
+        <section id="page-appearance" class="vk-appearance-card grid min-w-0 gap-vk-3 py-vk-2" aria-labelledby="page-appearance-title">
             <crate::appearance::AppearanceTitle id="page-appearance-title" />
             <crate::appearance::AppearanceChoices prefix="page" />
         </section>

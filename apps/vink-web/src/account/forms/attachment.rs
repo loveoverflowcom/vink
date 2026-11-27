@@ -188,13 +188,13 @@ pub(super) fn EmailSettings(epoch: u64, now: ReadSignal<Millis>) -> impl IntoVie
             }.into_any(),
         };
         Some(view! {
-            <section id="recovery-email-settings" class="vk-account-setting grid gap-vk-2" aria-labelledby="email-attach-heading">
+            <section id="recovery-email-settings" class="vk-account-setting vk-account-setting-email" aria-labelledby="email-attach-heading">
                 <vink_ui::Heading id="email-attach-heading" level=vink_ui::HeadingLevel::H3 role=vink_ui::TypeRole::Body
-                    attr:class="flex items-center gap-vk-2">
-                    <vink_ui::Icon name=vink_ui::IconName::VerifiedUser />
+                    attr:class="vk-account-setting-row">
+                    <vink_ui::Icon name=vink_ui::IconName::Mail size=vink_ui::IconSize::Small />
                     "Email xác minh"
                 </vink_ui::Heading>
-                {body}
+                <div class="vk-account-setting-email__body">{body}</div>
             </section>
         })
     }

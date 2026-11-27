@@ -30,6 +30,8 @@ pub enum IconName {
     Close,
     /// Sao chép nháp
     ContentCopy,
+    /// Đánh dấu tất cả thông báo là đã đọc
+    DoneAll,
     /// Tải bản thảo về máy
     Download,
     /// Sửa
@@ -103,7 +105,7 @@ pub enum IconName {
 }
 
 impl IconName {
-    pub const ALL: [IconName; 45] = [Self::Add, Self::ArrowBack, Self::Block, Self::Bookmark, Self::BookmarkBorder, Self::Cancel, Self::ChatBubbleOutline, Self::Check, Self::Close, Self::ContentCopy, Self::Download, Self::Edit, Self::EditOutline, Self::Error, Self::ExpandMore, Self::Explore, Self::ExploreOutline, Self::FilterList, Self::Heart, Self::HeartOutline, Self::Help, Self::Image, Self::Info, Self::Lock, Self::Mail, Self::Menu, Self::MenuOpen, Self::Notifications, Self::NotificationsNone, Self::OpenInNew, Self::PenFlight, Self::Person, Self::PersonAdd, Self::PersonOutline, Self::Public, Self::Refresh, Self::Reply, Self::Schedule, Self::Search, Self::Send, Self::VerifiedUser, Self::Visibility, Self::VisibilityOff, Self::VisibilityOutline, Self::Warning];
+    pub const ALL: [IconName; 46] = [Self::Add, Self::ArrowBack, Self::Block, Self::Bookmark, Self::BookmarkBorder, Self::Cancel, Self::ChatBubbleOutline, Self::Check, Self::Close, Self::ContentCopy, Self::DoneAll, Self::Download, Self::Edit, Self::EditOutline, Self::Error, Self::ExpandMore, Self::Explore, Self::ExploreOutline, Self::FilterList, Self::Heart, Self::HeartOutline, Self::Help, Self::Image, Self::Info, Self::Lock, Self::Mail, Self::Menu, Self::MenuOpen, Self::Notifications, Self::NotificationsNone, Self::OpenInNew, Self::PenFlight, Self::Person, Self::PersonAdd, Self::PersonOutline, Self::Public, Self::Refresh, Self::Reply, Self::Schedule, Self::Search, Self::Send, Self::VerifiedUser, Self::Visibility, Self::VisibilityOff, Self::VisibilityOutline, Self::Warning];
 
     pub const fn id(self) -> &'static str {
         match self {
@@ -117,6 +119,7 @@ impl IconName {
             Self::Check => "check",
             Self::Close => "close",
             Self::ContentCopy => "content-copy",
+            Self::DoneAll => "done-all",
             Self::Download => "download",
             Self::Edit => "edit",
             Self::EditOutline => "edit-outline",
@@ -167,6 +170,7 @@ impl IconName {
             Self::Check => "M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z",
             Self::Close => "M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z",
             Self::ContentCopy => "M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z",
+            Self::DoneAll => "M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41zM.41 13.41L6 19l1.41-1.41L1.83 12 .41 13.41z",
             Self::Download => "M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z",
             Self::Edit => "M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z",
             Self::EditOutline => "M14.06 9.02l.92.92L5.92 19H5v-.92l9.06-9.06M17.66 3c-.25 0-.51.1-.7.29l-1.83 1.83 3.75 3.75 1.83-1.83c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.2-.2-.45-.29-.71-.29zm-3.6 3.19L3 17.25V21h3.75L17.81 9.94l-3.75-3.75z",
@@ -217,6 +221,7 @@ impl IconName {
             Self::Check => "src/navigation/check/materialicons/24px.svg",
             Self::Close => "src/navigation/close/materialicons/24px.svg",
             Self::ContentCopy => "src/content/content_copy/materialicons/24px.svg",
+            Self::DoneAll => "src/action/done_all/materialicons/24px.svg",
             Self::Download => "src/file/file_download/materialicons/24px.svg",
             Self::Edit => "src/image/edit/materialicons/24px.svg",
             Self::EditOutline => "src/image/edit/materialiconsoutlined/24px.svg",

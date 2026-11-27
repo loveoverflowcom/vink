@@ -2167,13 +2167,13 @@ function accountLayoutGeometry(context, scenario) {
   const { preferences: p } = m;
   const inside = r => r && r.x >= p.surface.contentLeft - 1 &&
     r.x + r.width <= p.surface.contentLeft + p.surface.contentWidth + 1;
-  check(near(p.radius, 28) && p.rows.every(row => [row.heading, row.group, ...row.targets].every(inside) &&
+  check(p.rows.every(row => [row.heading, row.group, ...row.targets].every(inside) &&
     row.inset === 0 && row.divider === 0),
     `${scenario}: all preference controls fit the inner rect (1px tolerance) without row dividers`);
   if (context.fontSize === '16px') {
-    check(p.padding.every(value => near(value, 24)) && near(p.rowGap, 24) &&
-      p.rows.every(row => near(row.gap, 8) && near(row.choiceGap, 8) && (row.before === null || near(row.before, 24))),
-      `${scenario}: 24px gutter and group gap, 8px label and choice gaps at 100%`);
+    check(near(p.rowGap, 16) &&
+      p.rows.every(row => near(row.gap, 4) && near(row.choiceGap, 4) && (row.before === null || near(row.before, 16))),
+      `${scenario}: 16px group gap and 4px label and segment gaps at 100%`);
   }
 }
 
@@ -2187,19 +2187,18 @@ function appearanceRows(page, prefix = 'page') {
     const selectedColors = ['--vk-primary-container', '--vk-on-primary-container'].map(name => asColor(root.getPropertyValue(name)));
     const choices = [['Hệ thống', 'Sáng', 'Tối'], ['Mặc định', 'Lớn'], ['Tự động', 'Mở rộng', 'Thu gọn']];
     return rows.length === choices.length && rows.every((row, index) => {
-      const heading = row.querySelector('h3'), group = row.querySelector('fieldset');
-      const icon = heading.querySelector('[aria-hidden=true]');
+      const heading = row.querySelector('h4'), group = row.querySelector('fieldset');
       const labels = [...group.querySelectorAll('label')];
-      return icon && getComputedStyle(icon).maskImage.startsWith('url(') &&
-        heading.textContent === group.querySelector('legend').textContent &&
+      return heading.textContent === group.querySelector('legend').textContent &&
         labels.map(el => el.textContent).join('|') === choices[index].join('|') &&
         labels.filter(el => el.querySelector(':checked')).length === 1 && labels.every(el => {
           const style = getComputedStyle(el), label = el.querySelector('.vk-ui-choice__label');
           const rect = el.getBoundingClientRect(), selected = Boolean(el.querySelector(':checked'));
-          return rect.width >= 48 && rect.height >= 48 && style.borderRadius === root.getPropertyValue('--vk-radius-full').trim() &&
-            (!selected || (asColor(style.backgroundColor) === selectedColors[0] && asColor(style.color) === selectedColors[1])) &&
+          return rect.width >= 48 && rect.height >= 48 &&
+            (selected ? asColor(style.backgroundColor) === selectedColors[0] && asColor(style.color) === selectedColors[1]
+              : asColor(style.backgroundColor) !== selectedColors[0]) &&
             el.scrollWidth <= el.clientWidth + 1 &&
-            getComputedStyle(el, '::before').maskImage.startsWith('url(') &&
+            getComputedStyle(el, '::after').maskImage.startsWith('url(') &&
             getComputedStyle(el, '::after').opacity === (el.querySelector(':checked') ? '1' : '0') &&
             [...label.textContent.matchAll(/\\S+/g)].every(word => {
               const range = document.createRange();
@@ -2242,7 +2241,7 @@ async function preferenceSurfaces(page) {
     await page.key('Space');
     await appearanceFocusContrast(page, theme);
     await page.capture(`r22-me-${theme}-selected-focus`);
-    check(await appearanceRows(page, 'page'), `${theme}: page uses three compact native groups with icons and selection checks`);
+    check(await appearanceRows(page, 'page'), `${theme}: page uses three compact native segmented groups with selection checks`);
     check(await page.eval(`document.querySelectorAll('#build-info').length === 0 &&
       document.querySelectorAll('main h1').length === 1 &&
       document.querySelector('#me').firstElementChild.id === 'page-account' &&
@@ -2345,7 +2344,7 @@ async function accountAppearance(page) {
   await page.key('ArrowRight');
   // CDP media/key acknowledgments do not guarantee style recalculation has settled.
   // Keep every focus/check/motion condition, with a bounded wait and a second-frame check.
-  const forcedColorsReady = `(() => { const input = document.activeElement, face = input.closest('label'), style = getComputedStyle(face); return input.checked && input.matches(':focus-visible') && style.forcedColorAdjust === 'none' && style.outlineStyle === 'solid' && style.outlineWidth === '2px' && parseFloat(style.transitionDuration) <= 0.001 && getComputedStyle(face, '::after').opacity === '1' && [...document.querySelectorAll('#page-theme label')].every(el => getComputedStyle(el, '::before').forcedColorAdjust === 'none'); })()`;
+  const forcedColorsReady = `(() => { const input = document.activeElement, face = input.closest('label'), style = getComputedStyle(face); return input.checked && input.matches(':focus-visible') && style.forcedColorAdjust === 'none' && style.outlineStyle === 'solid' && style.outlineWidth === '2px' && parseFloat(style.transitionDuration) <= 0.001 && getComputedStyle(face, '::after').opacity === '1' && [...document.querySelectorAll('#page-theme label')].every(el => getComputedStyle(el, '::after').forcedColorAdjust === 'none'); })()`;
   await page.waitFor(forcedColorsReady, 'forced-colors retains selected check and keyboard focus; reduced-motion reduces transitions below 1ms', 2000);
   await editorLayoutReady(page);
   check(await page.eval(forcedColorsReady), 'forced-colors retains selected check and keyboard focus; reduced-motion reduces transitions below 1ms');
