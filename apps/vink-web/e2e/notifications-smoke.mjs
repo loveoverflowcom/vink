@@ -763,8 +763,18 @@ export async function notifications(page, { args, check }) {
       `error controls fit at ${width}px/${scale}% ${theme}`);
     await screenshot(`notifications-first-error-${width}-${scale}-${theme}`, width, scale, theme);
     state.firstFailure = false;
+    state.holdFirst = true;
+    held.delete('first');
+    const requestCount = calls.filter(request => request.path === inbox).length;
     await page.eval(`document.querySelector('${failure} button').focus()`);
     await page.key('Enter');
+    await eventually(() => held.get('first'), 'first-page retry in flight');
+    await page.key('Enter');
+    check(await page.eval(`document.activeElement?.matches('${surface} .vk-notif-body[aria-busy=true]') &&
+      !document.querySelector('${failure} button')`) &&
+      calls.filter(request => request.path === inbox).length === requestCount + 1,
+      'pending first-page retry keeps focus inside the inbox and issues one read');
+    await held.get('first')();
     await page.waitFor(`document.querySelector('${surface} ${row}') && document.querySelector('${surface} .vk-notif-note')?.textContent.includes('Chưa tải được số')`, 'retry restores rows while the count is unavailable');
     state.firstFailure = true;
     if (desktop) await page.key('Escape');

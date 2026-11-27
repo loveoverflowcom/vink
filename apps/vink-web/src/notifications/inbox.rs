@@ -142,7 +142,14 @@ fn InboxBody(owner: Notifications, #[prop(optional)] compact: bool) -> impl Into
     let offline = owner.offline;
     let refresh = Callback::new(move |()| {
         #[cfg(feature = "browser")]
-        owner.load(false);
+        {
+            // The retry goes away while loading. Keep keyboard focus in this same surface.
+            let body = document()
+                .active_element()
+                .and_then(|control| control.closest(".vk-notif-body").ok().flatten());
+            crate::shell::focus_without_scroll(body);
+            owner.load(false);
+        }
     });
     view! {
         <div class="vk-notif-body vk-state-slot" tabindex="-1" aria-busy=move || (owner.page_access.get() == PageAccess::Pending
