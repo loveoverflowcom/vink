@@ -35,6 +35,8 @@ enum class ColorRole(val token: String, val cssVar: String, val light: Long, val
     ActionTonalContainer("action.tonal.container", "--vk-action-tonal-container", 0xFFEADCF3, 0xFF493C56),
     /** Recipe: Label on the tonal action. */
     ActionTonalContent("action.tonal.content", "--vk-action-tonal-content", 0xFF31233D, 0xFFF2DAFF),
+    /** R5 Auth: a borderless editable field remains visible against the page and Reader dialog. */
+    AuthFieldFill("color.auth-field-fill", "--vk-auth-field-fill", 0xFF8A7D97, 0xFF7B6D86),
     /** New in UIS-02: avatar tone 1 (lavender), chosen by avatar-identity-v1 from a caller-supplied stable key; independent of status roles so a status change never recolours people. */
     Avatar1("color.avatar-1", "--vk-avatar-1", 0xFFEBDDFF, 0xFF4E3477),
     /** New in UIS-02: avatar tone 2 (mauve), chosen by avatar-identity-v1 from a caller-supplied stable key; independent of status roles so a status change never recolours people. */
@@ -74,6 +76,8 @@ enum class ColorRole(val token: String, val cssVar: String, val light: Long, val
     InfoContainer("color.info-container", "--vk-info-container", 0xFFD6E6FF, 0xFF22466D),
     InverseOnSurface("color.inverse-on-surface", "--vk-inverse-on-surface", 0xFFFFFAFF, 0xFF17121D),
     InverseSurface("color.inverse-surface", "--vk-inverse-surface", 0xFF241D2D, 0xFFF0E7F8),
+    /** R5 Auth: native input, label and icon ink on the editable field fill. */
+    OnAuthField("color.on-auth-field", "--vk-on-auth-field", 0xFF170F20, 0xFFFFFAFF),
     /** New in UIS-02: initials on avatar tone 1. */
     OnAvatar1("color.on-avatar-1", "--vk-on-avatar-1", 0xFF35205A, 0xFFF0E3FF),
     /** New in UIS-02: initials on avatar tone 2. */
@@ -228,6 +232,9 @@ val VinkContrastPairs: List<ContrastPair> = listOf(
     ContrastPair(ColorRole.ActionNeutralContent, ColorRole.ActionNeutralContainer, 4.5, "Neutral icon/toggle content"),
     ContrastPair(ColorRole.FocusRing, ColorRole.ActionNeutralContainer, 3.0, "Focus perimeter on neutral action container"),
     ContrastPair(ColorRole.OnSurface, ColorRole.SurfaceContainerHigh, 4.5, "Input text on the R3 field fill"),
+    ContrastPair(ColorRole.AuthFieldFill, ColorRole.BgPage, 3.0, "R5 borderless Auth field on the page"),
+    ContrastPair(ColorRole.AuthFieldFill, ColorRole.SurfaceContainer, 3.0, "R5 borderless Auth field in the Reader dialog"),
+    ContrastPair(ColorRole.OnAuthField, ColorRole.AuthFieldFill, 4.5, "R5 Auth field content, labels and icons"),
     ContrastPair(ColorRole.OnSurfaceVariant, ColorRole.SurfaceContainerHigh, 4.5, "Placeholder and read-only values on fields"),
     ContrastPair(ColorRole.OnSurface, ColorRole.BgPage, 4.5, "R4.2 text on the page background"),
     ContrastPair(ColorRole.OnSurfaceVariant, ColorRole.BgPage, 4.5, "R4.2 metadata and unselected navigation on the page background"),

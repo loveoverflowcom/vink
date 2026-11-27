@@ -33,6 +33,8 @@ pub enum ColorRole {
     ActionTonalContainer,
     /// Recipe: Label on the tonal action.
     ActionTonalContent,
+    /// R5 Auth: a borderless editable field remains visible against the page and Reader dialog.
+    AuthFieldFill,
     /// New in UIS-02: avatar tone 1 (lavender), chosen by avatar-identity-v1 from a caller-supplied stable key; independent of status roles so a status change never recolours people.
     Avatar1,
     /// New in UIS-02: avatar tone 2 (mauve), chosen by avatar-identity-v1 from a caller-supplied stable key; independent of status roles so a status change never recolours people.
@@ -72,6 +74,8 @@ pub enum ColorRole {
     InfoContainer,
     InverseOnSurface,
     InverseSurface,
+    /// R5 Auth: native input, label and icon ink on the editable field fill.
+    OnAuthField,
     /// New in UIS-02: initials on avatar tone 1.
     OnAvatar1,
     /// New in UIS-02: initials on avatar tone 2.
@@ -160,7 +164,7 @@ pub enum ColorRole {
 }
 
 impl ColorRole {
-    pub const ALL: [ColorRole; 80] = [
+    pub const ALL: [ColorRole; 82] = [
         ColorRole::ActionNeutralContainer,
         ColorRole::ActionNeutralContent,
         ColorRole::ActionPrimaryContainer,
@@ -170,6 +174,7 @@ impl ColorRole {
         ColorRole::ActionToggleSelectedContent,
         ColorRole::ActionTonalContainer,
         ColorRole::ActionTonalContent,
+        ColorRole::AuthFieldFill,
         ColorRole::Avatar1,
         ColorRole::Avatar2,
         ColorRole::Avatar3,
@@ -191,6 +196,7 @@ impl ColorRole {
         ColorRole::InfoContainer,
         ColorRole::InverseOnSurface,
         ColorRole::InverseSurface,
+        ColorRole::OnAuthField,
         ColorRole::OnAvatar1,
         ColorRole::OnAvatar2,
         ColorRole::OnAvatar3,
@@ -254,6 +260,7 @@ impl ColorRole {
             ColorRole::ActionToggleSelectedContent => "action.toggle.selected-content",
             ColorRole::ActionTonalContainer => "action.tonal.container",
             ColorRole::ActionTonalContent => "action.tonal.content",
+            ColorRole::AuthFieldFill => "color.auth-field-fill",
             ColorRole::Avatar1 => "color.avatar-1",
             ColorRole::Avatar2 => "color.avatar-2",
             ColorRole::Avatar3 => "color.avatar-3",
@@ -275,6 +282,7 @@ impl ColorRole {
             ColorRole::InfoContainer => "color.info-container",
             ColorRole::InverseOnSurface => "color.inverse-on-surface",
             ColorRole::InverseSurface => "color.inverse-surface",
+            ColorRole::OnAuthField => "color.on-auth-field",
             ColorRole::OnAvatar1 => "color.on-avatar-1",
             ColorRole::OnAvatar2 => "color.on-avatar-2",
             ColorRole::OnAvatar3 => "color.on-avatar-3",
@@ -339,6 +347,7 @@ impl ColorRole {
             ColorRole::ActionToggleSelectedContent => "--vk-action-toggle-selected-content",
             ColorRole::ActionTonalContainer => "--vk-action-tonal-container",
             ColorRole::ActionTonalContent => "--vk-action-tonal-content",
+            ColorRole::AuthFieldFill => "--vk-auth-field-fill",
             ColorRole::Avatar1 => "--vk-avatar-1",
             ColorRole::Avatar2 => "--vk-avatar-2",
             ColorRole::Avatar3 => "--vk-avatar-3",
@@ -360,6 +369,7 @@ impl ColorRole {
             ColorRole::InfoContainer => "--vk-info-container",
             ColorRole::InverseOnSurface => "--vk-inverse-on-surface",
             ColorRole::InverseSurface => "--vk-inverse-surface",
+            ColorRole::OnAuthField => "--vk-on-auth-field",
             ColorRole::OnAvatar1 => "--vk-on-avatar-1",
             ColorRole::OnAvatar2 => "--vk-on-avatar-2",
             ColorRole::OnAvatar3 => "--vk-on-avatar-3",
@@ -424,6 +434,7 @@ impl ColorRole {
             ColorRole::ActionToggleSelectedContent => Rgba::new(49, 35, 61, 1.0),
             ColorRole::ActionTonalContainer => Rgba::new(234, 220, 243, 1.0),
             ColorRole::ActionTonalContent => Rgba::new(49, 35, 61, 1.0),
+            ColorRole::AuthFieldFill => Rgba::new(138, 125, 151, 1.0),
             ColorRole::Avatar1 => Rgba::new(235, 221, 255, 1.0),
             ColorRole::Avatar2 => Rgba::new(234, 220, 243, 1.0),
             ColorRole::Avatar3 => Rgba::new(255, 217, 232, 1.0),
@@ -445,6 +456,7 @@ impl ColorRole {
             ColorRole::InfoContainer => Rgba::new(214, 230, 255, 1.0),
             ColorRole::InverseOnSurface => Rgba::new(255, 250, 255, 1.0),
             ColorRole::InverseSurface => Rgba::new(36, 29, 45, 1.0),
+            ColorRole::OnAuthField => Rgba::new(23, 15, 32, 1.0),
             ColorRole::OnAvatar1 => Rgba::new(53, 32, 90, 1.0),
             ColorRole::OnAvatar2 => Rgba::new(49, 35, 61, 1.0),
             ColorRole::OnAvatar3 => Rgba::new(58, 18, 39, 1.0),
@@ -509,6 +521,7 @@ impl ColorRole {
             ColorRole::ActionToggleSelectedContent => Rgba::new(242, 218, 255, 1.0),
             ColorRole::ActionTonalContainer => Rgba::new(73, 60, 86, 1.0),
             ColorRole::ActionTonalContent => Rgba::new(242, 218, 255, 1.0),
+            ColorRole::AuthFieldFill => Rgba::new(123, 109, 134, 1.0),
             ColorRole::Avatar1 => Rgba::new(78, 52, 119, 1.0),
             ColorRole::Avatar2 => Rgba::new(73, 60, 86, 1.0),
             ColorRole::Avatar3 => Rgba::new(101, 54, 77, 1.0),
@@ -530,6 +543,7 @@ impl ColorRole {
             ColorRole::InfoContainer => Rgba::new(34, 70, 109, 1.0),
             ColorRole::InverseOnSurface => Rgba::new(23, 18, 29, 1.0),
             ColorRole::InverseSurface => Rgba::new(240, 231, 248, 1.0),
+            ColorRole::OnAuthField => Rgba::new(255, 250, 255, 1.0),
             ColorRole::OnAvatar1 => Rgba::new(240, 227, 255, 1.0),
             ColorRole::OnAvatar2 => Rgba::new(242, 218, 255, 1.0),
             ColorRole::OnAvatar3 => Rgba::new(255, 217, 232, 1.0),
@@ -594,6 +608,7 @@ impl ColorRole {
             ColorRole::ActionToggleSelectedContent => Some(ColorRole::OnSecondaryContainer),
             ColorRole::ActionTonalContainer => Some(ColorRole::SecondaryContainer),
             ColorRole::ActionTonalContent => Some(ColorRole::OnSecondaryContainer),
+            ColorRole::AuthFieldFill => None,
             ColorRole::Avatar1 => None,
             ColorRole::Avatar2 => None,
             ColorRole::Avatar3 => None,
@@ -615,6 +630,7 @@ impl ColorRole {
             ColorRole::InfoContainer => None,
             ColorRole::InverseOnSurface => None,
             ColorRole::InverseSurface => None,
+            ColorRole::OnAuthField => None,
             ColorRole::OnAvatar1 => None,
             ColorRole::OnAvatar2 => None,
             ColorRole::OnAvatar3 => None,
@@ -922,6 +938,24 @@ pub const CONTRAST: &[ContrastPair] = &[
         bg: ColorRole::SurfaceContainerHigh,
         min: 4.5,
         usage: "Input text on the R3 field fill",
+    },
+    ContrastPair {
+        fg: ColorRole::AuthFieldFill,
+        bg: ColorRole::BgPage,
+        min: 3.0,
+        usage: "R5 borderless Auth field on the page",
+    },
+    ContrastPair {
+        fg: ColorRole::AuthFieldFill,
+        bg: ColorRole::SurfaceContainer,
+        min: 3.0,
+        usage: "R5 borderless Auth field in the Reader dialog",
+    },
+    ContrastPair {
+        fg: ColorRole::OnAuthField,
+        bg: ColorRole::AuthFieldFill,
+        min: 4.5,
+        usage: "R5 Auth field content, labels and icons",
     },
     ContrastPair {
         fg: ColorRole::OnSurfaceVariant,

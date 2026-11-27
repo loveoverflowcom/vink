@@ -40,8 +40,9 @@ Từ [#576](https://github.com/loveoverflowcom/vink/issues/576), vùng Auth ch�
 Cuộn theo trang; ở 200% ưu tiên reflow, lỗi và hành động tới được bằng bàn phím.
 
 **Màu và trạng thái.** [R5 #605](https://github.com/loveoverflowcom/vink/issues/605) thay góc
-`radius-xl` và viền lúc nghỉ của R3.1. Biến thể chung `AuthTonal` dùng một cặp màu nền/chữ
-theo theme. Nền field cần đạt 3:1 với cả trang `bg-page` và dialog `surface-container`.
+`radius-xl` và viền lúc nghỉ của R3.1. Biến thể chung `AuthTonal` dùng hai token theo theme,
+`color.auth-field-fill` và `color.on-auth-field`. Nền field cần đạt 3:1 với cả trang `bg-page`
+và dialog `surface-container`.
 Nhãn và nội dung nhập đạt 4,5:1 trên nền field. Field lúc nghỉ không có viền ở theme thường.
 Vành ngoài báo focus 2 px, lỗi 1 px hoặc lỗi đang focus 2 px. Nút hiện/ẩn có focus riêng.
 Forced colors dùng màu hệ thống để nhận biết field và focus. Filled và Tonal giữ trạng thái của Button.

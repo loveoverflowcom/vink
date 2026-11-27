@@ -21,6 +21,7 @@
   --color-vk-action-toggle-selected-content: var(--vk-action-toggle-selected-content);
   --color-vk-action-tonal-container: var(--vk-action-tonal-container);
   --color-vk-action-tonal-content: var(--vk-action-tonal-content);
+  --color-vk-auth-field-fill: var(--vk-auth-field-fill);
   --color-vk-avatar-1: var(--vk-avatar-1);
   --color-vk-avatar-2: var(--vk-avatar-2);
   --color-vk-avatar-3: var(--vk-avatar-3);
@@ -42,6 +43,7 @@
   --color-vk-info-container: var(--vk-info-container);
   --color-vk-inverse-on-surface: var(--vk-inverse-on-surface);
   --color-vk-inverse-surface: var(--vk-inverse-surface);
+  --color-vk-on-auth-field: var(--vk-on-auth-field);
   --color-vk-on-avatar-1: var(--vk-on-avatar-1);
   --color-vk-on-avatar-2: var(--vk-on-avatar-2);
   --color-vk-on-avatar-3: var(--vk-on-avatar-3);

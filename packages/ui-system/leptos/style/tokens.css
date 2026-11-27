@@ -181,6 +181,7 @@
   --vk-type-title-weight: 500;
   --vk-type-title-line-height: 1.3;
   --vk-type-title-tracking: 0;
+  --vk-auth-field-fill: #8a7d97;
   --vk-avatar-1: #ebddff;
   --vk-avatar-2: #eadcf3;
   --vk-avatar-3: #ffd9e8;
@@ -198,6 +199,7 @@
   --vk-info-container: #d6e6ff;
   --vk-inverse-on-surface: #fffaff;
   --vk-inverse-surface: #241d2d;
+  --vk-on-auth-field: #170f20;
   --vk-on-avatar-1: #35205a;
   --vk-on-avatar-2: #31233d;
   --vk-on-avatar-3: #3a1227;
@@ -253,6 +255,7 @@
 
 .vk-scope[data-theme="light"] {
   color-scheme: light;
+  --vk-auth-field-fill: #8a7d97;
   --vk-avatar-1: #ebddff;
   --vk-avatar-2: #eadcf3;
   --vk-avatar-3: #ffd9e8;
@@ -270,6 +273,7 @@
   --vk-info-container: #d6e6ff;
   --vk-inverse-on-surface: #fffaff;
   --vk-inverse-surface: #241d2d;
+  --vk-on-auth-field: #170f20;
   --vk-on-avatar-1: #35205a;
   --vk-on-avatar-2: #31233d;
   --vk-on-avatar-3: #3a1227;
@@ -322,6 +326,7 @@
 :root[data-theme="dark"],
 .vk-scope[data-theme="dark"] {
   color-scheme: dark;
+  --vk-auth-field-fill: #7b6d86;
   --vk-avatar-1: #4e3477;
   --vk-avatar-2: #493c56;
   --vk-avatar-3: #65364d;
@@ -339,6 +344,7 @@
   --vk-info-container: #22466d;
   --vk-inverse-on-surface: #17121d;
   --vk-inverse-surface: #f0e7f8;
+  --vk-on-auth-field: #fffaff;
   --vk-on-avatar-1: #f0e3ff;
   --vk-on-avatar-2: #f2daff;
   --vk-on-avatar-3: #ffd9e8;
@@ -390,6 +396,7 @@
 
 .vk-scope[data-theme="system"] {
   color-scheme: light dark;
+  --vk-auth-field-fill: #8a7d97;
   --vk-avatar-1: #ebddff;
   --vk-avatar-2: #eadcf3;
   --vk-avatar-3: #ffd9e8;
@@ -407,6 +414,7 @@
   --vk-info-container: #d6e6ff;
   --vk-inverse-on-surface: #fffaff;
   --vk-inverse-surface: #241d2d;
+  --vk-on-auth-field: #170f20;
   --vk-on-avatar-1: #35205a;
   --vk-on-avatar-2: #31233d;
   --vk-on-avatar-3: #3a1227;
@@ -459,6 +467,7 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]),
   .vk-scope[data-theme="system"] {
+    --vk-auth-field-fill: #7b6d86;
     --vk-avatar-1: #4e3477;
     --vk-avatar-2: #493c56;
     --vk-avatar-3: #65364d;
@@ -476,6 +485,7 @@
     --vk-info-container: #22466d;
     --vk-inverse-on-surface: #17121d;
     --vk-inverse-surface: #f0e7f8;
+    --vk-on-auth-field: #fffaff;
     --vk-on-avatar-1: #f0e3ff;
     --vk-on-avatar-2: #f2daff;
     --vk-on-avatar-3: #ffd9e8;

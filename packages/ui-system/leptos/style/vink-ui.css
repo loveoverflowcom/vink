@@ -849,10 +849,6 @@
 
 /* The Auth pair is tuned for a visible control against both the page and Reader
  * dialog. Keep the input/error perimeter outside the fill against the host. */
-.vk-ui-field--auth {
-  --vk-auth-control-fill: light-dark(#8a7d97, #7b6d86);
-  --vk-auth-control-ink: light-dark(#170f20, #fffaff);
-}
 .vk-ui-field--auth .vk-ui-field__control {
   grid-template-columns: minmax(0, 1fr);
   min-block-size: 56px;
@@ -860,7 +856,7 @@
   outline-width: 0;
 }
 .vk-ui-field--auth[data-mode="editable"] .vk-ui-field__control {
-  background: var(--vk-auth-control-fill);
+  background: var(--vk-auth-field-fill);
 }
 .vk-ui-field--auth.vk-ui-field--floating .vk-ui-field__control > .vk-ui-input {
   min-block-size: 0;
@@ -868,17 +864,17 @@
   border-radius: 0 0 var(--vk-radius-control-56) var(--vk-radius-control-56);
 }
 .vk-ui-field--auth[data-mode="editable"] :is(.vk-ui-input, .vk-ui-field__label, .vk-ui-icon-button, .vk-ui-field__control > .vk-ui-icon) {
-  color: var(--vk-auth-control-ink);
+  color: var(--vk-on-auth-field);
 }
 .vk-ui-field--auth[data-mode="editable"] .vk-ui-input::placeholder {
-  color: var(--vk-auth-control-ink);
+  color: var(--vk-on-auth-field);
 }
 .vk-ui-field--auth.vk-ui-field--floating .vk-ui-field__control {
   outline-offset: 0;
 }
 .vk-ui-field--auth .vk-ui-field__reveal { inset-block: 0; inset-inline-end: var(--vk-space-1); }
 .vk-ui-field--auth .vk-ui-field__reveal .vk-ui-icon-button:focus-visible {
-  outline-color: var(--vk-auth-control-ink);
+  outline-color: var(--vk-on-auth-field);
   outline-offset: -2px;
 }
 
