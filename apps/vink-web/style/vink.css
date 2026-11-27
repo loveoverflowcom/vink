@@ -1518,6 +1518,10 @@ a {
     /* A near-zero duration must not become a flashing infinite loop: play once at most. */
     animation-iteration-count: 1 !important;
   }
+  /* Preserve UIS-03's zero-iteration reduced-motion token for loading primitives. */
+  .vk-ui-arc svg, .vk-ui-edge__bar, .vk-ui-skeleton {
+    animation-iteration-count: var(--vk-loop-iterations) !important;
+  }
 }
 
 
