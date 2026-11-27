@@ -52,6 +52,7 @@ class PreviewTest {
                 onNodeWithTag("specimen:${entry.id}:${scenario.id}").assertExists()
                 onNode(hasText("Chưa đăng ký", substring = true)).assertDoesNotExist()
                 textUnder("inspector-id", "${entry.id} / ${scenario.id}")
+                textUnder("inspector-status", "CMP: ${entry.cmp}")
             }
         }
         textUnder("inspector-status", "implemented-unverified")
