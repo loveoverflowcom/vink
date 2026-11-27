@@ -1079,6 +1079,23 @@ export async function standalone(page, {args, check, openPage}) {
   await checkAuthR31(page, check, 'standalone /toi');
   await checkModeSwitches(page, check, 'standalone /toi');
   await page.click('#use-registration');
+  // Hold a real resend after the server queues it. Going back keeps the new address step
+  // even when the previous mailbox's response reaches the still-mounted registration form.
+  await registrationProof(page, args.outbox, randomUUID() + '@example.test');
+  await page.waitFor("document.querySelector('#registration-resend')?.getAttribute('aria-disabled') !== 'true' && !document.querySelector('#registration-resend')?.disabled",
+    'registration resend cooldown elapsed', 75000);
+  const resend = await holdAnswer(page, 'POST', API + '/register/challenges');
+  await page.click('#registration-resend');
+  check(await resend.held() === 202, 'Identity accepted a second registration mail request');
+  await page.click('#registration-back');
+  await page.waitFor(q('#registration-address'), 'choose another mailbox while resend is pending');
+  await resend.finish();
+  await page.eval('new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))');
+  check(await page.eval("Boolean(document.querySelector('#registration-address')) && !document.querySelector('#registration-code')"),
+    'the delayed answer cannot reopen the abandoned mailbox');
+  await page.goto(base + '/toi');
+  await page.waitFor(q('#use-registration'), 'reload leaves the unverified browser a guest');
+  await page.click('#use-registration');
   const username = 'spa' + Date.now().toString(36);
   await registrationProof(page, args.outbox, randomUUID() + '@example.test');
   await credentials(page, REGISTER, username, SECRET_A);
