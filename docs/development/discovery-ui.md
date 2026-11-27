@@ -148,13 +148,15 @@ Trong Tất cả, `WorkResults` sở hữu Suspense của public list. Trong Đa
 | Tất cả, trang thẻ · `pages/discovery.rs` | Initial, retained refresh, catalog trong sheet | FIX · PendingRead + RefreshProgress. Catalog đóng giữ thông báo phi thị giác. Phân trang công khai qua GET. |
 | Đang theo dõi · `discovery/feed{,/browser}.rs` | Kiểm phiên, initial, refresh, append | FIX · PendingRead cho hai read độc lập, EdgeProgress khi refresh. ALREADY_CORRECT · nút tải thêm dùng ActionState, ReadOwner kiểm ticket và PageChain kiểm cursor. |
 | Tác giả · `pages/author_discovery.rs` | Tìm, đề xuất, tải thêm | FIX · PendingRead theo vùng. Liên kết GET tải thêm giữ đích SSR, owner chặn request trùng. Danh sách phẳng theo #622. |
-| Hồ sơ, quan hệ · `pages/handle.rs`, `profile{,/browser}.rs`, `follow.rs` | Đọc công khai, đọc hồ sơ của mình, danh sách quan hệ | FIX · chỉ báo tại fallback/nhánh loading. ALREADY_CORRECT · action Follow và retry giữ trạng thái do caller cấp. |
-| Đã lưu · `pages/saved_profile/browser/list.rs` | Initial, append, xác minh kết quả từng hàng | FIX · skeleton cũ dùng gate UIS-03 thay hai timeout. ALREADY_CORRECT · ActionState cho tải thêm và đối chiếu. |
+| Hồ sơ, quan hệ · `pages/handle.rs`, `profile{,/browser}.rs`, `follow.rs` | Đọc công khai, đọc hồ sơ của mình, danh sách quan hệ | FIX · chỉ báo tại fallback, số đếm quan hệ, lần đọc trạng thái Follow và địa chỉ tác giả. ALREADY_CORRECT · action Follow và retry giữ trạng thái do caller cấp. |
+| Đã lưu · `pages/saved_profile/browser/list.rs` | Initial, append, xác minh kết quả từng hàng | FIX · skeleton cũ dùng gate UIS-03 thay hai timeout, nút bỏ lưu giữ vị trí khi hiện MicroArc. ALREADY_CORRECT · ActionState cho tải thêm và đối chiếu. |
 | Thông báo · `notifications/{inbox,destinations}.rs` | Initial trang/popover/chi tiết, mark, append | ALREADY_CORRECT · skeleton theo hàng, một status, action pending và ReadFailure của #603. |
 | Reader, nhận xét · `pages/{mod,discussion}.rs` | Initial Reader, đọc thảo luận/overlay của mình, tải phản hồi | FIX · PendingRead tại fallback chữ; ALREADY_CORRECT · skeleton nhận xét có gate, nút phản hồi giữ pending. |
-| Bàn viết, Editor · `pages/{desk,desk_review,work_info}.rs` | Lần đầu, mở editor/outline/thẻ/review, reconcile, tải thêm | FIX · vùng chờ cục bộ và nhãn nút ổn định. ALREADY_CORRECT · giữ skeleton danh sách, save slot theo ACK, conflict, phiên và bảo toàn chữ. |
+| Bàn viết, Editor · `pages/{desk,desk_review,work_info}.rs` | Lần đầu, mở editor/outline/thẻ/review, reconcile, tải thêm | FIX · vùng chờ cục bộ, EdgeProgress khi làm mới danh sách bản thảo và nhãn nút ổn định. ALREADY_CORRECT · giữ skeleton danh sách, save slot theo ACK, conflict, phiên và bảo toàn chữ. |
 | Tài khoản · `account/forms{,/email}.rs` | Kiểm cách đăng nhập, mở tùy chọn, gửi biểu mẫu | FIX · chỉ báo cho read. ALREADY_CORRECT · form pending, throttle, outcome không chắc và đối chiếu có copy riêng. |
 | Thấm, Ưng, Lưu, Follow · adapters Reader/Profile | Mutation pending | ALREADY_CORRECT · Toggle/Button giữ slot và nhãn, controller giữ identity, receipt và quyền. |
 | Kiểm duyệt đang chờ, autosave, công khai, privacy | Trạng thái nghiệp vụ và xác nhận ghi | EXCLUDED · giữ thông điệp bền vững, xử lý lỗi và quyền của caller. Auth icon theo #625. |
 
 Recovery 422 xóa q vẫn giữ tag và trang thẻ; xóa tag vẫn giữ q. Khi lỗi thuộc cursor, URL mới chỉ bỏ cursor. 404 và 503 có trạng thái riêng; retry do caller cấp. Kiểm các đường native với SSR, sau đó chạy browser `discovery` và hành trình member Following trong `password`. Motion cần đo computed style khi đang giữ đúng request.
+
+[Ảnh trước/sau và số đo Chrome cho #624](evidence/loading-recovery-624/README.md).
