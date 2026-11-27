@@ -260,7 +260,7 @@ pub(super) fn ProfileRelationships(
                             attr:id="profile-followers-link"
                             attr:data-profile-return="true"
                             href=href>
-                            <span class="vk-rel-num">{format_vi_count(c)}</span>" người theo dõi"
+                            <span><span class="vk-rel-num">{format_vi_count(c)}</span>" người theo dõi"</span>
                         </UiLink>
                     }.into_any(),
                     (Some(href), None) => view! {
@@ -274,7 +274,7 @@ pub(super) fn ProfileRelationships(
                     }.into_any(),
                     (None, Some(c)) => view! {
                         <span id="profile-followers-count" class="vk-rel-stat">
-                            <span class="vk-rel-num">{format_vi_count(c)}</span>" người theo dõi"
+                            <span><span class="vk-rel-num">{format_vi_count(c)}</span>" người theo dõi"</span>
                         </span>
                     }.into_any(),
                     (None, None) => view! { <span></span> }.into_any(),
@@ -286,7 +286,7 @@ pub(super) fn ProfileRelationships(
                             attr:id="profile-following-link"
                             attr:data-profile-return="true"
                             href=href>
-                            <span class="vk-rel-num">{format_vi_count(c)}</span>" đang theo dõi"
+                            <span><span class="vk-rel-num">{format_vi_count(c)}</span>" đang theo dõi"</span>
                         </UiLink>
                     }.into_any(),
                     (Some(href), None) => view! {
@@ -300,7 +300,7 @@ pub(super) fn ProfileRelationships(
                     }.into_any(),
                     (None, Some(c)) => view! {
                         <span id="profile-following-count" class="vk-rel-stat">
-                            <span class="vk-rel-num">{format_vi_count(c)}</span>" đang theo dõi"
+                            <span><span class="vk-rel-num">{format_vi_count(c)}</span>" đang theo dõi"</span>
                         </span>
                     }.into_any(),
                     (None, None) => view! { <span></span> }.into_any(),

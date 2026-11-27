@@ -56,6 +56,16 @@ async function checkLayoutAndA11y(page, check, textContrast, url, contrastSelect
               wide: document.querySelector('.vk-author-public').clientWidth >= 40 * rootPx,
               count: box(count), action: box(action),
               actionText: action?.textContent.trim(), column: box(heading.parentElement),
+              // The link is a flex container: one label item keeps the space after the number.
+              countSpace: (() => {
+                const num = count?.querySelector('.vk-rel-num');
+                let text = num?.nextSibling;
+                while (text && !(text.nodeType === Node.TEXT_NODE && text.textContent.trim())) text = text.nextSibling;
+                if (!text) return null;
+                const at = text.textContent.length - text.textContent.trimStart().length, r = document.createRange();
+                r.setStart(text, at); r.setEnd(text, at + 1);
+                return r.getBoundingClientRect().left - num.getBoundingClientRect().right;
+              })(),
               stats: [...(document.querySelector('#profile-relationships')?.children ?? [])]
                 .filter(el => el.textContent.trim()).length,
             };
@@ -77,6 +87,8 @@ async function checkLayoutAndA11y(page, check, textContrast, url, contrastSelect
               check(sameRow && gap >= 8 && gap <= 24 && h.action.left >= h.column.left - 1,
                 `${at}: count and Follow share one compact row in the text column ${JSON.stringify(h)}`);
             }
+            check(h.countSpace === null || h.countSpace >= 2,
+              `${at}: the rendered count keeps a space after the number (${h.countSpace}px)`);
             check(h.action.right <= width + 1 && h.count.right <= width + 1,
               `${at}: count and Follow stay inside the viewport ${JSON.stringify(h)}`);
           }
