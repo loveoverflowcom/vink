@@ -197,10 +197,18 @@ export async function discoveryReading(page, { args, check, textContrast }) {
         return near(boxes[index].width, Math.max(parseFloat(style.minInlineSize), expected))
           && text.left >= boxes[index].left && text.right <= boxes[index].right;
       });
+      // Not expanded and not distributed: links on one row sit exactly one column-gap apart.
+      // Free space after the last link depends on label widths (0.23px at 320/100), so it only
+      // has to stay inside the header.
+      const gap = parseFloat(getComputedStyle(nav).columnGap) || 0;
+      const packed = boxes.every((box, index) => index === 0
+        || Math.abs(box.top - boxes[index - 1].top) > 1
+        || near(box.left, boxes[index - 1].right + gap));
       return {
         current: current.map(link => link.id),
         count: links.length,
         intrinsic,
+        packed,
         aligned: near(boxes[0].left, owner.left) && near(boxes[0].left, row.left),
         endSpace: owner.right - Math.max(...boxes.map(box => box.right)),
         height: Math.min(...boxes.map(box => box.height)),
@@ -209,8 +217,8 @@ export async function discoveryReading(page, { args, check, textContrast }) {
         icons: nav.querySelectorAll('svg').length,
       };
     })()`);
-    check(modes.current.join() === 'explore-mode-works' && modes.count === 3 && modes.intrinsic && modes.aligned
-      && (scale !== 100 || modes.endSpace > 1) && modes.height >= 48 && modes.indicator && modes.icons === 0,
+    check(modes.current.join() === 'explore-mode-works' && modes.count === 3 && modes.intrinsic && modes.packed
+      && modes.aligned && modes.endSpace >= -1 && modes.height >= 48 && modes.indicator && modes.icons === 0,
       '#566 left-aligned intrinsic tabs with a local 3px underline ' + [theme,width,scale,JSON.stringify(modes)].join('/'));
     if (theme === 'light' && ([320,390,1440].includes(width) && [100,150].includes(scale) ||
         [320,390].includes(width) && scale === 200)) {
