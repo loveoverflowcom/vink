@@ -38,8 +38,61 @@ async function checkLayoutAndA11y(page, check, textContrast, url, contrastSelect
               return { sel, width: r.width, height: r.height };
             })
             .filter(Boolean);
-          return { overflow, nestedLinks, targets };
+          // #588 compact header: bold literary name on its own token, secondary handle, and the
+          // permitted count beside the Follow action whenever the text column fits both.
+          const heading = document.querySelector('.vk-author-identity h1');
+          let header = null;
+          if (heading) {
+            const css = getComputedStyle(heading), rootPx = parseFloat(getComputedStyle(root).fontSize);
+            const handle = heading.parentElement.querySelector('p');
+            const count = document.querySelector('.vk-author-social :is(#profile-followers-link, #profile-followers-count)');
+            const action = document.querySelector('.vk-author-social :is(#follow-action, #follow-sign-in)');
+            const box = (el) => el?.getBoundingClientRect().toJSON();
+            header = {
+              ratio: parseFloat(css.fontSize) / rootPx, weight: Number(css.fontWeight),
+              serif: css.fontFamily.includes('Literata'),
+              clipped: heading.scrollWidth > heading.clientWidth + 1,
+              handleRatio: handle ? parseFloat(getComputedStyle(handle).fontSize) / rootPx : null,
+              wide: document.querySelector('.vk-author-public').clientWidth >= 40 * rootPx,
+              count: box(count), action: box(action),
+              actionText: action?.textContent.trim(), column: box(heading.parentElement),
+              // The link is a flex container: one label item keeps the space after the number.
+              countSpace: (() => {
+                const num = count?.querySelector('.vk-rel-num');
+                let text = num?.nextSibling;
+                while (text && !(text.nodeType === Node.TEXT_NODE && text.textContent.trim())) text = text.nextSibling;
+                if (!text) return null;
+                const at = text.textContent.length - text.textContent.trimStart().length, r = document.createRange();
+                r.setStart(text, at); r.setEnd(text, at + 1);
+                return r.getBoundingClientRect().left - num.getBoundingClientRect().right;
+              })(),
+              stats: [...(document.querySelector('#profile-relationships')?.children ?? [])]
+                .filter(el => el.textContent.trim()).length,
+            };
+          }
+          return { overflow, nestedLinks, targets, header };
         })()`);
+        if (facts.header) {
+          const h = facts.header, at = `${label} header at ${width}px ${theme} ${scale}%`;
+          const expected = h.wide ? 1.375 : 1.25;
+          check(Math.abs(h.ratio - expected) < 0.01 && h.weight >= 700 && h.serif && !h.clipped,
+            `${at}: name is bold Literata at ${expected}rem and wraps unclipped ${JSON.stringify(h)}`);
+          check(h.handleRatio !== null && h.handleRatio <= 0.875 + 0.01 && h.handleRatio >= 0.8125 - 0.01,
+            `${at}: handle stays secondary at 13–14px-equivalent (${h.handleRatio})`);
+          if (h.count && h.action) {
+            const sameRow = Math.abs((h.count.top + h.count.bottom) / 2 - (h.action.top + h.action.bottom) / 2) <= 2;
+            const gap = h.action.left - h.count.right;
+            // Two stats may wrap the action below them on a phone; one stat always fits.
+            if (scale === 100 && (h.wide || (width >= 390 && h.stats === 1))) {
+              check(sameRow && gap >= 8 && gap <= 24 && h.action.left >= h.column.left - 1,
+                `${at}: count and Follow share one compact row in the text column ${JSON.stringify(h)}`);
+            }
+            check(h.countSpace === null || h.countSpace >= 2,
+              `${at}: the rendered count keeps a space after the number (${h.countSpace}px)`);
+            check(h.action.right <= width + 1 && h.count.right <= width + 1,
+              `${at}: count and Follow stay inside the viewport ${JSON.stringify(h)}`);
+          }
+        }
         check(facts.overflow <= 1, `${label} zero overflow at ${width}px ${theme} ${scale}% (got ${facts.overflow})`);
         check(facts.nestedLinks === 0, `${label} zero nested links at ${width}px ${theme} ${scale}%`);
         for (const t of facts.targets) {
@@ -275,6 +328,10 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
     'SSR public profile renders followers link without mutual/viewer secrets');
 
   await guest.waitFor(q('#follow-sign-in'), 'guest sees follow sign-in CTA');
+  check(await guest.eval(`${q('#follow-sign-in')}.textContent.trim() === 'Theo dõi' &&
+    !document.querySelector('main').textContent.includes('Đăng nhập để theo dõi') &&
+    ${q('.vk-author-social')}.contains(${q('#follow-sign-in')})`),
+    'guest sees only the compact Theo dõi action in the header social row');
   const signInHref = await guest.eval(`${q('#follow-sign-in')}.getAttribute('href')`);
   const signIn = new URL(signInHref, base);
   check(signIn.origin === new URL(base).origin && signIn.pathname === '/toi' &&
@@ -693,7 +750,7 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
   authorFixtureSql(`UPDATE author_profiles SET policies = policies ||
     '{"followers_list":"everyone","followers_count":"self"}'::jsonb
     WHERE principal_id = ${literal(profB.principal_id)};`);
-  await checkLayoutAndA11y(guest, check, textContrast, `${base}/@${handleB}`, ['#profile-followers-link'], 'follow-list-without-count');
+  await checkLayoutAndA11y(guest, check, textContrast, `${base}/@${handleB}`, ['#profile-followers-link', '#follow-sign-in'], 'follow-list-without-count');
 
   // 6. Restore list=everyone temporarily to run 5-viewport / 2-theme / 100-200% layout + contrast audit on both profile & list.
   authorFixtureSql(`UPDATE author_profiles SET policies = '{

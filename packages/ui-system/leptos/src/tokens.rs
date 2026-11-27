@@ -1554,6 +1554,22 @@ pub mod dim {
         compact: None,
         web: WebUnit::Rem,
     };
+    pub const TEXT_PROFILE_NAME: Dimension = Dimension {
+        token: "text.profile-name",
+        css_var: "--vk-text-profile-name",
+        value: 20.0,
+        max: None,
+        compact: None,
+        web: WebUnit::Rem,
+    };
+    pub const TEXT_PROFILE_NAME_WIDE: Dimension = Dimension {
+        token: "text.profile-name-wide",
+        css_var: "--vk-text-profile-name-wide",
+        value: 22.0,
+        max: None,
+        compact: None,
+        web: WebUnit::Rem,
+    };
     pub const TEXT_RAIL_LABEL: Dimension = Dimension {
         token: "text.rail-label",
         css_var: "--vk-text-rail-label",
@@ -1571,7 +1587,7 @@ pub mod dim {
         web: WebUnit::Rem,
     };
 
-    pub const ALL: [Dimension; 66] = [
+    pub const ALL: [Dimension; 68] = [
         DENSITY_CONTROL_HEIGHT,
         DENSITY_CONTROL_PADDING,
         DENSITY_STACK_GAP,
@@ -1636,6 +1652,8 @@ pub mod dim {
         TEXT_PROFILE_INPUT,
         TEXT_PROFILE_MONOGRAM,
         TEXT_PROFILE_MONOGRAM_WIDE,
+        TEXT_PROFILE_NAME,
+        TEXT_PROFILE_NAME_WIDE,
         TEXT_RAIL_LABEL,
         TEXT_READING,
     ];

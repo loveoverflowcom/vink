@@ -97,21 +97,23 @@ fn render_profile(
             // may have revoked a list or count since the write; no old overlay may outlive it.
             let (public_summary, on_summary) =
                 profile_summary(author.handle.clone(), *relationships);
+            let action_handle = author.handle.clone();
             return view! {
                 <Title text=format!("{} · Vink", author.pen_name) />
                 <Link rel="canonical" href=crate::canonical_url(&author.href) />
                 <article class="vk-author-public">
-                    <ProfileIdentity pen_name=author.pen_name handle=author.handle.clone() />
-                    <super::follow::ProfileActionRegion
-                        handle=author.handle.clone()
-                        on_summary
-                        own_relationships=own_relationships
-                    />
-                    <super::follow::ProfileRelationships
-                        public=public_summary.into()
-                        own=own_relationships.read_only()
-                        on_retry=Callback::new(move |()| on_summary.run(None))
-                    />
+                    <ProfileIdentity pen_name=author.pen_name handle=author.handle.clone()>
+                        <super::follow::ProfileRelationships
+                            public=public_summary.into()
+                            own=own_relationships.read_only()
+                            on_retry=Callback::new(move |()| on_summary.run(None))
+                        />
+                        <super::follow::ProfileActionRegion
+                            handle=action_handle
+                            on_summary
+                            own_relationships=own_relationships
+                        />
+                    </ProfileIdentity>
                     {bio.map(|text| view! { <p class="vk-author-bio">{text}</p> })}
                     <section aria-labelledby="author-works-heading"
                         class="[margin-block-start:calc(var(--vk-space-8)_+_var(--vk-space-2))] [&>.vk-ui-link]:inline-block [&>.vk-ui-link]:[margin-inline-end:var(--vk-space-3)]">
@@ -288,8 +290,15 @@ extern "C" {
     fn replace_profile_alias(source_path: &str, href: &str);
 }
 
+/// Public author header: seal, pen name H1 and handle, then the social row supplied by the
+/// caller (relationship facts before the Follow action, in visual and tab order). The row's
+/// state owners stay in `follow`; this component only places them (#588).
 #[component]
-pub(super) fn ProfileIdentity(pen_name: String, handle: String) -> impl IntoView {
+pub(super) fn ProfileIdentity(
+    pen_name: String,
+    handle: String,
+    children: Children,
+) -> impl IntoView {
     let initials = pen_name
         .split_whitespace()
         .filter_map(|s| s.chars().next())
@@ -304,6 +313,7 @@ pub(super) fn ProfileIdentity(pen_name: String, handle: String) -> impl IntoView
                 <h1 id="author-profile-heading" tabindex="-1">{pen_name}</h1>
                 <p>{format!("@{handle}")}</p>
             </header>
+            <div class="vk-author-social">{children()}</div>
         </div>
     }
 }

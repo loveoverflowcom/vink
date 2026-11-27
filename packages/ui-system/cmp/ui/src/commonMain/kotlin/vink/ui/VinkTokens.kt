@@ -321,6 +321,8 @@ object VinkDimens {
     val TextProfileInput = 17.dp
     val TextProfileMonogram = 26.dp
     val TextProfileMonogramWide = 30.dp
+    val TextProfileName = 20.dp
+    val TextProfileNameWide = 22.dp
     val TextRailLabel = 12.dp
     val TextReading = 17.dp
 }
