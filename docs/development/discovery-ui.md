@@ -4,6 +4,21 @@ Baseline develop@bc926a8befd4c1ca2a19dece4bee9e782177ca22, 09/11/2026.
 Scope UX-01/02, PUB-02/03. [LayoutSpec](../design/tag-discovery.md) được xuất trước code.
 Không triển khai auth, publish/moderation hoặc app native; không deploy.
 
+## Bộ lọc Web #603
+
+[LayoutSpec hiện hành](../design/redesign-r4/layout-spec.md#4-khám-phá) thay picker nhiều thẻ
+của #225/#260/#308/#404/#406. Chọn một link trong catalog thay toàn bộ điều kiện thẻ. Escape,
+Back và Đóng trả focus về nút mở. Hàng chip lấy nhãn từ kết quả cùng query. Cache, API và URL
+cũ vẫn giữ đủ tập AND. Catalog lỗi cho phép thử lại, catalog rỗng vẫn giữ lối gỡ thẻ đang áp dụng.
+Trang thẻ xếp BackLink tới Khám phá, H1, SearchField “Tìm trong thẻ” rồi kết quả. Ở trang đầu
+của thẻ hợp lệ rỗng và q rỗng, người đọc có một lối lên Khám phá. Khi có q, xóa thẻ giữ q
+và xóa q giữ thẻ. Alias, thẻ không tồn tại, thẻ ngừng dùng và trang phân trang rỗng dùng
+recovery riêng của owner dữ liệu.
+
+[Bằng chứng Product và kiểm theo từng AC](evidence/web-state-603/README.md).
+
+### Các phiên bản trước #603
+
 **Action surfaces #225 r2 (16/11/2026):** [LayoutSpec](../design/action-surfaces-desk-discovery-225.md)
 và [registry triển khai](action-surfaces-225.md) ghi baseline lịch sử của launcher Tonal + FilterList, helper
 “Khớp tất cả thẻ · Tối đa 4”, status “Trang này: N tác phẩm”. Giữ native GET/no-JS,
@@ -41,8 +56,7 @@ landmark; list refresh không lấy lại focus. Chạy `verify web --scenario r
 ## HOW / WHY / TEACH
 
 Native GET ghi q, các tag lặp và cursor opaque vào URL. App giữ riêng buffer đang gõ và URL
-đã áp dụng. Chọn trong bộ lọc chỉ đổi draft; Áp dụng mới gửi GET. Checkbox dùng luật discovery
-(tối đa 4 thẻ, AND), không áp cardinality của TagSelector bản nháp. Trang dùng TagChip, SearchField Bar và Dialog. Thẻ tác phẩm lấy nhan đề làm tên truy cập của liên kết. Từ [#293](https://github.com/loveoverflowcom/vink/issues/293), thẻ có hai đích ngang cấp, không lồng nhau: liên kết nhan đề phủ cả thẻ để mở Reader, và bút danh có Handle do App cấp mở `/@handle`. DOM đặt heading trước dòng tác giả nên Tab đi nhan đề → bút danh, còn CSS hiển thị dòng tác giả phía trên như r1. Bút danh chưa đối chiếu trong cache hiện nhãn trung tính, không có link. Catalog gọi public read no-store.
+đã áp dụng. Chọn thẻ điều hướng ngay tới URL một thẻ. Trang dùng TagChip, SearchField Bar và Dialog. Thẻ tác phẩm lấy nhan đề làm tên truy cập của liên kết. Từ [#293](https://github.com/loveoverflowcom/vink/issues/293), thẻ có hai đích ngang cấp, không lồng nhau: liên kết nhan đề phủ cả thẻ để mở Reader, và bút danh có Handle do App cấp mở `/@handle`. DOM đặt heading trước dòng tác giả nên Tab đi nhan đề → bút danh, còn CSS hiển thị dòng tác giả phía trên như r1. Bút danh chưa đối chiếu trong cache hiện nhãn trung tính, không có link. Catalog gọi public read no-store.
 
 SSR gọi PublicReadsAdapter → Vink::discover_works/catalog_tags trong tiến trình, cùng DTO API,
 không HTTP tới chính mình hoặc Identity. Trình duyệt gọi /api/v1/works; READ-02 cache key mang
@@ -51,7 +65,7 @@ Controls có DOM ổn định ngoài các vùng async; chỉ header/chips/kết 
 last-success có cảnh báo. 404 publication gỡ card khỏi mọi search đang giữ, kể cả unobserved,
 và fence các ticket cũ để chúng không hồi sinh card đó.
 
-Ví dụ: tìm mưa → thử chọn Thơ (URL chưa đổi) → Áp dụng → Trang tiếp → mở tác phẩm →
+Ví dụ: tìm mưa → chọn Thơ (URL có q và một tag) → Trang tiếp → mở tác phẩm →
 Về Khám phá. Link về mang đủ q, tag, cursor và neo hàng. Nếu từ trang thẻ, from_tag chỉ mang
 slug để app xây /the/:slug; không có URL return tùy ý. Back/Forward/reload dùng cùng URL.
 Khi hàng không còn, landmark kết quả có tên là focus fallback (#258). Đổi q hoặc thẻ bỏ cursor.
@@ -65,7 +79,7 @@ dòng trạng thái chỉ đếm tác phẩm trên trang.
 ## Owner và kiểm chứng
 
 - [URL/query](../../apps/vink-web/src/discovery.rs): serialization once, safe local return, reset cursor.
-- [Page glue](../../apps/vink-web/src/pages/discovery.rs): GET/Apply, states, picker/focus.
+- [Page glue](../../apps/vink-web/src/pages/discovery.rs): GET một thẻ, states, picker/focus.
 - [SSR adapter](../../services/vink-app/src/http/ssr.rs): public use cases trong tiến trình.
 - [Cache](../../apps/vink-web/src/public_reads.rs), [store](../../apps/vink-web/src/freshness.rs):
   scoped snapshots và authority-removal fence.
@@ -74,7 +88,7 @@ dòng trạng thái chỉ đếm tác phẩm trên trang.
   dữ liệu công khai tổng hợp có nhãn trong database tạm của verify web, không chứng minh author publish.
 
 Pure tests kiểm URL/keys và response đang bay sau removal. Browser main giữ regression editor,
-discussion, privacy và READ-02; discoveryReading kiểm GET/no-JS, Apply, Escape/focus, matrix
+discussion, privacy và READ-02; discoveryReading kiểm GET/no-JS, chọn và thay thẻ, Escape/focus, matrix
 320/390/834/1024/1200/1440 sáng/tối chữ100/200, tag detail và cursor lỗi. Phase discovery-corpus
 dùng 14 publication tổng hợp để kiểm tìm ngoài trang đầu, hai thẻ AND, trang kế, reader return,
 reload và race A/B bằng transport interception có nhãn.

@@ -581,7 +581,7 @@ fn RelationshipResults(
         <section id="relationship-list"
             class="vk-rel-page vk-rel-page--results vk-state-page mx-auto flex w-full box-border flex-col gap-vk-3 py-vk-3"
             aria-labelledby="relationship-title">
-            <header class="flex min-w-0 items-start gap-vk-3 min-[760px]:flex-col [&>.vk-ui-back-link:hover]:no-underline">
+            <header class="flex min-w-0 items-start gap-vk-3 min-[760px]:flex-col">
                 {href.map(|href| view! {
                     <BackLink href label="Hồ sơ"
                         attr:id="rel-back-profile" attr:data-profile-return="true" />

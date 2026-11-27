@@ -224,7 +224,7 @@ function inboxObservation() {
     rows: rows?.length ?? null,
     unread: body?.querySelectorAll('.vk-notif-row--unread').length ?? null,
     empty: !!body?.querySelector('.vk-notif-empty'),
-    listError: !!body?.querySelector('.vk-notif-error button'),
+    listError: !!body?.querySelector('.vk-read-failure button'),
     countWarning: body?.querySelector('.vk-notif-note [role=status]')?.textContent ?? null,
     countRetry: !!body?.querySelector('#notification-count-retry'),
   };
@@ -323,10 +323,61 @@ async function inboxSessionStates(page, { args, check }, controlled) {
   const privateControls = 'main .vk-notif-row, main .vk-notif-unread, #notification-read-all, #notification-load-more';
   const noPrivate = `!document.querySelector('${privateControls}')`;
   const isMissing = `!!document.querySelector('${notFound}')`;
-  const retry = 'main .vk-notif-error button';
+  const retry = 'main .vk-read-failure button';
   const sessionError = `document.querySelector('main [role=alert]')?.textContent.includes('Chưa kiểm tra được phiên đăng nhập.')`;
   const historyPath = path => `location.pathname === '${path}'`;
 
+  for (const [path, session, scene] of [
+    ['/kiem-duyet', 'A', 'c306'],
+    ['/khong-co-duong-dan/khong-ton-tai', null, 'c320'],
+  ]) {
+    state.session = session;
+    const response = await fetch(args.base + path);
+    check(response.status === 404 && (await response.text()).includes('data-icon="explore"'), 'SSR exposes the existing 404 for '+scene);
+    await page.goto(args.base + path);
+    await page.waitFor(`document.documentElement.dataset.hydrated === 'true' && document.querySelector('${explore}')`, 'hydrated '+scene);
+    for (const [width, height, theme, scale] of [[390,844,'dark',100],[390,844,'light',150],[390,844,'dark',200],
+      [320,540,'light',100],[320,540,'light',150],[320,540,'dark',200],[1440,900,'light',100]]) {
+      await preferences(page,width,theme,scale,height);
+      await page.eval(`document.documentElement.dataset.theme=${JSON.stringify(theme)}`);
+      await page.waitFor(`(() => {
+        const bar = document.getElementById('bottom-navigation');
+        return !bar.getClientRects().length || Math.abs(bar.getBoundingClientRect().height -
+          parseFloat(getComputedStyle(bar).getPropertyValue('--vk-ui-bar-height'))) < 1;
+      })()`, 'bottom navigation height has settled');
+      await page.eval(`document.querySelector('${notFound} h1').focus()`);
+      await page.key('Tab');
+      await page.eval('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
+      const recovery = await page.eval(`(() => {
+        const link = document.querySelector('${explore}');
+        const rect = link.getBoundingClientRect();
+        const icon = link.querySelector('svg[data-icon=explore][aria-hidden=true]');
+        const text = [...link.childNodes].find(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim());
+        const title = document.querySelector('${notFound} h1');
+        const probe = document.createElement('span');
+        probe.style.color = 'var(--vk-on-surface)';
+        title.after(probe);
+        const titleColor = getComputedStyle(title).color === getComputedStyle(probe).color;
+        probe.remove();
+        const bar = document.getElementById('bottom-navigation').getBoundingClientRect();
+        const label = document.createRange();
+        if (text) label.selectNodeContents(text);
+        const hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+        return {
+          focus: link.matches(':focus-visible') && document.activeElement === link,
+          label: link.textContent.trim(), leading: !!icon && !!text && icon.getBoundingClientRect().right <= label.getBoundingClientRect().left + 1,
+          visible: link.contains(hit), hit: hit?.tagName + '.' + hit?.getAttribute('class'),
+          titleColor, bottomLimit: bar.height ? bar.top : innerHeight, rect: rect.toJSON(), viewport: innerWidth, overflow: document.documentElement.scrollWidth - innerWidth,
+        };
+      })()`);
+      check(recovery.focus && recovery.label === 'Về Khám phá' && recovery.leading &&
+        recovery.visible && recovery.titleColor && recovery.rect.bottom + 2 <= recovery.bottomLimit &&
+        recovery.rect.height >= 48 && recovery.rect.left >= 0 &&
+        recovery.rect.right <= recovery.viewport && recovery.overflow <= 0,
+        'keyboard reaches leading compass above navigation '+[scene,width,theme,scale]+' '+JSON.stringify(recovery));
+      await page.capture('603-'+[scene,width,theme,scale].join('-'), {scenario:scene,requestedScene:{width,height,theme,scale},boundary:'Product Chrome · synthetic session'});
+    }
+  }
   state.session = null;
   state.holdSession = true;
   await page.goto(args.base + inboxPath);
@@ -543,7 +594,7 @@ export async function notifications(page, { args, check }) {
   await page.waitFor(`document.querySelector('main .vk-notif-more [role=alert]')`, 'pagination error below list');
   check(await page.eval(`document.querySelectorAll('main ${row}').length === 3`), 'AC-03 failed continuation keeps the previous page');
   state.moreFailure = false;
-  await page.eval(`document.querySelector('main .vk-notif-more [role=alert] button').focus()`);
+  await page.eval(`document.querySelector('main .vk-notif-more .vk-read-failure-inline button').focus()`);
   await page.key('Enter');
   await page.waitFor(`document.querySelectorAll('main ${row}').length > 3`, 'same continuation succeeds');
   await page.waitFor(focused('main .vk-notif-row__link'), 'focus moves to the newly loaded page after the continuation ends');
@@ -562,7 +613,7 @@ export async function notifications(page, { args, check }) {
   await page.key('Space');
   await page.eval(`document.querySelector('${markButton}').click()`);
   await held.get('mark')();
-  const markRetry = 'main .vk-notif-error button';
+  const markRetry = 'main .vk-read-failure button';
   await page.waitFor(`document.querySelector('${markRetry}') && document.querySelector('main [role=alert]').textContent.includes('Chưa đánh dấu')`,
     '#602 a failed mark-all exposes the retry');
   check(calls.filter(request => request.path === markAll).length === previousMarks + 1
@@ -701,17 +752,29 @@ export async function notifications(page, { args, check }) {
     const desktop = width >= 760;
     const surface = desktop ? popup : 'main .vk-notif-page';
     await page.click(desktop ? bell : mobile);
-    const failure = `${surface} .vk-notif-error`;
+    const failure = `${surface} .vk-read-failure`;
     await page.waitFor(`document.querySelector('${failure}')?.textContent.includes('Chưa tải được thông báo.')`, 'first page failed');
     check(await page.eval(`!document.querySelector('${surface} .vk-notif-empty') &&
-      getComputedStyle(document.querySelector('${failure}')).backgroundColor === 'rgba(0, 0, 0, 0)'`), 'inline failure on the shared surface');
+      !!document.querySelector('${failure} [role=alert]') && !!document.querySelector('${failure} [data-icon=error][aria-hidden=true]') &&
+      !!document.querySelector('${failure} ${desktop ? 'h3' : 'h2'}') &&
+      getComputedStyle(document.querySelector('${failure}')).backgroundColor === 'rgba(0, 0, 0, 0)'`), '#603 initial failure has a named severity heading, decorative glyph and retry on the shared surface');
     const measure = await geometry(page, surface);
     check(measure.overflow <= 1 && measure.innerOverflow <= 1 && measure.targets.every(([w, h]) => w >= 44 && h >= 44),
       `error controls fit at ${width}px/${scale}% ${theme}`);
     await screenshot(`notifications-first-error-${width}-${scale}-${theme}`, width, scale, theme);
     state.firstFailure = false;
+    state.holdFirst = true;
+    held.delete('first');
+    const requestCount = calls.filter(request => request.path === inbox).length;
     await page.eval(`document.querySelector('${failure} button').focus()`);
     await page.key('Enter');
+    await eventually(() => held.get('first'), 'first-page retry in flight');
+    await page.key('Enter');
+    check(await page.eval(`document.activeElement?.matches('${surface} .vk-notif-body[aria-busy=true]') &&
+      !document.querySelector('${failure} button')`) &&
+      calls.filter(request => request.path === inbox).length === requestCount + 1,
+      'pending first-page retry keeps focus inside the inbox and issues one read');
+    await held.get('first')();
     await page.waitFor(`document.querySelector('${surface} ${row}') && document.querySelector('${surface} .vk-notif-note')?.textContent.includes('Chưa tải được số')`, 'retry restores rows while the count is unavailable');
     state.firstFailure = true;
     if (desktop) await page.key('Escape');
@@ -755,14 +818,27 @@ export async function notifications(page, { args, check }) {
   check(await page.eval(`!document.body.textContent.includes('Không được xuất hiện')`), 'AC-04 removed comment body never renders');
   check(await page.eval(`parseFloat(getComputedStyle(document.querySelector('.vk-notif-decision__panel')).paddingInlineStart) >= 20`),
     'AC-05 decision panel preserves R4 inset');
+  const up = '.vk-notif-decision a.vk-ui-back-link';
+  check(await page.eval(`(() => {
+    const link = document.querySelector('${up}');
+    const style = getComputedStyle(link), rect = link.getBoundingClientRect();
+    return link.getAttribute('href') === '/thong-bao' && link.getAttribute('aria-label') === 'Về Thông báo' &&
+      link.firstElementChild.matches('svg[data-icon=arrow-back][aria-hidden=true]') &&
+      style.textDecorationLine === 'none' && rect.height >= 48 && rect.width >= 48;
+  })()`), 'direct decision URL exposes a named native parent link with a leading ArrowBack');
   await screenshot('notifications-comment-decision', 1440, 100, 'light');
+  await page.click(up);
+  await page.waitFor("location.pathname === '/thong-bao' && document.querySelector('main .vk-notif-row')", 'decision parent opens inbox');
+  await page.eval('history.back()');
+  await page.waitFor("document.body.textContent.includes('Lý do riêng của nhận xét')", 'browser Back restores the decision');
+
   state.checkFailure = true;
   await controlled.change('A');
   await page.waitFor(`document.querySelector('main [role=alert]')?.textContent.includes('Chưa kiểm tra được phiên đăng nhập.')
     && !document.querySelector('main .vk-notif-loading') && !document.querySelector('.vk-notif-decision__panel')`,
     '#575 decision removes private details and offers session retry after fenced 503');
   state.checkFailure = false;
-  await page.click('main .vk-notif-error button');
+  await page.click('main .vk-read-failure button');
   await page.waitFor(`document.body.textContent.includes('Lý do riêng của nhận xét')`, 'session retry restores decision under the confirmed scope');
   await controlled.change(null);
   await page.waitFor(`!document.querySelector('${bell}') && !document.body.textContent.includes('Lý do riêng của nhận xét')

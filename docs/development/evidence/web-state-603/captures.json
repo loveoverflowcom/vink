@@ -1,0 +1,176 @@
+{
+  "603-c306-390-dark-100": {
+    "source": {
+      "sourceSHA": "6ef16a77c811c46fec89d768da0df63daba4599e",
+      "dirty": false,
+      "dirtyInputs": [],
+      "sourceFingerprint": "f3258a6d7833038326522003f5d1b73fb30dd13c01897268009002b03445bad9"
+    },
+    "route": "/kiem-duyet",
+    "executionPhase": "notifications",
+    "effectiveTheme": "dark",
+    "viewport": {
+      "width": 390,
+      "height": 844,
+      "layoutWidth": 390,
+      "clientWidth": 390,
+      "clientHeight": 844,
+      "dpr": 1
+    },
+    "textScale": 100,
+    "png": {
+      "width": 390,
+      "height": 844,
+      "byteSize": 24048,
+      "sha256": "23ec75ca7b8f918f8d0766db31837ede4c284b521a8dc7d9d56b04d9d6bf4b96"
+    },
+    "hydrated": true,
+    "boundary": "Product Chrome · synthetic session",
+    "captureStatus": "CAPTURED"
+  },
+  "603-c320-390-dark-100": {
+    "source": {
+      "sourceSHA": "6ef16a77c811c46fec89d768da0df63daba4599e",
+      "dirty": false,
+      "dirtyInputs": [],
+      "sourceFingerprint": "f3258a6d7833038326522003f5d1b73fb30dd13c01897268009002b03445bad9"
+    },
+    "route": "/khong-co-duong-dan/khong-ton-tai",
+    "executionPhase": "notifications",
+    "effectiveTheme": "dark",
+    "viewport": {
+      "width": 390,
+      "height": 844,
+      "layoutWidth": 390,
+      "clientWidth": 390,
+      "clientHeight": 844,
+      "dpr": 1
+    },
+    "textScale": 100,
+    "png": {
+      "width": 390,
+      "height": 844,
+      "byteSize": 23381,
+      "sha256": "91a545d0a97e3de001f4f03bbf54f55a38422275e271b154cd917639c5fb9ad2"
+    },
+    "hydrated": true,
+    "boundary": "Product Chrome · synthetic session",
+    "captureStatus": "CAPTURED"
+  },
+  "603-c320-320-dark-200": {
+    "source": {
+      "sourceSHA": "6ef16a77c811c46fec89d768da0df63daba4599e",
+      "dirty": false,
+      "dirtyInputs": [],
+      "sourceFingerprint": "f3258a6d7833038326522003f5d1b73fb30dd13c01897268009002b03445bad9"
+    },
+    "route": "/khong-co-duong-dan/khong-ton-tai",
+    "executionPhase": "notifications",
+    "effectiveTheme": "dark",
+    "viewport": {
+      "width": 320,
+      "height": 540,
+      "layoutWidth": 305,
+      "clientWidth": 305,
+      "clientHeight": 540,
+      "dpr": 1
+    },
+    "textScale": 200,
+    "png": {
+      "width": 320,
+      "height": 540,
+      "byteSize": 32609,
+      "sha256": "744ac113c9eabc05953e346938078158571df191256743323ca2a3e4a8facb9f"
+    },
+    "hydrated": true,
+    "boundary": "Product Chrome · synthetic session",
+    "captureStatus": "CAPTURED"
+  },
+  "notifications-first-error-390-100-light": {
+    "source": {
+      "sourceSHA": "6ef16a77c811c46fec89d768da0df63daba4599e",
+      "dirty": false,
+      "dirtyInputs": [],
+      "sourceFingerprint": "f3258a6d7833038326522003f5d1b73fb30dd13c01897268009002b03445bad9"
+    },
+    "route": "/thong-bao",
+    "executionPhase": "notifications",
+    "effectiveTheme": "light",
+    "viewport": {
+      "width": 390,
+      "height": 900,
+      "layoutWidth": 390,
+      "clientWidth": 390,
+      "clientHeight": 900,
+      "dpr": 1
+    },
+    "textScale": 100,
+    "png": {
+      "width": 390,
+      "height": 900,
+      "byteSize": 21533,
+      "sha256": "5ec82cb8b3f8f72c51e1b6f52d1d9f9331b9edc6127c5324d86f88fb84b1fa80"
+    },
+    "hydrated": true,
+    "boundary": "Chrome-CDP-dom-override-geometry",
+    "captureStatus": "CAPTURED"
+  },
+  "603-c049-anonymous-390-100-light": {
+    "source": {
+      "sourceSHA": "6ef16a77c811c46fec89d768da0df63daba4599e",
+      "dirty": false,
+      "dirtyInputs": [],
+      "sourceFingerprint": "f3258a6d7833038326522003f5d1b73fb30dd13c01897268009002b03445bad9"
+    },
+    "route": "/the/th%C6%A1",
+    "executionPhase": "reader-views",
+    "effectiveTheme": "light",
+    "viewport": {
+      "width": 390,
+      "height": 844,
+      "layoutWidth": 390,
+      "clientWidth": 390,
+      "clientHeight": 844,
+      "dpr": 1
+    },
+    "textScale": 100,
+    "png": {
+      "width": 390,
+      "height": 844,
+      "byteSize": 32105,
+      "sha256": "0593d7eedd8fa87e7f8241f538c558418346a822a5eb0bf4690345db4e16ecf0"
+    },
+    "hydrated": true,
+    "boundary": "Product SSR + hydrated Chrome · anonymous",
+    "captureStatus": "CAPTURED"
+  },
+  "chip603-390-844-light-100-1": {
+    "source": {
+      "sourceSHA": "6ef16a77c811c46fec89d768da0df63daba4599e",
+      "dirty": false,
+      "dirtyInputs": [],
+      "sourceFingerprint": "f3258a6d7833038326522003f5d1b73fb30dd13c01897268009002b03445bad9"
+    },
+    "route": "/",
+    "executionPhase": "discovery-corpus",
+    "effectiveTheme": "light",
+    "viewport": {
+      "width": 390,
+      "height": 844,
+      "layoutWidth": 390,
+      "clientWidth": 390,
+      "clientHeight": 844,
+      "dpr": 1
+    },
+    "textScale": 100,
+    "png": {
+      "width": 390,
+      "height": 844,
+      "byteSize": 43061,
+      "sha256": "7bb6a43d440949e763f9ae68d4477b4900769471dfee2ed55b32606f8edd06be"
+    },
+    "hydrated": true,
+    "boundary": "real-FilterForm-native-link",
+    "captureStatus": "CAPTURED"
+  }
+}

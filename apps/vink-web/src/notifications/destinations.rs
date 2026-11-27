@@ -4,11 +4,11 @@ use leptos_router::hooks::use_params_map;
 use vink_ui::{Avatar, AvatarSize, Button, ButtonVariant, Dialog, IconButton, IconName};
 
 use super::contract::{CommentDecision, Endorsers, segment};
-use super::inbox::{BackButton, Failure, Loading};
+use super::inbox::{BackButton, Loading};
 use super::{Notifications, PageAccess};
 use crate::account::Session;
 use crate::contract::ApiError;
-use crate::ui::empty_state::EmptyState;
+use crate::ui::empty_state::{EmptyState, ExploreRecovery, ReadFailure};
 
 #[component]
 pub(crate) fn CommentDecisionPage() -> impl IntoView {
@@ -20,11 +20,11 @@ pub(crate) fn CommentDecisionPage() -> impl IntoView {
         <Title text="Quyết định về nhận xét — Vink" />
         <Meta name="robots" content="noindex" />
         <section class="vk-notif-page vk-notif-decision vk-state-page">
-            <a class="vk-ui-link vk-notif-back" href=super::INBOX_PATH>"← Thông báo"</a>
+            <vink_ui::BackLink href=super::INBOX_PATH label="Thông báo" />
             {move || match access.get() {
                 PageAccess::Pending => view! { <Loading /> }.into_any(),
                 PageAccess::SessionUnavailable => view! {
-                    <Failure message="Chưa kiểm tra được phiên đăng nhập." retry=Callback::new(move |()| session.refresh()) />
+                    <ReadFailure message="Chưa kiểm tra được phiên đăng nhập." retry=Callback::new(move |()| session.refresh()) />
                 }.into_any(),
                 PageAccess::Anonymous | PageAccess::UnavailableToAccount => view! { <Gone /> }.into_any(),
                 PageAccess::Available => ().into_any(),
@@ -44,6 +44,7 @@ pub(crate) fn CommentDecisionPage() -> impl IntoView {
 #[component]
 fn DecisionContent(scope: String, id: String, version: String) -> impl IntoView {
     let session = Session::current();
+    let retrying = RwSignal::new(false);
     let data = LocalResource::new(move || {
         let path = format!("decisions/comments/{}/{}", segment(&id), segment(&version));
         let scope = scope.clone();
@@ -51,6 +52,7 @@ fn DecisionContent(scope: String, id: String, version: String) -> impl IntoView 
             #[cfg(feature = "browser")]
             {
                 let result = super::browser::get::<CommentDecision>(&path, &scope).await;
+                retrying.try_set(false);
                 if session
                     .notification_scope
                     .try_get_untracked()
@@ -77,7 +79,8 @@ fn DecisionContent(scope: String, id: String, version: String) -> impl IntoView 
             {move || data.get().map(|result| match result {
                 Ok(decision) => view! { <CommentDecisionDetail decision /> }.into_any(),
                 Err(ApiError::NotFound | ApiError::Unauthenticated | ApiError::Forbidden) => view! { <Gone /> }.into_any(),
-                Err(_) => view! { <Failure message="Chưa tải được quyết định." retry=Callback::new(move |()| data.refetch()) /> }.into_any(),
+                Err(_) => view! { <ReadFailure message="Chưa tải được quyết định." state=Signal::derive(move || if retrying.get() { vink_ui::ActionState::pending("Đang tải lại…") } else { vink_ui::ActionState::Enabled })
+                    retry=Callback::new(move |()| { retrying.set(true); data.refetch(); }) /> }.into_any(),
             })}
         </Suspense>
     }
@@ -120,7 +123,7 @@ fn Gone() -> impl IntoView {
     view! {
         <EmptyState hook="vk-notif-empty" icon=IconName::VisibilityOff
             heading=vink_ui::HeadingLevel::H1 title="Nội dung không còn khả dụng">
-            <a class=ButtonVariant::Tonal.classes() href="/">"Về Khám phá"</a>
+            <ExploreRecovery />
         </EmptyState>
     }
 }
@@ -291,7 +294,7 @@ fn EndorserList(work: String, revision: String, title: String, compact: bool) ->
         {move || match problem.get() {
             Some(ApiError::NotFound) => view! {
                 <EmptyState compact hook="vk-notif-empty" icon=IconName::VisibilityOff message="Nội dung không còn khả dụng.">
-                    <a class=ButtonVariant::Tonal.classes() href="/">"Về Khám phá"</a>
+                    <ExploreRecovery />
                 </EmptyState>
             }.into_any(),
             Some(ApiError::RevisionChanged { current_revision_id }) => view! {
@@ -304,7 +307,7 @@ fn EndorserList(work: String, revision: String, title: String, compact: bool) ->
                 </div>
             }.into_any(),
             Some(_) if data.with(Option::is_none) => view! {
-                <Failure message="Chưa tải được danh sách người đã Thấm." retry=Callback::new(move |()| load.run(false)) />
+                <ReadFailure compact=true message="Chưa tải được danh sách người đã Thấm." retry=Callback::new(move |()| load.run(false)) />
             }.into_any(),
             None if data.with(Option::is_none) => view! { <Loading /> }.into_any(),
             _ => ().into_any(),
@@ -342,7 +345,7 @@ fn EndorserList(work: String, revision: String, title: String, compact: bool) ->
                             state=Signal::derive(move || if loading.get() { vink_ui::ActionState::pending("Đang tải thêm…") } else { vink_ui::ActionState::Enabled })
                             on_press=move |_| load.run(true)>"Xem thêm"</Button>
                     }>
-                        <Failure message="Chưa tải thêm được." retry=Callback::new(move |()| load.run(true)) tonal=true />
+                        <ReadFailure message="Chưa tải thêm được." retry=Callback::new(move |()| load.run(true)) inline=true />
                     </Show>
                 })}
             }.into_any()

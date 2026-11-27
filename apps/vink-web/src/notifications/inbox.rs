@@ -11,7 +11,7 @@ use vink_ui::{
 use super::contract::{Item, Target, segment};
 use super::state::Load;
 use super::{INBOX_PATH, Notifications, PageAccess};
-use crate::ui::empty_state::{EmptyState, NotFoundContent};
+use crate::ui::empty_state::{EmptyState, NotFoundContent, ReadFailure};
 
 #[component]
 pub(crate) fn InboxPage() -> impl IntoView {
@@ -142,7 +142,14 @@ fn InboxBody(owner: Notifications, #[prop(optional)] compact: bool) -> impl Into
     let offline = owner.offline;
     let refresh = Callback::new(move |()| {
         #[cfg(feature = "browser")]
-        owner.load(false);
+        {
+            // The retry goes away while loading. Keep keyboard focus in this same surface.
+            let body = document()
+                .active_element()
+                .and_then(|control| control.closest(".vk-notif-body").ok().flatten());
+            crate::shell::focus_without_scroll(body);
+            owner.load(false);
+        }
     });
     view! {
         <div class="vk-notif-body vk-state-slot" tabindex="-1" aria-busy=move || (owner.page_access.get() == PageAccess::Pending
@@ -170,7 +177,7 @@ fn InboxBody(owner: Notifications, #[prop(optional)] compact: bool) -> impl Into
                 match owner.page_access.get() {
                     PageAccess::Pending => return view! { <Loading /> }.into_any(),
                     PageAccess::SessionUnavailable => return view! {
-                        <Failure message="Chưa kiểm tra được phiên đăng nhập." retry=Callback::new(move |()| owner.session.refresh()) />
+                        <ReadFailure compact message="Chưa kiểm tra được phiên đăng nhập." retry=Callback::new(move |()| owner.session.refresh()) />
                     }.into_any(),
                     // The full page selects NotFound above this body. A closing popover
                     // never renders a full-page state.
@@ -183,9 +190,9 @@ fn InboxBody(owner: Notifications, #[prop(optional)] compact: bool) -> impl Into
                     PageAccess::Available => {}
                 }
                 owner.inbox.with(|inbox| match (inbox.snapshot.is_some(), inbox.first, inbox.next.is_some()) {
-                    (false, Load::Failed, _) => view! { <Failure message="Chưa tải được thông báo." retry=refresh /> }.into_any(),
+                    (false, Load::Failed, _) => view! { <ReadFailure compact message="Chưa tải được thông báo." retry=refresh /> }.into_any(),
                     (false, _, _) => view! { <Loading /> }.into_any(),
-                    (true, Load::Failed, _) => view! { <Failure message="Chưa cập nhật được thông báo." retry=refresh /> }.into_any(),
+                    (true, Load::Failed, _) => view! { <ReadFailure inline=true message="Chưa cập nhật được thông báo." retry=refresh /> }.into_any(),
                     (true, Load::Idle, false) if inbox.items.is_empty() => view! {
                         <EmptyState compact hook="vk-notif-empty" heading=empty_heading title="Chưa có thông báo."
                             mark=Box::new(|| view! { <ShapeMark shape=ExpressiveShape::Cookie
@@ -226,7 +233,7 @@ fn InboxBody(owner: Notifications, #[prop(optional)] compact: bool) -> impl Into
                     } />
             </Show>
             <Show when=move || owner.available() && owner.inbox.with(|inbox| inbox.mark == Load::Failed)>
-                <Failure message="Chưa đánh dấu được thông báo." tonal=true retry=Callback::new(move |()| {
+                <ReadFailure message="Chưa đánh dấu được thông báo." inline=true retry=Callback::new(move |()| {
                     #[cfg(feature = "browser")]
                     {
                         // Retry disappears when the request starts. Keep its focus in this inbox.
@@ -246,7 +253,7 @@ fn InboxBody(owner: Notifications, #[prop(optional)] compact: bool) -> impl Into
                                 #[cfg(feature = "browser")]
                                 owner.load(true);
                             }>"Xem thêm"</Button> }>
-                        <Failure message="Chưa tải thêm được." tonal=true retry=Callback::new(move |()| {
+                        <ReadFailure message="Chưa tải thêm được." inline=true retry=Callback::new(move |()| {
                             #[cfg(feature = "browser")]
                             owner.load(true);
                         }) />
@@ -263,21 +270,6 @@ pub(super) fn Loading() -> impl IntoView {
         <div class="vk-notif-loading" role="status">
             <span class="vk-ui-visually-hidden">"Đang tải thông báo…"</span>
             <span></span><span></span><span></span>
-        </div>
-    }
-}
-
-#[component]
-pub(super) fn Failure(
-    message: &'static str,
-    retry: Callback<()>,
-    #[prop(optional)] tonal: bool,
-) -> impl IntoView {
-    view! {
-        <div class="vk-notif-error" role="alert">
-            <p>{message}</p>
-            <Button variant=if tonal { ButtonVariant::Tonal } else { ButtonVariant::Filled }
-                on_press=move |_| retry.run(())>"Thử lại"</Button>
         </div>
     }
 }

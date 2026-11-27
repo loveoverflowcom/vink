@@ -1,5 +1,5 @@
 //! TAG-PR-06 page glue. Shared chips/bylines render facts; this module owns GET/URL/focus.
-use super::{ResponseStatus, Unavailable, drop_unnamed_submitter, focus_recovery};
+use super::{ResponseStatus, Unavailable, focus_recovery};
 use crate::api::{self, LoadError};
 use crate::contract::{PublicTagDto, TagDto, TagList, WorkCard, WorkList};
 use crate::discovery::{
@@ -14,15 +14,11 @@ use crate::ui::{
 };
 use leptos::prelude::*;
 use leptos_meta::{Link, Meta, Title};
-use leptos_router::components::Form;
 use leptos_router::hooks::{use_params_map, use_query_map};
-use std::sync::Arc;
+use vink_ui::{ActionSurface, Button, ButtonVariant, HiddenField};
 use vink_ui::{
-    ActionState, ActionSurface, Button, ButtonKind, ButtonVariant, Checkbox, HiddenField,
-};
-use vink_ui::{
-    Dialog, DialogKind, Heading, HeadingLevel, Icon, IconButton, IconName, InlineNotice,
-    RecoveryAction, RecoveryIntent, SearchField, SearchVariant, Tone, TypeRole,
+    Dialog, DialogKind, DismissPolicy, Heading, HeadingLevel, Icon, IconButton, IconName,
+    InlineNotice, RecoveryAction, RecoveryIntent, SearchField, SearchVariant, Tone, TypeRole,
 };
 
 mod feed;
@@ -49,9 +45,6 @@ fn focus_submitted_results(data: &leptos::web_sys::FormData) {
         let path = window().location().pathname().ok();
         let query = data.get("q").as_string().unwrap_or_default();
         let origin = document().active_element();
-        let picker_submit = origin
-            .as_ref()
-            .is_some_and(|element| element.closest("#tag-picker").ok().flatten().is_some());
         let Some(input) = document()
             .get_element_by_id("public-query")
             .and_then(|input| input.dyn_into::<web_sys::HtmlInputElement>().ok())
@@ -71,8 +64,6 @@ fn focus_submitted_results(data: &leptos::web_sys::FormData) {
                 Some(element) != origin.as_ref()
                     && element.tag_name() != "BODY"
                     && element.id() != "community-stream"
-                    // Closing this submitted picker restores its trigger before our frame.
-                    && !(picker_submit && element.id() == "open-tag-filters")
             });
             let moved_caret = origin
                 .as_ref()
@@ -449,15 +440,16 @@ fn DiscoverShell(context: Memo<ExploreContext>) -> impl IntoView {
                             label=if authors.get() { "Tìm tác giả" } else { "Tìm tác phẩm" }
                             expanded=Signal::from(search_open) on_press=open_search />
                     }}
-                    <div class="vk-discovery-filter-slot">
-                        <For each=move || [context.get()].into_iter().filter(|context| context.mode == ExploreMode::Works)
-                            key=|context| context.href(None)
-                            children=move |context| view! { <DiscoveryFilters context search_open /> } />
-                    </div>
                     <ExploreBrand />
                 </div>
             </header>
-            <ExploreModes mode context />
+            <div class="vk-discovery-mode-row">
+                <ExploreModes mode context />
+                <For each=move || [context.get()].into_iter().filter(|ctx| ctx.mode == ExploreMode::Works)
+                    key=|ctx| ctx.href(None) children=move |ctx| view! {
+                        <DiscoveryFilters context=ctx search_open />
+                    } />
+            </div>
             <div id="discovery-search-dock">
                 <For each=move || [authors.get()] key=Clone::clone
                     children=move |authors| view! {
@@ -530,8 +522,9 @@ fn TagDiscovery(context: ExploreContext) -> impl IntoView {
     view! {
         <div id="explore" class="vk-explore vk-discovery vk-discovery--tag">
             <div class=EXPLORE_TOP_CLASS>
+                <vink_ui::BackLink href="/" label="Khám phá" show_destination=true />
                 <Suspense fallback=|| view! { <header id="explore-heading" class=EXPLORE_HEADING_CLASS>
-                    <Heading level=HeadingLevel::H1 role=TypeRole::Display>"Đang mở thẻ…"</Heading>
+                    <Heading level=HeadingLevel::H1 role=TypeRole::Title>"Đang mở thẻ…"</Heading>
                 </header> }>
                     {heading}
                 </Suspense>
@@ -729,21 +722,12 @@ fn DiscoverySearch(
 
 #[component]
 fn DiscoveryFilters(context: ExploreContext, search_open: Memo<bool>) -> impl IntoView {
+    let context = StoredValue::new(context);
     let catalog = api::catalog_resource();
     let open = RwSignal::new(false);
-    let draft = RwSignal::new(context.query.tags.clone());
-    let initial = StoredValue::new(context.query.tags.clone());
-    let applied_count = context.query.tags.len();
-    let filter_label = if applied_count == 0 {
-        "Lọc thẻ".to_owned()
-    } else {
-        format!("Lọc thẻ, đã chọn {applied_count} thẻ")
-    };
     let catalog_retry_ready = super::client_read_action_ready();
     let catalog_retry = Signal::derive(move || super::read_retry_state(catalog_retry_ready.get()));
-    let filter_query = StoredValue::new(context.query.q);
     let dismiss = move || {
-        draft.set(initial.get_value());
         open.set(false);
     };
     let dismiss_picker = move || {
@@ -782,12 +766,9 @@ fn DiscoveryFilters(context: ExploreContext, search_open: Memo<bool>) -> impl In
             <p class="vk-ui-visually-hidden" role="status" data-testid="tag-catalog-loading">"Đang tải danh mục thẻ…"</p>
         }>
             <Show when=move || catalog.map(|result| !matches!(result, Ok(list) if list.tags.is_empty())).unwrap_or(false)>
-                <span class="vk-tag-launcher" data-count=applied_count>
-                    <IconButton id="open-tag-filters" icon=IconName::FilterList label=filter_label.clone()
-                        expanded=Signal::from(open) on_press=move |_| open.set(true) />
-                    {(applied_count > 0).then(|| view! {
-                        <span class="vk-tag-launcher__badge" aria-hidden="true">{applied_count}</span>
-                    })}
+                <span class="vk-tag-launcher">
+                    <IconButton id="open-tag-filters" icon=IconName::FilterList label="Lọc thẻ"
+                        controls="tag-picker" expanded=Signal::from(open) on_press=move |_| open.set(true) />
                 </span>
             </Show>
         </Suspense>
@@ -797,7 +778,7 @@ fn DiscoveryFilters(context: ExploreContext, search_open: Memo<bool>) -> impl In
                 Ok(list) => Some(view! {
                     <details id="tag-dock" class="vk-tag-dock">
                         <summary>"Lọc thẻ"</summary>
-                        <FilterForm id="dock" q=filter_query.get_value() draft initial list open />
+                        <FilterForm id="dock" context list open />
                     </details>
                 }.into_any()),
                 Err(_) => Some(view! {
@@ -810,7 +791,7 @@ fn DiscoveryFilters(context: ExploreContext, search_open: Memo<bool>) -> impl In
                 }.into_any()),
             })}
         </Suspense>
-        <Dialog id="tag-picker" open title="Lọc thẻ" kind=DialogKind::Sheet focus_title=true
+        <Dialog id="tag-picker" open title="Lọc thẻ" kind=DialogKind::Sheet focus_title=true dismiss=DismissPolicy::EscapeAndOutside
             on_dismiss=move |_| dismiss_picker()
             header_action=move || view! { <IconButton id="close-tag-filters" label="Đóng lọc thẻ" icon=IconName::Close
                 surface=ActionSurface::Tonal on_press=move |_| dismiss_picker() /> }>
@@ -820,7 +801,7 @@ fn DiscoveryFilters(context: ExploreContext, search_open: Memo<bool>) -> impl In
                         <p role="status">"Chưa có thẻ để lọc."</p>
                     }.into_any(),
                     Ok(list) => view! {
-                        <FilterForm id="modal" q=filter_query.get_value() draft initial list open modal=true />
+                        <FilterForm id="modal" context list open />
                     }.into_any(),
                     Err(_) => view! {
                         <div class="vk-discovery-catalog-error grid justify-items-start gap-vk-3">
@@ -893,7 +874,7 @@ fn DiscoveryHeader(
                 <Link rel="canonical" href=crate::canonical_url(&context.tag_page.as_deref().map(tag_href).unwrap_or_else(|| "/".into())) />
                 {is_tag.then(|| view! {
                     <header id="explore-heading" class=EXPLORE_HEADING_CLASS>
-                        <Heading level=HeadingLevel::H1 role=TypeRole::Display>"Khám phá"</Heading>
+                        <Heading level=HeadingLevel::H1 role=TypeRole::Title>"Khám phá"</Heading>
                     </header>
                 })}
             }.into_any();
@@ -962,8 +943,7 @@ fn DiscoveryHeader(
         <Link rel="canonical" href=crate::canonical_url(&canonical.href(None)) />
         {is_tag.then(|| view! {
             <header id="explore-heading" class=EXPLORE_HEADING_CLASS>
-                <a class="vk-ui-link" href="/">"Về Khám phá"</a>
-                <Heading level=HeadingLevel::H1 role=TypeRole::Display>{move || title.get()}</Heading>
+                <Heading level=HeadingLevel::H1 role=TypeRole::Title>{move || title.get()}</Heading>
                 {move || match tag.get() {
                     Some(filter) if filter.resolution == "not_found" => view! { <p>"Không tìm thấy thẻ này. Hãy quay về Khám phá để chọn thẻ khác."</p> }.into_any(),
                     Some(filter) => {
@@ -995,7 +975,8 @@ fn AppliedFilters(context: ExploreContext, list: Option<WorkList>) -> AnyView {
         return ().into_any();
     }
     let live = list.map(|list| public_reads::follow_works(context.query.clone(), list));
-    // R4.2 AppliedRow (#404): one link clears every applied tag and keeps the query.
+    // Keep all labels and the clear-all recovery for legacy AND deep links.
+    let legacy = tags.len() > 1;
     let mut cleared = context.clone();
     cleared
         .query
@@ -1005,6 +986,7 @@ fn AppliedFilters(context: ExploreContext, list: Option<WorkList>) -> AnyView {
     let clear_all = cleared.href(None);
     view! {
         <div id="applied-filters" class="vk-applied-filters flex flex-wrap items-center gap-vk-2 [margin-block:0_var(--vk-space-3)]">
+            {legacy.then(|| view! { <span>"Bộ lọc cũ · khớp tất cả thẻ"</span> })}
             {move || {
                 let resolved = live.as_ref().map(|live| live.data.with(|list| list.filters.tags.clone())).unwrap_or_default();
                 tags.iter().map(|slug| {
@@ -1023,7 +1005,7 @@ fn AppliedFilters(context: ExploreContext, list: Option<WorkList>) -> AnyView {
                     </a> }
                 }).collect_view()
             }}
-            <a id="clear-applied-tags" class="vk-ui-link vk-applied-filters__clear inline-flex items-center px-vk-2 [min-block-size:var(--vk-size-hit-target)]" href=clear_all>"Xóa lọc"</a>
+            {legacy.then(|| view! { <a id="clear-applied-tags" class="vk-ui-link vk-applied-filters__clear inline-flex items-center px-vk-2 [min-block-size:var(--vk-size-hit-target)]" href=clear_all>"Xóa lọc"</a> })}
         </div>
     }.into_any()
 }
@@ -1031,30 +1013,12 @@ fn AppliedFilters(context: ExploreContext, list: Option<WorkList>) -> AnyView {
 #[component]
 fn FilterForm(
     id: &'static str,
-    q: String,
-    draft: RwSignal<Vec<String>>,
-    initial: StoredValue<Vec<String>>,
+    context: StoredValue<ExploreContext>,
     list: TagList,
     open: RwSignal<bool>,
-    #[prop(optional)] modal: bool,
-) -> AnyView {
-    let known: Vec<_> = list.tags.iter().map(|tag| tag.slug.clone()).collect();
-    let changed = Memo::new(move |_| {
-        draft.with(|selected| {
-            initial.with_value(|applied| {
-                selected.len() != applied.len() || !selected.iter().all(|tag| applied.contains(tag))
-            })
-        })
-    });
+) -> impl IntoView {
     view! {
-        <Form method="get" action="/" noscroll=true on_form_data=Arc::new(move |data| {
-            drop_unnamed_submitter(data);
-            focus_submitted_results(data);
-            open.set(false);
-        }) attr:class="vk-discovery-filter-form m-0 grid min-w-0 gap-vk-4" attr:id=format!("{id}-tag-form") attr:aria-describedby=format!("{id}-tag-help")>
-            <HiddenField name="q" value=Signal::stored(q) />
-            {move || draft.get().into_iter().filter(|slug| !known.contains(slug))
-                .map(|slug| view! { <HiddenField name="tag" value=Signal::stored(slug) /> }).collect_view()}
+        <div class="vk-discovery-filter-form grid min-w-0 gap-vk-4" id=format!("{id}-tag-form")>
             {["form", "theme"].into_iter().filter_map(|facet| {
                 let options: Vec<TagDto> = list.tags.iter().filter(|tag| tag.facet == facet).cloned().collect();
                 (!options.is_empty()).then(|| view! {
@@ -1062,54 +1026,30 @@ fn FilterForm(
                         <legend class="mb-vk-2 font-vk-role-label">{if facet == "form" { "Dạng bài" } else { "Chủ đề" }}</legend>
                         <div class="vk-discovery-options flex flex-wrap gap-vk-2">
                             {options.into_iter().map(|tag| {
-                                let slug = tag.slug.clone();
-                                let checked_slug = slug.clone();
-                                let disabled_slug = slug.clone();
-                                view! { <span class="vk-discovery-option min-w-0 [max-inline-size:100%]">
-                                    <Checkbox id=format!("{id}-tag-{}", tag.tag_id) label=tag.label name="tag" value=tag.slug
-                                        checked=Signal::derive(move || draft.with(|tags| tags.contains(&checked_slug)))
-                                        // Native GET still submits freely. The server validates the four-tag limit.
-                                        disabled=Signal::derive(move || modal && draft.with(|tags| tags.len() >= 4 && !tags.contains(&disabled_slug)))
-                                        on_change=move |checked| {
-                                            draft.update(|tags| {
-                                                tags.retain(|tag| tag != &slug);
-                                                if checked && tags.len() < 4 { tags.push(slug.clone()); }
-                                            });
-                                        } />
-                                </span> }
+                                let slug = tag.slug;
+                                let selected = context.with_value(|ctx| ctx.query.tags.as_slice() == std::slice::from_ref(&slug));
+                                let href = context.with_value(|ctx| format!("/{}", ExploreQuery::new(ctx.query.q.clone(), vec![slug], None).search()));
+                                view! {
+                                    <a class="vk-discovery-option" id=format!("{id}-tag-{}", tag.tag_id)
+                                        href=href
+                                        aria-current=selected.then_some("true")
+                                        on:click=move |event| {
+                                            if event.button() == 0 && !event.default_prevented() && !(event.meta_key() || event.ctrl_key() || event.shift_key() || event.alt_key()) {
+                                                open.set(false);
+                                                focus_recovery("community-stream");
+                                            }
+                                        }>
+                                        <span>{tag.label}</span>
+                                    </a>
+                                }
                             }).collect_view()}
                         </div>
                     </fieldset>
                 })
             }).collect_view()}
             {list.truncated.then(|| view! { <p>"Danh mục đang hiển thị 200 thẻ đầu. Thẻ khác vẫn có thể mở từ tác phẩm hoặc đường dẫn riêng."</p> })}
-            <div class="vk-discovery-filter-footer flex flex-wrap items-center justify-between gap-vk-3 [margin-block-start:var(--vk-space-1)]">
-                <div>
-                    <p id=format!("{id}-tag-help")>{if modal { "Khớp tất cả thẻ" } else { "Khớp tất cả thẻ · Tối đa 4" }}</p>
-                    {modal.then(|| view! { <p id="tag-selection-count" role="status" aria-atomic="true">
-                        {move || format!("Đã chọn {}/4", draft.with(Vec::len))}
-                    </p> })}
-                </div>
-                <div class="vk-discovery-filter-actions flex flex-wrap items-center gap-vk-2 [max-inline-size:100%]">
-                    {modal.then(|| view! {
-                        <Button id="clear-tag-draft" variant=ButtonVariant::Text
-                            state=Signal::derive(move || if draft.with(Vec::is_empty) {
-                                ActionState::Disabled { reason: None }
-                            } else {
-                                ActionState::Enabled
-                            })
-                            on_press=move |_| draft.update(Vec::clear)>
-                            "Bỏ chọn"
-                        </Button>
-                    })}
-                    <Button kind=ButtonKind::Submit variant=ButtonVariant::Filled
-                        state=Signal::derive(move || if modal && !changed.get() { ActionState::Disabled { reason: None } } else { ActionState::Enabled })>
-                        "Áp dụng"
-                    </Button>
-                </div>
-            </div>
-        </Form>
-    }.into_any()
+        </div>
+    }
 }
 
 #[component]
@@ -1159,6 +1099,7 @@ fn PublicResults(context: ExploreContext, live: public_reads::Live<WorkList>) ->
                             let page_empty = empty_context.query.cursor.is_some() || continuation;
                             let mut no_tags = empty_context.clone(); no_tags.query.tags.clear(); no_tags.query.cursor = None; no_tags.tag_page = None;
                             let mut no_query = empty_context.clone(); no_query.query.q.clear(); no_query.query.cursor = None;
+                            let show_clear_tags = has_tags && (empty_context.tag_page.is_none() || has_query || page_empty);
                             if unavailable_tag {
                                 view! { <div data-testid="public-tag-unavailable">
                                     <p role="status" aria-atomic="true">"Không thể tìm tác phẩm theo thẻ này."</p>
@@ -1182,7 +1123,7 @@ fn PublicResults(context: ExploreContext, live: public_reads::Live<WorkList>) ->
                                 });
                                 view! { <div data-testid=if page_empty { "public-empty-page" } else if filtered { "public-no-results" } else { "public-empty" }>
                                     <EmptyState artwork=if filtered || page_empty { EmptyArtwork::NoResults } else { EmptyArtwork::NoPublicWorks } message announce=true>
-                                        {has_tags.then(|| view! { <a id="clear-public-tags" class=ButtonVariant::Tonal.classes() href=no_tags.href(None)>"Bỏ lọc thẻ"</a> })}
+                                        {show_clear_tags.then(|| view! { <a id="clear-public-tags" class=ButtonVariant::Tonal.classes() href=no_tags.href(None)>"Bỏ lọc thẻ"</a> })}
                                         {has_query.then(|| view! { <a id="clear-public-results" class=ButtonVariant::Tonal.classes() href=no_query.href(None)>"Xóa tìm kiếm"</a> })}
                                         {find_authors.map(|(href, label)| view! { <a id="find-authors-for-query" class=ButtonVariant::Text.classes() href=href>{label}</a> })}
                                         {(!filtered && !page_empty).then(|| view! { <a class=ButtonVariant::Tonal.classes() href="/ban-viet">"Đến Bàn viết"</a> })}
@@ -1595,64 +1536,57 @@ mod tests {
     }
 
     #[test]
-    fn filter_form_exposes_client_clear_only_in_modal_sheet() {
-        let tag_list = TagList {
-            tags: vec![TagDto {
-                tag_id: "11111111-1111-4111-8111-111111111111".into(),
-                facet: "form".into(),
-                label: "Thơ".into(),
-                slug: "tho".into(),
-                description: None,
-                status: "active".into(),
-                successor: None,
-            }],
-            truncated: false,
-        };
-        let render_form = |modal: bool, selected: Vec<String>| {
-            let list = tag_list.clone();
-            Owner::new().with(|| {
-                provide_context(leptos_router::location::RequestUrl::new("/"));
-                let draft = RwSignal::new(selected);
-                let initial = StoredValue::new(Vec::<String>::new());
-                let open = RwSignal::new(true);
-                view! {
-                    <leptos_router::components::Router>
-                        <FilterForm id=if modal { "modal" } else { "dock" } q=String::new() draft initial list open modal />
-                    </leptos_router::components::Router>
+    fn dock_and_sheet_offer_the_same_single_tag_get_links() {
+        let tags = [("form", "Thơ", "tho"), ("theme", "Ký ức", "ky-uc")];
+        for id in ["dock", "modal"] {
+            for selected in [
+                vec![],
+                vec!["tho".to_owned()],
+                vec!["tho".to_owned(), "ky-uc".to_owned()],
+            ] {
+                let one_selected = selected.len() == 1;
+                let html = Owner::new().with(|| {
+                    let mut ctx = context("mua", Some("old-page"));
+                    ctx.query.tags = selected;
+                    let context = StoredValue::new(ctx);
+                    let open = RwSignal::new(true);
+                    let list = TagList {
+                        tags: tags
+                            .iter()
+                            .map(|&(facet, label, slug)| TagDto {
+                                tag_id: slug.into(),
+                                facet: facet.into(),
+                                label: label.into(),
+                                slug: slug.into(),
+                                description: None,
+                                status: "active".into(),
+                                successor: None,
+                            })
+                            .collect(),
+                        truncated: false,
+                    };
+                    view! { <FilterForm id context list open /> }.to_html()
+                });
+                assert_eq!(html.matches("<a ").count(), 2, "{html}");
+                for (_, label, slug) in tags {
+                    assert!(
+                        html.contains(&format!(r#"href="/?q=mua&amp;tag={slug}""#)),
+                        "{html}"
+                    );
+                    assert!(html.contains(label), "{html}");
                 }
-                .to_html()
-            })
-        };
-        let dock = render_form(false, vec![]);
-        assert!(
-            !dock.contains("clear-tag-draft") && !dock.contains("Bỏ chọn"),
-            "{dock}"
-        );
-
-        let empty_modal = render_form(true, vec![]);
-        assert!(
-            empty_modal.contains("id=\"clear-tag-draft\"")
-                && empty_modal.contains("type=\"button\"")
-                && empty_modal.contains("Bỏ chọn")
-                && empty_modal.contains("aria-disabled=\"true\""),
-            "{empty_modal}"
-        );
-
-        let picked_modal = render_form(true, vec!["tho".into()]);
-        let clear_button = picked_modal
-            .split("id=\"clear-tag-draft\"")
-            .next()
-            .and_then(|before| before.rsplit('<').next())
-            .unwrap_or_default();
-        let clear_tail = picked_modal
-            .split("id=\"clear-tag-draft\"")
-            .nth(1)
-            .and_then(|after| after.split('>').next())
-            .unwrap_or_default();
-        assert!(
-            clear_button.contains("type=\"button\"")
-                && !clear_tail.contains("aria-disabled=\"true\""),
-            "{picked_modal}"
-        );
+                assert_eq!(
+                    html.matches(r#"aria-current="true""#).count(),
+                    usize::from(one_selected),
+                    "{html}"
+                );
+                assert!(
+                    !html.contains("old-page")
+                        && !html.contains("<input")
+                        && !html.contains("<button"),
+                    "{html}"
+                );
+            }
+        }
     }
 }
