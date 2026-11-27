@@ -333,6 +333,9 @@ pub fn AuthorByline(
     /// Optional rendering of `name` (e.g. a search highlight); its text must equal `name`.
     #[prop(optional_no_strip)]
     name_view: Option<AnyView>,
+    /// Marks a verified exact Handle match while keeping the canonical Handle text.
+    #[prop(optional)]
+    highlight_handle: bool,
 ) -> impl IntoView {
     let blank = name.trim().is_empty();
     let shown_name = if blank {
@@ -363,7 +366,15 @@ pub fn AuthorByline(
         <span class="vk-ui-byline__text">
             <span class="vk-ui-byline__name vk-ui-identity-name" data-blank=blank.then_some("true")
                 data-neutral=neutral.then_some("true")>{name_view}</span>
-            {handle.map(|handle| view! { <span class="vk-ui-byline__handle vk-ui-identity-handle">{handle}</span> })}
+            {handle.map(|handle| view! {
+                <span class="vk-ui-byline__handle vk-ui-identity-handle">
+                    {if highlight_handle {
+                        view! { <mark class="vk-search-mark">{handle}</mark> }.into_any()
+                    } else {
+                        handle.into_any()
+                    }}
+                </span>
+            })}
         </span>
     };
     view! {

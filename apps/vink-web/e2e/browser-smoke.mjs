@@ -1244,9 +1244,9 @@ async function launchChrome(existingProfile) {
   ];
   // CI runners may not allow Chrome's user-namespace sandbox; only our local app is loaded.
   if (process.env.CI || process.env.VINK_CHROME_NO_SANDBOX) flags.push('--no-sandbox');
-  // Linux headless can report hover:none even when CDP injects mouse events. The navigation
-  // mouse probe uses Blink's hover-capable fine pointer types (hover = 2, fine = 4).
-  if (['main', 'appearance-shell', 'bottom-navigation'].includes(args.phase)) {
+  // Headless Chrome can report hover:none even when CDP injects mouse events. Mouse probes
+  // use Blink's hover-capable fine pointer types (hover = 2, fine = 4).
+  if (['main', 'appearance-shell', 'bottom-navigation', 'author-search'].includes(args.phase)) {
     flags.push('--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4');
   }
   // #234 measures a new SSR document with back_forward navigation timing, not a BFCache hit.

@@ -318,6 +318,19 @@ Các khung R1 là concept `DESIGN_PROPOSED / NO_APPROVED_REFERENCE`.
   Từ khóa trống có thể hiện gợi ý. Tách trạng thái rỗng và lỗi; loading tại vùng
   danh sách. Guest và thành viên đều đọc projection công khai. Nút theo dõi nếu
   được chọn nằm ngoài link và chỉ nhận quan hệ ở scope viewer.
+- **Danh sách R5 ([#622](https://github.com/loveoverflowcom/vink/issues/622)).** Với
+  truy vấn trống, vùng kết quả có tiêu đề “Tác giả đề xuất”. Khi tìm, tiêu đề nêu
+  truy vấn đã gửi. Danh sách UL/LI căn avatar thẳng với mép đầu tiêu đề, cùng nền
+  trang, bỏ marker, lề mặc định, viền, bóng và lời giải thích về tập gợi ý.
+  Avatar 44px, khoảng cách 12px, hàng tối thiểu 68px. Bút danh dùng chữ body
+  semibold tối đa hai dòng theo #605. Handle dùng chữ caption và một dòng, tên
+  truy cập của link giữ toàn bộ bút danh và Handle. Kết quả bút danh và exact
+  Handle dùng cùng cấu trúc, tô phần khớp ở đúng vị trí.
+- **Tương tác trên hàng R5.** Link hồ sơ và Theo dõi đứng riêng, diện tích chạm
+  tối thiểu 44px. Link có lớp màu nhẹ khi hover/nhấn và focus ring. CTA có thể
+  xuống hàng khi chữ lớn hoặc khung hẹp. Kiểm Light/Dark, text 100/150% và stress
+  200% tại 320/390px. Các mode Khám phá do #621 sở hữu. Preview của #622 là
+  đề xuất thiết kế. Ảnh c013/c014/c015 thuộc cùng đợt capture 91191186.
 - **Interaction.** Gõ IME chưa commit giữ query đang sửa. Commit query mới thay
   chain cũ; bỏ response muộn. Tải thêm giữ focus, lỗi append giữ dòng còn hợp lệ.
   Mở profile rồi Back phục hồi mode/query, cuộn và link đã mở nếu còn quyền; nếu
