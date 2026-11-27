@@ -503,6 +503,7 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   await page.capture('auth-r5-register-credentials-834-light-100', {
     scenario: 'register-credentials', textScale: 100, requiredTargets: [REGISTER, REGISTER + '-username'],
   });
+  await page.viewport(1280);
   // DOM autofill simulation: set the actual values, without input events.
   await page.eval(`(() => {
     ${q(REGISTER + '-username')}.value = ${JSON.stringify(userA.toUpperCase())};

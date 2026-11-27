@@ -92,7 +92,7 @@ function inspectAuth(mode) {
       const fill = style.backgroundColor;
       const edge = style.outlineColor;
       return { height: box(el).height, fill, edge, outline: style.outlineWidth, border: style.borderTopWidth,
-        radius: style.borderTopLeftRadius,
+        radius: style.borderTopLeftRadius, outlineStyle: style.outlineStyle,
         fillContrast: contrast(fill, host), edgeContrast: contrast(edge, host),
         textContrast: contrast(getComputedStyle(label).color, fill),
         inputContrast: contrast(getComputedStyle(inputs[i]).color, fill),
@@ -127,7 +127,7 @@ export async function checkAuthR31(page, check, scene, mode = 'login') {
   check(result.order && result.noBackOrDivider && result.noRegistrationEmailShortcut && result.noDeletion &&
     result.actionGap && result.fits && result.heading && result.modalGeometry &&
     result.fields.every((f, i) => f.height >= 56 && f.radius === '16px' &&
-      f.outline === (f.focused ? '2px' : '0px') && f.border === '0px' &&
+      (f.focused ? f.outlineStyle === 'solid' && f.outline === '2px' : f.outlineStyle === 'none') && f.border === '0px' &&
       f.fillContrast >= 3 && (!f.focused || f.edgeContrast >= 3) &&
       f.textContrast >= 4.5 && f.inputContrast >= 4.5 &&
       (f.revealContrast === null || f.revealContrast >= 3) &&

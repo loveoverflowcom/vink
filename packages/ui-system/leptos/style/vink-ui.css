@@ -857,6 +857,7 @@
   grid-template-columns: minmax(0, 1fr);
   min-block-size: 56px;
   border-radius: var(--vk-radius-control-56);
+  outline-width: 0;
 }
 .vk-ui-field--auth[data-mode="editable"] .vk-ui-field__control {
   background: var(--vk-auth-control-fill);
