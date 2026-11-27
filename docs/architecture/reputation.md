@@ -24,12 +24,14 @@ Không cấp quyền hay xếp hạng tác phẩm bằng score.
 - Private/withdrawn: loại phần score liên quan khỏi current eligibility; restore chỉ từ entitlement
   còn hợp lệ; không tăng growth. DEL-05 thu hồi endorsement của principal xóa. Không hồi sinh
   principal hoặc source đã xóa. Unlike/un-Ưng của entitlement còn hiệu lực làm giảm score và
-  growth trong kỳ thu hồi kể cả endorsement trước kỳ. Re-like, admin reversal, delete work,
-  comment edit: chi tiết attribution và lifecycle còn OPEN; không triển khai policy ngầm.
+  growth trong kỳ thu hồi kể cả endorsement trước kỳ. Re-like áp dụng Q12 bên dưới; admin reversal,
+  delete work, comment edit: chi tiết attribution/lifecycle còn OPEN; không triển khai policy ngầm.
 - Đình chỉ toàn bộ tài khoản nhận điểm: không public rating, không xuất hiện trong bất kỳ thống kê
   public nào (cả kỳ đã đóng); giữ facts còn hợp lệ, đánh giá lại trước khi khôi phục sau đình chỉ,
   không reset điểm, không ghi standing restore thành growth. Hạn chế riêng đăng/bình luận khác
   full suspension. Effect lên endorsement do actor bị đình chỉ tạo ra còn OPEN.
+- Q11: member chỉ đóng góp nhận xét có thể có score và tham gia thống kê, không đòi có bài công khai.
+  Điều kiện profile/standing, evidence hợp lệ và ngưỡng thống kê còn phải đặc tả; không tự thêm work gate.
 - Follow, saved, private views, content counts không đi vào rating hoặc growth.
 
 ## Period growth — không lấy đơn giản score cuối kỳ trừ đầu kỳ
@@ -39,14 +41,22 @@ Tuần bắt đầu thứ Hai 00:00, tháng bắt đầu ngày 1 00:00 theo Asia
 quyền, không theo thời điểm worker xử lý; xử lý late events, checkpoint, boundary, replay.
 Nguồn thời điểm/backdating/retention cụ thể phải audit. Thống kê uy tín cao là current rating
 đủ điều kiện; tăng nhanh theo tuần/tháng là growth metric. Backend hỗ trợ thống kê kỳ hiện tại và kỳ đã kết thúc (REP-Q09), có retention và coverage;
-định nghĩa top rating trong kỳ (điểm cuối kỳ/đỉnh), correction kỳ đã đóng và UI history còn OPEN.
+Q10: top rating lấy current rating nếu kỳ đang diễn ra, rating as-of end boundary nếu kỳ đã đóng,
+không lấy đỉnh, không thay điểm kỳ cũ bằng điểm hiện tại. Chọn event-time/watermark có thể tái lập,
+bao gồm member có điểm hợp lệ nhưng không đổi trong kỳ. Kỳ chưa đủ coverage hoặc correction đang
+chờ không giả finalized snapshot; rule late correction, formula version và UI history còn OPEN.
 
 Growth không được tăng do restore, backfill không đủ lịch sử, formula version switch hay lặp
 on/off. Growth có dấu: bỏ một tương tác cũ đang đủ điều kiện làm giảm growth của kỳ thu hồi;
 +80 điểm từ tương tác mới và -30 do bỏ tương tác tháng trước => +50 (ví dụ minh họa, không phải
 formula). Thu hồi chỉ khi effective entitlement thực sự đổi (không giảm nếu còn anchor hợp lệ);
-no-op/retry không trừ thêm. Re-like cùng/khác kỳ phải không tạo growth giả; bù trừ reversal và
-cách gán kỳ cho correction cần review. Admin/private/delete lifecycle có thể làm đổi score hoặc
+no-op/retry không trừ thêm. Q12: trong từng kỳ, re-like đủ điều kiện cùng entitlement bù trừ khoản
+thu hồi trong chính kỳ đó, không tạo đóng góp mới. Nếu thu hồi thuộc kỳ trước đã đóng, giữ mức
+thu hồi kỳ đó; re-like kỳ này chỉ khôi phục current rating, không cộng growth mới.
+Tuần/tháng độc lập (boundary khác nhau): ví dụ bỏ -30 tuần 1, Thấm lại tuần 2 cùng tháng =>
+weekly growth -30/0, monthly phần biến động này 0 (minh họa cùng attribution, không phải formula).
+Không tính monthly growth bằng tổng weekly growth. Xử lý chuỗi lặp, lần đầu nhận rồi bỏ/khôi phục,
+precision/attribution phi tuyến và correction có thẩm quyền vẫn cần review; không tạo credit giả. Admin/private/delete lifecycle có thể làm đổi score hoặc
 sửa/ẩn lịch sử vì privacy; không tự phân loại mọi biến động lifecycle là community growth. Không cộng dồn
 các delta làm tròn theo thứ tự batch một cách tùy tiện: với hàm phi tuyến phải so sánh phép tính
 trên net eligible facts/fixed reference hoặc attribution có tính tái lập; chỉ chọn sau fixtures
@@ -71,7 +81,9 @@ discussion, principal standing/deletion, outbox; giữ lock order, fencing, idem
 batch. Version policy/formula/schema độc lập; đổi formula không tự tạo growth; replay không
 double count. Backfill consistent watermark/catch-up nếu đủ source, nếu thiếu lịch sử thì
 unavailable/coverage rõ, không tạo số giả. Giữ projection theo kỳ thưa nếu phù hợp, không mặc định
-snapshot mọi thành viên mỗi ngày. Retention period/ledger, correction và version compatibility
+snapshot mọi thành viên mỗi ngày. Cần chứng minh reconstruct/close kỳ với cả member không đổi điểm,
+không sao chép điểm hiện tại vào kỳ cũ, tránh global scan trên request; chọn sparse change history hoặc
+materialized close theo benchmark. Retention period/ledger, correction và version compatibility
 phải được đặc tả và đo trước rollout; không hứa lưu vô hạn.
 
 Privacy: guest/public score và statistics chỉ dựa trên dữ liệu đủ điều kiện hiện hành;
@@ -90,8 +102,9 @@ SOC-PRIV, DEL, LVE, RANK, TOP, SAV. Không quyền mới từ rating.
 | REP-INV-04 | Period boundary, late processing, replay và restore/version changes không tạo growth giả; output theo policy đã duyệt. |
 | REP-INV-05 | Quyền hiện hành thắng projection/cache cũ; deletion, private và moderation không rò rỉ. |
 | REP-INV-06 | Batch/read bounded, no request-time global recompute; rank tác phẩm và ACL độc lập. |
-| REP-INV-07 | Thu hồi tương tác cũ làm giảm growth tại kỳ thu hồi đúng một lần khi entitlement thực sự mất; re-like không tạo credit mới; formula/restore không tạo growth. |
+| REP-INV-07 | Thu hồi tương tác cũ làm giảm growth khi entitlement thực sự mất; re-like bù thu hồi cùng kỳ, không credit mới hoặc sửa kỳ trước do re-like khác kỳ; formula/lifecycle restore không tạo growth. Week/month tính độc lập. |
 | REP-INV-08 | Kỳ đã đóng có coverage/version/retention rõ; full suspension và deletion/privacy hiện hành thắng dữ liệu lịch sử; không fake history. |
+| REP-INV-09 | Top rating theo current khi kỳ mở, rating as-of end khi đóng; không dùng peak, không đổi theo score hiện tại sau close; late/privacy correction theo policy. Member đủ điều kiện chỉ nhận Ưng không bị loại vì không có bài. |
 
 Các chi tiết API ở [contract](../../services/vink-app/contracts/http/v1/reputation.md), trạng thái
 và evidence ở [registry](../development/reputation.md).

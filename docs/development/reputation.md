@@ -5,8 +5,8 @@ ghi tài liệu này. Không xác nhận production. Implementation: chưa kiể
 UNKNOWN; epic này chưa triển khai runtime. Evidence: source/document inspection only; NOT_RUN
 cho decision CLI, Quint, Kani, PostgreSQL, HTTP và performance.
 
-- [PRD §19](../../prd/requirements.md#19-điểm-vink-reputation-v1) sở hữu requirements REP-01..08.
-- [VDR-REPUTATION@r1](../../decisions/proposals/VDR-REPUTATION.r1.toml): lựa chọn nghiệp vụ Q01..09
+- [PRD §19](../../prd/requirements.md#19-điểm-vink-reputation-v1) sở hữu requirements REP-01..09.
+- [VDR-REPUTATION@r1](../../decisions/proposals/VDR-REPUTATION.r1.toml): lựa chọn nghiệp vụ Q01..12
   đã có lời chủ sản phẩm; formal registry PENDING. Không active marker hoặc signoff tự tạo.
 - [VDR-REPUTATION-CONTRACT@r1](../../decisions/proposals/VDR-REPUTATION-CONTRACT.r1.toml): PENDING,
   kiến trúc DESIGN_PROPOSED; [domain](../architecture/reputation.md) và
@@ -20,25 +20,25 @@ cho decision CLI, Quint, Kani, PostgreSQL, HTTP và performance.
 
 | Slice | Owner/phạm vi | Gate/evidence |
 | --- | --- | --- |
-| REP-S01 | Shape, science, SSOT | Q01..09 + OPEN lifecycle; candidate simulations; formula/eligibility/privacy decisions; CLI validate/propose/query/signoff đúng revision; không kích hoạt. |
+| REP-S01 | Shape, science, SSOT | Q01..12 + OPEN lifecycle; candidate simulations; formula/eligibility/privacy decisions; CLI validate/propose/query/signoff đúng revision; không kích hoạt. |
 | REP-S02 | Pure Rust Domain | checked facts/entitlement/growth/policy versions; golden/property vectors, Quint replay và Kani finite invariants; không claim proof float. |
 | REP-S03 | DB & accepted source events | additive migrations, transactional sources, no-op/retry/reversal/lifecycle, privacy fence, tests PG race/rollback. |
 | REP-S04 | Worker/current projection/recovery | lease/ack, batch, reconcile, replay/rebuild/version switch, backfill checkpoint, lag/invalidation. |
-| REP-S05 | Period aggregation & statistics | current top + weekly/monthly growth (current/closed), signed old-interaction withdrawal, boundaries, event-time, coverage/retention/version/privacy, anti-gaming, bounded indexed reads. |
+| REP-S05 | Period aggregation & statistics | current/as-of close top rating + weekly/monthly growth (current/closed), signed old-interaction withdrawal and same-period re-like compensation, independent week/month boundaries, event-time/coverage/retention/version/privacy, comment-only eligibility, anti-gaming, bounded indexed reads. |
 | REP-S06 | API & qualification | real auth/guest, read guard and cache, bounded queries, end-to-end PG/HTTP, isolation and benchmark, rollout/runbook. |
 
 Sequential dependencies S01 -> S02 -> S03 -> S04 -> S05 -> S06; product gates before exposure.
 S01 is not complete just because this draft is opened. Design and Leptos Web/CMP are separate epic.
 No merge/deploy/acceptance checkbox from document-only evidence.
-Review delta lượt 3: Q07..09 đã có lời chọn; cập nhật draft #601 trước signoff/merge, chưa chạy CLI.
+Review delta lượt 3–4: Q07..12 đã có lời chọn; cập nhật draft #601 trước signoff/merge, chưa chạy CLI.
 Các revision r1 vẫn là payload draft chưa phát hành; giữ lịch sử commit, không ghi signoff hoặc active marker.
 
 ## Review queue
 
 - Product: lifecycle of withdrawn and admin-removed content/reversal; treatment of deleted accounts and endorsements by suspended actors; eligibility at author/actor level;
-  growth attribution across periods for re-like/corrections and privacy (old-interaction withdrawal
-  and suspended recipient visibility already selected); initial coverage, author inclusion,
-  meaning of “uy tín cao” within a period, retention and closed-period correction policy.
+  growth attribution for repeated toggles/nonlinear formula and authoritative corrections/privacy
+  (Q12 selects same-period compensation, no cross-period new credit); initial coverage, eligibility
+  thresholds beyond Q11, retention and closed-period correction/version policy (Q10 as-of end selected).
 - Science: formula/weights/baseline, anti-abuse and new-author fairness, simulation.
 - Technical: event completeness and ownership, persistence and versions, retention/purge,
   late arrival/cutover, backfill, indexes and API freshness. Benchmark hot principals and

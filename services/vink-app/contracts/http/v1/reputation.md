@@ -8,8 +8,8 @@ error mapping OPEN until audit of actual HTTP v1 owner; do not generate FE bindi
 | Read capability | Candidate contract |
 | --- | --- |
 | Current total | One ready integer rating (scale/rounding OPEN), formula version, availability/freshness. Never raw component counts or eligible voter identities. |
-| High reputation | Bounded, stable ordered query of eligible authors by current total. Whether to expose period snapshot of high rating is OPEN. |
-| Fast growth | Bounded weekly/monthly calendar period queries, typed period boundaries and version/readiness; signed net eligible new contribution metric minus withdrawals of old interactions in the withdrawal period, not naive score delta. Support current and retained closed periods; no fake historical coverage. |
+| High reputation | Bounded, stable ordered query of eligible members by current total for open periods or as-of-end rating for retained closed periods; never peak or today's score substituted for historical. No public-work prerequisite (Q11). |
+| Fast growth | Bounded weekly/monthly calendar period queries, typed period boundaries and version/readiness; signed net eligible new contribution metric minus withdrawals of old interactions in the withdrawal period, not naive score delta. Support current and retained closed periods; compensate re-like within same period, no fresh credit or ordinary rewrite of earlier period on cross-period re-like. Week/month computed independently; no fake historical coverage. |
 
 Public guest and authenticated readers of eligible data have the same public visibility.
 Check current identity/standing/content privacy fences at read; invalidate or withhold unsafe

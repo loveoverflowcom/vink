@@ -559,7 +559,7 @@ Quan hệ lưu giữ định danh và thời điểm lưu, không sao chép nhan
 
 ## 19. Điểm Vink (Reputation V1)
 
-[EPIC #600](https://github.com/loveoverflowcom/vink/issues/600) · Backend only. Ba lượt lựa chọn
+[EPIC #600](https://github.com/loveoverflowcom/vink/issues/600) · Backend only. Bốn lượt lựa chọn
 nghiệp vụ 27/11/2026 được ghi tại [proposal VDR-REPUTATION@r1](../decisions/proposals/VDR-REPUTATION.r1.toml).
 Lời chọn đã có; revision TOML còn `PENDING` (chưa signoff đúng payload/hash). Không đánh dấu active
 hay kích hoạt public runtime. [Đặc tả](../docs/architecture/reputation.md) ·
@@ -571,15 +571,16 @@ hay kích hoạt public runtime. [Đặc tả](../docs/architecture/reputation.m
 | REP-01 · REP-Q01 | Hai thành phần Impact (Thấm nhận trên tác phẩm) và Contribution (Ưng nhận trên nhận xét); không Follow, lượt xem, lượt lưu, số bài hay số bình luận. Một tổng rating, không phải Elo đối đầu. | Follow hoặc lưu bài không đổi điểm; Thấm và Ưng hợp lệ tác động đúng thành phần. |
 | REP-02 · REP-Q02 | Ghi nhận Impact tối đa một đơn vị cho mỗi cặp người Thấm + WorkId qua các anchor revision còn đủ điều kiện. Không chuyển endorsement nguồn sang revision mới. | Một người Thấm revision A, sau đó B của cùng WorkId: không tăng Impact lần hai. Sửa bài bình thường không reset điểm tác giả. |
 | REP-03 · REP-Q03 | Uy tín hiện hành, không phải điểm cộng vĩnh viễn bất kể trạng thái. Chuyển riêng tư loại điểm liên quan; công khai lại khôi phục phần còn đủ điều kiện. Thu hồi theo authority và DEL-05; chi tiết lifecycle còn OPEN. | Ẩn bài làm điểm tương ứng mất hiệu lực; tái công khai không tự tạo endorsement hoặc tăng trưởng mới; xóa tài khoản không hồi sinh. |
-| REP-04 · bổ sung lượt 1, REP-Q04/Q09 | Có thống kê tác giả uy tín cao và tăng uy tín nhanh theo tuần/tháng lịch (Asia/Ho_Chi_Minh), không rolling; backend đọc được các kỳ đã kết thúc trong retention được chốt sau. | Hai sự kiện hai phía ranh giới thứ Hai 00:00 hoặc ngày đầu tháng thuộc hai kỳ khác nhau; không reset tổng điểm; kỳ đã kết thúc có coverage rõ, không giả lịch sử. |
-| REP-05 · REP-Q05/Q07 | Tăng trưởng ròng từ đóng góp mới hợp lệ trừ thu hồi tương tác trong kỳ, kể cả tương tác nhận từ kỳ trước; khác delta tổng điểm. Loại khôi phục cũ, đổi công thức, backfill giả, thao tác lặp để tăng giả. Attribution/re-like/correction chi tiết OPEN. | +80 đóng góp, -30 thu hồi tương tác tháng trước, +100 khôi phục cũ: tổng đổi +150, growth +50 (minh họa; không phải công thức đầy đủ). |
+| REP-04 · bổ sung lượt 1, REP-Q04/Q09/Q10 | Có thống kê uy tín cao và tăng uy tín nhanh theo tuần/tháng lịch (Asia/Ho_Chi_Minh), không rolling; backend đọc được các kỳ đã kết thúc trong retention được chốt sau. Top rating dùng điểm hiện tại khi kỳ mở, điểm as-of cuối kỳ khi kỳ đóng, không dùng đỉnh. | Hai sự kiện hai phía ranh giới thuộc hai kỳ khác nhau; không reset tổng điểm. Sau close điểm hiện tại đổi không tự đổi top rating kỳ cũ; coverage/correction/version rõ. |
+| REP-05 · REP-Q05/Q07/Q12 | Tăng trưởng ròng từ đóng góp mới hợp lệ trừ thu hồi tương tác trong kỳ, kể cả tương tác nhận từ kỳ trước; khác delta tổng điểm. Bỏ rồi khôi phục cùng entitlement trong cùng kỳ thì bù trừ, không tạo credit mới; khác kỳ giữ khoản giảm kỳ trước, không cộng growth kỳ mới. Week/month tính độc lập. Loại lifecycle restore, đổi công thức, backfill giả. Attribution phi tuyến/correction chi tiết OPEN. | Bỏ -30 tuần 1, Thấm lại tuần 2 cùng tháng: growth tuần -30/0, phần biến động tháng 0 (minh họa); rating hiện hành được khôi phục. |
 | REP-06 · REP-Q06/Q08 | Tổng điểm và thống kê đủ điều kiện công khai kể cả khách; thành phần chưa công khai. Full suspension của người nhận điểm tạm ẩn điểm và loại khỏi mọi thống kê công khai, cả kỳ cũ. Giữ dữ liệu còn hợp lệ; khôi phục khi standing/eligibility cho phép, không reset hoặc tạo growth. | Guest có quyền xem dữ liệu đủ điều kiện; đình chỉ/ẩn/xóa trong khi worker lag không làm lộ projection cũ; hết đình chỉ có thể khôi phục số hợp lệ. |
 | REP-07 · scope #600 | Độc lập Đề xuất, Top 100 tác phẩm, Thấm/Ưng nguồn, Follow, Lưu, AI, moderation và auth/ACL. Không ưu tiên tác phẩm hay mở quyền theo uy tín. | Thay đổi score/rollout không đổi kết quả RANK-04, TOP, SAV-03 và quyền. |
 | REP-08 · scope #600 | Backend-only, projection/read API versioned; không tính lại toàn hệ thống mỗi read hoặc đưa phép tính nặng vào mutation nguồn. Mục tiêu hiệu suất phải đo trước khi public. | Score chưa sẵn sàng khác điểm 0/baseline; đọc có giới hạn, no N+1; benchmark baseline/candidate và kiểm rebuild/rollback. |
+| REP-09 · REP-Q11 | Thành viên chỉ đóng góp nhận xét có score và được tham gia thống kê khi đủ eligibility; không bắt buộc có tác phẩm công khai. Ngưỡng eligibility khác còn OPEN. | Hai member đủ điều kiện có điểm tương đương, một người không có bài nhưng có Ưng: không loại vì không có WorkId công khai. |
 
 **OPEN:** công thức/trọng số/thang/rounding; eligibility mới, anti-abuse, lifecycle chi tiết
 (gỡ/khôi phục bởi admin, hiệu ứng endorsement của actor bị đình chỉ, comment edit,
-re-like và correction kỳ đóng); điều kiện vào nhóm thống kê, nghĩa top rating trong kỳ,
+attribution re-like và correction kỳ đóng); ngưỡng vào nhóm thống kê ngoài Q11,
 tie-breaker và phạm vi lưu kỳ; backfill, freshness và rollout.
 Các lựa chọn kỹ thuật có evidence thuộc từng slice. Không mặc định có leaderboard UI,
 UI lịch sử hoặc API trả raw component. Backend historical statistics đã chọn theo Q09. Không decay trong phạm vi đề xuất V1.
