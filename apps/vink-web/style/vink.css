@@ -1818,6 +1818,14 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index) { scrollbar-gut
   color: var(--vk-on-surface);
   background-color: var(--vk-bg-inset);
 }
+.vk-saved-row__action button[aria-busy="true"] > svg { visibility: hidden; }
+.vk-saved-row__progress {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
 .vk-saved-row__action .vk-ui-action__note {
   position: absolute;
   clip-path: inset(50%);

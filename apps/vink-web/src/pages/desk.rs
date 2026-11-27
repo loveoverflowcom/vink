@@ -805,7 +805,8 @@ fn DraftListView(
             })
     });
     view! {
-        <div class="vk-draft-list gap-vk-3 [min-inline-size:0]">
+        <div class="vk-draft-list relative gap-vk-3 [min-inline-size:0]">
+            <crate::ui::RefreshProgress active=Signal::derive(move || loading.get() && !appending.get() && pages.with(|p| p.loaded)) />
             <div class="vk-draft-controls flex flex-wrap items-center justify-between gap-[8px] [min-inline-size:0]">
                 <Show when=move || ready.get() && !first_use.get()>
                     <CreateDraftControls creation can_create create create_format />

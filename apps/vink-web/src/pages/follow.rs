@@ -238,13 +238,16 @@ pub(super) fn ProfileRelationships(
             Ok(facts) => facts,
             Err(failed) => return view! {
                 <div id="profile-relationships" class="vk-profile-relationships">
-                    <p role="status">{if failed { "Chưa tải được danh sách và số đếm theo dõi." }
-                        else { "Đang cập nhật danh sách và số đếm theo dõi…" }}</p>
-                    {failed.then(|| view! {
-                        <Button id="profile-relationships-retry" variant=ButtonVariant::Tonal on_press=on_retry>
-                            "Thử lại thông tin theo dõi"
-                        </Button>
-                    })}
+                    {if failed {
+                        view! {
+                            <p role="status">"Chưa tải được danh sách và số đếm theo dõi."</p>
+                            <Button id="profile-relationships-retry" variant=ButtonVariant::Tonal on_press=on_retry>
+                                "Thử lại thông tin theo dõi"
+                            </Button>
+                        }.into_any()
+                    } else {
+                        view! { <crate::ui::PendingRead label="Đang cập nhật danh sách và số đếm theo dõi…" /> }.into_any()
+                    }}
                 </div>
             }.into_any(),
         };

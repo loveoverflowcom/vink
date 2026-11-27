@@ -579,13 +579,16 @@ fn Row(list: ListOwner, work: String) -> impl IntoView {
                 <div class="vk-saved-row__action">
                     <IconButton id=format!("saved-remove-{work}") icon=IconName::Bookmark label=label
                         surface=ActionSurface::Tonal state=phase on_press=move |_| list.operate(id.get_value(), false) />
+                    <Show when=move || matches!(action.get(), Some(RowAction::Writing | RowAction::Checking))>
+                        <span class="vk-saved-row__progress"><vink_ui::LoadingIndicator /></span>
+                    </Show>
                 </div>
                 {move || match action.get() {
                     Some(RowAction::Writing) => view! {
-                        <p class="vk-saved-row__error" role="status">"Đang bỏ lưu…"</p>
+                        <p class="vk-ui-visually-hidden" role="status">"Đang bỏ lưu…"</p>
                     }.into_any(),
                     Some(RowAction::Checking) => view! {
-                        <p class="vk-saved-row__error" role="status">"Đang kiểm tra…"</p>
+                        <p class="vk-ui-visually-hidden" role="status">"Đang kiểm tra…"</p>
                     }.into_any(),
                     Some(RowAction::Retry) => view! {
                         <div class="vk-saved-row__error"><p role="alert">"Chưa bỏ lưu được. Bài vẫn nằm trong danh sách."</p>

@@ -326,8 +326,10 @@ export async function followingFeed(control, other, {base, openPage, check, hold
     ${q('#following-cards time[datetime]')} && ${q('#following-cards .vk-public-row__tag')}?.textContent==='Thơ' &&
     !document.body.textContent.includes('Tác phẩm ngoài Feed')`),
     'browser displays first-public dates and bound public tags, and omits the viewer’s unrelated publication');
+  // A connectivity wake refreshes this confirmed feed without starting the separate session-focus read.
+  await page.waitFor("document.visibilityState==='visible' && document.querySelector('.vk-feed-content[aria-busy=false]')", 'member feed is settled and visible');
   const refreshAnswer = await holdAnswer(page, 'GET', API);
-  await page.eval("const link=document.querySelector('#following-cards a'); link.focus(); link.dataset.refreshProbe='true'; window.dispatchEvent(new Event('focus'))");
+  await page.eval("(() => {const link=document.querySelector('#following-cards a'); link.focus(); link.dataset.refreshProbe='true'; window.dispatchEvent(new Event('online'));})()");
   check(await refreshAnswer.held() === 200, 'member refresh contacts the private provider');
   await page.waitFor("document.querySelector('.vk-feed-content .vk-ui-edge')", 'held refresh shows edge progress');
   check(await page.eval(ROWS+"===12 && document.activeElement.dataset.refreshProbe==='true' && !!document.querySelector('.vk-feed-content[aria-busy=true]') && !document.querySelector('[data-feed-state=loading]')"), 'member refresh retains the focused row');

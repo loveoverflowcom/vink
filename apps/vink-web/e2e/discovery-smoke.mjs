@@ -25,6 +25,37 @@ async function publicLoading(page, args, check) {
   await page.send('Emulation.setEmulatedMedia', {features:[]});
 }
 
+async function invalidCursorRecovery(page, args, check) {
+  const invalid = await fetch(args.base + '/?cursor=khong-hop-le');
+  check(invalid.status === 422 && (await invalid.text()).includes('Về trang đầu'), 'invalid cursor is recoverable SSR 422');
+  await page.viewport(320, 480);
+  await page.goto(args.base + '/?cursor=khong-hop-le');
+  await page.waitFor("document.querySelector('#restart-public')", 'native invalid recovery');
+  check(await page.eval("!document.querySelector('.vk-empty-state__art')"), '#258 invalid cursor is an error, without artwork');
+  check(await page.eval(`(async () => {
+    document.documentElement.style.fontSize = '200%';
+    await document.fonts.ready;
+    const panel = document.querySelector('[data-testid=public-invalid]');
+    const restart = panel.querySelector('#restart-public');
+    restart.focus();
+    const rect = restart.getBoundingClientRect();
+    return panel.querySelectorAll('a').length === 1 && restart.getAttribute('href') === '/'
+      && restart.textContent.trim() === 'Về trang đầu' && panel.querySelector('h2')
+      && panel.querySelectorAll('[role=alert]').length === 1
+      && getComputedStyle(restart).textDecorationLine === 'none'
+      && rect.width <= innerWidth && rect.height >= 44;
+  })()`), 'bare invalid cursor has one usable recovery at 320px / 200%');
+  await page.goto(args.base + '/?q=mua&cursor=khong-hop-le');
+  await page.waitFor("document.querySelector('#restart-public')", 'filtered invalid recovery');
+  check(await page.eval(`(() => {
+    const [first, clear] = document.querySelectorAll('[data-testid=public-invalid] a');
+    const a = first.getBoundingClientRect(), b = clear.getBoundingClientRect();
+    return first.getAttribute('href') === '/?q=mua' && clear.getAttribute('href') === '/'
+      && clear.textContent.trim() === 'Xóa tìm kiếm' && (b.top >= a.bottom || a.right <= b.left);
+  })()`), 'filtered cursor has two distinct usable native destinations');
+  await page.viewport(1440);
+}
+
 export async function discoveryReading(page, { args, check, textContrast }) {
   const ready = async () => page.waitFor("document.documentElement.dataset.hydrated === 'true' && document.querySelector('#public-query')", 'discovery hydration');
   const goto = async path => { await page.goto(args.base + path); await ready(); };
@@ -46,7 +77,6 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     await page.waitFor("document.querySelector('#public-query')?.value === " + JSON.stringify(q) + " && new URL(location.href).searchParams.get('q') === " + JSON.stringify(q), 'applied query URL');
     await page.waitFor("document.querySelector('#public-results')", 'new query result');
   };
-  await publicLoading(page, args, check);
   await goto('/');
   check(await page.eval("document.querySelector('#public-query').placeholder === 'Tìm tác phẩm hoặc tác giả' && document.querySelector('#public-query').labels[0]?.textContent === 'Tìm theo tên hoặc tác giả' && !document.querySelector('#public-query-help, #explore-heading p')"), '#308 r1 search keeps distinct placeholder and accessible label without duplicate scope copy');
   await submit('không có tác phẩm này #100');
@@ -475,32 +505,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   const unknown = await fetch(args.base + '/the/khong-ton-tai-100');
   const unknownHtml = await unknown.text();
   check(unknown.status === 404 && unknownHtml.includes('Không tìm thấy thẻ này') && !unknownHtml.includes('/pkg/empty/'), 'unknown tag has its own SSR 404 without absence artwork');
-  const invalid = await fetch(args.base + '/?cursor=khong-hop-le');
-  check(invalid.status === 422 && (await invalid.text()).includes('Về trang đầu'), 'invalid cursor is recoverable SSR 422');
-  await page.viewport(320, 480);
-  await goto('/?cursor=khong-hop-le');
-  check(await page.eval("!document.querySelector('.vk-empty-state__art')"), '#258 invalid cursor is an error, without artwork');
-  check(await page.eval(`(async () => {
-    document.documentElement.style.fontSize = '200%';
-    await document.fonts.ready;
-    const panel = document.querySelector('[data-testid=public-invalid]');
-    const restart = panel.querySelector('#restart-public');
-    restart.focus();
-    const rect = restart.getBoundingClientRect();
-    return panel.querySelectorAll('a').length === 1 && restart.getAttribute('href') === '/'
-      && restart.textContent.trim() === 'Về trang đầu' && panel.querySelector('h2')
-      && panel.querySelectorAll('[role=alert]').length === 1
-      && getComputedStyle(restart).textDecorationLine === 'none'
-      && rect.width <= innerWidth && rect.height >= 44;
-  })()`), 'bare invalid cursor has one usable recovery at 320px / 200%');
-  await goto('/?q=mua&cursor=khong-hop-le');
-  check(await page.eval(`(() => {
-    const [first, clear] = document.querySelectorAll('[data-testid=public-invalid] a');
-    const a = first.getBoundingClientRect(), b = clear.getBoundingClientRect();
-    return first.getAttribute('href') === '/?q=mua' && clear.getAttribute('href') === '/'
-      && clear.textContent.trim() === 'Xóa tìm kiếm' && (b.top >= a.bottom || a.right <= b.left);
-  })()`), 'filtered cursor has two distinct usable native destinations');
-  await page.viewport(1440);
+  await invalidCursorRecovery(page, args, check);
 
   // Native browser GET, with page JS disabled and WASM preloads blocked.
   // A decoded image from an earlier matrix must not bypass either failure fixture.
@@ -907,6 +912,8 @@ async function emptyRefreshFocus(page, {args, check}) {
 }
 
 export async function discoveryCorpus(page, { args, check }) {
+  await publicLoading(page, args, check);
+  await invalidCursorRecovery(page, args, check);
   await discoveryChipGeometry(page, { args, check });
   const load = async path => (await fetch(args.base+path)).json();
   const catalog = await load('/api/v1/tags');

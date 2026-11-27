@@ -91,7 +91,8 @@ export async function savedProfileJourney(page, { args, check, ssr = false, lost
   const hold = await holdAnswer(page, 'DELETE', PAIR);
   await page.key('Space');
   check(await hold.held() === 200 && await page.eval(`${q(remove)}?.getAttribute('aria-busy') === 'true' &&
-    document.activeElement?.id === 'saved-remove-${WORK}' && ${q(open)}`),
+    document.activeElement?.id === 'saved-remove-${WORK}' && ${q(open)} &&
+    ${q(remove)}.closest('.vk-saved-row__action').querySelector('.vk-ui-arc[aria-hidden=true]')`),
     '#389 keeps the row and focus until the real unsave ACK');
   await page.key('Enter');
   await hold.finish(lost, true);
