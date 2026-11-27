@@ -133,5 +133,6 @@ export async function nativeAuthorMetrics(owner, reader, {base, check}) {
   await owner.eval('window.releaseViewSession()');
   await owner.waitFor(`!document.querySelector('${row}') && document.querySelector('[data-testid=draft-empty]')`,
     'confirmed reader sees its own empty Desk');
-  check(!(await readList(owner)).card, 'other account still cannot read the author metric');
+  const settled = await readList(owner);
+  check(settled.status === 200 && !settled.card, 'other account still cannot read the author metric');
 }

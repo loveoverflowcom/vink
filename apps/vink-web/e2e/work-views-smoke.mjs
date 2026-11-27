@@ -3,7 +3,7 @@
 
 import { fabricate } from './auth-smoke.mjs';
 import { holdAnswer } from './auth-browser-network.mjs';
-import { navigationChecks, tap } from './work-view-navigation.mjs';
+import { navigationChecks, observeVisit, tap } from './work-view-navigation.mjs';
 
 const SAMPLE_WORK = '33333333-3333-4333-8333-333333333333';
 const DRAFT_LINE = 'Phố cũ mưa giăng sợi mỏng,';
@@ -207,8 +207,6 @@ export async function workViewsE2E(_rootPage, { cdp, openPage, args, check }) {
     const { identifier } = await guest2.send('Page.addScriptToEvaluateOnNewDocument', {
       source: `(() => {
         window.__vinkVis = 'hidden';
-        window.__prerender = true;
-        Object.defineProperty(document, 'prerendering', { configurable: true, get: () => window.__prerender });
         Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => window.__vinkVis });
         window.__setVis = (next) => { window.__vinkVis = next; document.dispatchEvent(new Event('visibilitychange')); };
       })()`,
@@ -221,9 +219,6 @@ export async function workViewsE2E(_rootPage, { cdp, openPage, args, check }) {
 
       // Show for 2.2s (< 5s) -> still 0; hide for 3.5s -> still 0; show for 3.3s (>= 5s total) -> +1.
       await guest2.eval(`window.__setVis('visible')`);
-      await sleep(5300);
-      check(ledger.rows.length === 0, 'prerendered visible document emits no view');
-      await guest2.eval("window.__prerender = false; document.dispatchEvent(new Event('prerenderingchange'))");
       await sleep(2200);
       check(ledger.rows.length === 0, '2.2s foreground does not emit early');
       await guest2.eval(`window.__setVis('hidden')`);
@@ -236,6 +231,40 @@ export async function workViewsE2E(_rootPage, { cdp, openPage, args, check }) {
       check(guest2.errors.length === 0, 'guest2 pause/resume flow has no console errors');
     } finally {
       await guest2.send('Page.removeScriptToEvaluateOnNewDocument', { identifier });
+      ledger.stop();
+      await cdp.send('Target.disposeBrowserContext', { browserContextId });
+    }
+  }
+
+  // Isolate prerender from visibility and drive the exact boundary on the mounted adapter.
+  // The App and its 204 are real. Only the monotonic clock and prerender flag are controlled.
+  {
+    const { browserContextId } = await cdp.send('Target.createBrowserContext');
+    const page = await openPage(browserContextId);
+    const ledger = attachViewLedger(page, authorBase);
+    try {
+      await page.send('Page.addScriptToEvaluateOnNewDocument', {source:`
+        window.viewClock = 100;
+        performance.now = () => window.viewClock;
+        window.viewPrerender = true;
+        Object.defineProperty(document, 'prerendering', {get:() => window.viewPrerender});
+      `});
+      await page.goto(authorBase + readerPath);
+      await page.waitFor("document.visibilityState==='visible' && document.documentElement.dataset.hydrated==='true' && document.querySelector('.vk-document')", 'visible prerender fixture');
+      await sleep(5200);
+      await page.eval("window.viewClock += 6000; document.dispatchEvent(new Event('prerenderingchange'))");
+      check(ledger.rows.length === 0, 'prerender alone suppresses intake');
+      await page.eval("window.viewPrerender = false; document.dispatchEvent(new Event('prerenderingchange'))");
+      await page.eval("window.viewClock += 4999; document.dispatchEvent(new Event('prerenderingchange'))");
+      await sleep(120);
+      check(ledger.rows.length === 0, '4999ms since activation emits zero candidates');
+      await page.eval("window.viewClock++; document.dispatchEvent(new Event('prerenderingchange'))");
+      await waitForCount(() => ledger.rows[0]?.status === 204, 4000, 'exact-threshold 204');
+      await page.eval("window.viewClock += 6000; document.dispatchEvent(new Event('visibilitychange'))");
+      await sleep(120);
+      check(ledger.rows.length === 1 && (await readViews()).count === startCount + 2,
+        '5000ms produces exactly one candidate and a later wake produces none');
+    } finally {
       ledger.stop();
       await cdp.send('Target.disposeBrowserContext', { browserContextId });
     }
@@ -263,13 +292,16 @@ export async function workViewsE2E(_rootPage, { cdp, openPage, args, check }) {
 
       // Also keep pre-commit 503 coverage. An early route exit must disarm that retry.
       const selfLedger = attachViewLedger(guest, authorBase);
+      await observeVisit(guest);
       await guest.goto(authorBase + readerPath);
       await guest.waitFor("document.documentElement.dataset.hydrated==='true'", 'ready to lose ACK and leave');
       const end503 = await fabricate(guest, 'POST', intake, 503, {error:{code:'dependency_unavailable'}});
       await waitForCount(() => selfLedger.rows[0]?.status === 503, 8000, 'pre-commit 503');
       await end503();
+      await guest.waitFor('workViewTimers().includes(1000)', 'retry timer armed after 503');
       await guest.click('#reader-return');
       await guest.waitFor("location.pathname==='/'", 'Reader usable during retry backoff');
+      check(!await guest.eval('workViewTimers().includes(1000)'), 'pending backoff timer cleared on navigation');
       await sleep(1600);
       check(selfLedger.rows.length === 1, 'leaving Reader during backoff cancels the pending retry');
       // Persistent post-commit losses exhaust all three backoffs. Observe past the longest
