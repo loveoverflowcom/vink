@@ -4,6 +4,8 @@
 Deterministic, stdlib-only, synthetic data only (Q24). Run from the repository root:
 
     python3 -I services/vink-app/bench/reputation-sr01/qualify.py > results.json
+    python3 -I services/vink-app/bench/reputation-sr01/qualify.py --vectors \
+        > services/vink-app/behavior/reputation/formula-vectors.json
 
 The script prints one JSON document:
 
@@ -36,7 +38,22 @@ MICROS = Decimal(1_000_000)
 BOUND = 2**40  # checked domain bound for I and C (exclusive)
 
 
+def power_of_eleven(x):
+    """k when x + 10 = 10 * 11^k: f(x) = k exactly, which a finite-precision ln can miss."""
+    a = x + 10
+    if a % 10:
+        return None
+    m, k = a // 10, 0
+    while m % 11 == 0:
+        m, k = m // 11, k + 1
+    return k if m == 1 else None
+
+
 def f_exact(x, k=K, reference=REFERENCE):
+    if k == K and reference == REFERENCE:
+        exact = power_of_eleven(int(x))
+        if exact is not None:
+            return Decimal(exact)
     return (1 + Decimal(x) / k).ln() / (1 + reference / k).ln()
 
 
@@ -237,7 +254,44 @@ def shape_checks(limit=10_001):
     }
 
 
+def formula_vectors():
+    """Golden corpus for the Rust fixed-point implementation (#644): the SR-01 vectors plus
+    seeded pairs across magnitudes, exact powers of eleven and the domain bound."""
+    rng = random.Random(644)
+    pairs = [(g["impact"], g["contribution"]) for g in golden()]
+    powers = [10 * 11**k - 10 for k in range(0, 12) if 10 * 11**k - 10 < BOUND]
+    pairs += [(a, b) for a in powers[:6] for b in powers[:6]]
+    pairs += [(powers[-1], 0), (0, powers[-1]), (powers[-1], powers[-1])]
+    for upper in (2_000, 100_000, 10_000_000, BOUND - 1):
+        for _ in range(500):
+            pairs.append((rng.randint(0, upper), rng.randint(0, upper)))
+    seen = set()
+    vectors = []
+    for i, c in pairs:
+        if (i, c) in seen:
+            continue
+        seen.add((i, c))
+        _, micros, display = canonical(i, c)
+        vectors.append([i, c, micros, display])
+    return {
+        "format": "vink-reputation-formula-vectors-v1",
+        "formula_version": 1,
+        "generator": "services/vink-app/bench/reputation-sr01/qualify.py --vectors",
+        "columns": ["impact", "contribution", "score_micros", "display"],
+        "vectors": vectors,
+    }
+
+
 def main():
+    import sys
+    if sys.argv[1:] == ["--vectors"]:
+        data = formula_vectors()
+        lines = ",\n".join("  " + json.dumps(v) for v in data.pop("vectors"))
+        header = json.dumps(data, ensure_ascii=False, indent=1)[:-2]
+        print(header + ',\n "vectors": [\n' + lines + "\n ]\n}")
+        return
+    if sys.argv[1:]:
+        raise SystemExit("usage: qualify.py [--vectors]")
     dist, sens = distribution_and_sensitivity()
     print(json.dumps({
         "policy": {

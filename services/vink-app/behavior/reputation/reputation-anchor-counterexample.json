@@ -1,0 +1,16 @@
+{
+  "format": "vink-target-spec-counterexample-v1",
+  "status": "PURE_CORE_CONFORMANCE",
+  "quint_version": "0.33.1",
+  "model": "../reputation/reputation.qnt",
+  "invariant": "currentMatchesEffective",
+  "command": ["quint","run","../reputation/reputation.qnt","--backend=typescript","--seed=41","--step=mutatedAnchorStep","--max-steps=4","--max-samples=1","--invariant=currentMatchesEffective","--verbosity=1"],
+  "violation": [
+    {"name": "mutatedAnchorStep", "steps": [
+      {"command":{"anchor":0,"op":"next_week"},"outcome":"time","state":{"selected":[],"hidden":[],"public":true,"mature":false,"deleted":false,"week":1,"month":0,"effective":false,"terminal":false,"weekCredit":{"pending":0,"state":"unstarted"},"monthCredit":{"pending":0,"state":"unstarted"},"currentDelta":0,"weekDelta":0,"monthDelta":0,"weekNet":{},"monthNet":{}}},
+      {"command":{"anchor":0,"op":"mature"},"outcome":"neutral","state":{"selected":[],"hidden":[],"public":true,"mature":true,"deleted":false,"week":1,"month":0,"effective":false,"terminal":false,"weekCredit":{"pending":0,"state":"unseen"},"monthCredit":{"pending":0,"state":"unstarted"},"currentDelta":0,"weekDelta":0,"monthDelta":0,"weekNet":{},"monthNet":{}}},
+      {"command":{"anchor":1,"op":"select"},"outcome":"on","state":{"selected":[1],"hidden":[],"public":true,"mature":true,"deleted":false,"week":1,"month":0,"effective":true,"terminal":false,"weekCredit":{"pending":0,"state":"active"},"monthCredit":{"pending":0,"state":"unstarted"},"currentDelta":1,"weekDelta":1,"monthDelta":0,"weekNet":{"1":1},"monthNet":{}}},
+      {"command":{"anchor":2,"op":"select"},"outcome":"neutral","state":{"selected":[1,2],"hidden":[],"public":true,"mature":true,"deleted":false,"week":1,"month":0,"effective":true,"terminal":false,"weekCredit":{"pending":0,"state":"active"},"monthCredit":{"pending":0,"state":"unstarted"},"currentDelta":1,"weekDelta":0,"monthDelta":0,"weekNet":{"1":1},"monthNet":{}}}
+    ]}
+  ]
+}

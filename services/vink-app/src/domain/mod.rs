@@ -18,6 +18,7 @@ pub mod notification_inbox;
 pub mod principal;
 pub mod profile;
 pub mod publication;
+pub mod reputation;
 pub mod revision;
 pub mod saved_work;
 pub mod taxonomy;

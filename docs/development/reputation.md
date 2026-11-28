@@ -10,8 +10,8 @@ REP-01..14. Đặc tả: [miền](../architecture/reputation.md), [SR-01](reputa
 | --- | --- |
 | Sản phẩm | [VDR-REPUTATION@r1](../../decisions/proposals/VDR-REPUTATION.r1.toml) Q01..Q44 `PRODUCT_CONFIRMED` — [signoff](../../decisions/signoffs/VDR-REPUTATION.r1.toml) ngày 28/11/2026, SHA-256 `2c009b7ca218269251edc6bf363914e5c1d4123cbfd49c18f4820231ba0cc3ee`. |
 | Kiến trúc | [VDR-REPUTATION-CONTRACT@r1](../../decisions/proposals/VDR-REPUTATION-CONTRACT.r1.toml) K1..K9 `Provisional` — [signoff](../../decisions/signoffs/VDR-REPUTATION-CONTRACT.r1.toml), SHA-256 `7d60f8ae7ed146e033ce8ed352feaf6ac1798fd041693692500a2277231b0963`. Mỗi lát chứng minh lựa chọn của mình; chưa `Accepted`. |
-| Triển khai | `NOT_IMPLEMENTED`. Chưa có module, migration, worker hay route Reputation. |
-| Bằng chứng | Tài liệu và SR-01 tổng hợp (mục 4). Quint, Kani, PostgreSQL, HTTP, benchmark: `NOT_RUN`. |
+| Triển khai | `core` từ #644: `services/vink-app/src/domain/reputation` (công thức fixed-point, entitlement/anchor, máy Q41, lịch, maturity, gate bảng). Migration, outbox, worker, route: `NOT_IMPLEMENTED`. |
+| Bằng chứng | SR-01 tổng hợp; unit + golden + Quint replay + Kani cho pure core (mục 4). PostgreSQL, HTTP, benchmark: `NOT_RUN`. |
 
 <!-- vdr: active VDR-REPUTATION@r1 -->
 <!-- vdr: active VDR-REPUTATION-CONTRACT@r1 -->
@@ -40,7 +40,7 @@ Không công khai runtime trước bằng chứng privacy/performance của S06 
 | Lát | Issue | Phạm vi | Gate |
 | --- | --- | --- | --- |
 | REP-S01 | [PR #601](https://github.com/loveoverflowcom/vink/pull/601) | SSOT, SR-01, audit nguồn, hai proposal + signoff | Xong khi #601 merge |
-| REP-S02 | [#644](https://github.com/loveoverflowcom/vink/issues/644) | `domain::reputation`: công thức fixed-point, entitlement/anchor, eligibility, máy Q41, lịch, golden vectors, Quint + replay, Kani | Pure core; không I/O |
+| REP-S02 | [#644](https://github.com/loveoverflowcom/vink/issues/644) | `domain::reputation`: công thức fixed-point, entitlement/anchor, eligibility, máy Q41, lịch, golden vectors, Quint + replay, Kani | `core`; không I/O |
 | REP-S03 | [#645](https://github.com/loveoverflowcom/vink/issues/645) | Migration, outbox Reputation ghi cùng transaction ở mọi nguồn trong mục 2, công tắc activation | S02 merged |
 | REP-S04 | [#646](https://github.com/loveoverflowcom/vink/issues/646) | Consumer `vink-worker`, projection hiện hành, maturity Q42, backfill Q33, correction CLI Q38, rebuild/reconcile | S03 merged |
 | REP-S05 | [#647](https://github.com/loveoverflowcom/vink/issues/647) | Credit tuần/tháng, Top Rating/Top Growth, snapshot/dự phòng/rebuild, retention/expiry | S04 merged |
@@ -58,6 +58,27 @@ Phụ thuộc tuần tự S01 → S02 → S03 → S04 → S05 → S06. Design, L
 | `python3 -I services/vink-app/bench/reputation-sr01/qualify.py` (hai lần) | Cùng output; 0 sai lệch f64 trên 10^6 cặp; khoảng cách micro nhỏ nhất 4,8 × 10^-7 | Tổng hợp, không phải code Rust |
 
 Không chạy Quint, Kani, PostgreSQL, HTTP hay benchmark trong S01; chúng thuộc S02..S06.
+
+## 4a. Pure core S02 (#644)
+
+| Owner | Quy tắc |
+| --- | --- |
+| `domain/reputation/formula.rs` | `score_v1`: ln nguyên fixed-point 96 bit (atanh), trường hợp R nguyên tính chính xác; `ComponentCount` [0, 2^40), `ScoreMicros::display`, `GrowthTenths::of` checked. |
+| `domain/reputation/calendar.rs` | Tuần thứ Hai / tháng lịch UTC+07:00, [start, end), `first_full_period` (Q33), `maturity_threshold` (Q30). |
+| `domain/reputation/credit.rs` | Máy Q41 `Unstarted/Unseen/Active/WithdrawnPending(p)/Burned`, khởi động lười tại kỳ đầy đủ đầu tiên (baseline), kẹp kỳ đơn điệu. |
+| `domain/reputation/entitlement.rs` | `apply(record, cause, facts, periods)`: so effective đã lưu với facts đọc lại; Community/Neutral/Terminal/Maturity → delta hiện hành và hai bước credit. Caller áp maturity trước sự kiện sau ngưỡng của cùng actor. |
+| `domain/reputation/board.rs` | `rating_admits`, `qualify_growth` (≥ 3 actor net dương, gom theo actor), `RatingKey`/`GrowthKey`. |
+
+| Lệnh | Kết quả | Boundary |
+| --- | --- | --- |
+| `cargo test -p vink-app --lib -- domain::reputation` | PASS 23 test, gồm 2 063 golden vectors | unit/golden |
+| `cargo xtask verify discussion` | PASS; model `behavior/reputation/reputation.qnt` typecheck + 1 000 mẫu × 40 bước, 5 kịch bản, 2 negative control, replay Rust | model + replay |
+| `cargo kani --harness domain::reputation::proofs::*` | 3/3 SUCCESSFUL | kani |
+| `cargo clippy -p vink-app --lib --tests -- -D warnings` | PASS | lint |
+| `cargo xtask verify quick`, `cargo xtask verify kani` (toàn lane) | NOT_RUN: dừng theo yêu cầu chủ sản phẩm, chờ verify lại | — |
+
+Bộ sinh golden phải xử lý chính xác lũy thừa của 11: Decimal 60 chữ số cho f(1 610 500) = 4,999…9 và làm
+`floor` hụt một micro; đường Rust và `qualify.py` đều tính các điểm này bằng số nguyên.
 
 ## 5. Acceptance của epic theo lát
 

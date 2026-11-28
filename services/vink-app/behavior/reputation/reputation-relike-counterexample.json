@@ -1,0 +1,20 @@
+{
+  "format": "vink-target-spec-counterexample-v1",
+  "status": "PURE_CORE_CONFORMANCE",
+  "quint_version": "0.33.1",
+  "model": "../reputation/reputation.qnt",
+  "invariant": "onlyFirstCreditIsGrowth",
+  "command": ["quint","run","../reputation/reputation.qnt","--backend=typescript","--seed=41","--step=mutatedRelikeStep","--max-steps=8","--max-samples=1","--invariant=onlyFirstCreditIsGrowth","--verbosity=1"],
+  "violation": [
+    {"name": "mutatedRelikeStep", "steps": [
+      {"command":{"anchor":0,"op":"next_week"},"outcome":"time","state":{"selected":[],"hidden":[],"public":true,"mature":false,"deleted":false,"week":1,"month":0,"effective":false,"terminal":false,"weekCredit":{"pending":0,"state":"unstarted"},"monthCredit":{"pending":0,"state":"unstarted"},"currentDelta":0,"weekDelta":0,"monthDelta":0,"weekNet":{},"monthNet":{}}},
+      {"command":{"anchor":0,"op":"next_month"},"outcome":"time","state":{"selected":[],"hidden":[],"public":true,"mature":false,"deleted":false,"week":1,"month":1,"effective":false,"terminal":false,"weekCredit":{"pending":0,"state":"unstarted"},"monthCredit":{"pending":0,"state":"unstarted"},"currentDelta":0,"weekDelta":0,"monthDelta":0,"weekNet":{},"monthNet":{}}},
+      {"command":{"anchor":0,"op":"mature"},"outcome":"neutral","state":{"selected":[],"hidden":[],"public":true,"mature":true,"deleted":false,"week":1,"month":1,"effective":false,"terminal":false,"weekCredit":{"pending":0,"state":"unseen"},"monthCredit":{"pending":0,"state":"unseen"},"currentDelta":0,"weekDelta":0,"monthDelta":0,"weekNet":{},"monthNet":{}}},
+      {"command":{"anchor":1,"op":"select"},"outcome":"on","state":{"selected":[1],"hidden":[],"public":true,"mature":true,"deleted":false,"week":1,"month":1,"effective":true,"terminal":false,"weekCredit":{"pending":0,"state":"active"},"monthCredit":{"pending":0,"state":"active"},"currentDelta":1,"weekDelta":1,"monthDelta":1,"weekNet":{"1":1},"monthNet":{"1":1}}},
+      {"command":{"anchor":0,"op":"next_week"},"outcome":"time","state":{"selected":[1],"hidden":[],"public":true,"mature":true,"deleted":false,"week":2,"month":1,"effective":true,"terminal":false,"weekCredit":{"pending":0,"state":"active"},"monthCredit":{"pending":0,"state":"active"},"currentDelta":0,"weekDelta":0,"monthDelta":0,"weekNet":{"1":1},"monthNet":{"1":1}}},
+      {"command":{"anchor":1,"op":"unselect"},"outcome":"off","state":{"selected":[],"hidden":[],"public":true,"mature":true,"deleted":false,"week":2,"month":1,"effective":false,"terminal":false,"weekCredit":{"pending":2,"state":"withdrawn"},"monthCredit":{"pending":1,"state":"withdrawn"},"currentDelta":-1,"weekDelta":-1,"monthDelta":-1,"weekNet":{"1":1,"2":-1},"monthNet":{"1":0}}},
+      {"command":{"anchor":0,"op":"next_week"},"outcome":"time","state":{"selected":[],"hidden":[],"public":true,"mature":true,"deleted":false,"week":3,"month":1,"effective":false,"terminal":false,"weekCredit":{"pending":2,"state":"withdrawn"},"monthCredit":{"pending":1,"state":"withdrawn"},"currentDelta":0,"weekDelta":0,"monthDelta":0,"weekNet":{"1":1,"2":-1},"monthNet":{"1":0}}},
+      {"command":{"anchor":1,"op":"select"},"outcome":"on","state":{"selected":[1],"hidden":[],"public":true,"mature":true,"deleted":false,"week":3,"month":1,"effective":true,"terminal":false,"weekCredit":{"pending":0,"state":"active"},"monthCredit":{"pending":0,"state":"active"},"currentDelta":1,"weekDelta":1,"monthDelta":1,"weekNet":{"1":1,"2":-1,"3":1},"monthNet":{"1":1}}}
+    ]}
+  ]
+}
