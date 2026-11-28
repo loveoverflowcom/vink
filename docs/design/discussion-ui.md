@@ -49,7 +49,7 @@ Hướng C đã chọn từ [issue #134](https://github.com/loveoverflowcom/vink
 [LayoutSpec R3.1](https://drive.google.com/file/d/1S4xxyEpjtt4r6g9i8G8iJviWR_c_dQ8i/view)
 và [desktop R1.3](https://drive.google.com/file/d/1G18GyQHrmYdxplNd9kdsn05hKRjl5AW8/view).
 Phần này ghi geometry lịch sử R3.1. [#616](#ngữ-cảnh-và-trục-phản-hồi--616)
-cập nhật riêng hai biên và nền nhóm; controller, API, authority và recovery vẫn giữ owner.
+cập nhật riêng hai biên và nền nhóm. Controller, API, authority và recovery vẫn giữ owner.
 
 ```text
 #feedback-region — cùng measure Reader
@@ -286,14 +286,13 @@ vùng riêng, xác nhận gỡ, biên nhận chờ duyệt và thông báo đón
   hay focus và không thêm node vào cây trợ năng.
 - Đầu ô soạn dùng icon Reply trang trí phía trước, “Trả lời” regular ở
   `on-surface-variant`, tên semibold ở `on-surface`, nút đóng ở cuối. Ngữ cảnh đã đăng
-  dùng cùng phân cấp chữ với “Đang trả lời”. Phần chữ dài giới hạn hai dòng;
-  textarea vẫn nhận tên đầy đủ của đích qua `aria-describedby`. Tên đã đăng có
-  link hồ sơ khi projection cấp `ProfileLink`; hành động đến nhận xét chỉ xuất hiện
+  dùng cùng phân cấp chữ với “Đang trả lời”. Tên dài giới hạn hai dòng. Textarea vẫn nhận tên đầy đủ của đích qua `aria-describedby`. Tên đã đăng có
+  link hồ sơ khi projection cấp `ProfileLink`. Hành động đến nhận xét chỉ xuất hiện
   khi đích công khai đã tải. Ô soạn dùng tên dạng văn bản lấy từ draft hợp lệ,
   và mô tả phục hồi dùng cùng ID khi đích mất.
 - `RootThreadView` đưa ô soạn và bản thu gọn vào slot cố định của nhánh. Controller
   tiếp tục giữ nháp, selection, focus, IME, biên nhận và quyền gửi. Khi thu ô, native
-  textarea được giữ; mở lại đưa focus về đúng field. Đường nối dừng ở toàn bộ khối
+  textarea được giữ. Mở lại đưa focus về đúng field. Đường nối dừng ở toàn bộ khối
   cuối đang hiển thị, kể cả khi khối đó là ô soạn hoặc “Bản trả lời được giữ lại”.
 
 [Ánh xạ DOM/AX](../development/web-semantics.md#từ-yêu-cầu-tới-bằng-chứng) ·

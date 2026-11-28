@@ -298,12 +298,22 @@ fn r4_orders_endorsement_before_reply_and_keeps_read_only_static() {
             < interactive.find("id=\"remove-comment-root\"").unwrap(),
         "Remove action stays after the Ưng|Trả lời segment: {interactive}"
     );
+    let root_reply = interactive
+        .split_once("id=\"reply-to-root\"")
+        .and_then(|(_, rest)| rest.split_once('>'))
+        .unwrap()
+        .0;
+    let selected_reply = interactive
+        .split_once("<article id=\"comment-reply-1\"")
+        .and_then(|(_, rest)| rest.split_once('>'))
+        .unwrap()
+        .0;
     assert!(
-        interactive.contains("aria-expanded=\"true\"")
-            && interactive.contains("data-reply-target=\"true\"")
-            && interactive.contains("Đang là đích trả lời"),
-        "active branch and reply target markers: {interactive}"
+        root_reply.contains("aria-expanded=\"true\"")
+            && selected_reply.contains("data-reply-target=\"true\""),
+        "the branch is expanded and marks the selected reply: {interactive}"
     );
+    assert_eq!(interactive.matches("data-reply-target=\"true\"").count(), 1);
 
     let readonly = Owner::new().with(|| {
         view! {

@@ -536,7 +536,7 @@ cho khách và thành viên, nhóm hồi đáp phẳng, ngày giờ từ public 
 `discussionReadingAndWrites`, xác thực theo ý định tại
 `contextualReaderAuth`. Các scenario dùng Chrome với App cục bộ. Ca trả lời
 mất đích dùng response fixture có ghi provenance. [#616](../design/discussion-ui.md#ngữ-cảnh-và-trục-phản-hồi--616)
-dùng một lane cho phản hồi và composer đang mở hoặc giữ nháp; oracle cùng scenario
+dùng một lane cho phản hồi và composer đang mở hoặc giữ nháp. Oracle cùng scenario
 kiểm biên nhánh, đích cùng tên, phân trang, typography và trạng thái focus theo nhánh.
 
 ## DISC-WEB-PUBLIC-OWN-READS (10/11/2026)
