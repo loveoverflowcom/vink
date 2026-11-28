@@ -185,6 +185,12 @@ pub fn Button(
     /// Disclosure state belongs on the focusable button, not its action-note wrapper.
     #[prop(optional, into)]
     expanded: Option<Signal<bool>>,
+    /// Confirmed state for a toggle action.
+    #[prop(optional, into)]
+    pressed: Option<Signal<bool>>,
+    /// Initial focus when this is the caller's preferred dialog action.
+    #[prop(optional)]
+    autofocus: bool,
     /// Overrides the visible label when the target needs context (it must start with it).
     #[prop(optional, into)]
     accessible_label: Option<Signal<String>>,
@@ -212,6 +218,8 @@ pub fn Button(
                 aria-disabled=move || (!state.with(ActionState::is_enabled)).then_some("true")
                 aria-busy=move || state.with(|s| matches!(s, ActionState::Pending { .. })).then_some("true")
                 aria-expanded=move || expanded.map(|value| value.get().to_string())
+                aria-pressed=move || pressed.map(|value| value.get().to_string())
+                autofocus=autofocus
                 aria-haspopup=has_popup
                 aria-label=move || accessible_label.map(|label| label.get())
                 aria-describedby=move || {

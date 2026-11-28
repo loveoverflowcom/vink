@@ -178,6 +178,13 @@
       "use": "Avatar/khung ảnh trung tính",
       "path": "M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
     },
+    "person-remove": {
+      "upstream": "src/social/person_remove/materialicons/24px.svg",
+      "sourceLayout": "grouped",
+      "sha256": "fd007484fd7f2cf4f2720be2c21aee45c54d869060cb459fd367f3229620e952",
+      "use": "Bỏ theo dõi",
+      "path": "M14,8c0-2.21-1.79-4-4-4S6,5.79,6,8s1.79,4,4,4S14,10.21,14,8z M17,10v2h6v-2H17z M2,18v2h16v-2c0-2.66-5.33-4-8-4 S2,15.34,2,18z"
+    },
     "public": {
       "upstream": "src/social/public/materialicons/24px.svg",
       "sha256": "c60043260a530ae01a2bf4214d7e91465284184145d77025689bb1c684ac41af",

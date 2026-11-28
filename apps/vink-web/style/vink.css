@@ -2277,7 +2277,7 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index, .vk-me) { scrol
   font: var(--vk-type-display-weight) var(--vk-type-display-size)/var(--vk-type-display-line-height) var(--vk-type-display-font);
   margin: 1rem 0 .5rem;
 }
-.vk-author-public h2 {
+.vk-author-public :is(#author-works-heading, #saved-heading) {
   font: var(--vk-type-section-weight) var(--vk-type-section-size)/var(--vk-type-section-line-height) var(--vk-type-section-font);
   letter-spacing: var(--vk-type-section-tracking);
   margin: 0 0 var(--vk-space-2);
@@ -2288,8 +2288,9 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index, .vk-me) { scrol
   font: var(--vk-type-title-weight) var(--vk-type-title-size)/var(--vk-type-title-line-height) var(--vk-type-title-font);
 }
 :is(.vk-author-public, .vk-rel-page--results) {
+  --vk-profile-gutter: clamp(16px, 4.4vw, 68px);
   max-inline-size: 53rem;
-  padding-inline: clamp(16px, 4.4vw, 68px);
+  padding-inline: var(--vk-profile-gutter);
 }
 .vk-main:has(> .vk-author-public, > .vk-rel-wrapper .vk-rel-page--results) {
   padding-inline: 0;
@@ -2300,27 +2301,30 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index, .vk-me) { scrol
   .vk-rel-page--results { padding-inline: 16px; }
 }
 
-/* Author profile and its session-scoped editor.
- * R3 (#336): identity cluster, Bio and works sit on the page; no banner or filled sections.
- * #588: compact header. The seal sits beside a bold literary name and handle; the social row
- * (counts, then Follow) shares the text column and spans the header when the column is narrow. */
+/* #606: identity, social row and works use one content column. */
+.vk-author-public {
+  max-inline-size: calc(var(--vk-measure) + 2 * var(--vk-profile-gutter));
+}
 .vk-author-identity {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  grid-template-areas: "seal name" ". social";
+  grid-template-areas: "seal name" "social social";
   align-items: center;
   gap: var(--vk-space-2) var(--vk-space-4);
   margin-block: var(--vk-space-4) var(--vk-space-2);
 }
 .vk-author-public .vk-author-identity > .vk-author-seal {
   grid-area: seal;
-  inline-size: 3.5rem;
-  block-size: 3.5rem;
+  inline-size: 64px;
+  block-size: 64px;
   margin: 0;
-  font: var(--vk-type-title-weight) var(--vk-text-profile-monogram)/1 var(--vk-type-title-font);
+  font: var(--vk-type-title-weight) min(var(--vk-text-profile-monogram), 28px)/1 var(--vk-type-title-font);
+  white-space: nowrap;
 }
 .vk-author-public header { grid-area: name; min-inline-size: 0; overflow-wrap: anywhere; }
 .vk-author-public header h1 {
+  display: block;
+  overflow: visible;
   margin: 0;
   font-family: var(--vk-type-title-font);
   font-size: var(--vk-text-profile-name);
@@ -2333,33 +2337,45 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index, .vk-me) { scrol
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--vk-space-1) var(--vk-space-3);
+  gap: var(--vk-space-2) var(--vk-space-3);
   min-inline-size: 0;
 }
-/* An empty relationship slot (no permitted facts) must not offset the action by a gap. */
-.vk-author-social > :empty:not(.vk-follow-region) { display: none; }
-.vk-author-social > .vk-profile-relationships {
-  flex: 0 1 auto;
+.vk-author-social__facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vk-space-2) var(--vk-space-3);
+  min-inline-size: 0;
+}
+.vk-author-social__facts:empty { display: none; }
+.vk-author-social .vk-profile-relationships {
   margin: 0;
   gap: 0 var(--vk-space-3);
   font: var(--vk-type-label-weight) var(--vk-type-label-size)/var(--vk-type-label-line-height) var(--vk-type-label-font);
 }
-/* A fixed basis keeps the Follow button on its line when status or reconcile text appears. */
-.vk-author-social > .vk-follow-region { flex: 1 1 8rem; min-inline-size: 0; margin: 0; }
-.vk-rel-num { font-weight: bold; }
-@container (max-width: 22rem) {
-  .vk-author-identity { grid-template-areas: "seal name" "social social"; }
+.vk-author-social :is(.vk-profile-relationships a, .vk-rel-stat) { padding-inline: 0; }
+.vk-author-social > .vk-follow-region {
+  min-inline-size: 0;
+  margin: 0 0 0 auto;
 }
+.vk-author-social .vk-follow-controls { justify-items: end; text-align: end; }
+.vk-author-social #follow-status {
+  contain: inline-size;
+  justify-self: stretch;
+}
+.vk-rel-num { font-weight: bold; }
 .vk-author-public header p {
+  overflow: visible;
+  white-space: normal;
   margin: var(--vk-space-1) 0 0;
   color: var(--vk-on-surface-variant);
   font-size: var(--vk-type-label-size);
   font-weight: var(--vk-type-body-weight);
   line-height: var(--vk-type-caption-line-height);
 }
-/* The owner's entry and the guest/NeedsPrincipal Follow link share the tonal pill of Follow. */
+/* The owner's edit and principal setup have secondary emphasis. */
 #own-profile-edit-link,
-#follow-sign-in {
+#follow-sign-in.vk-ui-link {
   display: inline-flex;
   align-items: center;
   min-block-size: var(--vk-size-hit-target);
@@ -2371,17 +2387,43 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index, .vk-me) { scrol
   text-decoration: none;
 }
 #own-profile-edit-link:hover,
-#follow-sign-in:hover {
+#follow-sign-in.vk-ui-link:hover {
   background: color-mix(in srgb, var(--vk-action-tonal-content) 8%, var(--vk-action-tonal-container));
 }
 .vk-author-public .vk-profile-relationships a {
   color: var(--vk-on-surface);
-  text-decoration: underline;
-  text-decoration-color: var(--vk-outline-variant);
-  text-decoration-thickness: 1px;
+  text-decoration: none;
   text-underline-offset: 0.3em;
 }
-.vk-author-public .vk-profile-relationships a:hover { text-decoration-color: currentColor; }
+.vk-author-public .vk-profile-relationships a:is(:hover, :focus-visible) {
+  text-decoration: underline;
+}
+#follow-action, #follow-sign-in { min-block-size: 48px; }
+#follow-sign-in { text-decoration: none; }
+#follow-action[aria-pressed="true"] { color: var(--vk-on-surface); }
+.vk-follow-label { display: grid; }
+.vk-follow-label > span {
+  grid-area: 1 / 1;
+  display: flex;
+  align-items: center;
+  gap: var(--vk-space-2);
+}
+.vk-follow-label .vk-ui-icon { flex: none; }
+.vk-follow-label__unfollow { visibility: hidden; }
+#follow-action[data-state="enabled"]:focus-visible .vk-follow-label[data-following] .vk-follow-label__state {
+  visibility: hidden;
+}
+#follow-action[data-state="enabled"]:focus-visible .vk-follow-label__unfollow {
+  visibility: visible;
+}
+@media (hover: hover) {
+  #follow-action[data-state="enabled"]:hover .vk-follow-label[data-following] .vk-follow-label__state {
+    visibility: hidden;
+  }
+  #follow-action[data-state="enabled"]:hover .vk-follow-label__unfollow {
+    visibility: visible;
+  }
+}
 .vk-author-bio {
   max-inline-size: 36em;
   margin-block: var(--vk-space-4) 0;
@@ -2398,9 +2440,9 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index, .vk-me) { scrol
   flex-direction: column;
   min-inline-size: 0;
   padding-block: var(--vk-space-4);
-  border-block-end: 1px solid var(--vk-outline-variant);
   overflow-wrap: anywhere;
 }
+.vk-profile-work + .vk-profile-work { border-block-start: 1px solid var(--vk-outline-variant); }
 .vk-profile-work__title { margin: 0; min-inline-size: 0; overflow-wrap: anywhere; }
 /* Back/Tab scroll the inline title into view: leave room for the meta line drawn above it and
  * the row ring, and (below 760px) for the bottom bar, as Explore's row link does. */
@@ -2437,10 +2479,21 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index, .vk-me) { scrol
 .vk-profile-work__excerpt--lines { -webkit-line-clamp: 4; }
 @container (min-width: 40rem) {
   .vk-author-identity { column-gap: var(--vk-space-6); }
-  .vk-author-public .vk-author-identity > .vk-author-seal { inline-size: 4.5rem; block-size: 4.5rem; font-size: var(--vk-text-profile-monogram-wide); }
   .vk-author-public header h1 { font-size: var(--vk-text-profile-name-wide); }
-  .vk-author-bio { margin-inline-start: calc(4.5rem + var(--vk-space-6)); }
 }
+
+.vk-author-works-empty.vk-empty-state--region {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  justify-items: start;
+  gap: var(--vk-space-4);
+  padding-block: var(--vk-space-4);
+  text-align: start;
+}
+.vk-author-works-empty.vk-empty-state--region .vk-empty-state__art {
+  inline-size: min(72px, 24vw);
+}
+.vk-author-works-empty .vk-empty-state__text { justify-items: start; }
 
 .vk-profile-actions p { margin: 0; }
 .vk-profile-actions {
