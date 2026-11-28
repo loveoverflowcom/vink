@@ -2762,6 +2762,19 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
   background: var(--vk-bg-content);
   overflow-wrap: anywhere;
 }
+/* At large text sizes a single title word or action must not size the grid track. */
+#desk-review-content,
+#desk-review-content .vk-notif-decision__panel { grid-template-columns: minmax(0, 1fr); }
+#desk-review-content .vk-notif-decision__panel > *,
+#desk-review-content .vk-notif-decision__actions > * {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  overflow-wrap: anywhere;
+}
+#desk-review-content .vk-notif-decision__actions :is(a, button, .vk-ui-button__label) {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 .vk-notif-decision__panel p { margin: 0; }
 .vk-notif-decision__chips,
 .vk-notif-decision__actions { display: flex; flex-wrap: wrap; gap: var(--vk-space-2); }

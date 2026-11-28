@@ -52,6 +52,11 @@ async function reflow(page, message) {
       resolve({ message:text?.innerText, clipped:text?.scrollWidth > text?.clientWidth+1,
         overflow:sheet?.scrollWidth > sheet?.clientWidth+1 });
     })))`);
+    if (geometry.overflow) {
+      console.error(await page.eval(`[...document.querySelectorAll('#desk-review-content *')].filter(el =>
+        el.getBoundingClientRect().right > document.querySelector('#desk-review-content').getBoundingClientRect().right + 1)
+        .map(el => [el.tagName, el.className, Math.round(el.getBoundingClientRect().width)])`));
+    }
     assert.deepEqual(geometry, {message, clipped:false, overflow:false}, `${width}/${theme}/${scale}`);
   }
   await page.send('Emulation.clearDeviceMetricsOverride');
