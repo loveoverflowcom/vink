@@ -91,6 +91,20 @@ export async function richDiscussion(page,{args,check,rootId,workId,browserConte
         await page.eval(`document.documentElement.style.fontSize = '${scale}%';
           document.documentElement.dataset.theme = '${theme}';
           document.documentElement.getBoundingClientRect(); document.fonts.ready`);
+        // A desktop → phone resize also collapses the navigation rail. Wait for the
+        // actual Reader column to finish moving before measuring or positioning the reply.
+        await page.eval(`new Promise(resolve => {
+          const field = document.querySelector(${JSON.stringify(reply+'-rich')});
+          let prior = null, stableSince = performance.now(), started = stableSince;
+          const observe = now => {
+            const r = field.getBoundingClientRect();
+            const geometry = [r.x, r.width, document.documentElement.scrollWidth].join(',');
+            if (geometry !== prior) { prior = geometry; stableSince = now; }
+            if ((now - started >= 650 && now - stableSince >= 250) || now - started >= 4000) resolve();
+            else requestAnimationFrame(observe);
+          };
+          requestAnimationFrame(observe);
+        })`);
         const target = JSON.stringify(reply + '-rich');
         await page.waitFor(`(async () => {
           const settled = () => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
