@@ -8,12 +8,10 @@ const API = '/api/v1/me/profile';
 const EDIT = '/toi/chinh-ho-so';
 const NAME = '#profile-pen-name';
 const BIO = '#profile-bio';
-
 const BACK = '#profile-back';
 const BIO_SCOPE = '#profile-bio-policy';
 const SAME_NAME = 'Một bút danh tiếng Việt rất dài dùng chung trên tác phẩm và nhận xét';
 const own = (page) => page.eval(`fetch('${API}').then(r => r.json())`);
-
 const selector = (id) => '#' + id;
 
 async function edit(page, base) {
@@ -198,18 +196,7 @@ async function restoredAttribution(page, check, holdAnswer, { url, endpoint, lin
   await page.waitFor(linked, 'the current projection restores the correct links');
 }
 
-export async function authorProfiles(page, other, {base, openPage, check, holdAnswer, switchActor, textContrast}) {
-  console.log('Author Profile and bylines (#292/#293):');
-  // The preceding multi-account scenario last opened a different tab.
-  await page.send('Page.bringToFront');
-  await page.goto(base + '/toi');
-  await page.waitFor(q('#edit-profile-link'), 'Me shows the profile entry');
-  await accountR5Layouts(page, check);
-  await page.eval(`${q('#edit-profile-link')}.focus()`);
-  await page.key('Enter');
-  await page.waitFor(q(NAME), 'keyboard opens edit from Me');
-  const a = await own(page);
-  const bio = 'Viết bằng mực tím.\n\nMột đoạn nữa.';
+async function inlineCommits(page, {check, holdAnswer, a, bio}) {
   const writes = [];
   const watch = event => {
     if (event.sessionId !== page.sessionId || event.method !== 'Network.requestWillBeSent') return;
@@ -302,6 +289,87 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   await page.eval(`${q(NAME)}.focus()`);
   await page.waitFor(`${q(BIO+'-feedback')}?.textContent.includes('Đã lưu')`,'ordinary text blur commits bio');
 
+}
+
+async function lateProfileWrites(page, staleTab, {check, holdAnswer, switchActor, b, bio}) {
+  // At Chrome's response boundary a newer account may still be waiting for
+  // its own read. The old private controls must disappear before release.
+  const transport = await holdAnswer(staleTab,'PUT',API);
+  await staleTab.key('Enter',2);
+  check(await transport.held()===200,'hold the real PUT response before Chrome completes the transaction');
+  await fill(staleTab,BIO,'Không chuyển nháp này sang B');
+  await staleTab.key('Enter',2);
+  await switchActor('b');
+  await staleTab.waitFor(`!${q(BIO)} || ${q(BIO)}.value===''`,'old private UI fenced while the transport ACK is paused');
+  check((await own(page)).principal_id===b.principal_id && (await own(page)).bio===null,
+    'independent B session and its persisted bio are unchanged');
+  await transport.finish(false,true);
+  await staleTab.waitFor(`${q(BIO)}?.value===''`,'B profile resolves after the old transport response');
+  await switchActor('a');
+  await staleTab.waitFor(`${q(BIO)}?.value==='Nháp của phiên mới'`,'new A scope reads the durable write and drops the previous queue');
+  await fill(staleTab,BIO,'Chờ trả kết quả');
+
+  // A write has reached App, but its response and the next committed intent
+  // still belong to the old session generation.
+  // Hold delivery to WASM after the real response body has arrived. Pausing
+  // Chrome's Fetch domain covers the separate transport case above.
+  await staleTab.eval(`(() => {
+    const original=window.fetch;
+    let release;
+    const gate=new Promise(resolve=>{release=resolve});
+    window.profileAckGate={release, status:null};
+    window.fetch=async function(input,init) {
+      const response=await original.call(this,input,init);
+      if (new URL(response.url).pathname===${JSON.stringify(API)} && (init?.method ?? input.method)==='PUT') {
+        window.fetch=original;
+        await response.clone().arrayBuffer();
+        window.profileAckGate.status=response.status;
+        await gate;
+      }
+      return response;
+    };
+  })()`);
+  await staleTab.key('Enter',2);
+  await staleTab.waitFor("window.profileAckGate.status===200",'real A write completed before application delivery');
+  check((await own(staleTab)).bio==='Chờ trả kết quả','A write reached durable commit before sign-out');
+  await fill(staleTab,BIO,'Lệnh xếp hàng của phiên cũ');
+  await staleTab.key('Enter',2);
+  await switchActor('b');
+  try {
+    await staleTab.waitFor(`${q(BIO)}?.value===''`,'B never adopts A’s draft or pending status');
+  } catch (error) {
+    const state=await staleTab.eval(`({path:location.pathname,heading:document.querySelector('main h1')?.textContent,
+      bio:${q(BIO)}?.value,status:${q('#profile-message')}?.textContent,main:document.querySelector('main')?.innerText?.slice(0,400)})`);
+    throw new Error(`${error.message}: ${JSON.stringify(state)}; ${staleTab.errors.join(' | ')}`);
+  }
+  await switchActor('a');
+  await staleTab.waitFor(`${q(BIO)}?.value==='Chờ trả kết quả'`,'new A observes only the persisted value');
+  await fill(staleTab,BIO,'Chữ mới chưa chốt');
+  await staleTab.eval(`(async()=>{
+    window.profileAckGate.release();
+    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+    delete window.profileAckGate;
+  })()`);
+  check(await staleTab.eval(`${q(BIO)}.value==='Chữ mới chưa chốt' && !${q(BIO+'-feedback')}`) &&
+    (await own(staleTab)).bio==='Chờ trả kết quả','late ACK cannot erase new text, claim Saved or send the old queue');
+  await fill(staleTab,BIO,bio);
+  await staleTab.key('Enter',4);
+  await staleTab.waitFor(`${q(BIO+'-feedback')}?.textContent.includes('Đã lưu')`,'Cmd+Enter commits in the new A session');
+}
+
+export async function authorProfiles(page, other, {base, openPage, check, holdAnswer, switchActor, textContrast}) {
+  console.log('Author Profile and bylines (#292/#293):');
+  // The preceding multi-account scenario last opened a different tab.
+  await page.send('Page.bringToFront');
+  await page.goto(base + '/toi');
+  await page.waitFor(q('#edit-profile-link'), 'Me shows the profile entry');
+  await accountR5Layouts(page, check);
+  await page.eval(`${q('#edit-profile-link')}.focus()`);
+  await page.key('Enter');
+  await page.waitFor(q(NAME), 'keyboard opens edit from Me');
+  const a = await own(page);
+  const bio = 'Viết bằng mực tím.\n\nMột đoạn nữa.';
+  await inlineCommits(page, {check, holdAnswer, a, bio});
   await page.click(BACK);
   await page.waitFor(`${q('#me-title')}?.textContent.trim() === ${JSON.stringify(SAME_NAME)}`, 'stored long name returns on Account');
   await page.viewport(320, 800);
@@ -558,24 +626,7 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   check(await staleTab.eval(`${q(BIO)}.value==='Nháp của phiên mới'`),
     `old A response cannot overwrite the new A form (${ownDisposition})`);
 
-  // A write has reached App, but its response and the next committed intent
-  // still belong to the old session generation.
-  const lateWrite = await holdAnswer(staleTab,'PUT',API);
-  await staleTab.key('Enter',2);
-  check(await lateWrite.held()===200,'A write reached durable commit before sign-out');
-  await fill(staleTab,BIO,'Lệnh xếp hàng của phiên cũ');
-  await staleTab.key('Enter',2);
-  await switchActor('b');
-  await staleTab.waitFor(`${q(BIO)}?.value===''`,'B never adopts A’s draft or pending status');
-  await switchActor('a');
-  await staleTab.waitFor(`${q(BIO)}?.value==='Nháp của phiên mới'`,'new A observes only the persisted value');
-  await fill(staleTab,BIO,'Chữ mới chưa chốt');
-  await lateWrite.finish(false,true);
-  check(await staleTab.eval(`${q(BIO)}.value==='Chữ mới chưa chốt' && !${q(BIO+'-feedback')}`) &&
-    (await own(staleTab)).bio==='Nháp của phiên mới','late ACK cannot erase new text, claim Saved or send the old queue');
-  await fill(staleTab,BIO,bio);
-  await staleTab.key('Enter',4);
-  await staleTab.waitFor(`${q(BIO+'-feedback')}?.textContent.includes('Đã lưu')`,'Cmd+Enter commits in the new A session');
+  await lateProfileWrites(page, staleTab, {check, holdAnswer, switchActor, b, bio});
 
   const discovery = '/?q=rieng&tag=' + encodeURIComponent('tản-văn');
   await guest.goto(base + discovery);

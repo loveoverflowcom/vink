@@ -173,7 +173,7 @@ fn ProfileForm(scope: StoredValue<String>, initial: OwnProfile) -> impl IntoView
                 <Heading id="profile-privacy-heading" level=HeadingLevel::H2 role=TypeRole::Title
                     attr:class="m-0">"Quyền riêng tư"</Heading>
                 {Policy::ALL.into_iter().map(|policy|view!{<PolicyField form policy />}).collect_view()}
-                <Show when=move ||form.read(|e|Policy::ALL.iter().any(|p|*p.access(&mut e.acked.policies.clone())==Visibility::Owner))>
+                <Show when=move ||form.read(|e|Policy::ALL.iter().any(|p|p.visibility(e.acked.policies)==Visibility::Owner))>
                     <p id="profile-privacy-lock-note" class="m-0 text-vk-caption text-vk-on-surface-variant">
                         "Trường đã đặt Chỉ mình tôi hiện chưa thể công khai lại."
                     </p>
@@ -332,9 +332,8 @@ fn Feedback(form: Form, field: Field) -> impl IntoView {
 fn PolicyField(form: Form, policy: Policy) -> impl IntoView {
     let field = Field::Policy(policy);
     let confirming = RwSignal::new(false);
-    let locked = Memo::new(move |_| {
-        form.read(|e| *policy.access(&mut e.acked.policies.clone()) == Visibility::Owner)
-    });
+    let locked =
+        Memo::new(move |_| form.read(|e| policy.visibility(e.acked.policies) == Visibility::Owner));
     let outstanding = Memo::new(move |_| {
         form.read(|e| {
             !matches!(

@@ -29,7 +29,11 @@ impl Policy {
         Self::FollowingList,
         Self::FollowingCount,
     ];
-    pub(super) fn access(self, p: &mut Policies) -> &mut Visibility {
+    pub fn visibility(self, mut policies: Policies) -> Visibility {
+        *self.access(&mut policies)
+    }
+
+    fn access(self, p: &mut Policies) -> &mut Visibility {
         match self {
             Self::Avatar => &mut p.avatar,
             Self::Bio => &mut p.bio,
@@ -73,7 +77,7 @@ impl Field {
         match self {
             Self::Name => Value::Name(profile.pen_name.clone()),
             Self::Bio => Value::Bio(profile.bio.clone()),
-            Self::Policy(p) => Value::Policy(p, *p.access(&mut profile.policies.clone())),
+            Self::Policy(p) => Value::Policy(p, p.visibility(profile.policies)),
         }
     }
 }
@@ -219,7 +223,11 @@ impl Editor {
         let held = self.retry_barrier == Some(field);
         let active = self.flight.as_ref().is_some_and(|f| f.field == field);
         let edit = self.edits.entry(field).or_default();
-        if edit.intent.as_ref() == Some(&(edit.generation, value.clone())) {
+        if edit
+            .intent
+            .as_ref()
+            .is_some_and(|(generation, saved)| *generation == edit.generation && *saved == value)
+        {
             return;
         }
         if !active && !held && value == stored {
@@ -342,6 +350,9 @@ impl Editor {
                 e.baseline = Some(new.clone())
             }
             let Some((generation, wanted)) = &e.intent else {
+                if old != new && matches!(e.status, Status::Saved | Status::Observed) {
+                    e.status = Status::Idle;
+                }
                 continue;
             };
             if wanted == &new {
