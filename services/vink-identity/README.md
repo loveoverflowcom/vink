@@ -33,7 +33,7 @@ session hay cookie với Cantos/VOT.
 | [src/delivery.rs](src/delivery.rs) | Outbox `mail_deliveries`: chính sách retry thuần, claim `SKIP LOCKED` + lease, worker at-least-once |
 | [src/mail.rs](src/mail.rs) | Transport: Resend HTTPS API (TLS, API key đọc từ file mỗi lần gửi) và outbox cục bộ (file `0600`, chỉ dev) |
 | [src/persistence.rs](src/persistence.rs) | `MIGRATOR` riêng, pool/lifecycle từ `vink-store-postgres` |
-| [src/lib.rs](src/lib.rs) | Bảng tầng module; test `levels` từ chối mọi phụ thuộc ngược tầng ([physical design](../../.agents/skills/vink-architect/references/physical-design.md)) |
+| [src/lib.rs](src/lib.rs) | Bảng tầng module; test `levels` đối chiếu đường dẫn trực tiếp `crate::module` trong các tệp đã liệt kê ([physical design](../../.agents/skills/vink-architect/references/physical-design.md)) |
 | [migrations/](migrations/) | Schema Identity, gồm `account_passwords` và binding phiên cho challenge enrollment |
 | [migrations-rollback/](migrations-rollback/) | Script rollback theo phiên bản. Rollback enrollment giữ mật khẩu đã thêm và dọn mã enrollment cùng delivery |
 | [contracts/rpc/v1](contracts/rpc/v1/README.md) | Contract riêng tư (draft) và fixtures do provider sở hữu |

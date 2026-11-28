@@ -94,8 +94,10 @@ heavy job on the machine. Otherwise report that build time was not measured.
 
 ## Recorded decisions
 
-- **Identity (`services/vink-identity`)**: one crate, levels enforced by its `levels` test.
-  `authority` is the only caller of `accounts` and gates every use case by method; `http` maps
+- **Identity (`services/vink-identity`)**: one crate. The `levels` test checks explicit
+  `crate::module` paths in the listed library files. Review new modules and other path forms
+  separately. The binary uses `accounts` for assembly and maintenance. For RPC calls,
+  `authority` gates access to the store by method; `http` maps
   `outcome` values to the contract and never sees the store. Persistence returns outcomes and
   `StoreError`, never `ContractError`. Rejected: new crates, a ports trait per store, splitting
   `delivery` (its pure retry policy is already unit-tested next to the outbox), and moving

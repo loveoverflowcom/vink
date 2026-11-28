@@ -637,7 +637,7 @@ Mac mini `Mac16,10` (arm64), Chrome `158.0.8127.89`, PostgreSQL `17.11`. App và
 | --- | --- |
 | `cargo xtask verify web --scenario reader --scenario standalone --scenario desk --capture checks` | **PASS** cho `reader`, `reader-views`, `desk`, `desk-guest`, `standalone`. SSR/hydration, CSR standalone, App, Identity và PostgreSQL thật. |
 | `cargo xtask verify unit web --filter work_view` | **8/8** gồm ngưỡng, retry, thay quyền và DTO số liệu. |
-| `cargo test --locked -p vink-work-view-policy` | **3/3**. Giá trị override đổi ngưỡng và thời lượng cùng lúc; câu giải thích kiểm ở unit `vink-web` (`work_view`). |
+| `cargo test --locked -p vink-work-view-policy` | **3/3**. Giá trị override đổi cả điều kiện tính và nội dung giải thích. |
 | `cargo xtask verify postgres app --filter work_view` | **27/27** giao dịch, HTTP, quyền đọc, dedup, retention và vòng đời. Xóa tài khoản xem phép chạy riêng ở §13.4. |
 | `cargo xtask decision query VDR-WORK-VIEWS --history` | `r1` đang áp dụng, `r2` vẫn `PENDING`. |
 

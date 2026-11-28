@@ -1,7 +1,7 @@
 //! The authentication authority behind the contract.
 //!
 //! The application layer of Identity: the transport maps a request to one use case here, the use
-//! case checks that the configuration serves its [`Method`] and orchestrates the store, and the
+//! case checks that the configuration serves its method and orchestrates the store, and the
 //! store decides inside one transaction. Callers never receive the store.
 //!
 //! Configurations in a built binary:
@@ -64,7 +64,7 @@ pub(crate) enum Method {
     Enrollment,
 }
 
-/// The configured authority. Each use case checks its [`Method`] before it reaches the store, so
+/// The configured authority. Each use case checks its method before it reaches the store, so
 /// a caller cannot run an operation the configuration does not serve, and the storage behind the
 /// authority is not part of its interface.
 #[derive(Debug)]
@@ -401,7 +401,7 @@ fn serves(methods: MethodCapabilities, method: Method) -> bool {
 }
 
 /// The subject for an account of this authority.
-pub fn subject(account: Uuid) -> Subject {
+pub(crate) fn subject(account: Uuid) -> Subject {
     Subject {
         authority: AUTHORITY.into(),
         id: account.to_string(),

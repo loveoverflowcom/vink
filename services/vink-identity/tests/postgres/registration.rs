@@ -160,6 +160,59 @@ pub(super) async fn register(
 }
 
 #[sqlx::test(migrator = "vink_identity::persistence::MIGRATOR")]
+async fn deletion_rpc_rolls_back_a_valid_proof_and_returns_the_committed_receipt(pool: PgPool) {
+    let rig = Rig::new(&pool);
+    let (login, login_code) = rig.sign_in_proof(EMAIL).await;
+    let (status, session) = rig
+        .rpc(
+            "/identity/v1/sign-in/complete",
+            json!({
+                "challenge": login.encode(), "code": login_code.expose()
+            }),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK);
+    let account = session["subject"]["id"].as_str().unwrap();
+    let (status, challenge) = rig
+        .rpc(
+            "/identity/v1/account-deletion/challenges",
+            json!({"email": EMAIL, "expected": account}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::ACCEPTED);
+    let handle = ChallengeHandle::parse(challenge["challenge"].as_str().unwrap()).unwrap();
+    let code = rig.code(&handle, "delete_account").await;
+    let confirm = |operation| {
+        rig.rpc(
+            "/identity/v1/account-deletion/confirm",
+            json!({
+                "method": "email_code", "challenge": handle.encode(), "code": code.expose(),
+                "expected": account, "operation_id": operation
+            }),
+        )
+    };
+
+    let (status, rejection) = confirm(Uuid::nil()).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(rejection["error"]["code"], "malformed_request");
+
+    let operation = Uuid::now_v7();
+    let (status, receipt) = confirm(operation).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(receipt["account_id"], account);
+    assert_eq!(receipt["operation_id"], operation.to_string());
+    assert!(receipt["accepted_at"].is_string());
+    let (status, stored) = rig
+        .rpc(
+            "/identity/v1/account-deletion/status",
+            json!({"operation_id": operation}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(stored, receipt);
+}
+
+#[sqlx::test(migrator = "vink_identity::persistence::MIGRATOR")]
 async fn registration_proof_is_bound_to_mailbox_purpose_and_one_commit(pool: PgPool) {
     let rig = Rig::new(&pool);
     let (status, _) = rig

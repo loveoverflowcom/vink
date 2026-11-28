@@ -117,7 +117,7 @@ pub enum EnrollmentStart {
     CredentialRejected,
 }
 
-/// Why an enrollment did not attach the credential. Every variant means nothing was written.
+/// Why an enrollment did not attach the credential. A wrong code records a failed attempt.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EnrollmentRejection {
     /// Wrong code; the challenge still accepts another attempt.

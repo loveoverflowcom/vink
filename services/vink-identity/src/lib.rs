@@ -12,7 +12,9 @@
 //!
 //! # Levels
 //!
-//! Modules depend only downward; the `levels` test below fails on any other edge.
+//! The table gives the intended source dependency direction. The `levels` tests check explicit
+//! `crate::module` references in the listed library sources. Review other path forms and new modules
+//! when changing the module graph.
 //!
 //! | Level | Modules | Role |
 //! | --- | --- | --- |
