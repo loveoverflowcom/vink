@@ -125,6 +125,8 @@ export async function commentBudget(page, {args, check}) {
     if (richReply) {
       await page.click(reply+'-format');
       await page.waitFor("document.querySelector("+JSON.stringify(reply+'-rich .cm-content')+") === document.activeElement", 'paired reply ready');
+    } else {
+      await page.waitFor("document.querySelector("+JSON.stringify(reply)+") === document.activeElement", 'paired native reply focused');
     }
     await page.send('Input.insertText',{text:'Giữ nháp qua nhiều lần mở'});
     for (let n = 0; n < out.lifecycle.cycles; n++) {
