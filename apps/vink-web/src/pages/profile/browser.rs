@@ -203,7 +203,7 @@ fn InlineText(form: Form, field: Field, skip_blur: Signal<bool>) -> impl IntoVie
     let composing = StoredValue::new(false);
     let pending_blur = StoredValue::new(false);
     let value = Memo::new(move |_| form.read(|e| e.text(field)));
-    let error = Signal::derive(move || {
+    let error = Memo::new(move |_| {
         form.read(|e| {
             e.invalid(field)
                 .then(|| feedback(Status::Invalid, field).to_owned())
@@ -215,7 +215,10 @@ fn InlineText(form: Form, field: Field, skip_blur: Signal<bool>) -> impl IntoVie
         if !input.composing && pending_blur.get_value() {
             // Some IMEs deliver the final input after compositionend in this frame.
             request_animation_frame(move || {
-                if pending_blur.try_get_value() == Some(true) && !composing.get_value() {
+                if form.live()
+                    && pending_blur.try_get_value() == Some(true)
+                    && !composing.get_value()
+                {
                     pending_blur.set_value(false);
                     if !skip_blur.get_untracked() {
                         form.commit(field);
@@ -230,7 +233,8 @@ fn InlineText(form: Form, field: Field, skip_blur: Signal<bool>) -> impl IntoVie
             .is_some_and(|node| node.id() == field.id())
     };
     let blur = move |event: web_sys::FocusEvent| {
-        if !is_field(event.target()) || skip_blur.get_untracked() {
+        // Removing a focused private field can dispatch focusout during scope teardown.
+        if !form.live() || !is_field(event.target()) || skip_blur.get_untracked() {
             return;
         }
         if composing.get_value() {

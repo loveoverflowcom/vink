@@ -232,6 +232,9 @@ impl Driver {
 #[derive(Clone, Copy)]
 pub(super) struct Form(pub StoredValue<Driver>);
 impl Form {
+    pub fn live(self) -> bool {
+        self.0.try_with_value(Driver::live) == Some(true)
+    }
     pub fn read<T>(self, f: impl FnOnce(&Editor) -> T) -> T {
         self.0.with_value(|d| d.state.with(f))
     }

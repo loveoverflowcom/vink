@@ -335,13 +335,7 @@ async function lateProfileWrites(page, staleTab, {check, holdAnswer, switchActor
   await fill(staleTab,BIO,'Lệnh xếp hàng của phiên cũ');
   await staleTab.key('Enter',2);
   await switchActor('b');
-  try {
-    await staleTab.waitFor(`${q(BIO)}?.value===''`,'B never adopts A’s draft or pending status');
-  } catch (error) {
-    const state=await staleTab.eval(`({path:location.pathname,heading:document.querySelector('main h1')?.textContent,
-      bio:${q(BIO)}?.value,status:${q('#profile-message')}?.textContent,main:document.querySelector('main')?.innerText?.slice(0,400)})`);
-    throw new Error(`${error.message}: ${JSON.stringify(state)}; ${staleTab.errors.join(' | ')}`);
-  }
+  await staleTab.waitFor(`${q(BIO)}?.value===''`,'B never adopts A’s draft or pending status');
   await switchActor('a');
   await staleTab.waitFor(`${q(BIO)}?.value==='Chờ trả kết quả'`,'new A observes only the persisted value');
   await fill(staleTab,BIO,'Chữ mới chưa chốt');
@@ -355,6 +349,7 @@ async function lateProfileWrites(page, staleTab, {check, holdAnswer, switchActor
   await fill(staleTab,BIO,bio);
   await staleTab.key('Enter',4);
   await staleTab.waitFor(`${q(BIO+'-feedback')}?.textContent.includes('Đã lưu')`,'Cmd+Enter commits in the new A session');
+  check(staleTab.errors.length===0,'session switches with a focused editor and pending writes leave no browser errors');
 }
 
 export async function authorProfiles(page, other, {base, openPage, check, holdAnswer, switchActor, textContrast}) {
