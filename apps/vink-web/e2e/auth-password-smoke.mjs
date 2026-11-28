@@ -1293,6 +1293,14 @@ export async function standalone(page, {args, check, openPage}) {
   await heldBio.finish();
   await page.waitFor(`${q('#profile-pen-name')}?.value==='Bút danh ở tab khác' && ${q('#profile-bio')}?.value==='Giữ phản hồi'`,
     'broadcast received before a late ACK still refreshes the untouched field');
+  await page.eval("document.querySelector('#profile-bio-policy').focus()");
+  await page.key('Space');
+  await page.waitFor("document.querySelector('#profile-bio-policy').matches(':open')",'CSR reopens privacy picker');
+  await page.key('ArrowDown');
+  await page.key('Enter');
+  await page.click('#profile-bio-policy-confirm');
+  await page.waitFor("document.activeElement?.id==='profile-bio-policy-row' && !document.querySelector('select#profile-bio-policy')",
+    'confirmation retains focus at the newly locked privacy row');
   await page.click('#profile-back');
   await page.waitFor("document.activeElement?.id === 'edit-profile-link'", 'CSR Back restores the account entry');
   const authorPath = '/@' + author.data.handle;

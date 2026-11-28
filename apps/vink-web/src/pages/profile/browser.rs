@@ -295,7 +295,10 @@ fn feedback(status: Status, field: Field) -> &'static str {
 #[component]
 fn Feedback(form: Form, field: Field) -> impl IntoView {
     let status = Memo::new(move |_| form.read(|e| e.status(field)));
-    let refocus = move || super::super::focus_recovery(field.id());
+    let refocus = move || match field {
+        Field::Policy(_) => super::super::focus_recovery(format!("{}-row", field.id())),
+        _ => super::super::focus_recovery(field.id()),
+    };
     let retry_text = move || {
         if status.get() == Status::CheckFailed {
             "Đối chiếu lại"
@@ -354,7 +357,8 @@ fn PolicyField(form: Form, policy: Policy) -> impl IntoView {
     let cancel_id = format!("{}-cancel", field.id());
     let focus_id = cancel_id.clone();
     view! {
-        <div class="grid min-w-0 gap-vk-1" on:keydown=move |ev|{
+        <div class="grid min-w-0 gap-vk-1" id=format!("{}-row",field.id()) tabindex="-1"
+            role="group" aria-label=format!("Quyền riêng tư: {}",field.label()) on:keydown=move |ev|{
             if ev.key()=="Escape" && confirming.get_untracked(){ev.prevent_default();cancel();}
         }>
             <PrivacySelect id=field.id() label=field.label() value locked disabled=Signal::derive(move ||outstanding.get()||confirming.get())
@@ -370,7 +374,7 @@ fn PolicyField(form: Form, policy: Policy) -> impl IntoView {
                         <Button id=cancel_id.clone() described_by=format!("{}-consequence",field.id()) variant=ButtonVariant::Text on_press=move |_|cancel()>"Hủy"</Button>
                         <Button id=format!("{}-confirm",field.id()) described_by=format!("{}-consequence",field.id()) variant=ButtonVariant::Tonal on_press=move |_|{
                             confirming.set(false);form.change(|e|e.narrow(policy));form.pump();
-                            super::super::focus_recovery("quyen-rieng-tu");
+                            super::super::focus_recovery(format!("{}-row",field.id()));
                         }>"Chuyển sang Chỉ mình tôi"</Button>
                     </div>
                 </div>
