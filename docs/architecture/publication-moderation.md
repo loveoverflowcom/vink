@@ -371,3 +371,5 @@ khi đổi audience/intent, con trỏ, ca duyệt, job hoặc outbox. Snapshot �
 lưu các ngưỡng theo dạng, sàn chung, gợi ý nhẹ và chống trùng/tần suất ở trạng thái PENDING.
 Điều kiện triển khai là signoff đúng revision cùng corpus thơ ngắn, ca biên, đối soát catalog,
 retry và retention. Idempotency hiện chỉ xử lý phát lại cùng lệnh.
+
+Lời nhắn của evaluator thuộc quyết định lịch sử đã commit, gắn với job và đúng phiên bản. Các phép đọc của tác giả lấy cùng giá trị qua khóa tác phẩm, revision và phiên bản quyết định. Envelope thông báo chỉ dẫn đến chi tiết. [Hợp đồng private](../../services/vink-app/contracts/http/v1/notifications.md) · [Quyết định M01–M09](https://github.com/loveoverflowcom/vink/issues/639).

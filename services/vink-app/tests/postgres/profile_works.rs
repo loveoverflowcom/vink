@@ -12,7 +12,7 @@ use time::macros::datetime;
 use time::{Duration, OffsetDateTime};
 use vink_app::domain::document::{Document, DocumentFormat};
 use vink_app::domain::ids::TagId;
-use vink_app::domain::moderation::{AppliedEvaluation, EvaluatorOutcome};
+use vink_app::domain::moderation::AppliedEvaluation;
 use vink_app::domain::taxonomy::{CatalogChange, TagFacet};
 use vink_app::persistence::PROFILE_WORKS_SQL;
 use vink_app::persistence::evaluation::{JobOutcome, claim_job, finish_job};
@@ -282,15 +282,9 @@ async fn profile_items_carry_current_public_metadata_and_never_private_text(pool
         .unwrap()
         .unwrap();
     assert_eq!(
-        finish_job(
-            &pool,
-            "profile-587",
-            &job,
-            Some(EvaluatorOutcome::Approve),
-            0
-        )
-        .await
-        .unwrap(),
+        finish_job(&pool, "profile-587", &job, Some(evaluator_approval()), 0)
+            .await
+            .unwrap(),
         JobOutcome::Applied(AppliedEvaluation::Published)
     );
     // A private edit after publication changes the draft, never the public item.

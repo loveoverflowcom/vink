@@ -600,6 +600,8 @@ struct AuthorWorkDecisionView {
     action_required: bool,
     can_appeal: bool,
     reason: Option<String>,
+    reason_message: Option<String>,
+    reason_code: Option<String>,
     #[serde(with = "time::serde::rfc3339")]
     decided_at: OffsetDateTime,
 }
@@ -636,6 +638,8 @@ async fn get_author_work_review(
                 is_current: decision.detail.is_current,
                 action_required: decision.detail.action_required,
                 can_appeal: decision.detail.can_appeal,
+                reason_message: decision.detail.reason_message.clone(),
+                reason_code: decision.detail.reason_code.clone(),
                 reason: decision
                     .detail
                     .reason_message
@@ -726,22 +730,32 @@ fn author_publication_state_view(
                             | crate::domain::moderation::DecisionProvenance::Moderator { .. }
                     )
                 });
-        let decision_reason =
-            mod_decision
-                .and_then(|d| d.provenance.as_ref())
-                .and_then(|p| match p {
-                    crate::domain::moderation::DecisionProvenance::AiRejected(code) => {
-                        Some(code.as_str().to_owned())
-                    }
-                    crate::domain::moderation::DecisionProvenance::Moderator { reason, .. }
-                    | crate::domain::moderation::DecisionProvenance::Admin { reason, .. } => {
-                        Some(reason.as_str().to_owned())
-                    }
-                    _ => None,
-                });
+        use crate::domain::moderation::DecisionProvenance;
+        let provenance = mod_decision.and_then(|d| d.provenance.as_ref());
+        let reason_code = match provenance {
+            Some(DecisionProvenance::AiRejected(code)) => Some(code.as_str().to_owned()),
+            _ => None,
+        };
+        let reason_message = match provenance {
+            Some(
+                DecisionProvenance::Moderator { reason, .. }
+                | DecisionProvenance::Admin { reason, .. },
+            ) => Some(reason.as_str().to_owned()),
+            Some(DecisionProvenance::AiApproved | DecisionProvenance::AiRejected(_)) => {
+                mod_decision.and_then(|d| {
+                    facts
+                        .evaluator_messages
+                        .get(&(d.revision.as_uuid(), d.version.get()))
+                        .cloned()
+                })
+            }
+            _ => None,
+        };
         revisions.push(AuthorRevisionView {
             can_appeal,
-            decision_reason,
+            decision_reason: reason_message.clone().or_else(|| reason_code.clone()),
+            reason_message,
+            reason_code,
             revision_id: rev.snapshot.revision.to_string(),
             title,
             content_hash: rev.snapshot.content.to_string(),

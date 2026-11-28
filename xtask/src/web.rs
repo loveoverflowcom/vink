@@ -9,6 +9,8 @@ use crate::env::Env;
 use crate::plan::{Plan, Scenario};
 use crate::process::Report;
 use crate::root;
+mod evaluator_message;
+
 const APP_ROLE: &str = "vink_verify_web_runtime";
 
 /// Scratch database recreated by every `verify web` run; never a developer database.
@@ -360,6 +362,7 @@ enum IdentityPhase {
     /// Author discovery with separate public and session-scoped projections.
     AuthorSearch,
     /// PUB-AUTHOR-WEB-01: the author's whole publication path with a second, granted moderator.
+    EvaluatorMessage,
     PublicationAuthor,
 }
 
@@ -489,6 +492,15 @@ fn auth_web(
         )?;
     }
     let mut app = server.with_identity(free_port()?, &socket, uid);
+    if matches!(phase, IdentityPhase::EvaluatorMessage) {
+        app.env.extend([
+            (
+                "VINK_NOTIFICATIONS_INBOX_SOCKET".into(),
+                sock_dir.join("inbox.sock").display().to_string(),
+            ),
+            ("VINK_NOTIFICATIONS_SERVER_UID".into(), uid.to_string()),
+        ]);
+    }
     let mut frontend = None;
     let origin = if matches!(phase, IdentityPhase::Standalone) {
         let port = free_port()?;
@@ -607,6 +619,9 @@ fn auth_web(
                     .clone(),
             )],
         ),
+        IdentityPhase::EvaluatorMessage => evaluator_message::run(
+            root, &app, admin_url, chrome, state, &outbox, &origin, &sock_dir,
+        ),
         IdentityPhase::PublicationAuthor => {
             let mut envs = app.env.clone();
             envs.push((
@@ -636,6 +651,7 @@ fn publication_author(
     admin_url: &str,
     chrome: &Browser,
     state: &Path,
+    phase: IdentityPhase,
 ) -> Result<(), String> {
     let drop = format!("DROP DATABASE IF EXISTS {PUBLICATION_DATABASE} WITH (FORCE)");
     let _ = crate::identity::sql(admin_url, &drop);
@@ -648,14 +664,7 @@ fn publication_author(
         let own = server.with_database(PUBLICATION_DATABASE)?;
         prepare_app(root, &own, true)?;
         seed_tag_catalog(root, &own)?;
-        auth_web(
-            root,
-            &own,
-            admin_url,
-            chrome,
-            state,
-            IdentityPhase::PublicationAuthor,
-        )
+        auth_web(root, &own, admin_url, chrome, state, phase)
     })();
     let _ = crate::identity::sql(admin_url, &drop);
     result
@@ -901,8 +910,13 @@ pub fn verify_selected(report: &mut Report, env: &Env, plan: &Plan) -> bool {
                             },
                         )
                     }
-                    Scenario::Publication => {
-                        publication_author(&root, &server, &url, &chrome, &state)
+                    Scenario::Publication | Scenario::EvaluatorMessage => {
+                        let phase = if *scenario == Scenario::Publication {
+                            IdentityPhase::PublicationAuthor
+                        } else {
+                            IdentityPhase::EvaluatorMessage
+                        };
+                        publication_author(&root, &server, &url, &chrome, &state, phase)
                     }
                     _ => unreachable!(),
                 },

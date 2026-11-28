@@ -251,6 +251,8 @@ pub struct RawEvaluatorOutput {
     pub verdict: String,
     #[serde(default)]
     pub reason_code: Option<String>,
+    #[serde(default)]
+    pub message: Option<String>,
 }
 
 /// Validated semantic outcome of one evaluation attempt (AC-02, AC-04).
@@ -266,21 +268,88 @@ pub enum EvaluatorOutcome {
 
 impl EvaluatorOutcome {
     pub fn from_raw_json(raw: &str) -> Self {
+        WorkEvaluatorAnswer::from_json(raw).outcome()
+    }
+}
+
+/// The provider can supply private text but cannot grant publication authority.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum WorkEvaluatorAnswer {
+    Approved(AuthorMessage),
+    Rejected(PolicyReasonCode, AuthorMessage),
+    Uncertain,
+    Timeout,
+    ProviderError,
+    InvalidOutput,
+}
+
+#[derive(Clone, PartialEq, Eq)]
+pub struct AuthorMessage(String);
+
+impl std::fmt::Debug for AuthorMessage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("AuthorMessage([private])")
+    }
+}
+
+impl AuthorMessage {
+    fn parse(text: String) -> Option<Self> {
+        // Bound Unicode scalars, reject markup and invisible direction controls.
+        if text.chars().any(|c| c.is_control() || matches!(c, '<' | '>' | '\u{061c}' | '\u{200e}' | '\u{200f}' | '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}')) {
+            return None;
+        }
+        let text = text.trim();
+        (!text.is_empty() && text.chars().count() <= 600).then(|| Self(text.to_owned()))
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl WorkEvaluatorAnswer {
+    pub fn from_json(raw: &str) -> Self {
         match serde_json::from_str::<RawEvaluatorOutput>(raw) {
-            Ok(parsed) => Self::from_raw_output(parsed),
+            Ok(parsed) => Self::from_output(parsed),
             Err(_) => Self::InvalidOutput,
         }
     }
 
-    pub fn from_raw_output(raw: RawEvaluatorOutput) -> Self {
-        match (raw.verdict.as_str(), raw.reason_code.as_deref()) {
-            ("approve", None) => Self::Approve,
-            ("reject", Some(code)) => match PolicyReasonCode::parse(code) {
-                Some(reason) => Self::Reject(reason),
-                None => Self::InvalidOutput,
-            },
-            ("uncertain" | "needs_admin", None) => Self::Uncertain,
+    pub fn from_output(raw: RawEvaluatorOutput) -> Self {
+        match (
+            raw.verdict.as_str(),
+            raw.reason_code.as_deref(),
+            raw.message,
+        ) {
+            ("approve", None, Some(text)) => {
+                AuthorMessage::parse(text).map_or(Self::InvalidOutput, Self::Approved)
+            }
+            ("reject", Some(code), Some(text)) => {
+                match (PolicyReasonCode::parse(code), AuthorMessage::parse(text)) {
+                    (Some(code), Some(message)) => Self::Rejected(code, message),
+                    _ => Self::InvalidOutput,
+                }
+            }
+            ("uncertain" | "needs_admin", None, None) => Self::Uncertain,
             _ => Self::InvalidOutput,
+        }
+    }
+
+    pub fn outcome(&self) -> EvaluatorOutcome {
+        match self {
+            Self::Approved(_) => EvaluatorOutcome::Approve,
+            Self::Rejected(code, _) => EvaluatorOutcome::Reject(*code),
+            Self::Uncertain => EvaluatorOutcome::Uncertain,
+            Self::Timeout => EvaluatorOutcome::Timeout,
+            Self::ProviderError => EvaluatorOutcome::ProviderError,
+            Self::InvalidOutput => EvaluatorOutcome::InvalidOutput,
+        }
+    }
+
+    pub fn message(&self) -> Option<&AuthorMessage> {
+        match self {
+            Self::Approved(message) | Self::Rejected(_, message) => Some(message),
+            _ => None,
         }
     }
 }

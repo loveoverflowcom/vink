@@ -794,6 +794,10 @@ pub struct PublicPointerView {
 pub struct AuthorRevisionView {
     pub can_appeal: bool,
     pub decision_reason: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason_message: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason_code: Option<String>,
     pub revision_id: String,
     pub title: String,
     pub content_hash: String,
@@ -3103,6 +3107,8 @@ mod tests {
             AuthorRevisionView {
                 can_appeal: false,
                 decision_reason: None,
+                reason_message: None,
+                reason_code: None,
                 revision_id: id.to_string(),
                 title: title.to_string(),
                 content_hash: hash.repeat(32).chars().take(64).collect(),
@@ -3168,6 +3174,7 @@ mod tests {
                 0,
             );
             rejected.can_appeal = true;
+            rejected.reason_message = Some("Nội dung chưa phù hợp chính sách cộng đồng.".into());
             rejected.decision_reason = Some("Nội dung chưa phù hợp chính sách cộng đồng.".into());
             assert_matches(
                 "publication.state.public_rejected.json",

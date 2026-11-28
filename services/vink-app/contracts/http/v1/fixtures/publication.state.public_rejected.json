@@ -10,6 +10,7 @@
   "revisions": [
     {
       "can_appeal": true,
+      "reason_message": "Nội dung chưa phù hợp chính sách cộng đồng.",
       "decision_reason": "Nội dung chưa phù hợp chính sách cộng đồng.",
       "revision_id": "0192f3a1-0000-7000-8000-0000000000b1",
       "title": "[Mẫu] Mưa trên phố cũ",

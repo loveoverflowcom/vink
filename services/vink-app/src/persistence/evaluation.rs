@@ -22,7 +22,7 @@ use crate::domain::moderation::automation::AutomationMode;
 use crate::domain::moderation::case::CaseOrigin;
 use crate::domain::moderation::{
     AppliedEvaluation, EvaluationRefusal, EvaluationTarget, EvaluatorCapability, EvaluatorOutcome,
-    EvaluatorResult, ModerationError, PolicyReasonCode, PolicyVersion,
+    EvaluatorResult, ModerationError, PolicyVersion, WorkEvaluatorAnswer,
 };
 use crate::domain::revision::ContentHash;
 
@@ -118,18 +118,22 @@ pub async fn claim_job(
 /// The scripted verdict for a claim: the job-bound scenario when `honoured` lists it. The mock
 /// reads no content and calls nothing. An empty `honoured` (manual mode) is no evaluator: `None`,
 /// so a scenario bound while the mock ran is never reused after a switch.
-pub fn scripted_outcome(claim: &ClaimedJob, honoured: &[&str]) -> Option<EvaluatorOutcome> {
+pub fn scripted_outcome(claim: &ClaimedJob, honoured: &[&str]) -> Option<WorkEvaluatorAnswer> {
     let scenario = claim.scenario.as_deref().map(str::trim)?;
     if !honoured.contains(&scenario) {
         return None;
     }
     match scenario {
-        "approve" => Some(EvaluatorOutcome::Approve),
-        "reject" => Some(EvaluatorOutcome::Reject(PolicyReasonCode::SafetyPolicy)),
-        "needs_admin" => Some(EvaluatorOutcome::Uncertain),
-        "invalid_output" => Some(EvaluatorOutcome::InvalidOutput),
-        "timeout" => Some(EvaluatorOutcome::Timeout),
-        "provider_error" => Some(EvaluatorOutcome::ProviderError),
+        "approve" => Some(WorkEvaluatorAnswer::from_json(
+            r#"{"verdict":"approve","message":"Yêu cầu công khai của bạn đã được chấp nhận trong chế độ thử nghiệm."}"#,
+        )),
+        "reject" => Some(WorkEvaluatorAnswer::from_json(
+            r#"{"verdict":"reject","reason_code":"safety_policy","message":"Yêu cầu công khai đã bị từ chối theo kịch bản thử nghiệm. Kết quả này không đánh giá nội dung tác phẩm."}"#,
+        )),
+        "needs_admin" => Some(WorkEvaluatorAnswer::Uncertain),
+        "invalid_output" => Some(WorkEvaluatorAnswer::InvalidOutput),
+        "timeout" => Some(WorkEvaluatorAnswer::Timeout),
+        "provider_error" => Some(WorkEvaluatorAnswer::ProviderError),
         _ => None,
     }
 }
@@ -139,7 +143,7 @@ pub async fn finish_job(
     pool: &PgPool,
     worker_id: &str,
     claim: &ClaimedJob,
-    outcome: Option<EvaluatorOutcome>,
+    outcome: Option<WorkEvaluatorAnswer>,
     retry_backoff_seconds: i64,
 ) -> Result<JobOutcome, StoreError> {
     let mut tx = pool.begin().await.map_err(classify)?;
@@ -182,7 +186,7 @@ pub async fn finish_job(
         (AutomationMode::Paused, _) => None,
         (_, outcome) => outcome,
     };
-    let Some(outcome) = outcome else {
+    let Some(answer) = outcome else {
         let public = publication.facts().audience == crate::domain::publication::Audience::Public
             && publication.facts().lifecycle.is_active();
         let (rerouted, undecided) = moderation.reroute_to_humans();
@@ -212,6 +216,7 @@ pub async fn finish_job(
         .ok_or_else(|| integrity("invalid digest in job", &claim.content_digest))?;
     let policy = PolicyVersion::new(claim.policy_version)
         .ok_or_else(|| integrity("invalid policy version in job", claim.policy_version))?;
+    let outcome = answer.outcome();
     let result = EvaluatorResult {
         evaluation_id: evaluation,
         target: EvaluationTarget::WorkRevision {
@@ -329,6 +334,7 @@ pub async fn finish_job(
         DecisionSource {
             appeal: None,
             evaluation: Some(evaluation),
+            evaluator_message: answer.message(),
             case: None,
         },
     )

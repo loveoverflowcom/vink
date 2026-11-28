@@ -180,7 +180,8 @@ const fn cause_str(cause: NeedsAdminCause) -> &'static str {
 
 /// Where a decision came from, for the history row.
 #[derive(Debug, Clone, Copy, Default)]
-pub(crate) struct DecisionSource {
+pub(crate) struct DecisionSource<'a> {
+    pub evaluator_message: Option<&'a crate::domain::moderation::AuthorMessage>,
     pub appeal: Option<AppealId>,
     pub evaluation: Option<EvaluationId>,
     pub case: Option<CaseId>,
@@ -194,7 +195,7 @@ pub(crate) async fn write_decision(
     publication: &PublicationFacts,
     moderation: &WorkModerationFacts,
     revision: RevisionId,
-    source: DecisionSource,
+    source: DecisionSource<'_>,
 ) -> Result<(), StoreError> {
     let revision_moderation = publication
         .revisions
@@ -323,9 +324,9 @@ pub(crate) async fn write_decision(
         "INSERT INTO work_revision_decision_history (
              id, work_id, revision_id, decision_version, moderation, policy_version,
              provenance_kind, policy_reason_code, needs_admin_cause, actor_id,
-             moderator_grant_id, reason, evaluation_id, case_id, appeal_id, created_at
+             moderator_grant_id, reason, evaluation_id, case_id, appeal_id, evaluator_message, created_at
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, now())
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, now())
          ON CONFLICT (work_id, revision_id, decision_version) DO NOTHING",
     )
     .bind(Uuid::now_v7())
@@ -343,6 +344,7 @@ pub(crate) async fn write_decision(
     .bind(source.evaluation.map(|e| e.as_uuid()))
     .bind(source.case.map(|c| c.as_uuid()))
     .bind(source.appeal.map(|a| a.as_uuid()))
+    .bind(source.evaluator_message.map(|message| message.as_str()))
     .execute(&mut *conn)
     .await
     .map_err(classify)?;

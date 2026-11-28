@@ -1159,7 +1159,11 @@ impl RevisionLine {
             revision_id: revision.revision_id.clone(),
             title: revision.title.clone(),
             decision: revision.moderation,
-            reason: revision.decision_reason.clone(),
+            reason: if revision.reason_code.is_some() || revision.moderation == Decision::Approved {
+                None
+            } else {
+                revision.decision_reason.clone()
+            },
             created_at: revision.created_at.clone(),
         }
     }
@@ -1240,6 +1244,8 @@ mod tests {
     fn revision(id: &str, moderation: Decision) -> AuthorRevision {
         AuthorRevision {
             can_appeal: false,
+            reason_message: None,
+            reason_code: None,
             decision_reason: None,
             revision_id: id.into(),
             title: format!("Bản {id}"),

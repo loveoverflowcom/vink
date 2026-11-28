@@ -23,6 +23,7 @@ import { captureRequest } from './auth-browser-network.mjs';
 import { notifications } from './notifications-smoke.mjs';
 import { readerAuthClosed } from './reader-auth-smoke.mjs';
 import { accountDeletion, closedAccountAppearance, passwordAuth, standalone } from './auth-password-smoke.mjs';
+import { evaluatorMessage } from './evaluator-message.mjs';
 import { publicationAuthor } from './publication-author-smoke.mjs';
 import { reviewWithdrawnPage } from './review-withdrawn-smoke.mjs';
 import { markdownReader } from './markdown-reader-smoke.mjs';
@@ -7170,6 +7171,7 @@ try {
   }
   else if (args.phase === 'auth-password') await passwordAuth(page, { args, check, textContrast, openPage: (isolated) => openPage(cdp, isolated) });
   else if (args.phase === 'account-deletion') await accountDeletion(page, { args, check, openPage: (isolated) => openPage(cdp, isolated) });
+  else if (args.phase === 'evaluator-message') await evaluatorMessage(page, args, isolated => openPage(cdp, isolated));
   else if (args.phase === 'publication-author') await publicationAuthor(page, { args, check, openPage: (isolated) => openPage(cdp, isolated), capture: (target, name, evidence) => target.capture(name, evidence) });
   else if (args.phase === 'author-search') await authorSearch(page, {
     args, check, textContrast, openPage: isolated => openPage(cdp, isolated),

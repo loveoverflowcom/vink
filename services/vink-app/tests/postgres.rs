@@ -38,6 +38,7 @@ const PUBLIC_ENDORSER_LIST_MIGRATION: i64 = 20261201000000;
 const COMMENT_UNG_NOTIFICATION_MIGRATION: i64 = 20261203000000;
 const SAVED_WORKS_MIGRATION: i64 = 20261204000000;
 const ACCOUNT_DELETION_MIGRATION: i64 = 20261205000000;
+const EVALUATOR_MESSAGE_MIGRATION: i64 = 20261207000000;
 const COMMENT_FORMAT_MIGRATION: i64 = 20261206000000;
 const ORIGIN: &str = "http://127.0.0.1:3000";
 
@@ -222,6 +223,12 @@ async fn wait_blocked(pool: &PgPool, n: i64) {
         );
         tokio::time::sleep(POLL).await;
     }
+}
+
+fn evaluator_approval() -> vink_app::domain::moderation::WorkEvaluatorAnswer {
+    vink_app::domain::moderation::WorkEvaluatorAnswer::from_json(
+        r#"{"verdict":"approve","message":"Đã duyệt bản gửi thử."}"#,
+    )
 }
 
 async fn seeded(pool: &PgPool) -> Vink<PgStore> {

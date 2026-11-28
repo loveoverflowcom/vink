@@ -30,6 +30,8 @@ pub struct AuthorWorkDecision {
     pub action_required: bool,
     pub can_appeal: bool,
     pub reason: Option<String>,
+    pub reason_message: Option<String>,
+    pub reason_code: Option<String>,
     pub decided_at: String,
 }
 

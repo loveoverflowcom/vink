@@ -635,7 +635,8 @@ async fn populated_schema_upgrades_once_without_public_changes(pool: PgPool) {
         [
             SAVED_WORKS_MIGRATION,
             ACCOUNT_DELETION_MIGRATION,
-            COMMENT_FORMAT_MIGRATION
+            COMMENT_FORMAT_MIGRATION,
+            EVALUATOR_MESSAGE_MIGRATION,
         ]
     );
     assert!(migrate(&pool).await.unwrap().applied.is_empty());

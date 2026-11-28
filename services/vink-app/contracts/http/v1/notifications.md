@@ -736,3 +736,5 @@ giai đoạn Design/Web sau khi hợp đồng và API BE sẵn sàng:
      hit target `≥ 44×44` px, trả focus khi đóng sheet/dialog hoặc bấm “Xem thêm”, SSR chỉ trả dữ liệu được phép. Khách mở, tải thêm và thử lại danh sách Thấm trên revision công khai.
 3. **Ngoài phạm vi Epic v1 (`DEFERRED`):** Giao diện CMP/native (`P-14A` chỉ giữ contract dữ liệu dùng
    lại được ở trên), kênh gửi quản trị thực tế (`P-05`), và Follow Notifications.
+
+Ở chi tiết quyết định tác phẩm, `reason.message` là lý do của người duyệt hoặc lời nhắn evaluator đã lưu tại đúng work/revision/decision_version. Bản cũ có thể có `reason.code` và message null. Gateway giữ lời nhắn trong phép đọc riêng tư. Envelope, count, danh sách và các phép đọc công khai không mang lời nhắn.

@@ -104,13 +104,34 @@ fn private_saves_open_no_evaluation_and_only_submitted_revisions_receive_tickets
 }
 
 #[test]
+fn work_message_bounds_count_unicode_scalars_without_truncation() {
+    let text = "ế".repeat(600);
+    let payload =
+        |message: &str| serde_json::json!({"verdict":"approve","message":message}).to_string();
+    let answer = WorkEvaluatorAnswer::from_json(&payload(&text));
+    assert_eq!(answer.message().unwrap().as_str(), text);
+    assert_eq!(
+        WorkEvaluatorAnswer::from_json(&payload(&(text + "ư"))),
+        WorkEvaluatorAnswer::InvalidOutput
+    );
+    for message in [" ", "x\ny", "<b>", "x\u{202e}y"] {
+        assert_eq!(
+            WorkEvaluatorAnswer::from_json(&payload(message)),
+            WorkEvaluatorAnswer::InvalidOutput
+        );
+    }
+}
+
+#[test]
 fn raw_evaluator_outputs_reject_unknown_fields_and_route_uncertainty_to_needs_admin() {
     assert_eq!(
-        EvaluatorOutcome::from_raw_json(r#"{"verdict":"approve"}"#),
+        EvaluatorOutcome::from_raw_json(r#"{"verdict":"approve","message":"Đã duyệt."}"#),
         EvaluatorOutcome::Approve
     );
     assert_eq!(
-        EvaluatorOutcome::from_raw_json(r#"{"verdict":"reject","reason_code":"hate_speech"}"#),
+        EvaluatorOutcome::from_raw_json(
+            r#"{"verdict":"reject","reason_code":"hate_speech","message":"Lý do riêng."}"#
+        ),
         EvaluatorOutcome::Reject(PolicyReasonCode::HateSpeech)
     );
     assert_eq!(
@@ -118,6 +139,11 @@ fn raw_evaluator_outputs_reject_unknown_fields_and_route_uncertainty_to_needs_ad
         EvaluatorOutcome::Uncertain
     );
     for invalid in [
+        r#"{"verdict":"approve"}"#,
+        r#"{"verdict":"approve","message":"<script>"}"#,
+        r#"{"verdict":"approve","message":"  "}"#,
+        r#"{"verdict":"approve","message":"x\u202ey"}"#,
+        r#"{"verdict":"reject","message":"Có lời nhắn"}"#,
         "",
         "{}",
         r#"{"verdict":"approve","reason_code":"safety_policy"}"#,

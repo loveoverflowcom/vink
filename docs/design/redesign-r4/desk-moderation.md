@@ -66,3 +66,7 @@ Sau #214 và #410, Desk đã có hàng theo WorkId cùng các trục trạng th�
 nghiệp vụ. Các luật hiện có theo ADM-04@r1, ADM-06@r1, O-17@r2 và NOTIF-03.
 
 Bảng trên là mẫu thiết kế. Prototype render, ảnh và tương tác runtime `NOT_RUN`.
+
+### Lời nhắn trên từng quyết định (#638)
+
+Trong sheet Bàn viết và chi tiết mở từ hộp thư, đọc trạng thái → thời điểm → lời nhắn kiểm duyệt riêng tư → hành động hiện có. “Đang công khai” lấy từ public pointer. Lời nhắn xuống dòng theo chiều rộng sheet. Bản duyệt cũ thiếu message chỉ hiện trạng thái. Bản từ chối thiếu lời nhắn ghi “Quyết định này không có lý do được lưu.” Focus, Back và lịch sử dùng cùng sheet hiện hành.

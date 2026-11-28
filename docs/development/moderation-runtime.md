@@ -318,3 +318,7 @@ offline moderation, native consumer hay thay luật grant/expiry/recusal/admin.
 
 [LayoutSpec](../design/moderation-queue-pagination.md). Bằng chứng final code và giới hạn được ghi
 trong [evidence #205](evidence/moderation-queue-205/README.md).
+
+### Lời nhắn riêng tư của evaluator (#638)
+
+Worker phân loại output trước giao dịch. Duyệt và từ chối cần lời nhắn hợp lệ; từ chối còn cần mã chính sách đã biết. Giới hạn kỹ thuật 600 Unicode scalar sau trim, từ chối ký tự điều khiển, điều khiển hướng chữ và dấu markup góc. Output sai đi theo `invalid_output`. Cùng giao dịch quyết định, worker ghi `evaluator_message` ở hàng lịch sử gắn evaluation ID. State đọc qua đúng khóa work/revision/decision_version. Đổi provider hoặc khởi động lại worker không tạo thêm công việc cho các bài đã duyệt.

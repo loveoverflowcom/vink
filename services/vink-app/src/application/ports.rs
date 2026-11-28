@@ -272,6 +272,7 @@ pub enum SetPrivateOutcome {
 pub struct AuthorPublicationStateFacts {
     pub publication: crate::domain::publication::PublicationState,
     pub moderation: crate::domain::moderation::ModerationState,
+    pub evaluator_messages: std::collections::HashMap<(uuid::Uuid, i64), String>,
     pub revision_metadata: Vec<(RevisionId, String, Option<uuid::Uuid>, OffsetDateTime)>,
 }
 

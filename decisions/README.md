@@ -81,6 +81,8 @@ ngày 25/11/2026. Mock kịch bản `approve` duyệt mặc định cho tác ph�
 production. Operator có opt-out `manual`, và admin dừng tự động thắng cấu hình. Revision còn
 `PENDING`. [Vận hành và provenance](../docs/development/moderation-runtime.md#31-mock-bootstrap-và-công-tắc-vận-hành-536).
 
+[VDR-WORK-MOCK-EVALUATOR-BOOTSTRAP@r2](proposals/VDR-WORK-MOCK-EVALUATOR-BOOTSTRAP.r2.toml) ghi M01–M09 của [#639](https://github.com/loveoverflowcom/vink/issues/639). Revision này chờ signoff riêng. #638 triển khai M01/M02/M03/M07.
+
 ## Lượt xem tác phẩm
 
 [VDR-WORK-VIEWS@r1](proposals/VDR-WORK-VIEWS.r1.toml) ghi P-01..P-11 của

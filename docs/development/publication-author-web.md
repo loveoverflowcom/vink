@@ -179,8 +179,7 @@ database nhận `429`. Phase mới nay chạy trên database App riêng (`vink_v
   App); mọi câu trả lời khác là thật. Mất ACK là thật: response bị hủy *sau khi* máy chủ commit.
 - Reduced motion: vùng không thêm chuyển động; chưa có kiểm tra riêng cho chế độ này.
 - Ảnh là bằng chứng của lượt chạy, không phải baseline; `NO_APPROVED_REFERENCE`.
-- Chưa đo `Worker` thật (consumer tắt mặc định; evaluator kịch bản chỉ ở local/test) và chưa có
-  AI provider, SLA, thông báo.
+- Lượt kiểm tra lịch sử này chỉ dùng người duyệt. Từ #536, worker mặc định duyệt bằng mock cả ở production. Scenario `evaluator-message` kiểm riêng đường worker → Notifications → Bàn viết.
 
 ## Rà soát client-state (13/11/2026)
 
