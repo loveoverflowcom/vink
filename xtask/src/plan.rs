@@ -174,6 +174,7 @@ pub enum Auth {
 pub enum Artifact {
     App,
     Worker,
+    Notifications,
     Identity,
     Bundle,
     Spa,
@@ -193,6 +194,7 @@ pub enum Tool {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Service {
+    Notifications,
     App,
     Identity,
     Worker,
@@ -243,6 +245,7 @@ pub enum Scenario {
     AccountDeletion,
     AuthorSearch,
     Publication,
+    EvaluatorMessage,
     Notifications,
     PerfBaseline,
     ReturnPosition,
@@ -271,7 +274,8 @@ impl Scenario {
         Self::Publication,
         Self::Notifications,
     ];
-    const OPT_IN: [Self; 4] = [
+    const OPT_IN: [Self; 5] = [
+        Self::EvaluatorMessage,
         Self::PerfBaseline,
         Self::ReturnPosition,
         Self::Standalone,
@@ -320,6 +324,7 @@ impl Scenario {
             Self::Password => "password",
             Self::AccountDeletion => "account-deletion",
             Self::AuthorSearch => "author-search",
+            Self::EvaluatorMessage => "evaluator-message",
             Self::Publication => "publication",
             Self::Notifications => "notifications",
             Self::PerfBaseline => "perf-baseline",
@@ -340,6 +345,7 @@ impl Scenario {
                 | Self::Password
                 | Self::AccountDeletion
                 | Self::AuthorSearch
+                | Self::EvaluatorMessage
                 | Self::Publication
                 | Self::Standalone
         )
@@ -419,6 +425,9 @@ impl Scenario {
             }
             Self::Password | Self::AccountDeletion | Self::AuthorSearch => {
                 "separate fresh App and real Identity scratch; native credentials and local mail outbox"
+            }
+            Self::EvaluatorMessage => {
+                "authenticated Product Web, evaluation and relay worker, real Notifications database and gateway"
             }
             Self::Publication => {
                 "dedicated seeded App scratch/tag catalog and real Identity scratch/local outbox"
@@ -526,6 +535,12 @@ impl Plan {
             plan.databases.push("VINK_TEST_DATABASE_URL");
             plan.migrations.push("App scratch");
             plan.services.push(S::App);
+            if plan.scenarios.contains(&Scenario::EvaluatorMessage) {
+                plan.artifacts.extend([A::Worker, A::Notifications]);
+                plan.services.extend([S::Worker, S::Notifications]);
+                plan.migrations.push("Notifications scratch");
+                plan.tools.push(P::Psql);
+            }
             if plan.scenarios.iter().any(|s| s.identity()) {
                 plan.artifacts.push(A::Identity);
                 plan.services.push(S::Identity);
@@ -729,7 +744,14 @@ mod tests {
             let p = Plan::resolve(r);
             assert_eq!(p.scenarios, [s]);
             assert_eq!(p.artifacts.contains(&Artifact::Identity), s.identity());
-            assert!(!p.artifacts.contains(&Artifact::Worker));
+            assert_eq!(
+                p.artifacts.contains(&Artifact::Worker),
+                s == Scenario::EvaluatorMessage
+            );
+            assert_eq!(
+                p.artifacts.contains(&Artifact::Notifications),
+                s == Scenario::EvaluatorMessage
+            );
         }
     }
     #[test]

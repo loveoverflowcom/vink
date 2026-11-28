@@ -581,7 +581,21 @@ async fn read_author_state(
         .map_err(|e| integrity("publication state restore failed", e))?;
     let moderation = crate::domain::moderation::ModerationState::restore(&publication, m)
         .map_err(|e| integrity("moderation state restore failed", e))?;
+    let messages: Vec<(Uuid, i64, String)> = query_as(
+        "SELECT h.revision_id, h.decision_version, h.evaluator_message
+         FROM work_revision_decision_history h
+         JOIN work_revision_moderation m USING (work_id, revision_id, decision_version)
+         WHERE h.work_id = $1 AND h.evaluator_message IS NOT NULL",
+    )
+    .bind(work_id.as_uuid())
+    .fetch_all(&mut *conn)
+    .await
+    .map_err(classify)?;
     Ok(Some(AuthorPublicationStateFacts {
+        evaluator_messages: messages
+            .into_iter()
+            .map(|(id, version, text)| ((id, version), text))
+            .collect(),
         publication,
         moderation,
         revision_metadata,
@@ -1108,6 +1122,7 @@ impl AuthorPublicationStore for PgStore {
                     transition.moderation.facts(),
                     revision_id,
                     DecisionSource {
+                        evaluator_message: None,
                         appeal: None,
                         evaluation: transition.ticket.as_ref().map(|t| t.id),
                         case: None,

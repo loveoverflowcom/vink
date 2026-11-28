@@ -181,7 +181,7 @@ Screen #decision-work — vùng Kết quả kiểm duyệt của Bàn viết (#4
   Panel #panel
     Row #outcome — Chip(Bị từ chối | Đã được duyệt) + Chip "Cần xử lý" (action_required)
     Heading h1 nhan đề (Literata 30) · Text #sub "Bản gửi ngày … · quyết định lúc …"
-    Region #reason "Lý do" (surface-container, bo 20)
+    Region #reason "Lời nhắn kiểm duyệt" — đúng revision/version, ẩn khi bản duyệt cũ thiếu lời nhắn; bản từ chối thiếu lý do ghi rõ sự thiếu vắng
     Row #actions — Button "Sửa trong Bàn viết" (filled) · Button "Gửi phản đối" (tonal, chỉ can_appeal)
     Text #hint
 Screen #decision-comment — như trên, không #actions, không chữ nhận xét

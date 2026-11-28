@@ -924,7 +924,6 @@ async fn review_withdrawn_page_survives_a_pending_resubmission(pool: PgPool) {
 /// between claim and finish leaves decisions and pointers untouched.
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
 async fn stale_claim_or_pause_before_finish_changes_nothing(pool: PgPool) {
-    use vink_app::domain::moderation::EvaluatorOutcome;
     use vink_app::persistence::evaluation::{JobOutcome, claim_job, finish_job};
 
     let app = app(&pool).await;
@@ -945,7 +944,7 @@ async fn stale_claim_or_pause_before_finish_changes_nothing(pool: PgPool) {
     let second = claim_job(&pool, "w2", 30, None).await.unwrap().unwrap();
     assert_eq!(second.id, first.id, "a reclaim keeps the evaluation id");
     assert_eq!(second.claim_generation, first.claim_generation + 1);
-    let outcome = finish_job(&pool, "w1", &first, Some(EvaluatorOutcome::Approve), 0)
+    let outcome = finish_job(&pool, "w1", &first, Some(evaluator_approval()), 0)
         .await
         .unwrap();
     assert_eq!(outcome, JobOutcome::Stale);
@@ -960,7 +959,7 @@ async fn stale_claim_or_pause_before_finish_changes_nothing(pool: PgPool) {
     )
     .await;
     assert_eq!(status, StatusCode::OK, "{body}");
-    let outcome = finish_job(&pool, "w2", &second, Some(EvaluatorOutcome::Approve), 0)
+    let outcome = finish_job(&pool, "w2", &second, Some(evaluator_approval()), 0)
         .await
         .unwrap();
     assert_eq!(outcome, JobOutcome::Stale);
@@ -1538,6 +1537,36 @@ async fn work_appeal_deduplicates_and_only_admin_concludes_with_history(pool: Pg
         Some(Uuid::parse_str(&revision).unwrap())
     );
     let row:(i64,String,Option<Uuid>)=sqlx::query_as("SELECT decision_version,provenance_kind,appeal_id FROM work_revision_decision_history WHERE appeal_id=$1").bind(Uuid::parse_str(id).unwrap()).fetch_one(&pool).await.unwrap();
+    let history = format!("/api/v1/works/{}/publication/review", dev_seed::SAMPLE_WORK);
+    let (status, _, body) = call(
+        &app,
+        "GET",
+        &history,
+        Some(dev_seed::SAMPLE_AUTHOR),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let data = json(&body);
+    let decisions = data["decisions"].as_array().unwrap();
+    let old = decisions
+        .iter()
+        .find(|d| d["revision_id"] == revision && d["decision_version"] == 2)
+        .unwrap();
+    let latest = decisions
+        .iter()
+        .find(|d| d["revision_id"] == revision && d["decision_version"] == 3)
+        .unwrap();
+    assert!(
+        old["reason_message"]
+            .as_str()
+            .unwrap()
+            .contains("kịch bản thử nghiệm")
+    );
+    assert_eq!(old["reason_code"], "safety_policy");
+    assert_eq!(latest["reason_message"], "Bản thảo phù hợp chính sách");
+    assert!(latest["reason_code"].is_null());
     assert_eq!((row.0, row.1.as_str()), (3, "admin"));
     assert!(row.2.is_some());
     let (status, _, body) = call(
@@ -1838,7 +1867,7 @@ async fn human_policy_rereview_accepts_scoped_moderator_conclusion(pool: PgPool)
 }
 
 async fn conclude_human_policy_rereview(pool: PgPool, use_work_grant: bool) {
-    use vink_app::domain::moderation::{EvaluationRefusal, EvaluatorOutcome, PolicyReasonCode};
+    use vink_app::domain::moderation::{EvaluationRefusal, WorkEvaluatorAnswer};
     use vink_app::persistence::evaluation::{JobOutcome, claim_job, finish_job};
 
     let app = app(&pool).await;
@@ -1883,7 +1912,9 @@ async fn conclude_human_policy_rereview(pool: PgPool, use_work_grant: bool) {
             &pool,
             "in-flight",
             &late,
-            Some(EvaluatorOutcome::Reject(PolicyReasonCode::Harassment)),
+            Some(WorkEvaluatorAnswer::from_json(
+                r#"{"verdict":"reject","reason_code":"harassment","message":"Lý do thử nghiệm."}"#
+            )),
             0
         )
         .await
@@ -2158,6 +2189,46 @@ async fn production_default_mock_approves_exactly_the_submitted_revision(pool: P
     assert_eq!(status, StatusCode::OK);
     assert_eq!(json(&body)["title"], "Bản gửi thử");
 
+    let stored: String = sqlx::query_scalar("SELECT evaluator_message FROM work_revision_decision_history WHERE revision_id=$1 AND moderation='approved'")
+        .bind(r2_id).fetch_one(&pool).await.unwrap();
+    let mut conn = pool.acquire().await.unwrap();
+    let guarded = sqlx::raw_sql(include_str!(
+        "../../migrations-rollback/20261207000000_work_evaluator_message.down.sql"
+    ))
+    .execute(&mut *conn)
+    .await
+    .unwrap_err();
+    assert!(guarded.to_string().contains("preserve history"));
+    sqlx::query("ROLLBACK").execute(&mut *conn).await.unwrap();
+    drop(conn);
+    assert!(stored.contains("thử nghiệm"));
+    assert!(!body.contains(&stored));
+    for route in ["state", "review"] {
+        let path = format!("/api/v1/works/{work}/publication/{route}");
+        let (status, _, body) = call(
+            &app,
+            "GET",
+            &path,
+            Some(dev_seed::SAMPLE_AUTHOR),
+            None,
+            None,
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK);
+        assert!(body.contains(&stored));
+        let (status, _, body) = call(
+            &app,
+            "GET",
+            &path,
+            Some(dev_seed::OTHER_PRINCIPAL),
+            None,
+            None,
+        )
+        .await;
+        assert_eq!(status, StatusCode::NOT_FOUND);
+        assert!(!body.contains(&stored));
+    }
+
     // Provenance: history row → evaluation id → job bound to the scripted `approve` on claim.
     type Trace = (i64, String, Option<String>, String, String);
     let trace: Vec<Trace> = sqlx::query_as(
@@ -2413,4 +2484,162 @@ async fn default_mock_never_publishes_after_withdrawal_or_human_decision(pool: P
     .await
     .unwrap();
     assert_eq!(last, ("rejected".into(), "admin".into()));
+}
+
+#[sqlx::test(migrations = false)]
+async fn evaluator_message_upgrades_legacy_decisions_without_backfill(pool: PgPool) {
+    use vink_app::persistence::MIGRATOR;
+    let previous = sqlx::migrate::Migrator::with_migrations(
+        MIGRATOR
+            .iter()
+            .filter(|m| m.version < EVALUATOR_MESSAGE_MIGRATION)
+            .cloned()
+            .collect(),
+    );
+    previous.run(&pool).await.unwrap();
+    let app = app(&pool).await;
+    let work = dev_seed::SAMPLE_WORK;
+    let rev = dev_seed::SAMPLE_REVISION;
+    // The actual previous schema accepts evaluator decisions with just a verdict and policy code.
+    for (version, outcome, provenance, code) in [
+        (12_i64, "approved", "ai_approved", None),
+        (13, "rejected", "ai_rejected", Some("safety_policy")),
+    ] {
+        sqlx::query("INSERT INTO work_revision_decision_history
+           (id,work_id,revision_id,decision_version,moderation,policy_version,provenance_kind,policy_reason_code,evaluation_id)
+           VALUES ($1,$2,$3,$4,$5,1,$6,$7,$8)").bind(Uuid::now_v7()).bind(work).bind(rev).bind(version)
+           .bind(outcome).bind(provenance).bind(code).bind(Uuid::now_v7()).execute(&pool).await.unwrap();
+    }
+    let before: i64 = sqlx::query_scalar("SELECT count(*) FROM work_revision_decision_history")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    MIGRATOR.run(&pool).await.unwrap();
+    let counts: (i64, i64) = sqlx::query_as(
+        "SELECT count(*), count(evaluator_message) FROM work_revision_decision_history",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(counts, (before, 0));
+    let (status, _, body) = call(
+        &app,
+        "GET",
+        &format!("/api/v1/works/{work}/publication/review"),
+        Some(dev_seed::SAMPLE_AUTHOR),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let data = json(&body);
+    for (version, code) in [(12, None), (13, Some("safety_policy"))] {
+        let d = data["decisions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|v| v["decision_version"] == version)
+            .unwrap();
+        assert!(d["reason_message"].is_null());
+        assert_eq!(d["reason_code"].as_str(), code);
+    }
+    let bad = sqlx::query("UPDATE work_revision_decision_history SET evaluator_message='<invalid>' WHERE work_id=$1 AND decision_version=12")
+        .bind(work).execute(&pool).await.unwrap_err();
+    assert_eq!(
+        bad.as_database_error().unwrap().code().as_deref(),
+        Some("23514")
+    );
+    sqlx::raw_sql(include_str!(
+        "../../migrations-rollback/20261207000000_work_evaluator_message.down.sql"
+    ))
+    .execute(&pool)
+    .await
+    .unwrap();
+    MIGRATOR.run(&pool).await.unwrap();
+}
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn inconclusive_evaluations_emit_neither_message_nor_decision_notice(pool: PgPool) {
+    let app = app(&pool).await;
+    vink_app::persistence::notification::set_activation(&pool, true, "#638 controls")
+        .await
+        .unwrap();
+    let work = dev_seed::SAMPLE_WORK;
+    let vink = Vink::new(PgStore::new(pool.clone()));
+    let mut draft_version = 1;
+    let mut generation = 2;
+    for scenario in ["invalid_output", "needs_admin", "provider_error", "timeout"] {
+        vink.save_draft(
+            author(),
+            save(
+                WorkId::from_uuid(work),
+                draft_version,
+                scenario,
+                doc(&[&[scenario]]),
+            ),
+        )
+        .await
+        .unwrap();
+        draft_version += 1;
+        let revision = snapshot(&app, work, &format!("snapshot-{scenario}"), draft_version).await;
+        generation = request_public(
+            &app,
+            work,
+            &revision,
+            generation,
+            &format!("submit-{scenario}"),
+        )
+        .await;
+        set_scenario(&pool, work, scenario).await;
+        let attempts = if matches!(scenario, "timeout" | "provider_error") {
+            3
+        } else {
+            1
+        };
+        for _ in 0..attempts {
+            assert!(
+                EvaluationWorker::run_once(&pool, "worker-control")
+                    .await
+                    .unwrap()
+            );
+        }
+        assert!(
+            !EvaluationWorker::run_once(&pool, "worker-control")
+                .await
+                .unwrap()
+        );
+        let (status, _, body) = call(
+            &app,
+            "GET",
+            &format!("/api/v1/works/{work}/publication/state"),
+            Some(dev_seed::SAMPLE_AUTHOR),
+            None,
+            None,
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK);
+        let data = json(&body);
+        let row = data["revisions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|r| r["revision_id"] == revision)
+            .unwrap();
+        assert!(
+            matches!(row["moderation"].as_str(), Some("pending" | "needs_admin")),
+            "{scenario}: {row}"
+        );
+        assert!(row["reason_message"].is_null());
+        assert_ne!(data["pointer"]["revision_id"], revision);
+        assert_eq!(sqlx::query_scalar::<_,i64>("SELECT count(*) FROM notification_events WHERE event_type='work.moderation.decided'").fetch_one(&pool).await.unwrap(),0);
+        let (status, body) = post(
+            &app,
+            &set_private_path(work),
+            dev_seed::SAMPLE_AUTHOR,
+            json!({"expected_generation":generation,"command_key":format!("private-{scenario}")}),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK, "{body}");
+        generation = json(&body)["generation"].as_i64().unwrap();
+    }
 }

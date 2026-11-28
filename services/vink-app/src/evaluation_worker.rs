@@ -218,13 +218,14 @@ impl EvaluationWorker {
         };
         let outcome = Self::evaluate(&claim, settings);
         let backoff = i64::try_from(settings.retry_backoff.as_secs()).unwrap_or(0);
+        let scripted_verdict = outcome.is_some();
         let finished = finish_job(pool, worker_id, &claim, outcome, backoff).await?;
         tracing::info!(
             job = %claim.id,
             claim_generation = claim.claim_generation,
             attempt = claim.attempts,
             evaluator = settings.evaluator.as_str(),
-            scripted_verdict = outcome.is_some(),
+            scripted_verdict,
             scenario = claim.scenario.as_deref().unwrap_or("none"),
             outcome = ?finished,
             "evaluation job finished"
@@ -236,7 +237,7 @@ impl EvaluationWorker {
     fn evaluate(
         claim: &ClaimedJob,
         settings: &EvaluationSettings,
-    ) -> Option<crate::domain::moderation::EvaluatorOutcome> {
+    ) -> Option<crate::domain::moderation::WorkEvaluatorAnswer> {
         scripted_outcome(claim, settings.honoured_scenarios())
     }
 

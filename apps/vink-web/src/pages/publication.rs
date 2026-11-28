@@ -860,6 +860,8 @@ mod tests {
     ) -> AuthorRevision {
         AuthorRevision {
             can_appeal: false,
+            reason_message: None,
+            reason_code: None,
             decision_reason: reason.map(str::to_string),
             revision_id: id.into(),
             title: title.into(),

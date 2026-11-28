@@ -784,3 +784,7 @@ không đưa `views` hay `Set-Cookie` sang đường `GET` công khai (`READ-01`
 POST nhận body_format là plain hoặc markdown. Client bỏ field dùng plain. Cả hai giữ giới hạn 4.000 scalar, 200 dòng sau NFC và chuẩn hóa newline. Projection comment trả source và body_format. Queue đã kiểm quyền còn trả body_text từ chữ hiển thị, gồm nhãn link/ảnh, code, HTML dưới dạng chữ và xuống dòng. Premoderation quyết định quyền hiển thị như trước.
 
 Receipt plain giữ encoding submit.v1, Markdown dùng submit.markdown.v1. Phát lại cùng key, nguồn chuẩn hóa và đích giữ nguyên kết quả. Đổi format với cùng key trả idempotency_key_reused. Migration 20261206000000 gán plain cho dữ liệu có trước, kể cả hàng đã gỡ có body NULL.
+
+### Lời nhắn kiểm duyệt riêng tư cho tác phẩm
+
+`publication/state` và `publication/review` cung cấp `reason_message` và `reason_code` trên revision hoặc decision tương ứng. Giá trị thiếu là null hoặc trường vắng. Hai alias cũ `decision_reason` (state) và `reason` (history) ưu tiên message rồi tới code. Client mới giữ code riêng khi diễn giải việc thiếu lời nhắn. Quyết định do người kiểm duyệt giữ nguyên lý do đã ghi. Cả hai API giữ owner fence và `no-store`.

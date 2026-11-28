@@ -638,6 +638,20 @@ fn review_content(
     }.into_any()
 }
 
+/// Older Web contracts exposed one alias for either a message or a policy code.
+fn author_message<'a>(
+    status: crate::contract::publication::Decision,
+    message: Option<&'a str>,
+    code: Option<&str>,
+    alias: Option<&'a str>,
+) -> Option<&'a str> {
+    message
+        .or(alias.filter(|text| Some(*text) != code))
+        .filter(|text| !text.trim().is_empty())
+        .or((status == crate::contract::publication::Decision::Rejected)
+            .then_some("Quyết định này không có lý do được lưu."))
+}
+
 fn revision_review(
     data: &AuthorWorkReview,
     index: usize,
@@ -655,10 +669,21 @@ fn revision_review(
     let date = decision
         .map_or(&revision.created_at, |decision| &decision.decided_at)
         .clone();
-    let reason = match decision {
-        Some(decision) => decision.reason.clone(),
-        None => revision.decision_reason.clone(),
+    let (message, code, alias) = match decision {
+        Some(d) => (&d.reason_message, &d.reason_code, &d.reason),
+        None => (
+            &revision.reason_message,
+            &revision.reason_code,
+            &revision.decision_reason,
+        ),
     };
+    let reason = author_message(
+        status,
+        message.as_deref(),
+        code.as_deref(),
+        alias.as_deref(),
+    )
+    .map(str::to_owned);
     let title = draft_list::display_title(&revision.title);
     let public = data
         .state
@@ -729,14 +754,14 @@ fn revision_review(
             {public.then(|| view! {
                 <p>{if historical { "Bản này đang công khai theo quyết định hiện hành." } else { "Đang công khai." }}</p>
             })}
-            {if exact {
+            {reason.map(|text| if exact {
                 view! { <div class="vk-notif-decision__reason">
-                    <h4 class="vk-ui-heading">"Lý do"</h4>
-                    <p>{reason.filter(|reason| !reason.trim().is_empty()).unwrap_or_else(|| "Không có lý do kèm theo.".into())}</p>
+                    <h4 class="vk-ui-heading">"Lời nhắn kiểm duyệt"</h4>
+                    <p class="wrap-anywhere">{text}</p>
                 </div> }.into_any()
             } else {
-                reason.filter(|reason| !reason.trim().is_empty()).map(|reason| view! { <p>"Lý do: " {reason}</p> }).into_any()
-            }}
+                view! { <p class="wrap-anywhere">"Lời nhắn kiểm duyệt: " {text}</p> }.into_any()
+            })}
             {move || display_appeal.get().map(appeal_summary)}
             <div class="vk-notif-decision__actions">
             {(exact && action_required).then(|| view! { <a href=edit_href class=ButtonVariant::Filled.classes()>"Sửa trong Bàn viết"</a> })}
@@ -789,6 +814,30 @@ mod tests {
     fn from_href(href: &str) -> Option<Result<ReviewTarget, ()>> {
         let (_, query) = href.split_once('?').unwrap();
         parse_target(query)
+    }
+
+    #[test]
+    fn author_message_preserves_legacy_absence_and_human_text() {
+        use crate::contract::publication::Decision::{Approved, Pending, Rejected};
+        assert_eq!(author_message(Approved, None, None, None), None);
+        assert_eq!(author_message(Pending, None, None, None), None);
+        assert_eq!(
+            author_message(Rejected, None, Some("safety_policy"), Some("safety_policy")),
+            Some("Quyết định này không có lý do được lưu.")
+        );
+        assert_eq!(
+            author_message(Approved, None, None, Some("Lý do đã lưu")),
+            Some("Lý do đã lưu")
+        );
+        assert_eq!(
+            author_message(
+                Rejected,
+                Some("Lời nhắn"),
+                Some("safety_policy"),
+                Some("safety_policy")
+            ),
+            Some("Lời nhắn")
+        );
     }
 
     #[test]

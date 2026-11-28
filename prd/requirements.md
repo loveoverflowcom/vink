@@ -298,6 +298,10 @@ Hành vi chi tiết: [xuất bản và kiểm duyệt](../docs/architecture/publ
 
 ### 14.2. Kiểm duyệt bằng trợ lý AI, quản trị viên, moderator và phản đối (MOD-07..15)
 
+Theo [quyết định M01–M09 ngày 28/11](https://github.com/loveoverflowcom/vink/issues/639), tác giả đọc lời nhắn đã lưu của từng quyết định trong chi tiết riêng tư. Mock nói rõ chế độ thử nghiệm, kể cả khi duyệt. Lời nhắn bằng văn bản thuần, ưu tiên 1–3 câu. Bản duyệt cũ thiếu lời nhắn chỉ hiện trạng thái. Với bản bị từ chối thiếu lý do, thông báo rõ lý do chưa được lưu. Giữ nguyên căn cứ lịch sử và ẩn danh người duyệt.
+
+M04 hoãn hậu kiểm bài cũ khi đổi provider. M08 hoãn đánh giá lời giải thích. M05/M06 dành cho AI tương lai: khi từ chối, nêu căn cứ, đoạn liên quan và hướng xử lý nếu xác định được; khi duyệt, cảnh báo nhạy cảm chỉ mang tính tham khảo. M09 dành cho Nhận xét tương lai: dùng chung cấu trúc kết quả, với chính sách, quyền và phiên bản đích riêng. Các quy tắc gửi bản mới và can thiệp có thẩm quyền tiếp tục áp dụng.
+
 | ID | Luật | Nghiệm thu tiêu biểu | Đề xuất UX/dữ liệu |
 | --- | --- | --- | --- |
 | MOD-07 | Evaluator trả kết quả **có cấu trúc** gắn target, revision/content digest, policy version, evaluation/job identity, outcome và lý do. Chỉ kết quả hợp lệ, còn hiệu lực, đúng phiên bản và đủ authority mới tạo quyết định nghiệp vụ. Hiện tại: contract + mock scripted, **không** provider thật. Từ #536, mock `approve` chạy mặc định cả production theo ngoại lệ bootstrap ở MOD-06; lịch sử truy được job và kịch bản đã gắn | Sai revision, trùng, sai policy, sau khi target bị xóa/gỡ, sau admin override: không mutation. Output không hợp lệ không thành duyệt | Kết quả lưu append-only: target, digest, policy, job, outcome, mã lý do, thời điểm; không lưu prompt/nội dung riêng vào log |

@@ -1210,6 +1210,7 @@ pub async fn conclude_case(
         next_mod,
         rev_id,
         DecisionSource {
+            evaluator_message: None,
             appeal: None,
             evaluation: None,
             case: Some(case_id),

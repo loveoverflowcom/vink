@@ -418,7 +418,7 @@ fn run_local(plan: &Plan, env: &Env, config: &Local) -> Result<(), String> {
                 children.push(child);
                 println!("==> worker ready (no HTTP server)");
             }
-            Service::Preview => unreachable!(),
+            Service::Preview | Service::Notifications => unreachable!(),
         }
     }
     let result = loop {

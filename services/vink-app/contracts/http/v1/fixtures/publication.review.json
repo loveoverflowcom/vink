@@ -15,6 +15,7 @@
     "revisions": [
       {
         "can_appeal": false,
+        "reason_message": "Đã xem xét lại",
         "decision_reason": "Đã xem xét lại",
         "revision_id": "0192f3a1-0000-7000-8000-0000000000b1",
         "title": "[Mẫu] Mưa trên phố cũ",
@@ -34,6 +35,8 @@
       "action_required": false,
       "is_current": true,
       "can_appeal": false,
+      "reason_message": "Đã xem xét lại",
+      "reason_code": null,
       "reason": "Đã xem xét lại",
       "decided_at": "2026-11-24T10:15:00Z"
     },
@@ -44,6 +47,8 @@
       "action_required": true,
       "is_current": false,
       "can_appeal": false,
+      "reason_message": "Cần xem lại chính sách",
+      "reason_code": null,
       "reason": "Cần xem lại chính sách",
       "decided_at": "2026-11-24T09:00:00Z"
     }

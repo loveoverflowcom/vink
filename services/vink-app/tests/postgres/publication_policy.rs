@@ -2,7 +2,7 @@
 use super::*;
 use vink_app::application::publication::AuthorPublicationError;
 use vink_app::domain::ids::RevisionId;
-use vink_app::domain::moderation::{EvaluationRefusal, EvaluatorOutcome};
+use vink_app::domain::moderation::EvaluationRefusal;
 use vink_app::domain::publication::Moderation;
 use vink_app::persistence::evaluation::{JobOutcome, claim_job, finish_job};
 
@@ -75,7 +75,7 @@ async fn state_observes_policy_rereview_and_private_fences_late_approval(pool: P
     let worker = "state-policy-230";
     let claim = claim_job(&pool, worker, 60, None).await.unwrap().unwrap();
     assert!(matches!(
-        finish_job(&pool, worker, &claim, Some(EvaluatorOutcome::Approve), 0)
+        finish_job(&pool, worker, &claim, Some(evaluator_approval()), 0)
             .await
             .unwrap(),
         JobOutcome::Applied(_)
@@ -137,7 +137,7 @@ async fn state_observes_policy_rereview_and_private_fences_late_approval(pool: P
     // Policy changes again after the claim; an old policy result cannot approve.
     bump(&pool, work).await;
     assert_eq!(
-        finish_job(&pool, worker, &claim, Some(EvaluatorOutcome::Approve), 0)
+        finish_job(&pool, worker, &claim, Some(evaluator_approval()), 0)
             .await
             .unwrap(),
         JobOutcome::Refused(EvaluationRefusal::StalePolicy)
@@ -152,7 +152,7 @@ async fn state_observes_policy_rereview_and_private_fences_late_approval(pool: P
         .await
         .unwrap();
     assert_eq!(
-        finish_job(&pool, worker, &late, Some(EvaluatorOutcome::Approve), 0)
+        finish_job(&pool, worker, &late, Some(evaluator_approval()), 0)
             .await
             .unwrap(),
         JobOutcome::Stale
@@ -408,7 +408,7 @@ async fn canonical_policy_rereview_is_atomic_and_publishes_the_captured_digest(p
         .unwrap();
     assert_eq!(claim.id, ticket.id.as_uuid());
     assert_eq!(
-        finish_job(&pool, "current", &claim, Some(EvaluatorOutcome::Approve), 0)
+        finish_job(&pool, "current", &claim, Some(evaluator_approval()), 0)
             .await
             .unwrap(),
         JobOutcome::Applied(vink_app::domain::moderation::AppliedEvaluation::Published)

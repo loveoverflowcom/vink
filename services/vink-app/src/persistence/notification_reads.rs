@@ -66,7 +66,7 @@ fn work_decision_query(
     decision_version: Option<i64>,
 ) -> sqlx::query::Query<'static, sqlx::Postgres, sqlx::postgres::PgArguments> {
     sqlx::query(
-            "SELECT h.revision_id, h.decision_version, h.moderation, h.provenance_kind, h.policy_reason_code, h.reason, h.created_at,
+            "SELECT h.revision_id, h.decision_version, h.moderation, h.provenance_kind, h.policy_reason_code, h.evaluator_message, h.reason, h.created_at,
                     r.title,
                     (m.decision_version = h.decision_version) AS is_current,
                     (m.decision_version = h.decision_version AND m.moderation = 'rejected'
@@ -93,10 +93,13 @@ fn work_decision_from_row(row: &sqlx::postgres::PgRow) -> Result<WorkDecisionDet
     let moderation: String = row.try_get("moderation").map_err(classify)?;
     let provenance: String = row.try_get("provenance_kind").map_err(classify)?;
     let rejected = moderation == "rejected";
-    // Only what the author already sees on their publication state (MOD-04): the policy
-    // code of an AI rejection, or the human reviewer's stated reason. Never who decided.
+    // Only the private explanation of this exact historical conclusion, without the reviewer.
     let (reason_code, reason_message) = match provenance.as_str() {
-        "ai_rejected" => (row.try_get("policy_reason_code").map_err(classify)?, None),
+        "ai_approved" => (None, row.try_get("evaluator_message").map_err(classify)?),
+        "ai_rejected" => (
+            row.try_get("policy_reason_code").map_err(classify)?,
+            row.try_get("evaluator_message").map_err(classify)?,
+        ),
         "admin" | "moderator" => (None, row.try_get("reason").map_err(classify)?),
         _ => (None, None),
     };

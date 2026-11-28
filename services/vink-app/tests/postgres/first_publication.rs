@@ -2,7 +2,7 @@
 use super::*;
 use time::OffsetDateTime;
 use vink_app::domain::ids::RevisionId;
-use vink_app::domain::moderation::{AppliedEvaluation, EvaluatorOutcome, PolicyReasonCode};
+use vink_app::domain::moderation::{AppliedEvaluation, PolicyReasonCode, WorkEvaluatorAnswer};
 use vink_app::persistence::evaluation::{JobOutcome, claim_job, finish_job};
 use vink_app::persistence::{MIGRATOR, migrate};
 
@@ -82,7 +82,7 @@ async fn only_a_committed_first_pointer_dates_the_work(pool: PgPool) {
             &pool,
             worker,
             &job,
-            Some(EvaluatorOutcome::Reject(reason)),
+            Some(WorkEvaluatorAnswer::from_json(r#"{"verdict":"reject","reason_code":"safety_policy","message":"Lý do thử nghiệm."}"#)),
             0
         )
         .await
@@ -96,7 +96,7 @@ async fn only_a_committed_first_pointer_dates_the_work(pool: PgPool) {
         .await
         .unwrap();
     let job = claim_job(&pool, worker, 60, None).await.unwrap().unwrap();
-    let approve = || finish_job(&pool, worker, &job, Some(EvaluatorOutcome::Approve), 0);
+    let approve = || finish_job(&pool, worker, &job, Some(evaluator_approval()), 0);
     // Force the last job write to fail AFTER the pointer and its trigger have run.
     sqlx::query("ALTER TABLE work_evaluation_jobs ADD CONSTRAINT fail_applied_291 CHECK (state <> 'applied') NOT VALID")
         .execute(&pool).await.unwrap();
@@ -215,13 +215,20 @@ async fn backfill_and_old_writer_preserve_the_source_across_republication(pool: 
             .unwrap();
     let withdrawn = vink.create_draft(author()).await.unwrap().work_id;
     let withdrawn_revision = capture(&vink, withdrawn, 1).await;
-    vink.request_public(author(), withdrawn, "submit-old", withdrawn_revision, 1)
-        .await
-        .unwrap();
-    let job = claim_job(&pool, "old", 60, None).await.unwrap().unwrap();
-    finish_job(&pool, "old", &job, Some(EvaluatorOutcome::Approve), 0)
-        .await
-        .unwrap();
+    // Reproduce a legacy pointer and its paired approval on the old schema. The current
+    // worker also writes evaluator_message, a column this staged database cannot have.
+    let mut old_writer = pool.begin().await.unwrap();
+    for sql in [
+        "UPDATE work_publications SET audience='public',generation=2,intent_revision_id=$2,intent_generation=2,
+         pointer_revision_id=$2,pointer_intent_generation=2,ever_public=ARRAY[$2],public_epoch=1 WHERE work_id=$1",
+        "INSERT INTO work_revision_moderation(work_id,revision_id,decision_version,moderation,provenance_kind)
+         VALUES ($1,$2,2,'approved','legacy_bootstrap')",
+        "INSERT INTO publications(work_id,revision_id,generation,published_at) VALUES ($1,$2,2,now())",
+    ] {
+        sqlx::query(sql).bind(withdrawn.as_uuid()).bind(withdrawn_revision.as_uuid())
+            .execute(&mut *old_writer).await.unwrap();
+    }
+    old_writer.commit().await.unwrap();
     vink.set_private(author(), withdrawn, "withdraw-old", 2)
         .await
         .unwrap();
@@ -270,6 +277,7 @@ async fn backfill_and_old_writer_preserve_the_source_across_republication(pool: 
             SAVED_WORKS_MIGRATION,
             ACCOUNT_DELETION_MIGRATION,
             COMMENT_FORMAT_MIGRATION,
+            EVALUATOR_MESSAGE_MIGRATION,
         ]
     );
     // A binary embedding only the prior ledger is not ready after an additive migration.

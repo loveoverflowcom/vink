@@ -76,6 +76,10 @@ pub struct PublicPointer {
 pub struct AuthorRevision {
     pub can_appeal: bool,
     pub decision_reason: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason_message: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason_code: Option<String>,
     pub revision_id: String,
     pub title: String,
     pub content_hash: String,

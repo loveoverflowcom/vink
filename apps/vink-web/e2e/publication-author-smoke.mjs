@@ -165,7 +165,7 @@ class Wire {
   }
 }
 
-async function enter(page, ctx, address, penName) {
+export async function enter(page, ctx, address, penName) {
   await openAccount(page, ctx.base, 'anonymous');
   await signIn(page, ctx, address);
   await page.waitFor(`${STANDING} === 'needs_principal' && ${q('#pen-name')}`, `pen-name step for ${address}`);
@@ -175,7 +175,7 @@ async function enter(page, ctx, address, penName) {
   return (await account(page)).body.principal_id;
 }
 
-async function newDraft(page, base, title, body) {
+export async function newDraft(page, base, title, body) {
   await page.goto(`${base}/ban-viet`);
   await page.waitFor(`${HYDRATED} && ${q('#create-draft')}`, 'the desk');
   await page.click('#create-draft');
@@ -241,7 +241,7 @@ async function submissionStructure(author, base, check) {
   return pending;
 }
 
-async function pickFormTag(page) {
+export async function pickFormTag(page) {
   await page.waitFor("document.querySelector('#work-tags-form-select')?.options.length > 1", 'form tags from the catalog');
   await page.eval(`const options = document.querySelector('#work-options'); if (!options.open) options.querySelector('summary').click();
     const select = document.querySelector('#work-tags-form-select');

@@ -15,6 +15,7 @@ pub fn binary(artifact: Artifact, release: bool) -> Result<(), String> {
 fn binary_command(artifact: Artifact, release: bool) -> Result<std::process::Command, String> {
     let (package, bin) = match artifact {
         Artifact::App => ("vink-app", "vink-app"),
+        Artifact::Notifications => ("vink-notifications", "vink-notifications"),
         Artifact::Worker => ("vink-app", "vink-worker"),
         Artifact::Identity => ("vink-identity", "vink-identity"),
         _ => return Err("expected a server binary".into()),

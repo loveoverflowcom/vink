@@ -88,8 +88,8 @@ async function fixture(page) {
     } else if (path === apiReview) {
       const fixture = structuredClone(review);
       Object.assign(fixture.state.revisions[0], { title: privateTitle, moderation: 'rejected',
-        decision_reason: 'Lý do riêng của tác phẩm', can_appeal: true });
-      Object.assign(fixture.decisions[0], { outcome: 'rejected', action_required: true, can_appeal: true, reason: 'Lý do riêng của tác phẩm' });
+        reason_message: 'Lý do riêng của tác phẩm', decision_reason: 'Lý do riêng của tác phẩm', can_appeal: true });
+      Object.assign(fixture.decisions[0], { outcome: 'rejected', action_required: true, can_appeal: true, reason_message: 'Lý do riêng của tác phẩm', reason: 'Lý do riêng của tác phẩm' });
       response = scope === 'A' ? [200, fixture] : [404, denied];
     } else if (path === `${inbox}/count`) {
       const [fresh, stale] = examples.counts;

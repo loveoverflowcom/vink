@@ -322,7 +322,7 @@ async fn state_reads_one_snapshot_across_a_concurrent_moderation_commit(pool: Pg
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
 async fn state_observes_stale_policy_and_private_fences_late_approval(pool: PgPool) {
-    use vink_app::domain::moderation::{EvaluationRefusal, EvaluatorOutcome};
+    use vink_app::domain::moderation::EvaluationRefusal;
     use vink_app::domain::publication::Moderation;
     use vink_app::persistence::evaluation::{JobOutcome, claim_job, finish_job};
     let vink = seeded(&pool).await;
@@ -359,7 +359,7 @@ async fn state_observes_stale_policy_and_private_fences_late_approval(pool: PgPo
         Moderation::Pending
     );
     assert_eq!(
-        finish_job(&pool, worker, &claim, Some(EvaluatorOutcome::Approve), 0)
+        finish_job(&pool, worker, &claim, Some(evaluator_approval()), 0)
             .await
             .unwrap(),
         JobOutcome::Refused(EvaluationRefusal::StalePolicy)
@@ -374,7 +374,7 @@ async fn state_observes_stale_policy_and_private_fences_late_approval(pool: PgPo
         .await
         .unwrap();
     assert_eq!(
-        finish_job(&pool, worker, &late, Some(EvaluatorOutcome::Approve), 0)
+        finish_job(&pool, worker, &late, Some(evaluator_approval()), 0)
             .await
             .unwrap(),
         JobOutcome::Stale

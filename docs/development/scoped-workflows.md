@@ -344,3 +344,5 @@ Bằng chứng lượt triển khai và phần chưa chạy: [scoped-workflows-e
 Dùng `cargo xtask build preview`, `cargo xtask dev preview` và mở Thử biểu cảm · Mẫu trong gallery.
 `cargo xtask verify preview` chạy coverage Chrome cho fixture. Web quick/build kiểm route, dependency
 và package. [Ranh giới Web/Preview](web-preview-boundary.md) ghi chi tiết.
+
+`cargo xtask verify web --scenario evaluator-message` chạy riêng luồng tác giả đăng nhập bằng Identity, gửi tác phẩm trong Chrome, worker duyệt mặc định hoặc từ chối local, relay và Notifications với DB riêng, Gateway, Bàn viết và Reader. Chế độ capture mặc định giữ ảnh trước/sau. Hai DB ứng dụng và DB Identity là scratch; các tiến trình dùng socket riêng.
