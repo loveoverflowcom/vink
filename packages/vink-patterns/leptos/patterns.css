@@ -703,3 +703,5 @@
   outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring);
   outline-offset: var(--vk-size-focus-offset);
 }
+
+:where(ul, .vk-notif-group):not(:has(time[datetime])) + .vk-time-list-toggle { display: none; }

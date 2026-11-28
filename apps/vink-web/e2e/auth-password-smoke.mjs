@@ -1154,7 +1154,7 @@ export async function standalone(page, {args, check, openPage}) {
   check(await page.eval(`(() => {
     const t=document.querySelector('.vk-work-byline__date time');
     return t.textContent===new Intl.DateTimeFormat('vi-VN',{timeZone:'Pacific/Kiritimati'}).format(new Date(t.dateTime));
-  })()`), 'CSR renders the first public instant in the pinned viewer calendar');
+  })()`), 'CSR renders the Reader publication instant in the pinned viewer calendar');
   await page.send('Page.removeScriptToEvaluateOnNewDocument',{identifier:pinned.identifier});
   await page.send('Emulation.setTimezoneOverride',{timezoneId:''});
   await page.waitFor(`document.querySelector('.vk-document')?.textContent.includes(${JSON.stringify(line)})`,

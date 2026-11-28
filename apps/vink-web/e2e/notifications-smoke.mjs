@@ -928,6 +928,7 @@ export async function notifications(page, { args, check, checkBottomNavigation, 
   await preferences(page, 1440, 'light', 100);
 
   const selectedWork = controlled.rows[0].target;
+  await page.send('Emulation.setTimezoneOverride',{timezoneId:'America/Los_Angeles'});
   await page.goto(`${args.base}/ban-viet?review=${selectedWork.work_id}&revision=${selectedWork.revision_id}&decision=3`);
   await page.waitFor(`document.body.textContent.includes('Lý do riêng của tác phẩm')`, 'exact work decision');
   check(await page.eval(`document.querySelector('h1').textContent.includes('${privateTitle}')
@@ -935,6 +936,10 @@ export async function notifications(page, { args, check, checkBottomNavigation, 
       && document.body.textContent.includes('Gửi phản đối')
       && document.querySelector('main a[href="/ban-viet/${work}"]').textContent.includes('Sửa trong Bàn viết')`),
     'AC-04 work decision uses the exact revision and eligible appeal action');
+  const workTimes = await page.eval(`Array.from(document.querySelectorAll('.vk-notif-decision__panel time'), t=>[t.dateTime,t.textContent])`);
+  check(workTimes.some(([s,l])=>s===review.state.revisions[0].created_at && l==='01:00, 30/10/2026') &&
+    workTimes.some(([s,l])=>s===review.decisions[0].decided_at && l==='02:15, 24/11/2026'),
+    'review preserves separate submission and decision instants, with DST at each event');
   await screenshot('notifications-work-decision', 1440, 100, 'light');
 
   const comment = examples.decisions.find(decision => decision.kind === 'comment_moderation_decision');
@@ -943,6 +948,8 @@ export async function notifications(page, { args, check, checkBottomNavigation, 
   check(await page.eval(`!document.body.textContent.includes('Không được xuất hiện')`), 'AC-04 removed comment body never renders');
   check(await page.eval(`parseFloat(getComputedStyle(document.querySelector('.vk-notif-decision__panel')).paddingInlineStart) >= 20`),
     'AC-05 decision panel preserves R4 inset');
+  check(await page.eval(`document.querySelector('.vk-notif-decision__panel time').dateTime===${JSON.stringify(comment.decided_at)} &&
+    !/GMT|UTC/.test(document.querySelector('.vk-notif-decision__panel time').textContent)`), 'comment decision uses decided_at in local absolute mode');
   const up = '.vk-notif-decision a.vk-ui-back-link';
   check(await page.eval(`(() => {
     const link = document.querySelector('${up}');

@@ -20,6 +20,29 @@ pub enum NotificationLeading {
     },
 }
 
+/// Product rows carry an instant. Preview can supply its fixed specimen caption.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum NotificationTime {
+    Instant(String),
+    Caption {
+        label: String,
+        instant: Option<String>,
+    },
+}
+
+impl NotificationTime {
+    fn render(self, mode: crate::TimeMode, id: String, context: &'static str) -> AnyView {
+        match self {
+            Self::Instant(instant) => {
+                view! { <crate::Timestamp instant mode description_id=id context /> }.into_any()
+            }
+            Self::Caption { label, instant } => {
+                view! { <time datetime=instant>{label}</time> }.into_any()
+            }
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct NotificationRowFacts {
     pub href: String,
@@ -29,9 +52,8 @@ pub struct NotificationRowFacts {
     pub title: String,
     /// The authorized root/reply text and whether the adapter truncated it.
     pub excerpt: Option<(String, bool)>,
-    pub revision_instant: Option<String>,
-    pub time_label: String,
-    pub time_instant: Option<String>,
+    pub revision: Option<NotificationTime>,
+    pub updated: NotificationTime,
     pub action_required: bool,
     pub unread: bool,
 }
@@ -50,8 +72,11 @@ impl NotificationRowFacts {
         if let Some(excerpt) = excerpt {
             parts.push(format!("Trích: {excerpt}"));
         }
-        if !self.time_label.is_empty() {
-            parts.push(self.time_label.clone());
+        if let Some(NotificationTime::Caption { label, .. }) = &self.revision {
+            parts.push(format!("Bản {label}"));
+        }
+        if let NotificationTime::Caption { label, .. } = &self.updated {
+            parts.push(label.clone());
         }
         if self.action_required {
             parts.push("Cần xử lý".to_string());
@@ -91,6 +116,25 @@ pub fn NotificationRow(
         .map(|(text, truncated)| format!("“{text}{}”", if *truncated { "…" } else { "" }));
     let name = facts.accessible_name(excerpt.as_deref());
     let time_id = description_id.clone().unwrap_or_default();
+    let revision_id = description_id
+        .as_ref()
+        .filter(|_| facts.revision.is_some())
+        .map(|id| format!("{id}-revision"));
+    let described_by = description_id.map(|id| {
+        revision_id
+            .as_ref()
+            .map_or_else(|| id.clone(), |revision| format!("{revision} {id}"))
+    });
+    let revision = facts.revision.map(|stamp| {
+        stamp.render(
+            crate::TimeMode::Date,
+            revision_id.unwrap_or_default(),
+            "Bản gửi",
+        )
+    });
+    let updated = facts
+        .updated
+        .render(crate::TimeMode::Social, time_id, "Cập nhật");
     let leading = match facts.leading {
         NotificationLeading::People { people, glyph } => {
             let actors = if people.len() > 1 {
@@ -126,7 +170,7 @@ pub fn NotificationRow(
                 class="vk-notif-row__link"
                 href=facts.href
                 aria-label=name
-                aria-describedby=description_id
+                aria-describedby=described_by
                 data-vink-managed-navigation=on_activate.is_some().then_some("")
                 on:click:capture=move |event| {
                     if let Some(activate) = on_activate {
@@ -143,11 +187,8 @@ pub fn NotificationRow(
                     <span class="vk-notif-row__title">{facts.title}</span>
                     {excerpt.map(|text| view! { <span class="vk-notif-row__excerpt">{text}</span> })}
                     <span class="vk-notif-row__meta">
-                        {facts.revision_instant.map(|instant| view! { <span>"Bản " <crate::Timestamp instant mode=crate::TimeMode::Date /> " ·"</span> })}
-                        {match facts.time_instant {
-                            Some(instant) => view! { <crate::Timestamp instant description_id=time_id /> }.into_any(),
-                            None => facts.time_label.into_any(),
-                        }}
+                        {revision.map(|date| view! { <span>"Bản " {date} " ·"</span> })}
+                        {updated}
                         {facts.action_required.then(|| view! {
                             <span class="vk-notif-row__chip">"Cần xử lý"</span>
                         })}

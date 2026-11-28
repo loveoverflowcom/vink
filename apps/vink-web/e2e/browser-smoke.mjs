@@ -3394,6 +3394,13 @@ async function timestampPresentation(page) {
     check(await page.eval(`document.querySelector('${selected}').textContent.includes('UTC')`), 'no-JS Reader keeps its labelled UTC time');
   } finally { await page.send('Emulation.setScriptExecutionDisabled', {value:false}); }
   const setup = await page.send('Page.addScriptToEvaluateOnNewDocument', {source:`{
+    if (location.pathname.startsWith('/tac-pham/')) {
+      const observer = new MutationObserver(() => {
+        const t = document.querySelector('.vk-work-byline__date time');
+        if (t?.textContent.endsWith(' UTC')) { window.firstTime=t; observer.disconnect(); }
+      });
+      observer.observe(document,{subtree:true,childList:true,characterData:true});
+    }
     window.testNow = Date.parse('2026-11-28T08:00:00Z');
     Date.now = () => window.testNow;
     const timers = window.minuteTimers = new Map();
@@ -3408,12 +3415,28 @@ async function timestampPresentation(page) {
       await page.send('Emulation.setTimezoneOverride',{timezoneId:zone});
       await page.goto(path);
       await page.waitFor(`document.documentElement.dataset.hydrated==='true' && document.querySelector('${selected}')?.title.includes('GMT')`, 'local Reader after hydration');
+      check(await page.eval(`window.firstTime===document.querySelector('${selected}')`), 'hydration adopts the UTC first-paint time element');
       const button = '.vk-work-byline__date button';
       await page.eval(`document.querySelector('${button}').focus()`);
-      await page.key('Enter');
+      await page.key(zone==='America/Los_Angeles'?'Space':'Enter');
       check(await page.eval(`document.querySelector('${selected}').textContent===document.querySelector('${selected}').title && !document.querySelector('${button}').closest('a')`), 'keyboard reveals the exact instant outside the author link');
       await page.key('Escape');
       check(await page.eval(`document.activeElement===document.querySelector('${button}') && document.activeElement.getAttribute('aria-pressed')==='false'`),'Escape keeps focus on the timestamp');
+      if (zone === 'America/Los_Angeles') {
+        await page.viewport(320);
+        await page.eval("document.documentElement.dataset.theme='dark';document.documentElement.style.fontSize='200%'");
+        await page.send('Emulation.setTouchEmulationEnabled',{enabled:true});
+        try {
+          const point = await page.eval(`(() => {const b=document.querySelector('${button}'); b.scrollIntoView({block:'center'}); const r=b.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};})()`);
+          await page.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[point]});
+          await page.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+          await page.waitFor(`document.querySelector('${button}').getAttribute('aria-pressed')==='true'`, 'touch shows exact time at 320/200%');
+          check(await page.eval(`document.querySelector('${selected}').innerText===document.querySelector('${selected}').title && document.documentElement.scrollWidth<=innerWidth+1`),'touch disclosure wraps its full offset and zone');
+        } finally {
+          await page.send('Emulation.setTouchEmulationEnabled',{enabled:false});
+          await page.viewport(1440);
+        }
+      }
       const gate = new DraftGate(page);
       gate.list = {body:{drafts:stamps.map((updated_at,i)=>({work_id:`88888888-8888-4888-8888-${String(i).padStart(12,'0')}`,title:'[Time] '+i,version:i+1,updated_at}))}};
       await gate.enable();
@@ -3438,6 +3461,28 @@ async function timestampPresentation(page) {
         await page.waitFor(`minuteTimers.size===1 && ${time(0)}.textContent===${JSON.stringify(resumed)}`, 'resume observes a new device zone');
       } finally { await gate.disable(); }
     }
+    await page.send('Emulation.setTimezoneOverride',{timezoneId:'Europe/Paris'});
+    const historical = new DraftGate(page);
+    historical.list = {body:{drafts:[{work_id:'88888888-8888-4888-8888-000000000010',title:'Paris',version:1,updated_at:'1890-01-01T23:50:45Z'}]}};
+    await historical.enable();
+    try {
+      await page.goto(args.base+'/ban-viet');
+      await page.waitFor("document.querySelector('.vk-draft-row time')?.textContent==='2/1/1890'", 'historical 00:09:21 offset crosses midnight');
+    } finally { await historical.disable(); }
+    await page.goto(args.base+'/ban-viet/'+SAMPLE_WORK);
+    await page.waitFor(EDITOR_READY,'actual editor before the presentation tick');
+    await holdEditorDebounce(page);
+    await page.typeInBody(' Nhịp phút');
+    const body = await page.body();
+    const version = (await page.draft(SAMPLE_WORK)).version;
+    await page.eval("window.activeEditor=document.activeElement; window.beforeY=scrollY; window.testNow+=60000; for(const tick of minuteTimers.values()) tick()");
+    await page.eval('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');
+    check(body.endsWith(' Nhịp phút') && await page.body()===body && (await page.draft(SAMPLE_WORK)).version===version &&
+      await page.eval('activeEditor===document.activeElement && activeEditor.isConnected && scrollY===beforeY && minuteTimers.size===1'),
+      'minute tick preserves editor text, version, focus and scroll');
+    // Restore through the editor before the next scenario navigates away.
+    await page.key('z', page.mod);
+    await page.eval('window.__restoreEditorClock?.()');
   } finally {
     await page.send('Page.removeScriptToEvaluateOnNewDocument',{identifier:setup.identifier});
     await page.send('Emulation.setTimezoneOverride',{timezoneId:''});
@@ -7204,7 +7249,7 @@ try {
     await markdownReader(page, { args, check, textContrast });
   }
   else if (args.phase === 'auth') await authWeb(page, { args, check, openPage: (isolated) => openPage(cdp, isolated) });
-  else if ((args.phase === 'notifications' || args.phase === 'notification-time')) await notifications(page, { args, check,
+  else if (args.phase === 'notifications' || args.phase === 'notification-time') await notifications(page, { args, check,
     checkBottomNavigation: async (page, route, scene) => {
       await bottomNavigationAnatomy(page, route, scene, true, eligibleBottomRoutes);
       await bottomNavigationAlignment(page, scene, 'Tài khoản', eligibleBottomRoutes);

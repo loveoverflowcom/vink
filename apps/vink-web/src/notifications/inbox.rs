@@ -449,9 +449,8 @@ fn row_facts(item: &Item) -> Option<NotificationRowFacts> {
             .as_ref()
             .filter(|_| excerpt)
             .map(|x| (x.text.clone(), x.truncated)),
-        revision_instant,
-        time_label: String::new(),
-        time_instant: Some(item.updated_at.clone()),
+        revision: revision_instant.map(vink_patterns::NotificationTime::Instant),
+        updated: vink_patterns::NotificationTime::Instant(item.updated_at.clone()),
         action_required: item.summary.action_required,
         unread: !item.is_read,
     })

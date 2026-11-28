@@ -6,7 +6,7 @@ use vink_ui::*;
 
 mod notification;
 pub use notification::{
-    NotificationGroup, NotificationLeading, NotificationRow, NotificationRowFacts,
+    NotificationGroup, NotificationLeading, NotificationRow, NotificationRowFacts, NotificationTime,
 };
 
 mod timestamp;

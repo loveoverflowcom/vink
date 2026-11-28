@@ -32,7 +32,7 @@ fn utc_label(utc: OffsetDateTime) -> String {
 /// “Tính từ dd/mm/yyyy” labels (`VIEW-09`, `UX-10`).
 pub fn work_view_date_hcm(timestamp: &str) -> Option<String> {
     let instant = OffsetDateTime::parse(timestamp, &Rfc3339).ok()?;
-    let hcm = instant.to_offset(UtcOffset::from_hms(7, 0, 0).ok()?);
+    let hcm = instant.checked_to_offset(UtcOffset::from_hms(7, 0, 0).ok()?)?;
     Some(format!(
         "{:02}/{:02}/{:04}",
         hcm.day(),
@@ -60,6 +60,14 @@ let cachedZone, exactFormat;
 export function viewerZone() {
     return new Intl.DateTimeFormat('vi-VN').resolvedOptions().timeZone;
 }
+// getTimezoneOffset rounds historical second offsets to minutes. Interpret the actual
+// local civil fields as UTC to recover the complete offset. setUTCFullYear also keeps years 1–99.
+export function viewerOffset(ms) {
+    const local = new Date(ms), civil = new Date(0);
+    civil.setUTCFullYear(local.getFullYear(), local.getMonth(), local.getDate());
+    civil.setUTCHours(local.getHours(), local.getMinutes(), local.getSeconds(), local.getMilliseconds());
+    return (civil.getTime() - ms) / 1000;
+}
 export function viewerExact(ms, zone) {
     if (cachedZone !== zone || !exactFormat) {
         exactFormat = new Intl.DateTimeFormat('vi-VN', {
@@ -74,6 +82,8 @@ export function viewerExact(ms, zone) {
 extern "C" {
     #[wasm_bindgen::prelude::wasm_bindgen(catch, js_name = viewerZone)]
     fn viewer_zone() -> Result<String, wasm_bindgen::JsValue>;
+    #[wasm_bindgen::prelude::wasm_bindgen(js_name = viewerOffset)]
+    fn viewer_offset(ms: f64) -> i32;
     #[wasm_bindgen::prelude::wasm_bindgen(catch, js_name = viewerExact)]
     fn viewer_exact(ms: f64, zone: &str) -> Result<String, wasm_bindgen::JsValue>;
 }
@@ -88,13 +98,8 @@ struct DisplayClock {
 fn local_instant(ms: i64) -> Option<OffsetDateTime> {
     #[cfg(target_arch = "wasm32")]
     {
-        use leptos::web_sys::js_sys::Date;
-        let offset = -Date::new(&(ms as f64).into()).get_timezone_offset() * 60.0;
-        if !offset.is_finite() {
-            return None;
-        }
         let utc = OffsetDateTime::from_unix_timestamp_nanos(i128::from(ms) * 1_000_000).ok()?;
-        utc.checked_to_offset(UtcOffset::from_whole_seconds(offset as i32).ok()?)
+        utc.checked_to_offset(UtcOffset::from_whole_seconds(viewer_offset(ms as f64)).ok()?)
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
@@ -287,8 +292,18 @@ pub fn Timestamp(
             }
         })
     });
-    let time = view! { <time class=class datetime=instant title=move || exact.get()
-    aria-description=move || if context.is_empty() {exact.get()} else {format!("{context}: {}",exact.get())}>{move || label.get()}</time> };
+    let description = Memo::new(move |_| {
+        if context.is_empty() {
+            exact.get()
+        } else {
+            format!("{context}: {}", exact.get())
+        }
+    });
+    let time = view! {
+        <time class=class datetime=instant title=move || exact.get() aria-description=move || description.get()>
+            {move || label.get()}
+        </time>
+    };
     if disclosure {
         view! { <button type="button" class="vk-time-disclosure" aria-pressed=move || expanded.get().to_string()
             aria-label=move || format!("Ngày giờ đầy đủ: {}", exact.get())
@@ -297,7 +312,7 @@ pub fn Timestamp(
             {time}
         </button> }.into_any()
     } else {
-        view! { {time} {(!description_id.is_empty()).then(|| view! { <span hidden id=description_id>{move || exact.get()}</span> })} }.into_any()
+        view! { {time} {(!description_id.is_empty()).then(|| view! { <span hidden id=description_id>{move || description.get()}</span> })} }.into_any()
     }
 }
 #[cfg(test)]
