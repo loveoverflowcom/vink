@@ -130,6 +130,10 @@ those registries rather than duplicating long status narratives across skills.
   `VDR-WORK-VIEWS@r1` is active and `PRODUCT_CONFIRMED`. The foreground and lifecycle delta in
   `@r2` awaits signoff. See the [spec](docs/architecture/work-views.md) and the
   [registry](docs/development/work-views.md) for the four read states, retention and verification.
+- **Điểm Vink / Reputation (#600; [spec](docs/architecture/reputation.md),
+  [registry](docs/development/reputation.md)):** `VDR-REPUTATION@r1` `PRODUCT_CONFIRMED`, contract
+  `Provisional` (28/11/2026). Backend-only slices #601, #644–#648 land in order; check the registry
+  for the implemented level. No public exposure before the #648 privacy/performance gate.
 - **Discussion ([ownership ADR](docs/architecture/discussion-ownership.md),
   [core](docs/development/discussion-core.md), [admission](docs/architecture/discussion-admission.md),
   [post-review](docs/development/discussion-post-review.md),

@@ -1,10 +1,10 @@
 # Điểm Vink (Reputation V1) — đặc tả miền backend
 
-Nguồn quyết định: [VDR-REPUTATION@r1](../../decisions/proposals/VDR-REPUTATION.r1.toml) (sản phẩm) và
-[VDR-REPUTATION-CONTRACT@r1](../../decisions/proposals/VDR-REPUTATION-CONTRACT.r1.toml) (kiến trúc,
-`DESIGN_PROPOSED`). Yêu cầu: [PRD §19](../../prd/requirements.md#19-điểm-vink-reputation-v1) REP-01..14.
-Tracker: [EPIC #600](https://github.com/loveoverflowcom/vink/issues/600). Trạng thái signoff, mức triển khai
-và bằng chứng nằm ở [registry](../development/reputation.md); trang này không phải ADR `Accepted`.
+Nguồn quyết định: [VDR-REPUTATION@r1](../../decisions/proposals/VDR-REPUTATION.r1.toml) (sản phẩm,
+`PRODUCT_CONFIRMED`) và [VDR-REPUTATION-CONTRACT@r1](../../decisions/proposals/VDR-REPUTATION-CONTRACT.r1.toml)
+(kiến trúc, `Provisional`), signoff 28/11/2026. Yêu cầu: [PRD §19](../../prd/requirements.md#19-điểm-vink-reputation-v1) REP-01..14.
+Tracker: [EPIC #600](https://github.com/loveoverflowcom/vink/issues/600). Mức triển khai và bằng chứng nằm ở
+[registry](../development/reputation.md); trang này không phải ADR `Accepted`.
 
 ## 1. Thuật ngữ
 

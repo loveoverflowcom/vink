@@ -8,12 +8,15 @@ REP-01..14. Đặc tả: [miền](../architecture/reputation.md), [SR-01](reputa
 
 | Chiều | Trạng thái hiện tại |
 | --- | --- |
-| Sản phẩm | Lời chọn Q01..Q44 của chủ sản phẩm ghi trong [VDR-REPUTATION@r1](../../decisions/proposals/VDR-REPUTATION.r1.toml). Registry trả `PENDING` cho tới khi có signoff đúng revision/SHA-256 (`cargo xtask decision query VDR-REPUTATION`). |
-| Kiến trúc | [VDR-REPUTATION-CONTRACT@r1](../../decisions/proposals/VDR-REPUTATION-CONTRACT.r1.toml) K1..K9, `DESIGN_PROPOSED`, registry `PENDING`. |
+| Sản phẩm | [VDR-REPUTATION@r1](../../decisions/proposals/VDR-REPUTATION.r1.toml) Q01..Q44 `PRODUCT_CONFIRMED` — [signoff](../../decisions/signoffs/VDR-REPUTATION.r1.toml) ngày 28/11/2026, SHA-256 `2c009b7ca218269251edc6bf363914e5c1d4123cbfd49c18f4820231ba0cc3ee`. |
+| Kiến trúc | [VDR-REPUTATION-CONTRACT@r1](../../decisions/proposals/VDR-REPUTATION-CONTRACT.r1.toml) K1..K9 `Provisional` — [signoff](../../decisions/signoffs/VDR-REPUTATION-CONTRACT.r1.toml), SHA-256 `7d60f8ae7ed146e033ce8ed352feaf6ac1798fd041693692500a2277231b0963`. Mỗi lát chứng minh lựa chọn của mình; chưa `Accepted`. |
 | Triển khai | `NOT_IMPLEMENTED`. Chưa có module, migration, worker hay route Reputation. |
 | Bằng chứng | Tài liệu và SR-01 tổng hợp (mục 4). Quint, Kani, PostgreSQL, HTTP, benchmark: `NOT_RUN`. |
 
-Không công khai runtime trước signoff đúng revision và bằng chứng privacy/performance của S06.
+<!-- vdr: active VDR-REPUTATION@r1 -->
+<!-- vdr: active VDR-REPUTATION-CONTRACT@r1 -->
+
+Không công khai runtime trước bằng chứng privacy/performance của S06 ([#648](https://github.com/loveoverflowcom/vink/issues/648)).
 
 ## 2. Audit nguồn — develop@b69f34bc (28/11/2026)
 
@@ -36,9 +39,9 @@ Không công khai runtime trước signoff đúng revision và bằng chứng pr
 
 | Lát | Issue | Phạm vi | Gate |
 | --- | --- | --- | --- |
-| REP-S01 | [PR #601](https://github.com/loveoverflowcom/vink/pull/601) | SSOT, SR-01, audit nguồn, hai proposal | Signoff đúng revision trước khi chạy runtime S03+ |
+| REP-S01 | [PR #601](https://github.com/loveoverflowcom/vink/pull/601) | SSOT, SR-01, audit nguồn, hai proposal + signoff | Xong khi #601 merge |
 | REP-S02 | [#644](https://github.com/loveoverflowcom/vink/issues/644) | `domain::reputation`: công thức fixed-point, entitlement/anchor, eligibility, máy Q41, lịch, golden vectors, Quint + replay, Kani | Pure core; không I/O |
-| REP-S03 | [#645](https://github.com/loveoverflowcom/vink/issues/645) | Migration, outbox Reputation ghi cùng transaction ở mọi nguồn trong mục 2, bảng entitlement/ledger/projection | S02 merged; signoff VDR-REPUTATION@r1 |
+| REP-S03 | [#645](https://github.com/loveoverflowcom/vink/issues/645) | Migration, outbox Reputation ghi cùng transaction ở mọi nguồn trong mục 2, công tắc activation | S02 merged |
 | REP-S04 | [#646](https://github.com/loveoverflowcom/vink/issues/646) | Consumer `vink-worker`, projection hiện hành, maturity Q42, backfill Q33, correction CLI Q38, rebuild/reconcile | S03 merged |
 | REP-S05 | [#647](https://github.com/loveoverflowcom/vink/issues/647) | Credit tuần/tháng, Top Rating/Top Growth, snapshot/dự phòng/rebuild, retention/expiry | S04 merged |
 | REP-S06 | [#648](https://github.com/loveoverflowcom/vink/issues/648) | HTTP đọc, privacy/cache/cursor, qualification PG + HTTP, benchmark, runbook | S05 merged; không public trước gate |
@@ -50,7 +53,8 @@ Phụ thuộc tuần tự S01 → S02 → S03 → S04 → S05 → S06. Design, L
 | Lệnh / kịch bản | Kết quả | Boundary |
 | --- | --- | --- |
 | `cargo xtask decision validate` | PASS (ghi SHA nguồn trong PR) | Registry |
-| `cargo xtask decision propose VDR-REPUTATION new …`, `… VDR-REPUTATION-CONTRACT new …` | PENDING, SHA-256 trong PR | Registry |
+| `cargo xtask decision propose VDR-REPUTATION new …`, `… VDR-REPUTATION-CONTRACT new …` | SHA-256 `2c009b7c…`, `7d60f8ae…` | Registry |
+| `cargo xtask decision signoff VDR-REPUTATION@r1 …`, `… VDR-REPUTATION-CONTRACT@r1 …` | `PRODUCT_CONFIRMED`, `PROVISIONAL`; `current: true` | Registry |
 | `python3 -I docs/development/evidence/reputation-sr01/qualify.py` (hai lần) | Cùng output; 0 sai lệch f64 trên 10^6 cặp; khoảng cách micro nhỏ nhất 4,8 × 10^-7 | Tổng hợp, không phải code Rust |
 
 Không chạy Quint, Kani, PostgreSQL, HTTP hay benchmark trong S01; chúng thuộc S02..S06.
@@ -59,7 +63,7 @@ Không chạy Quint, Kani, PostgreSQL, HTTP hay benchmark trong S01; chúng thu�
 
 | AC (#600) | Lát chịu trách nhiệm |
 | --- | --- |
-| AC-01 Shape/SSOT | S01 (signoff có thể còn chờ) |
+| AC-01 Shape/SSOT | S01 |
 | AC-02 Pure Domain, AC-12 máy credit | S02 |
 | AC-03 Nguồn, AC-04 PostgreSQL | S03 |
 | AC-05 Worker/recovery, AC-13 correction | S04 |

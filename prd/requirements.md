@@ -561,9 +561,9 @@ Quan hệ lưu giữ định danh và thời điểm lưu, không sao chép nhan
 
 [EPIC #600](https://github.com/loveoverflowcom/vink/issues/600) · Backend only. Lời chọn Q01..Q44 của
 chủ sản phẩm (27–28/11/2026) nằm trong [VDR-REPUTATION@r1](../decisions/proposals/VDR-REPUTATION.r1.toml),
-hướng kiến trúc trong [VDR-REPUTATION-CONTRACT@r1](../decisions/proposals/VDR-REPUTATION-CONTRACT.r1.toml).
-Trạng thái signoff, mức triển khai và bằng chứng tra ở [registry](../docs/development/reputation.md); không
-coi mục nào dưới đây là đã chạy chỉ vì có trong PRD. [Đặc tả miền](../docs/architecture/reputation.md) ·
+hướng kiến trúc trong [VDR-REPUTATION-CONTRACT@r1](../decisions/proposals/VDR-REPUTATION-CONTRACT.r1.toml)
+(`PRODUCT_CONFIRMED` / `Provisional`, signoff 28/11/2026). Mức triển khai và bằng chứng tra ở
+[registry](../docs/development/reputation.md); không coi mục nào dưới đây là đã chạy chỉ vì có trong PRD. [Đặc tả miền](../docs/architecture/reputation.md) ·
 [SR-01](../docs/development/reputation-science.md) · [hợp đồng API dự thảo](../services/vink-app/contracts/http/v1/reputation.md).
 
 | ID · nguồn | Quy tắc nghiệp vụ | Ví dụ nghiệm thu |
