@@ -23,15 +23,17 @@ session hay cookie với Cantos/VOT.
 | --- | --- |
 | [src/main.rs](src/main.rs) | `vink-identity [serve\|migrate\|account …\|maintenance prune\|mail status]`; socket, worker, prune hằng giờ, shutdown, mã thoát 0/1/2 |
 | [src/config.rs](src/config.rs) | Cấu hình, kiểm hợp lệ, che URL |
-| [src/http.rs](src/http.rs) | Health, contract v1, xác thực caller theo peer uid, deadline |
-| [src/contract.rs](src/contract.rs) | Kiểu wire canonical; lỗi có message cố định |
-| [src/authority.rs](src/authority.rs) | Authority native và khả năng theo từng phương thức |
+| [src/http.rs](src/http.rs) | Health, contract v1, xác thực caller theo peer uid, deadline; parse request, gọi một use case, ánh xạ kết quả sang wire |
+| [src/contract.rs](src/contract.rs) | Kiểu wire canonical; lỗi có message cố định; không gắn với SQL |
+| [src/authority.rs](src/authority.rs) | Use case của authority: chặn theo phương thức (`Method`), điều phối, giữ store ở bên trong |
+| [src/outcome.rs](src/outcome.rs) | Kết quả use case dùng chung cho store, authority và HTTP, không phụ thuộc SQL hay Axum |
 | [src/email_code.rs](src/email_code.rs) | Chính sách thuần: chuẩn hóa địa chỉ, mã 6 số, handle, credential phiên, hash, quyết định một lần thử |
-| [src/accounts.rs](src/accounts.rs) | Challenge và outbox nguyên tử, giới hạn gửi, tài khoản, phiên, đổi email, thêm credential, disable/enable và retention |
+| [src/accounts.rs](src/accounts.rs) | Giao dịch PostgreSQL: challenge và outbox nguyên tử, giới hạn gửi, tài khoản, phiên, đổi email, thêm credential, xóa tài khoản, disable/enable và retention |
 | [src/password.rs](src/password.rs) | Chuẩn hóa O-12@r2, Argon2id và tương thích hash cũ khi đăng nhập |
 | [src/delivery.rs](src/delivery.rs) | Outbox `mail_deliveries`: chính sách retry thuần, claim `SKIP LOCKED` + lease, worker at-least-once |
 | [src/mail.rs](src/mail.rs) | Transport: Resend HTTPS API (TLS, API key đọc từ file mỗi lần gửi) và outbox cục bộ (file `0600`, chỉ dev) |
 | [src/persistence.rs](src/persistence.rs) | `MIGRATOR` riêng, pool/lifecycle từ `vink-store-postgres` |
+| [src/lib.rs](src/lib.rs) | Bảng tầng module; test `levels` đối chiếu đường dẫn trực tiếp `crate::module` trong các tệp đã liệt kê ([physical design](../../.agents/skills/vink-architect/references/physical-design.md)) |
 | [migrations/](migrations/) | Schema Identity, gồm `account_passwords` và binding phiên cho challenge enrollment |
 | [migrations-rollback/](migrations-rollback/) | Script rollback theo phiên bản. Rollback enrollment giữ mật khẩu đã thêm và dọn mã enrollment cùng delivery |
 | [contracts/rpc/v1](contracts/rpc/v1/README.md) | Contract riêng tư (draft) và fixtures do provider sở hữu |

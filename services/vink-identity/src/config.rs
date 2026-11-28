@@ -12,7 +12,7 @@ use std::time::Duration;
 use crate::mail::ResendSettings;
 
 /// `sun_path` is 104 bytes on macOS and 108 on Linux, including the terminator.
-pub const MAX_SOCKET_PATH: usize = 100;
+pub(crate) const MAX_SOCKET_PATH: usize = 100;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LogFormat {

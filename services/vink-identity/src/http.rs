@@ -18,11 +18,7 @@ use axum::routing::{any, get, post};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
-use crate::accounts::{
-    ChallengeOutcome, EmailChangeOutcome, EmailChangeStart, EnrollmentOutcome, EnrollmentRejection,
-    EnrollmentStart, PasswordRegistrationError, PasswordSignInRejection, SignInOutcome,
-};
-use crate::authority::{self, Authority, AuthorityError};
+use crate::authority::{Authority, AuthorityError, Method, subject};
 use crate::contract::{
     CONTRACT, Capabilities, ChallengeIssued, ChallengeRejection, ContractError,
     CredentialRejection, EmailChangeChallengeRequest, EmailChangeCompleteRequest,
@@ -35,17 +31,21 @@ use crate::contract::{
 };
 use crate::delivery;
 use crate::email_code::{ChallengeHandle, Code, EmailAddress};
+use crate::outcome::{
+    ChallengeOutcome, EmailChangeOutcome, EmailChangeStart, EnrollmentOutcome, EnrollmentRejection,
+    EnrollmentStart, NewSession, PasswordRegistrationError, PasswordSignInRejection, SignInOutcome,
+};
 use crate::password::{Password, Username};
 use crate::persistence::{SchemaState, role_is_privileged, schema_state};
 
 mod deletion;
 
 /// Server-side bound on one contract call, body upload included.
-pub const DEADLINE: Duration = Duration::from_secs(2);
+pub(crate) const DEADLINE: Duration = Duration::from_secs(2);
 /// Bound on the email-code operations that commit (sign-in, revoke, email change). They are rare
 /// and user-initiated; a commit on a busy disk was observed to take 1.5 s, which must not turn a
 /// valid sign-in into "unavailable". `verify-credential`, on every request, keeps [`DEADLINE`].
-pub const WRITE_DEADLINE: Duration = Duration::from_secs(5);
+pub(crate) const WRITE_DEADLINE: Duration = Duration::from_secs(5);
 
 fn writes(path: &str) -> bool {
     if matches!(
@@ -98,7 +98,7 @@ impl IdentityState {
     }
 
     /// One deadline for every call (tests use a short one).
-    pub fn with_deadline(
+    pub(crate) fn with_deadline(
         pool: PgPool,
         authority: Authority,
         caller_uid: Option<u32>,
@@ -265,20 +265,21 @@ async fn authenticate_caller(
 }
 
 async fn capabilities(State(state): State<IdentityState>) -> Json<Capabilities> {
-    let availability = state.inner.authority.availability();
-    let email_code = state.inner.authority.email_code_availability();
-    let password = state.inner.authority.password_availability();
+    let authority = &state.inner.authority;
+    let sessions = authority.availability(Method::Sessions);
+    let email_code = authority.availability(Method::EmailCode);
+    let enrollment = authority.availability(Method::Enrollment);
     Json(Capabilities {
         contract: CONTRACT.into(),
-        authority: availability,
+        authority: sessions,
         operations: Operations {
-            verify_credential: availability,
+            verify_credential: sessions,
             sign_in: email_code,
-            revoke_session: availability,
+            revoke_session: sessions,
             email_change: email_code,
-            register_password: state.inner.authority.enrollment_availability(),
-            sign_in_password: password,
-            enroll_password: state.inner.authority.enrollment_availability(),
+            register_password: enrollment,
+            sign_in_password: authority.availability(Method::Password),
+            enroll_password: enrollment,
         },
     })
 }
@@ -317,12 +318,6 @@ impl From<AuthorityError> for ContractError {
     }
 }
 
-impl From<crate::accounts::StoreError> for ContractError {
-    fn from(_: crate::accounts::StoreError) -> Self {
-        ContractError::DependencyUnavailable
-    }
-}
-
 async fn verify_credential(State(state): State<IdentityState>, body: Body) -> Response {
     let request = match read_json::<VerifyCredentialRequest>(body).await {
         Ok(request) => request,
@@ -342,6 +337,15 @@ fn issued(handle: &ChallengeHandle, expires_at: time::OffsetDateTime) -> Respons
     (StatusCode::ACCEPTED, Json(body)).into_response()
 }
 
+/// The wire form of a session issued just now; the credential appears only here.
+fn issued_session(session: &NewSession) -> IssuedSession {
+    IssuedSession {
+        id: session.session_id.to_string(),
+        credential: session.credential.encode(),
+        expires_at: session.expires_at,
+    }
+}
+
 /// Issues a code for any valid address; the delivery worker mails it after commit. Account
 /// existence is not read, so the answer cannot disclose it; only the throttles can refuse, and
 /// they answer the same for every address.
@@ -350,9 +354,10 @@ async fn sign_in_challenge(
     body: Body,
 ) -> Result<Response, ContractError> {
     let request: SignInChallengeRequest = read_json(body).await?;
-    let store = state.inner.authority.email_code()?;
+    let authority = &state.inner.authority;
+    authority.require(Method::EmailCode)?;
     let address = EmailAddress::parse(request.email.expose()).ok_or(ContractError::InvalidEmail)?;
-    match store.start_sign_in(&address).await? {
+    match authority.start_sign_in(&address).await? {
         ChallengeOutcome::Issued { handle, expires_at } => Ok(issued(&handle, expires_at)),
         ChallengeOutcome::RateLimited(throttle) => {
             tracing::warn!(
@@ -369,32 +374,31 @@ async fn sign_in_complete(
     body: Body,
 ) -> Result<Json<SignInResponse>, ContractError> {
     let request: SignInCompleteRequest = read_json(body).await?;
-    let store = state.inner.authority.email_code()?;
+    let authority = &state.inner.authority;
+    authority.require(Method::EmailCode)?;
     let code = Code::parse(request.code.expose()).ok_or(ContractError::MalformedRequest)?;
     let Some(handle) = ChallengeHandle::parse(request.challenge.expose()) else {
         return Ok(Json(SignInResponse::Rejected {
             reason: ChallengeRejection::ChallengeClosed,
         }));
     };
-    Ok(Json(match store.complete_sign_in(&handle, &code).await? {
-        SignInOutcome::Authenticated(session) => {
-            tracing::info!(
-                session = %session.session_id,
-                subject = %session.account_id,
-                "session issued"
-            );
-            SignInResponse::Authenticated {
-                subject: authority::subject(session.account_id),
-                authenticated_at: session.authenticated_at,
-                session: IssuedSession {
-                    id: session.session_id.to_string(),
-                    credential: session.credential.encode(),
-                    expires_at: session.expires_at,
-                },
+    Ok(Json(
+        match authority.complete_sign_in(&handle, &code).await? {
+            SignInOutcome::Authenticated(session) => {
+                tracing::info!(
+                    session = %session.session_id,
+                    subject = %session.account_id,
+                    "session issued"
+                );
+                SignInResponse::Authenticated {
+                    subject: subject(session.account_id),
+                    authenticated_at: session.authenticated_at,
+                    session: issued_session(&session),
+                }
             }
-        }
-        SignInOutcome::Rejected(reason) => SignInResponse::Rejected { reason },
-    }))
+            SignInOutcome::Rejected(reason) => SignInResponse::Rejected { reason },
+        },
+    ))
 }
 
 async fn revoke_session(
@@ -402,8 +406,11 @@ async fn revoke_session(
     body: Body,
 ) -> Result<Json<RevokeSessionResponse>, ContractError> {
     let request: RevokeSessionRequest = read_json(body).await?;
-    let store = state.inner.authority.store()?;
-    let revoked = store.revoke(request.credential.expose()).await?;
+    let revoked = state
+        .inner
+        .authority
+        .revoke(request.credential.expose())
+        .await?;
     if revoked {
         tracing::info!("session revoked (logout)");
     }
@@ -415,9 +422,10 @@ async fn email_change_challenge(
     body: Body,
 ) -> Result<Response, ContractError> {
     let request: EmailChangeChallengeRequest = read_json(body).await?;
-    let store = state.inner.authority.email_code()?;
+    let authority = &state.inner.authority;
+    authority.require(Method::EmailCode)?;
     let address = EmailAddress::parse(request.email.expose()).ok_or(ContractError::InvalidEmail)?;
-    match store
+    match authority
         .start_email_change(request.credential.expose(), &address)
         .await?
     {
@@ -441,14 +449,15 @@ async fn email_change_complete(
     body: Body,
 ) -> Result<Json<EmailChangeResponse>, ContractError> {
     let request: EmailChangeCompleteRequest = read_json(body).await?;
-    let store = state.inner.authority.email_code()?;
+    let authority = &state.inner.authority;
+    authority.require(Method::EmailCode)?;
     let code = Code::parse(request.code.expose()).ok_or(ContractError::MalformedRequest)?;
     let Some(handle) = ChallengeHandle::parse(request.challenge.expose()) else {
         return Ok(Json(EmailChangeResponse::Rejected {
             reason: ChallengeRejection::ChallengeClosed,
         }));
     };
-    match store
+    match authority
         .complete_email_change(request.credential.expose(), &handle, &code)
         .await?
     {
@@ -466,14 +475,16 @@ async fn verified_email(
     body: Body,
 ) -> Result<Json<VerifiedEmail>, ContractError> {
     let request: VerifyCredentialRequest = read_json(body).await?;
-    Ok(Json(
-        state
-            .inner
-            .authority
-            .store()?
-            .verified_email(request.credential.expose())
-            .await?,
-    ))
+    let email = state
+        .inner
+        .authority
+        .verified_email(request.credential.expose())
+        .await?
+        .ok_or(ContractError::CredentialRejected)?;
+    Ok(Json(VerifiedEmail {
+        session_id: email.session_id,
+        verified_email: email.address,
+    }))
 }
 
 async fn registration_challenge(
@@ -482,13 +493,7 @@ async fn registration_challenge(
 ) -> Result<Response, ContractError> {
     let request: SignInChallengeRequest = read_json(body).await?;
     let address = EmailAddress::parse(request.email.expose()).ok_or(ContractError::InvalidEmail)?;
-    match state
-        .inner
-        .authority
-        .enrollment()?
-        .start_registration(&address)
-        .await?
-    {
+    match state.inner.authority.start_registration(&address).await? {
         ChallengeOutcome::Issued { handle, expires_at } => Ok(issued(&handle, expires_at)),
         ChallengeOutcome::RateLimited(_) => Err(ContractError::RateLimited),
     }
@@ -500,7 +505,8 @@ async fn register_password(
 ) -> Result<Response, ContractError> {
     let request: RegisterPasswordRequest =
         read_json_with_limit(body, MAX_PASSWORD_BODY_BYTES).await?;
-    let store = state.inner.authority.enrollment()?;
+    let authority = &state.inner.authority;
+    authority.require(Method::Enrollment)?;
     let address = EmailAddress::parse(request.email.expose()).ok_or(ContractError::InvalidEmail)?;
     let handle =
         ChallengeHandle::parse(request.challenge.expose()).ok_or(ContractError::ChallengeClosed)?;
@@ -510,7 +516,7 @@ async fn register_password(
     let password =
         Password::parse(request.password.expose()).map_err(|_| ContractError::InvalidPassword)?;
 
-    match store
+    match authority
         .register_password(&address, &handle, &code, &username, &password)
         .await?
     {
@@ -521,13 +527,9 @@ async fn register_password(
                 "password account registered and session issued"
             );
             Ok(Json(RegisterPasswordResponse::Authenticated {
-                subject: authority::subject(session.account_id),
+                subject: subject(session.account_id),
                 authenticated_at: session.authenticated_at,
-                session: IssuedSession {
-                    id: session.session_id.to_string(),
-                    credential: session.credential.encode(),
-                    expires_at: session.expires_at,
-                },
+                session: issued_session(&session),
             })
             .into_response())
         }
@@ -548,21 +550,10 @@ async fn sign_in_password(
 ) -> Result<Response, ContractError> {
     let request: SignInPasswordRequest =
         read_json_with_limit(body, MAX_PASSWORD_BODY_BYTES).await?;
-    let store = state.inner.authority.password()?;
-    let username = match Username::parse(request.username.expose()) {
-        Ok(u) => u,
-        Err(_) => {
-            crate::password::verify_sign_in(None, request.password.expose())
-                .await
-                .map_err(|_| ContractError::DependencyUnavailable)?;
-            return Ok(Json(SignInPasswordResponse::Rejected {
-                reason: SignInPasswordRejection::InvalidCredentials,
-            })
-            .into_response());
-        }
-    };
-    match store
-        .sign_in_password(&username, request.password.expose())
+    match state
+        .inner
+        .authority
+        .sign_in_password(request.username.expose(), request.password.expose())
         .await?
     {
         Ok(session) => {
@@ -572,13 +563,9 @@ async fn sign_in_password(
                 "password sign-in authenticated and session issued"
             );
             Ok(Json(SignInPasswordResponse::Authenticated {
-                subject: authority::subject(session.account_id),
+                subject: subject(session.account_id),
                 authenticated_at: session.authenticated_at,
-                session: IssuedSession {
-                    id: session.session_id.to_string(),
-                    credential: session.credential.encode(),
-                    expires_at: session.expires_at,
-                },
+                session: issued_session(&session),
             })
             .into_response())
         }
@@ -608,8 +595,9 @@ async fn enroll_password_challenge(
     body: Body,
 ) -> Result<Response, ContractError> {
     let request: PasswordEnrollmentSessionRequest = read_json(body).await?;
-    let store = state.inner.authority.enrollment()?;
-    match store
+    match state
+        .inner
+        .authority
         .start_password_enrollment(request.credential.expose())
         .await?
     {
@@ -635,8 +623,9 @@ async fn password_enrollment_status(
     body: Body,
 ) -> Result<Json<PasswordEnrollmentStatus>, ContractError> {
     let request: PasswordEnrollmentSessionRequest = read_json(body).await?;
-    let store = state.inner.authority.enrollment()?;
-    match store
+    match state
+        .inner
+        .authority
         .password_enrollment_status(request.credential.expose())
         .await?
     {
@@ -646,16 +635,17 @@ async fn password_enrollment_status(
     }
 }
 
-/// Adds a username/password to the session's account. The request is parsed and the password
-/// hashed before the store is called, so no transaction waits on Argon2. Nothing about the
-/// account, session or subject appears in the answer.
+/// Adds a username/password to the session's account. The request is parsed here and the
+/// authority hashes the password before its transaction. Nothing about the account, session or
+/// subject appears in the answer.
 async fn enroll_password(
     State(state): State<IdentityState>,
     body: Body,
 ) -> Result<Json<EnrollPasswordResponse>, ContractError> {
     let request: EnrollPasswordRequest =
         read_json_with_limit(body, MAX_PASSWORD_BODY_BYTES).await?;
-    let store = state.inner.authority.enrollment()?;
+    let authority = &state.inner.authority;
+    authority.require(Method::Enrollment)?;
     let code = Code::parse(request.code.expose()).ok_or(ContractError::MalformedRequest)?;
     let Some(handle) = ChallengeHandle::parse(request.challenge.expose()) else {
         return Ok(Json(EnrollPasswordResponse::Rejected {
@@ -666,16 +656,13 @@ async fn enroll_password(
         Username::parse(request.username.expose()).map_err(|_| ContractError::InvalidUsername)?;
     let password =
         Password::parse(request.password.expose()).map_err(|_| ContractError::InvalidPassword)?;
-    let hash = crate::password::hash_credential(password)
-        .await
-        .map_err(|_| ContractError::DependencyUnavailable)?;
-    let outcome = store
+    let outcome = authority
         .enroll_password(
             request.credential.expose(),
             &handle,
             &code,
             &username,
-            &hash,
+            password,
         )
         .await?;
     Ok(Json(match outcome {
@@ -752,7 +739,7 @@ async fn ready(State(state): State<IdentityState>) -> (StatusCode, Json<Value>) 
     } else {
         StatusCode::SERVICE_UNAVAILABLE
     };
-    let transport = match state.inner.authority.email_code_availability() {
+    let transport = match state.inner.authority.availability(Method::EmailCode) {
         crate::contract::Availability::Available => {
             state.inner.mail_transport.unwrap_or("not_configured")
         }
@@ -776,7 +763,7 @@ async fn ready(State(state): State<IdentityState>) -> (StatusCode, Json<Value>) 
                 "role": role,
                 "callers": if callers { "configured" } else { "not_configured" },
             },
-            "authority": state.inner.authority.availability(),
+            "authority": state.inner.authority.availability(Method::Sessions),
             "mail_transport": transport,
             "mail_queue": queue.map(|q| json!({
                 "pending": q.pending,
@@ -854,7 +841,7 @@ mod tests {
 
     #[tokio::test]
     async fn without_an_authority_verification_is_not_configured_not_a_failure() {
-        let router = app(Authority::NotConfigured, Some(CALLER), Some(CALLER));
+        let router = app(Authority::not_configured(), Some(CALLER), Some(CALLER));
         let (status, body) = send(&router, verify(r#"{"credential":"anything"}"#)).await;
         assert_eq!(status, StatusCode::NOT_IMPLEMENTED);
         assert_eq!(body, fixture("error.authority_not_configured.json"));
@@ -889,7 +876,7 @@ mod tests {
             (Some(CALLER), Some(CALLER + 1)),
             (Some(CALLER), None),
         ] {
-            let router = app(Authority::Fixture(Fixture::Answers), caller, peer);
+            let router = app(Authority::fixture(Fixture::Answers), caller, peer);
             let (status, answer) = send(&router, forged(verify(body))).await;
             assert_eq!(status, StatusCode::UNAUTHORIZED, "{caller:?}/{peer:?}");
             assert_eq!(answer, fixture("error.caller_unauthenticated.json"));
@@ -902,7 +889,7 @@ mod tests {
 
         // An allowed caller's forged headers change nothing: the body decides.
         let router = app(
-            Authority::Fixture(Fixture::Answers),
+            Authority::fixture(Fixture::Answers),
             Some(CALLER),
             Some(CALLER),
         );
@@ -914,7 +901,7 @@ mod tests {
     #[tokio::test]
     async fn fixture_answers_have_the_contract_shapes() {
         let router = app(
-            Authority::Fixture(Fixture::Answers),
+            Authority::fixture(Fixture::Answers),
             Some(CALLER),
             Some(CALLER),
         );
@@ -929,7 +916,7 @@ mod tests {
         ));
 
         let router = app(
-            Authority::Fixture(Fixture::Unavailable),
+            Authority::fixture(Fixture::Unavailable),
             Some(CALLER),
             Some(CALLER),
         );
@@ -941,7 +928,7 @@ mod tests {
     #[tokio::test]
     async fn malformed_oversized_and_forged_subject_requests_are_refused() {
         let router = app(
-            Authority::Fixture(Fixture::Answers),
+            Authority::fixture(Fixture::Answers),
             Some(CALLER),
             Some(CALLER),
         );
@@ -968,7 +955,7 @@ mod tests {
 
     #[tokio::test]
     async fn versions_paths_and_methods_are_explicit() {
-        let router = app(Authority::NotConfigured, Some(CALLER), Some(CALLER));
+        let router = app(Authority::not_configured(), Some(CALLER), Some(CALLER));
         for (path, expected) in [
             ("/identity/v2/verify-credential", "unsupported_version"),
             ("/identity/v0", "unsupported_version"),
@@ -988,7 +975,7 @@ mod tests {
         assert_eq!(code(&body), "method_not_allowed");
 
         // An unknown version is not disclosed to a process that is not the caller.
-        let stranger = app(Authority::NotConfigured, Some(CALLER), Some(CALLER + 1));
+        let stranger = app(Authority::not_configured(), Some(CALLER), Some(CALLER + 1));
         let request = HttpRequest::post("/identity/v2/x")
             .body(Body::empty())
             .unwrap();
@@ -998,7 +985,7 @@ mod tests {
     #[tokio::test]
     async fn a_stalled_upload_hits_the_deadline() {
         let router = app(
-            Authority::Fixture(Fixture::Answers),
+            Authority::fixture(Fixture::Answers),
             Some(CALLER),
             Some(CALLER),
         );
@@ -1021,7 +1008,7 @@ mod tests {
 
     #[tokio::test]
     async fn readiness_is_honest_about_database_callers_and_authority() {
-        let router = app(Authority::NotConfigured, None, Some(CALLER));
+        let router = app(Authority::not_configured(), None, Some(CALLER));
         let request = HttpRequest::get("/health/ready")
             .body(Body::empty())
             .unwrap();
@@ -1118,8 +1105,8 @@ mod tests {
     #[tokio::test]
     async fn email_code_operations_are_closed_without_that_authority() {
         for authority in [
-            Authority::NotConfigured,
-            Authority::Fixture(Fixture::Answers),
+            Authority::not_configured(),
+            Authority::fixture(Fixture::Answers),
         ] {
             let router = app(authority, Some(CALLER), Some(CALLER));
             for (path, body) in [

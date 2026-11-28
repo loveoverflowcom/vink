@@ -1,7 +1,28 @@
 use super::*;
 use crate::contract::{AccountDeletion, Bounded};
+use crate::outcome::{DeletionReceipt, DeletionRejection};
 use axum::extract::Query;
 use uuid::Uuid;
+
+fn wire(receipt: DeletionReceipt) -> AccountDeletion {
+    AccountDeletion {
+        account_id: receipt.account_id,
+        operation_id: receipt.operation_id,
+        accepted_at: receipt.accepted_at,
+    }
+}
+
+impl From<DeletionRejection> for ContractError {
+    fn from(rejection: DeletionRejection) -> Self {
+        match rejection {
+            DeletionRejection::MalformedOperation => ContractError::MalformedRequest,
+            DeletionRejection::InvalidCode => ContractError::InvalidCode,
+            DeletionRejection::ChallengeClosed => ContractError::ChallengeClosed,
+            DeletionRejection::InvalidCredentials => ContractError::InvalidCredentials,
+            DeletionRejection::RateLimited => ContractError::RateLimited,
+        }
+    }
+}
 
 #[derive(serde::Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -38,9 +59,10 @@ pub(super) async fn start(
     body: Body,
 ) -> Result<Response, ContractError> {
     let request: Start = read_json(body).await?;
-    let store = state.inner.authority.email_code()?;
+    let authority = &state.inner.authority;
+    authority.require(Method::EmailCode)?;
     let address = EmailAddress::parse(request.email.expose()).ok_or(ContractError::InvalidEmail)?;
-    match store.start_deletion(&address, request.expected).await? {
+    match authority.start_deletion(&address, request.expected).await? {
         ChallengeOutcome::Issued { handle, expires_at } => Ok(issued(&handle, expires_at)),
         ChallengeOutcome::RateLimited(_) => Err(ContractError::RateLimited),
     }
@@ -51,7 +73,8 @@ pub(super) async fn confirm(
     body: Body,
 ) -> Result<Json<AccountDeletion>, ContractError> {
     let request: Confirm = read_json_with_limit(body, MAX_PASSWORD_BODY_BYTES).await?;
-    Ok(Json(match request {
+    let authority = &state.inner.authority;
+    let receipt = match request {
         Confirm::Password {
             username,
             password,
@@ -60,11 +83,8 @@ pub(super) async fn confirm(
         } => {
             let username = Username::parse(username.expose())
                 .map_err(|_| ContractError::InvalidCredentials)?;
-            state
-                .inner
-                .authority
-                .password()?
-                .complete_deletion_password(&username, password.expose(), expected, operation_id)
+            authority
+                .confirm_deletion_password(&username, password.expose(), expected, operation_id)
                 .await?
         }
         Confirm::EmailCode {
@@ -76,14 +96,12 @@ pub(super) async fn confirm(
             let handle =
                 ChallengeHandle::parse(challenge.expose()).ok_or(ContractError::ChallengeClosed)?;
             let code = Code::parse(code.expose()).ok_or(ContractError::InvalidCode)?;
-            state
-                .inner
-                .authority
-                .email_code()?
-                .complete_deletion_code(&handle, &code, expected, operation_id)
+            authority
+                .confirm_deletion_code(&handle, &code, expected, operation_id)
                 .await?
         }
-    }))
+    };
+    Ok(Json(wire(receipt?)))
 }
 
 #[derive(serde::Deserialize)]
@@ -97,14 +115,8 @@ pub(super) async fn pending(
     query: Result<Query<Pending>, axum::extract::rejection::QueryRejection>,
 ) -> Result<Json<Vec<AccountDeletion>>, ContractError> {
     let Query(query) = query.map_err(|_| ContractError::MalformedRequest)?;
-    Ok(Json(
-        state
-            .inner
-            .authority
-            .store()?
-            .pending_deletions(query.after)
-            .await?,
-    ))
+    let receipts = state.inner.authority.pending_deletions(query.after).await?;
+    Ok(Json(receipts.into_iter().map(wire).collect()))
 }
 
 pub(super) async fn status(
@@ -112,14 +124,8 @@ pub(super) async fn status(
     body: Body,
 ) -> Result<Json<Option<AccountDeletion>>, ContractError> {
     let request: Operation = read_json(body).await?;
-    Ok(Json(
-        state
-            .inner
-            .authority
-            .store()?
-            .deletion(request.operation_id)
-            .await?,
-    ))
+    let receipt = state.inner.authority.deletion(request.operation_id).await?;
+    Ok(Json(receipt.map(wire)))
 }
 
 pub(super) async fn finish(
@@ -130,7 +136,6 @@ pub(super) async fn finish(
     state
         .inner
         .authority
-        .store()?
         .finish_deletion(request.operation_id)
         .await?;
     Ok(StatusCode::NO_CONTENT)

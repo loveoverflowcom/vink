@@ -14,14 +14,13 @@ use sqlx::PgPool;
 use tokio::sync::Notify;
 use tower::ServiceExt;
 use uuid::Uuid;
-use vink_identity::accounts::{
-    AccountStore, ChallengeOutcome, NewSession, PasswordRegistrationError, StoreError,
-};
+use vink_identity::accounts::{AccountStore, StoreError};
 use vink_identity::authority::{Authority, MethodCapabilities};
 use vink_identity::delivery::{DeliveryPolicy, Worker};
 use vink_identity::email_code::{ChallengeHandle, Code, EmailAddress, Policy};
 use vink_identity::http::{IdentityState, Peer, router};
 use vink_identity::mail::LocalOutbox;
+use vink_identity::outcome::{ChallengeOutcome, NewSession, PasswordRegistrationError};
 use vink_identity::password::{Password, Username};
 
 const PASSWORD: &str = "mat-khau-dai-2026";
@@ -158,6 +157,59 @@ pub(super) async fn register(
     store
         .register_password(&email, &handle, &code, user, password)
         .await
+}
+
+#[sqlx::test(migrator = "vink_identity::persistence::MIGRATOR")]
+async fn deletion_rpc_rolls_back_a_valid_proof_and_returns_the_committed_receipt(pool: PgPool) {
+    let rig = Rig::new(&pool);
+    let (login, login_code) = rig.sign_in_proof(EMAIL).await;
+    let (status, session) = rig
+        .rpc(
+            "/identity/v1/sign-in/complete",
+            json!({
+                "challenge": login.encode(), "code": login_code.expose()
+            }),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK);
+    let account = session["subject"]["id"].as_str().unwrap();
+    let (status, challenge) = rig
+        .rpc(
+            "/identity/v1/account-deletion/challenges",
+            json!({"email": EMAIL, "expected": account}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::ACCEPTED);
+    let handle = ChallengeHandle::parse(challenge["challenge"].as_str().unwrap()).unwrap();
+    let code = rig.code(&handle, "delete_account").await;
+    let confirm = |operation| {
+        rig.rpc(
+            "/identity/v1/account-deletion/confirm",
+            json!({
+                "method": "email_code", "challenge": handle.encode(), "code": code.expose(),
+                "expected": account, "operation_id": operation
+            }),
+        )
+    };
+
+    let (status, rejection) = confirm(Uuid::nil()).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(rejection["error"]["code"], "malformed_request");
+
+    let operation = Uuid::now_v7();
+    let (status, receipt) = confirm(operation).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(receipt["account_id"], account);
+    assert_eq!(receipt["operation_id"], operation.to_string());
+    assert!(receipt["accepted_at"].is_string());
+    let (status, stored) = rig
+        .rpc(
+            "/identity/v1/account-deletion/status",
+            json!({"operation_id": operation}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(stored, receipt);
 }
 
 #[sqlx::test(migrator = "vink_identity::persistence::MIGRATOR")]

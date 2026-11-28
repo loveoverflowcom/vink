@@ -13,13 +13,12 @@ use sqlx::PgPool;
 use tokio::sync::Notify;
 use tower::ServiceExt;
 use uuid::Uuid;
-use vink_identity::accounts::{
-    AccountStore, PasswordRegistrationError, PasswordSignInRejection, disable_account,
-};
+use vink_identity::accounts::{AccountStore, disable_account};
 use vink_identity::authority::Authority;
 use vink_identity::contract::CredentialRejection;
 use vink_identity::email_code::Policy;
 use vink_identity::http::{IdentityState, Peer, router};
+use vink_identity::outcome::{PasswordRegistrationError, PasswordSignInRejection};
 use vink_identity::password::{Password, Username};
 
 const CALLER: u32 = 501;
@@ -28,7 +27,7 @@ const CALLER: u32 = 501;
 async fn account_deletion_password_proof_revokes_every_session_and_rejects_operation_reuse(
     pool: PgPool,
 ) {
-    use vink_identity::contract::ContractError;
+    use vink_identity::outcome::DeletionRejection;
     let store = store(&pool);
     let username = Username::parse("tac_gia_xoa").unwrap();
     let password = Password::parse("mat-khau-fixture-xoa").unwrap();
@@ -46,7 +45,7 @@ async fn account_deletion_password_proof_revokes_every_session_and_rejects_opera
         store
             .complete_deletion_password(&username, "wrong password", None, op)
             .await,
-        Err(ContractError::InvalidCredentials)
+        Ok(Err(DeletionRejection::InvalidCredentials))
     ));
     assert!(store.pending_deletions(None).await.unwrap().is_empty());
     assert!(
@@ -62,7 +61,7 @@ async fn account_deletion_password_proof_revokes_every_session_and_rejects_opera
         store.complete_deletion_password(&username, password.expose(), Some(first.account_id), op),
     );
     let accepted = match (one, two) {
-        (Ok(accepted), Err(_)) | (Err(_), Ok(accepted)) => accepted,
+        (Ok(Ok(accepted)), Ok(Err(_))) | (Ok(Err(_)), Ok(Ok(accepted))) => accepted,
         answers => panic!("exactly one deletion should commit: {answers:?}"),
     };
     assert_eq!(accepted.account_id, first.account_id);
@@ -92,7 +91,7 @@ async fn account_deletion_password_proof_revokes_every_session_and_rejects_opera
         store
             .complete_deletion_password(&username, password.expose(), None, op)
             .await,
-        Err(ContractError::ChallengeClosed)
+        Ok(Err(DeletionRejection::ChallengeClosed))
     ));
     assert!(
         store

@@ -1,6 +1,8 @@
 //! Pure policy of the native email-code authority (D-05/S-03 spike): address normalisation,
 //! one-time codes, challenge handles, session credentials and their hashes, and the decision for
-//! one code attempt. No I/O except the operating system's random generator.
+//! one code attempt. No I/O except the operating system's random generator. Session credentials,
+//! the session lifetime in [`Policy`] and the subject's authority name are shared with password
+//! sign-in; the module keeps its historical name.
 //!
 //! The authority proves *control of a mailbox* when the person signs in. That is the assurance of
 //! a password account with email reset, without a password to store or reuse; it is not an
@@ -22,7 +24,7 @@ use uuid::Uuid;
 
 /// The authority identifier in every subject this service issues. It names the native account
 /// system, not a factor: a later passkey or password on the same account keeps the same subject.
-pub const AUTHORITY: &str = "vink-identity";
+pub(crate) const AUTHORITY: &str = "vink-identity";
 
 const SECRET_BYTES: usize = 32;
 const CODE_DIGITS: usize = 6;
@@ -70,7 +72,7 @@ impl Default for Policy {
 
 /// Fills `buf` from the operating system. An error means no secret can be made: callers answer
 /// "unavailable", never a weaker value.
-pub fn random(buf: &mut [u8]) -> Result<(), RandomUnavailable> {
+pub(crate) fn random(buf: &mut [u8]) -> Result<(), RandomUnavailable> {
     getrandom::fill(buf).map_err(|_| RandomUnavailable)
 }
 
@@ -266,7 +268,7 @@ impl fmt::Debug for SessionCredential {
 
 /// The stored state of a challenge when a code arrives.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ChallengeState {
+pub(crate) struct ChallengeState {
     pub consumed: bool,
     pub expired: bool,
     pub failed_attempts: i32,
@@ -274,7 +276,7 @@ pub struct ChallengeState {
 
 /// Decision for one attempt. `Accept` consumes the challenge; `Wrong` records a failure.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Attempt {
+pub(crate) enum Attempt {
     Accept,
     /// Wrong code; `closes` when this failure uses the last allowed attempt.
     Wrong {
@@ -285,7 +287,11 @@ pub enum Attempt {
 }
 
 /// A closed challenge never accepts, even with the right code; a consumed one is never reused.
-pub fn decide_attempt(state: ChallengeState, code_matches: bool, policy: &Policy) -> Attempt {
+pub(crate) fn decide_attempt(
+    state: ChallengeState,
+    code_matches: bool,
+    policy: &Policy,
+) -> Attempt {
     if state.consumed || state.expired || state.failed_attempts >= policy.max_attempts {
         Attempt::Closed
     } else if code_matches {

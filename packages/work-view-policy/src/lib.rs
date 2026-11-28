@@ -1,12 +1,16 @@
-//! Shared work-view threshold policy (`VIEW-01`, `UX-07`, `CHOICE-POLICY`).
+//! Shared work-view policy values (`VIEW-01`, `VIEW-03`, `UX-07`, `CHOICE-POLICY`): the numbers
+//! that the App's counting rule and the Web Reader and its explanation must agree on. Nothing here
+//! formats text or performs I/O; copy belongs to the Web and the counting rule to the App.
 //!
-//! This crate owns the single source of truth for the minimum foreground display duration
-//! required before the browser Reader emits a work-view candidate (`WORK_VIEW_MIN_VISIBLE_MS`).
-//! Both `vink-app` and `vink-web` (CSR standalone and SSR/hydrate) consume this type and constant
-//! so the Reader timer, author explanation contract (`UX-07`), and verification share one value.
+//! | Value | Owner of the rule | Consumers |
+//! | --- | --- | --- |
+//! | [`WORK_VIEW_MIN_VISIBLE_MS`] | Reader emission (browser-only) | `vink-web` timer and explanation |
+//! | [`VIEW_WINDOW_HOURS`] | App counting rule (`VIEW-03`) | `vink-app` domain, `vink-web` explanation |
 //!
-//! To change the default threshold later, update [`WORK_VIEW_MIN_VISIBLE_MS`] here and rebuild the
-//! workspace.
+//! The threshold decides only when the browser sends a candidate. The App never receives or trusts
+//! a duration; it decides with its own rules (receipts, window, horizon, ownership).
+//!
+//! To change a value, update it here and rebuild the workspace.
 
 use core::fmt;
 use core::time::Duration;
@@ -18,7 +22,11 @@ pub const WORK_VIEW_MIN_VISIBLE_MS: u32 = 5_000;
 /// Conservative upper bound (10 minutes) preventing nonsensical configuration values.
 pub const MAX_MIN_VISIBLE_MS: u32 = 600_000;
 
-/// Validated view threshold policy used by the Reader timer and author explanation contract.
+/// `VIEW-03`: a reader has at most one counted view per work per sliding window of this many
+/// hours. The App derives its `VIEW_WINDOW` from it; the Web explanation prints it.
+pub const VIEW_WINDOW_HOURS: u32 = 24;
+
+/// Validated foreground threshold used by the Reader timer and its explanation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct WorkViewDurationPolicy {
     min_visible_ms: u32,
@@ -69,29 +77,6 @@ impl WorkViewDurationPolicy {
     pub const fn min_visible_duration(self) -> Duration {
         Duration::from_millis(self.min_visible_ms as u64)
     }
-
-    /// Formats the threshold for Vietnamese author-facing copy (`5 giây`, `1,5 giây`, `250 ms`).
-    pub fn threshold_label_vi(self) -> String {
-        if self.min_visible_ms < 1_000 {
-            return format!("{} ms", self.min_visible_ms);
-        }
-        let whole = self.min_visible_ms / 1_000;
-        let rem = self.min_visible_ms % 1_000;
-        if rem == 0 {
-            return format!("{whole} giây");
-        }
-        let frac = format!("{rem:03}");
-        let trimmed = frac.trim_end_matches('0');
-        format!("{whole},{trimmed} giây")
-    }
-
-    /// Canonical `UX-07` coverage explanation driven dynamically by this policy's threshold.
-    pub fn ux_explanation_vi(self) -> String {
-        format!(
-            "Chỉ tính khi bài hiển thị tối thiểu {} ở tab đang xem; mỗi người tối đa một lượt trong 24 giờ. Khách được tính theo trình duyệt; lượt bạn tự xem khi đăng nhập và trình duyệt tắt JavaScript không được tính.",
-            self.threshold_label_vi()
-        )
-    }
 }
 
 impl Default for WorkViewDurationPolicy {
@@ -105,34 +90,25 @@ mod tests {
     use super::*;
 
     #[test]
-    fn default_policy_matches_single_constant_and_formats_vietnamese_copy() {
+    fn default_policy_is_the_single_threshold_constant() {
         let policy = WorkViewDurationPolicy::default();
+        assert_eq!(policy, WorkViewDurationPolicy::DEFAULT);
         assert_eq!(policy.min_visible_ms(), WORK_VIEW_MIN_VISIBLE_MS);
         assert_eq!(
             policy.min_visible_duration(),
             Duration::from_millis(u64::from(WORK_VIEW_MIN_VISIBLE_MS))
         );
-        assert_eq!(policy.threshold_label_vi(), "5 giây");
-        let explanation = policy.ux_explanation_vi();
-        assert!(explanation.contains("5 giây"), "{explanation}");
-        assert!(explanation.contains("24 giờ"), "{explanation}");
-        assert!(explanation.contains("trình duyệt"), "{explanation}");
-        assert!(explanation.contains("tự xem"), "{explanation}");
-        assert!(explanation.contains("JavaScript"), "{explanation}");
+        assert_eq!(VIEW_WINDOW_HOURS, 24);
     }
 
     #[test]
-    fn custom_override_changes_threshold_duration_and_explanation_together() {
+    fn custom_override_changes_the_threshold_and_duration_together() {
         let fractional = WorkViewDurationPolicy::from_millis(1_500).unwrap();
         assert_eq!(fractional.min_visible_ms(), 1_500);
-        assert_eq!(fractional.threshold_label_vi(), "1,5 giây");
-        let text = fractional.ux_explanation_vi();
-        assert!(text.contains("tối thiểu 1,5 giây"), "{text}");
-        assert!(!text.contains("tối thiểu 5 giây"), "{text}");
-
-        let subsecond = WorkViewDurationPolicy::from_millis(250).unwrap();
-        assert_eq!(subsecond.threshold_label_vi(), "250 ms");
-        assert!(subsecond.ux_explanation_vi().contains("250 ms"));
+        assert_eq!(
+            fractional.min_visible_duration(),
+            Duration::from_millis(1_500)
+        );
     }
 
     #[test]

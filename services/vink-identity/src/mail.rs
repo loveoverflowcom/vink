@@ -46,7 +46,7 @@ impl Purpose {
         }
     }
 
-    pub fn from_label(label: &str) -> Option<Self> {
+    pub(crate) fn from_label(label: &str) -> Option<Self> {
         match label {
             "sign_in" => Some(Purpose::SignIn),
             "change_email" => Some(Purpose::ChangeEmail),
@@ -112,13 +112,13 @@ impl Failure {
     }
 
     /// Only a definitive refusal ends a delivery before its attempts or its code run out.
-    pub fn is_permanent(self) -> bool {
+    pub(crate) fn is_permanent(self) -> bool {
         matches!(self, Failure::Permanent { .. })
     }
 }
 
 /// Subject and plain-text body in Vietnamese. The code appears only in the body.
-pub fn render(message: &Message) -> (String, String) {
+pub(crate) fn render(message: &Message) -> (String, String) {
     let action = match message.purpose {
         Purpose::SignIn => "đăng nhập Vink",
         Purpose::ChangeEmail => "xác nhận địa chỉ email mới cho tài khoản Vink",
@@ -213,7 +213,7 @@ impl LocalOutbox {
 
     /// Idempotent per challenge: a repeated delivery (at-least-once) finds the file already
     /// written and succeeds without touching it.
-    pub fn deliver(&self, message: &Message) -> Result<(), Failure> {
+    pub(crate) fn deliver(&self, message: &Message) -> Result<(), Failure> {
         let expires = message
             .expires_at
             .format(&Rfc3339)

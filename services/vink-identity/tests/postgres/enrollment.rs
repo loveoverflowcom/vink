@@ -20,17 +20,17 @@ use tokio::sync::Notify;
 use tower::ServiceExt;
 use unicode_normalization::UnicodeNormalization;
 use uuid::Uuid;
-use vink_identity::accounts::{
-    AccountStore, ChallengeOutcome, EmailChangeOutcome, EmailChangeStart, EnrollmentOutcome,
-    EnrollmentRejection, EnrollmentStart, NewSession, PasswordRegistrationError,
-    PasswordSignInRejection, SignInOutcome, StoreError, disable_account,
-};
+use vink_identity::accounts::{AccountStore, StoreError, disable_account};
 use vink_identity::authority::{Authority, MethodCapabilities};
 use vink_identity::contract::CredentialRejection;
 use vink_identity::delivery::{DeliveryPolicy, Worker};
 use vink_identity::email_code::{ChallengeHandle, Code, EmailAddress, Policy};
 use vink_identity::http::{IdentityState, Peer, router};
 use vink_identity::mail::{LocalOutbox, Transport};
+use vink_identity::outcome::{
+    ChallengeOutcome, EmailChangeOutcome, EmailChangeStart, EnrollmentOutcome, EnrollmentRejection,
+    EnrollmentStart, NewSession, PasswordRegistrationError, PasswordSignInRejection, SignInOutcome,
+};
 use vink_identity::password::{Password, Username, hash_password};
 
 const CALLER: u32 = 501;

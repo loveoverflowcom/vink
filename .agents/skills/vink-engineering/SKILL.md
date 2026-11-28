@@ -64,6 +64,11 @@ For a small change, a sentence is enough. For several durable claims, use a shor
 - Add a crate, service, dependency or reusable abstraction for a concrete consumer. Domain code
   imports neither HTTP/UI frameworks nor database/provider clients. Avoid a global Vink–Cantos
   contracts package; each API provider owns its schema and consumers own their representations.
+- Keep dependencies pointing down: storage returns outcomes rather than wire errors or DTOs,
+  handlers call use cases rather than receiving stores, and items without an outside consumer
+  stay `pub(crate)`. For refactors that move boundaries, follow
+  [physical design](../vink-architect/references/physical-design.md) and report what knowledge
+  was removed and what new cost was accepted.
 
 ## PostgreSQL and external effects
 

@@ -189,6 +189,8 @@ The following boundaries guide work within the selected scope:
   password store, cookies or session tables. Audio adaptation needs its own consent and scope.
 - Keep domain decisions independent of Axum, SQLx, Leptos and AI provider SDKs.
   Application code orchestrates; adapters perform I/O; UI renders facts and submits intents.
+  Judge structure by real dependencies, not folders: keep edges downward, interfaces minimal and
+  new crates, traits or layers justified ([physical design](.agents/skills/vink-architect/references/physical-design.md)).
 - Keep private working drafts, immutable submitted revisions, moderation decisions, publication
   and curation distinct. Recheck current authority and version at durable commit boundaries.
 - Discussion is the App's `discussion` module: one writer/moderation owner, two tiers (root + flat

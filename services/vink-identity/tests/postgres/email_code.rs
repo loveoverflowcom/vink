@@ -10,14 +10,14 @@ use std::sync::Arc;
 use sqlx::PgPool;
 use tokio::sync::Notify;
 use uuid::Uuid;
-use vink_identity::accounts::{
-    AccountChange, AccountStore, ChallengeOutcome, EmailChangeOutcome, EmailChangeStart,
-    NewSession, SignInOutcome, disable_account, enable_account,
-};
+use vink_identity::accounts::{AccountChange, AccountStore, disable_account, enable_account};
 use vink_identity::contract::{ChallengeRejection, CredentialRejection};
 use vink_identity::delivery::{DeliveryPolicy, Worker};
 use vink_identity::email_code::{ChallengeHandle, Code, EmailAddress, Policy};
 use vink_identity::mail::{LocalOutbox, Transport};
+use vink_identity::outcome::{
+    ChallengeOutcome, EmailChangeOutcome, EmailChangeStart, NewSession, SignInOutcome,
+};
 
 struct Harness {
     store: AccountStore,
@@ -100,7 +100,7 @@ impl Harness {
 async fn account_deletion_email_for_disabled_owner_rejects_wrong_expired_and_spent_codes(
     pool: PgPool,
 ) {
-    use vink_identity::contract::ContractError;
+    use vink_identity::outcome::DeletionRejection;
     let h = harness(
         &pool,
         Policy {
@@ -135,7 +135,7 @@ async fn account_deletion_email_for_disabled_owner_rejects_wrong_expired_and_spe
         h.store
             .complete_deletion_code(&expired, &expired_code, None, id)
             .await,
-        Err(ContractError::ChallengeClosed)
+        Ok(Err(DeletionRejection::ChallengeClosed))
     ));
     let fresh = issue().await;
     let code = h.code(&fresh).await;
@@ -143,20 +143,21 @@ async fn account_deletion_email_for_disabled_owner_rejects_wrong_expired_and_spe
         h.store
             .complete_deletion_code(&fresh, &wrong(&code), None, id)
             .await,
-        Err(ContractError::InvalidCode)
+        Ok(Err(DeletionRejection::InvalidCode))
     ));
     assert!(h.store.pending_deletions(None).await.unwrap().is_empty());
     let receipt = h
         .store
         .complete_deletion_code(&fresh, &code, None, id)
         .await
+        .unwrap()
         .unwrap();
     assert_eq!(receipt.account_id, old.account_id);
     assert!(matches!(
         h.store
             .complete_deletion_code(&fresh, &code, None, id)
             .await,
-        Err(ContractError::ChallengeClosed)
+        Ok(Err(DeletionRejection::ChallengeClosed))
     ));
     assert!(matches!(
         h.store.complete_sign_in(&sign_in, &old_code).await.unwrap(),

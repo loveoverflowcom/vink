@@ -7,12 +7,11 @@ use std::time::Duration;
 use sqlx::{PgPool, Row};
 use tokio::sync::{Notify, watch};
 use uuid::Uuid;
-use vink_identity::accounts::{
-    self, AccountStore, ChallengeOutcome, EmailChangeStart, Retention, SignInOutcome, Throttle,
-};
+use vink_identity::accounts::{self, AccountStore, Retention};
 use vink_identity::delivery::{self, DeliveryPolicy, Final, Worker};
 use vink_identity::email_code::{ChallengeHandle, Code, EmailAddress, Policy};
 use vink_identity::mail::{Failure, MailSender, Message, SendFuture, Transport};
+use vink_identity::outcome::{ChallengeOutcome, EmailChangeStart, SignInOutcome, Throttle};
 
 struct Sender {
     outcome: Mutex<Result<(), Failure>>,
