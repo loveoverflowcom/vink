@@ -18,9 +18,12 @@ async function checkLayoutAndA11y(page, check, textContrast, url, contrastSelect
   await page.waitFor(`document.visibilityState === 'visible' && document.documentElement.dataset.hydrated === 'true' &&
     ${contrastSelectors.map(q).join(' && ')}`,
     `${label} visible with required targets`);
-  for (const width of [320, 390, 834, 1024, 1440]) {
+  const profile = label === 'follow-profile' || label === 'follow-profile-guest';
+  const widths = profile ? [320, 390, 834, 1280] : [320, 390, 834, 1024, 1440];
+  const scales = profile ? [100, 150, 200] : [100, 200];
+  for (const width of widths) {
     for (const theme of ['light', 'dark']) {
-      for (const scale of [100, 200]) {
+      for (const scale of scales) {
         await page.viewport(width);
         const facts = await page.eval(`(async () => {
           const root = document.documentElement;
@@ -38,8 +41,7 @@ async function checkLayoutAndA11y(page, check, textContrast, url, contrastSelect
               return { sel, width: r.width, height: r.height };
             })
             .filter(Boolean);
-          // #588 compact header: bold literary name on its own token, secondary handle, and the
-          // permitted count beside the Follow action whenever the text column fits both.
+          // #606: one leading edge for the identity, relationship facts and works.
           const heading = document.querySelector('.vk-author-identity h1');
           let header = null;
           if (heading) {
@@ -53,9 +55,14 @@ async function checkLayoutAndA11y(page, check, textContrast, url, contrastSelect
               serif: css.fontFamily.includes('Literata'),
               clipped: heading.scrollWidth > heading.clientWidth + 1,
               handleRatio: handle ? parseFloat(getComputedStyle(handle).fontSize) / rootPx : null,
-              wide: document.querySelector('.vk-author-public').clientWidth >= 40 * rootPx,
+              wide: parseFloat(getComputedStyle(heading.closest('article')).width) -
+                parseFloat(getComputedStyle(heading.closest('article')).paddingInlineStart) -
+                parseFloat(getComputedStyle(heading.closest('article')).paddingInlineEnd) >= 40 * rootPx,
               count: box(count), action: box(action),
-              actionText: action?.textContent.trim(), column: box(heading.parentElement),
+              social: box(document.querySelector('.vk-author-social')),
+              seal: box(document.querySelector('.vk-author-seal')),
+              works: box(document.querySelector('#author-works-heading')),
+              handleClipped: handle && (handle.scrollWidth > handle.clientWidth + 1),
               // The link is a flex container: one label item keeps the space after the number.
               countSpace: (() => {
                 const num = count?.querySelector('.vk-rel-num');
@@ -66,8 +73,6 @@ async function checkLayoutAndA11y(page, check, textContrast, url, contrastSelect
                 r.setStart(text, at); r.setEnd(text, at + 1);
                 return r.getBoundingClientRect().left - num.getBoundingClientRect().right;
               })(),
-              stats: [...(document.querySelector('#profile-relationships')?.children ?? [])]
-                .filter(el => el.textContent.trim()).length,
             };
           }
           return { overflow, nestedLinks, targets, header };
@@ -79,13 +84,19 @@ async function checkLayoutAndA11y(page, check, textContrast, url, contrastSelect
             `${at}: name is bold Literata at ${expected}rem and wraps unclipped ${JSON.stringify(h)}`);
           check(h.handleRatio !== null && h.handleRatio <= 0.875 + 0.01 && h.handleRatio >= 0.8125 - 0.01,
             `${at}: handle stays secondary at 13–14px-equivalent (${h.handleRatio})`);
+          check(!h.handleClipped && (!h.works || Math.abs(h.works.left - h.seal.left) <= 1) &&
+            Math.abs(h.social.left - h.seal.left) <= 1,
+            `${at}: header, uncut handle and works share the content column`);
+          if (h.action) {
+            check(Math.abs(h.action.right - h.social.right) <= 1 && h.action.height >= 48,
+              `${at}: Follow aligns at the end of the row and has a 48px target`);
+          }
           if (h.count && h.action) {
             const sameRow = Math.abs((h.count.top + h.count.bottom) / 2 - (h.action.top + h.action.bottom) / 2) <= 2;
             const gap = h.action.left - h.count.right;
-            // Two stats may wrap the action below them on a phone; one stat always fits.
-            if (scale === 100 && (h.wide || (width >= 390 && h.stats === 1))) {
-              check(sameRow && gap >= 8 && gap <= 24 && h.action.left >= h.column.left - 1,
-                `${at}: count and Follow share one compact row in the text column ${JSON.stringify(h)}`);
+            if (scale === 100 && width === 834) {
+              check(sameRow && gap >= 8 && Math.abs(h.count.left - h.seal.left) <= 1,
+                `${at}: count begins at the avatar edge and shares the action row`);
             }
             check(h.countSpace === null || h.countSpace >= 2,
               `${at}: the rendered count keeps a space after the number (${h.countSpace}px)`);
@@ -146,7 +157,8 @@ async function checkLayoutAndA11y(page, check, textContrast, url, contrastSelect
         }
         if ((width === 320 && scale === 200) ||
             (width === 390 && scale === 100) ||
-            (width === 1440 && theme === 'light' && scale === 100)) {
+            (profile && width === 834 && scale === 100) ||
+            (width === widths.at(-1) && theme === 'light' && scale === 100)) {
           const name = `${label}-${width}-${theme}-${scale}`;
           // Let the foreground target frame the new scroll position before CDP snapshots it.
           const context = await page.eval(`(async () => {
@@ -515,11 +527,47 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
   // 3. Keyboard Follow/Unfollow keeping focus + Mutual matrix across A, B and Guest.
   await page.goto(`${base}/@${handleB}`);
   await page.waitFor(q('#follow-action'), 'member sees #follow-action on other profile');
-  await page.eval(`${q('#follow-action')}.focus()`);
+  const followButton = q('#follow-action');
+  const actionPath = `/api/v1/authors/${handleB}/relationship/me`;
+  const confirm = '#follow-confirm[open]';
+  let ax = await page.send('Accessibility.getFullAXTree');
+  check(ax.nodes.some(node => node.role?.value === 'button' && node.name?.value === 'Theo dõi' &&
+    node.properties?.some(prop => prop.name === 'pressed' && prop.value.value === 'false')),
+    'Follow exposes its accessible name and unpressed state');
+  await page.eval(`${followButton}.focus()`);
   await page.key('Enter');
-  await page.waitFor(`${q('#follow-action')}?.textContent?.trim() === 'Bỏ theo dõi' &&
+  await page.waitFor(`${q('#follow-action')}?.getAttribute('aria-pressed') === 'true' &&
     ${q('#follow-status')}?.textContent?.trim() === 'Đã theo dõi tác giả.'`, 'keyboard Follow commits and announces once');
   check(await page.eval(`document.activeElement?.id === 'follow-action'`), 'focus stays on #follow-action after keyboard Follow');
+  ax = await page.send('Accessibility.getFullAXTree');
+  check(ax.nodes.some(node => node.role?.value === 'button' && node.name?.value === 'Bỏ theo dõi' &&
+    node.properties?.some(prop => prop.name === 'pressed' && prop.value.value === 'true')),
+    'keyboard focus exposes the pressed state and the visible Unfollow label');
+  const cancelWrites = captureRequest(page, 'PUT', actionPath);
+  await page.key('Space');
+  await page.waitFor(`${q(confirm)}?.getAttribute('role') === 'alertdialog' &&
+    document.activeElement?.id === 'follow-cancel'`, 'Space opens unfollow confirmation with focus on Hủy');
+  await page.key('Tab');
+  check(await page.eval("document.activeElement?.id === 'follow-confirm-unfollow'"), 'Tab reaches confirm');
+  await page.key('Tab');
+  check(await page.eval("document.activeElement?.id === 'follow-cancel'"), 'forward Tab cycles to Hủy');
+  await page.key('Tab', 8);
+  check(await page.eval("document.activeElement?.id === 'follow-confirm-unfollow'"), 'Shift+Tab cycles to confirm');
+  await page.key('Escape');
+  await page.waitFor(`!${q(confirm)} && document.activeElement?.id === 'follow-action'`, 'Escape cancels and restores focus');
+  await page.key('Enter');
+  await page.waitFor(q(confirm), 'confirm can reopen from restored focus');
+  await page.click('#follow-cancel');
+  await page.waitFor(`!${q(confirm)} && document.activeElement?.id === 'follow-action'`, 'Hủy returns focus');
+  await page.click('#follow-action');
+  await page.waitFor(q(confirm), 'pointer also opens confirmation');
+  for (const type of ['mousePressed', 'mouseReleased']) {
+    await page.send('Input.dispatchMouseEvent', {type, x: 2, y: 2, button: 'left', clickCount: 1});
+  }
+  await page.waitFor(`!${q(confirm)} && document.activeElement?.id === 'follow-action'`, 'backdrop cancels and restores focus');
+  check(cancelWrites.count() === 0 && await page.eval(`${followButton}.getAttribute('aria-pressed') === 'true'`),
+    'open and cancel never dispatch a write or clear the confirmed edge');
+  cancelWrites.close();
   check(await page.eval(`${q('#profile-followers-link')}?.textContent?.includes('1 người theo dõi')`), 'followers count updates in-place to 1');
 
   await other.goto(`${base}/@${handleA}`);
@@ -529,7 +577,7 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
   check(await other.eval(`${q('#follow-mutual')}.textContent.includes('Theo dõi lẫn nhau')`), 'Mutual badge text on B');
 
   await page.reload();
-  await page.waitFor(q('#follow-mutual'), 'A sees Mutual badge on B');
+  await page.waitFor(q('.vk-author-social__facts #follow-mutual'), 'A sees Mutual beside the count on B');
   await guest.goto(`${base}/@${handleB}`);
   await guest.waitFor(q('#follow-sign-in'), 'guest profile settles');
   check(await guest.eval(`!${q('#follow-mutual')}`), 'guest never sees Mutual badge');
@@ -551,10 +599,50 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
   })()`);
   await page.send('Input.dispatchTouchEvent', {type:'touchStart', touchPoints:[tap]});
   await page.send('Input.dispatchTouchEvent', {type:'touchEnd', touchPoints:[]});
+  await page.waitFor(q(confirm), 'touch opens confirmation');
   await page.viewport(1280);
-  await page.waitFor(`${q('#follow-action')}?.textContent?.trim() === 'Theo dõi' && !${q('#follow-mutual')}`, 'A unfollows B cleanly');
+  const refused = event => {
+    if (event.sessionId !== page.sessionId || event.method !== 'Fetch.requestPaused') return;
+    const {requestId, request} = event.params;
+    if (request.method !== 'PUT') {
+      page.send('Fetch.continueRequest', {requestId}).catch(() => {});
+      return;
+    }
+    page.send('Fetch.fulfillRequest', {
+      requestId, responseCode: 422,
+      responseHeaders: [{name: 'content-type', value: 'application/json'}],
+      body: Buffer.from(JSON.stringify({error: {code: 'follow_key_reused', message: 'CDP refusal fixture'}})).toString('base64'),
+    }).catch(() => {});
+  };
+  page.cdp.listeners.push(refused);
+  await page.send('Fetch.enable', {patterns: [{urlPattern: base + actionPath}]});
+  try {
+    await page.click('#follow-confirm-unfollow');
+    await page.waitFor(`${followButton}.getAttribute('aria-pressed') === 'true' &&
+      !${followButton}.hasAttribute('aria-busy') && ${q('#follow-status')}?.dataset.error === 'true' &&
+      ${q('#follow-mutual')} && document.activeElement?.id === 'follow-action'`,
+      'simulated definitive error preserves the prior edge and mutual badge, announces failure and restores focus');
+  } finally {
+    page.cdp.listeners = page.cdp.listeners.filter(listener => listener !== refused);
+    await page.send('Fetch.disable');
+  }
+  await page.key('Enter');
+  await page.waitFor(q(confirm), 'retry opens a new confirmation after the refused request');
+  const unfollowWrites = captureRequest(page, 'PUT', actionPath);
+  const heldUnfollow = await holdAnswer(page, 'PUT', actionPath);
+  await page.click('#follow-confirm-unfollow');
+  check(await heldUnfollow.held() === 200, 'server committed the confirmed Unfollow');
+  await page.waitFor(`${followButton}.getAttribute('aria-busy') === 'true' &&
+    ${followButton}.getAttribute('aria-pressed') === 'true' && document.activeElement?.id === 'follow-action'`,
+    'Unfollow pending preserves the confirmed state and returns focus');
+  await page.key('Space');
+  check(unfollowWrites.count() === 1 && await page.eval(`!${q(confirm)}`), 'pending rejects duplicate confirmation');
+  await heldUnfollow.finish();
+  unfollowWrites.close();
+  await page.waitFor(`${q('#follow-action')}?.getAttribute('aria-pressed') === 'false' && !${q('#follow-mutual')}`, 'A unfollows B cleanly');
   await other.click('#follow-action');
-  await other.waitFor(`${q('#follow-action')}?.textContent?.trim() === 'Theo dõi' && !${q('#follow-mutual')}`, 'B unfollows A cleanly');
+  await other.click('#follow-confirm-unfollow');
+  await other.waitFor(`${q('#follow-action')}?.getAttribute('aria-pressed') === 'false' && !${q('#follow-mutual')}`, 'B unfollows A cleanly');
 
   // 4. CDP holdAnswer ABA lost-ACK -> reconcile -> Unfollow -> late v1 ACK ignored + event timing.
   await page.reload();
@@ -564,7 +652,6 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
     window.addEventListener('vink:follow-changed', (e) => window.__followEvents.push(e.detail));
   })()`);
 
-  const actionPath = `/api/v1/authors/${handleB}/relationship/me`;
   const writes = captureRequest(page, 'PUT', actionPath);
   const heldFirst = await holdAnswer(page, 'PUT', actionPath);
   await page.viewport(320);
@@ -594,7 +681,7 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
   await page.waitFor(q('#follow-reconcile'), 'reconcile control appears during slow/lost ACK');
   await page.click('#follow-reconcile');
   await page.waitFor(
-    `${q('#follow-action')}?.textContent?.trim() === 'Bỏ theo dõi' && window.__followEvents.length === 1`,
+    `${q('#follow-action')}?.getAttribute('aria-pressed') === 'true' && window.__followEvents.length === 1`,
     'reconciliation updates state cleanly and dispatches one invalidation event'
   );
   await page.waitFor(`${q('#profile-followers-link')}?.textContent?.includes('1 người theo dõi')`, 'reconcile updated followers count to 1');
@@ -602,10 +689,12 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
   await page.eval("document.documentElement.style.fontSize = ''");
   await page.viewport(1280);
 
-  // Unfollow as the newer intent.
+  // Unfollow as the newer intent while the original ACK remains delayed.
   await page.click('#follow-action');
+  check(writes.count() === 1, 'opening the newer intent still sends nothing');
+  await page.click('#follow-confirm-unfollow');
   await page.waitFor(
-    `${q('#follow-action')}?.textContent?.trim() === 'Theo dõi' && window.__followEvents.length === 2`,
+    `${q('#follow-action')}?.getAttribute('aria-pressed') === 'false' && window.__followEvents.length === 2`,
     'newer Unfollow settles and dispatches second invalidation event'
   );
   check(await page.eval(`${q('#profile-followers-link')}?.textContent?.includes('0 người theo dõi')`), 'count decremented to 0 after Unfollow');
@@ -613,7 +702,7 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
   // Release the older delayed ACK; the newer accepted intent must remain visible.
   await heldFirst.finish(false, true);
   await sleep(150);
-  check(await page.eval(`${q('#follow-action')}?.textContent?.trim() === 'Theo dõi'`), 'stale late v1 ACK ignored; button remains Theo dõi');
+  check(await page.eval(`${q('#follow-action')}?.getAttribute('aria-pressed') === 'false'`), 'stale late v1 ACK ignored; button remains Theo dõi');
   check(await page.eval(`${q('#profile-followers-link')}?.textContent?.includes('0 người theo dõi')`), 'stale late v1 ACK ignored; count remains 0');
   check((await page.eval('window.__followEvents.length')) === 2, 'stale late v1 ACK does not emit extra invalidation');
   check(await page.eval(`${q('#follow-status')}?.textContent.trim() === 'Đã bỏ theo dõi tác giả.'`),
@@ -630,13 +719,14 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
   await page.click('#follow-action');
   check((await lostAck.held()) === 200, 'real Follow succeeds before the ACK is dropped');
   await lostAck.finish(true);
-  await page.waitFor(`${q('#follow-action')}?.textContent.trim() === 'Bỏ theo dõi' &&
+  await page.waitFor(`${q('#follow-action')}?.getAttribute('aria-pressed') === 'true' &&
     window.__followEvents.length === 3`, 'lost ACK reconciles automatically from the real receipt');
   check(await page.eval(`window.__followNotices.some(text => text.startsWith('Chưa nhận')) &&
     window.__followNotices.filter(text => text === 'Đã đối chiếu trạng thái mới nhất từ máy chủ.').length === 1`),
     'lost ACK exposes reconciliation and announces its new result once');
   await page.click('#follow-action');
-  await page.waitFor(`${q('#follow-action')}?.textContent.trim() === 'Theo dõi' && window.__followEvents.length === 4`,
+  await page.click('#follow-confirm-unfollow');
+  await page.waitFor(`${q('#follow-action')}?.getAttribute('aria-pressed') === 'false' && window.__followEvents.length === 4`,
     'reset edge after the dropped-ACK test');
 
   // A confirmed PUT can intentionally return an empty projection for all four read fields.
@@ -650,7 +740,7 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
   setPolicies(allHidden);
   const unexpectedRead = captureRequest(page, 'GET', new URL(profileApi).pathname);
   await page.click('#follow-action');
-  await page.waitFor(`${noFacts} && ${q('#follow-action')}?.textContent.trim() === 'Bỏ theo dõi'`,
+  await page.waitFor(`${noFacts} && ${q('#follow-action')}?.getAttribute('aria-pressed') === 'true'`,
     'authoritative empty PUT removes both directions without a second read');
   check(unexpectedRead.count() === 0 && await page.eval(`!${q('#profile-relationships-retry')}`),
     'confirmed hidden fields produce neither stale facts nor a retry');
@@ -659,13 +749,14 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
   // A lost ACK confirms the edge from its receipt. Its separate public summary can fail.
   setPolicies(mixedGrants);
   await page.reload();
-  await page.waitFor(`${q('#follow-action')}?.textContent.trim() === 'Bỏ theo dõi' &&
+  await page.waitFor(`${q('#follow-action')}?.getAttribute('aria-pressed') === 'true' &&
     ${q('#profile-followers-link')} && ${q('#profile-following-count')}`, 'mixed grants are visible before isolated summary failure');
   const summaryDown = await graphReadUnavailable(page, profileApi, base + actionPath);
   try {
     await page.click('#follow-action');
+    await page.click('#follow-confirm-unfollow');
     check(await summaryDown.dropWrite() === 200, 'receipt fixture commits before only summary transport fails');
-    await page.waitFor(`${q('#follow-action')}?.textContent.trim() === 'Theo dõi' &&
+    await page.waitFor(`${q('#follow-action')}?.getAttribute('aria-pressed') === 'false' &&
       ${q('#profile-relationships-retry')} && ${noFacts}`, 'summary failure hides old facts separately from the confirmed edge');
     check(summaryDown.requests() > 0, 'only the public summary is refused after the lost ACK');
   } finally {
@@ -1085,7 +1176,7 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
   check(await tab.eval(currentEmpty), 'late nonempty own-list ACK cannot restore a prior session’s edge');
 
   await page.goto(`${base}/@${handleB}`);
-  await page.waitFor(`${q('#follow-action')}?.textContent?.trim() === 'Theo dõi'`, 'new A session can act on B again');
+  await page.waitFor(`${q('#follow-action')}?.getAttribute('aria-pressed') === 'false'`, 'new A session can act on B again');
   await page.click('#follow-action');
   await page.waitFor(`${q('#profile-followers-link')}?.textContent?.includes('16 người theo dõi')`, 'write overlays an updated public list and count');
   authorFixtureSql(`UPDATE author_profiles SET policies = policies ||

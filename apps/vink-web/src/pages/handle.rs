@@ -98,25 +98,23 @@ fn render_profile(
             let (public_summary, on_summary) =
                 profile_summary(author.handle.clone(), *relationships);
             let action_handle = author.handle.clone();
+            let action_name = author.pen_name.clone();
             return view! {
                 <Title text=format!("{} · Vink", author.pen_name) />
                 <Link rel="canonical" href=crate::canonical_url(&author.href) />
                 <article class="vk-author-public">
                     <ProfileIdentity pen_name=author.pen_name handle=author.handle.clone()>
-                        <super::follow::ProfileRelationships
-                            public=public_summary.into()
-                            own=own_relationships.read_only()
-                            on_retry=Callback::new(move |()| on_summary.run(None))
-                        />
-                        <super::follow::ProfileActionRegion
+                        <super::follow::ProfileSocial
                             handle=action_handle
+                            pen_name=action_name
+                            public=public_summary.into()
                             on_summary
-                            own_relationships=own_relationships
+                            own_relationships
                         />
                     </ProfileIdentity>
                     {bio.map(|text| view! { <p class="vk-author-bio">{text}</p> })}
                     <section aria-labelledby="author-works-heading"
-                        class="[margin-block-start:calc(var(--vk-space-8)_+_var(--vk-space-2))] [&>.vk-ui-link]:inline-block [&>.vk-ui-link]:[margin-inline-end:var(--vk-space-3)]">
+                        class="mt-vk-8 [&>.vk-ui-link]:inline-block [&>.vk-ui-link]:[margin-inline-end:var(--vk-space-3)]">
                         <super::saved_profile::PublicWorksSlot handle=author.handle.clone() />
                         {works_region(publications, has_public_works, continued, author.href, retry)}
                     </section>
@@ -390,7 +388,7 @@ pub(super) fn ProfileIdentity(
                 <h1 id="author-profile-heading" class="vk-ui-identity-name" tabindex="-1">{pen_name}</h1>
                 <p class="vk-ui-identity-handle">{format!("@{handle}")}</p>
             </header>
-            <div class="vk-author-social">{children()}</div>
+            {children()}
         </div>
     }
 }

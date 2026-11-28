@@ -4,7 +4,10 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use leptos::{prelude::*, task::spawn_local};
 use send_wrapper::SendWrapper;
-use vink_ui::{ActionState, Button, ButtonVariant, Link, LinkVariant};
+use vink_ui::{
+    ActionState, Button, ButtonVariant, Dialog, DialogRole, DismissPolicy, Icon, IconName,
+    IconSize, Link, LinkVariant,
+};
 use wasm_bindgen::{JsCast, JsValue, closure::Closure};
 
 use super::{LiveListState, RelationshipPersonRow};
@@ -108,6 +111,8 @@ pub(in crate::pages) fn announce_follow_changed(invalidation: &FollowInvalidatio
 pub(super) fn ActiveFollowRegion(
     scope: String,
     handle: String,
+    pen_name: String,
+    mutual_scope: RwSignal<Option<String>>,
     on_summary: Callback<Option<PublicRelationships>>,
     own_relationships: RwSignal<Option<(String, OwnRelationshipsSummary)>>,
 ) -> impl IntoView {
@@ -119,6 +124,7 @@ pub(super) fn ActiveFollowRegion(
     let controller = RwSignal::new(FollowController::new(follow_scope.clone()));
     let slow_pending = RwSignal::new(false);
     let load_ticket = RwSignal::new(0u64);
+    let confirm_open = RwSignal::new(false);
     let action_ref = NodeRef::<leptos::html::Button>::new();
 
     let reconcile_in_flight = RwSignal::<Option<String>>::new(None);
@@ -223,12 +229,15 @@ pub(super) fn ActiveFollowRegion(
         });
     };
 
-    let on_press_follow = Callback::new(move |()| {
+    let submit_follow = move |following: bool| {
+        if !still_live() {
+            return;
+        }
         let Some(command_id) = generate_command_id() else {
             return;
         };
         let Some(req) = controller
-            .try_update(|c| c.begin_intent(command_id.clone(), None))
+            .try_update(|c| c.begin_intent(command_id.clone(), Some(following)))
             .flatten()
         else {
             return;
@@ -286,7 +295,7 @@ pub(super) fn ActiveFollowRegion(
                 super::super::focus_recovery("follow-action");
             }
         });
-    });
+    };
 
     // Keep one persistent `#follow-action` DOM element across Ready/Pending/Reconciling so
     // keyboard focus never drops during state transitions.
@@ -316,21 +325,22 @@ pub(super) fn ActiveFollowRegion(
             _ => false,
         })
     });
-    let action_mutual = Signal::derive(move || {
-        controller.with(|c| match c.phase() {
-            FollowPhase::Ready { state, .. } => state.mutual,
-            FollowPhase::Pending { shown, .. } | FollowPhase::Reconciling { shown, .. } => {
-                shown.mutual
-            }
-            _ => false,
-        })
+    Effect::new(move |_| {
+        let mutual = show_action.get()
+            && controller.with(|c| match c.phase() {
+                FollowPhase::Ready { state, .. } => state.mutual,
+                FollowPhase::Pending { shown, .. } | FollowPhase::Reconciling { shown, .. } => {
+                    shown.mutual
+                }
+                _ => false,
+            });
+        mutual_scope.set(mutual.then(|| scope_token.get_value()));
     });
     let action_variant = Signal::derive(move || {
         if action_following.get() {
             ButtonVariant::Outlined
         } else {
-            // #588: Follow is a tonal action beside the counts, not the page's primary CTA.
-            ButtonVariant::Tonal
+            ButtonVariant::Filled
         }
     });
     let action_state = Signal::derive(move || {
@@ -342,6 +352,20 @@ pub(super) fn ActiveFollowRegion(
             FollowPhase::Reconciling { .. } => ActionState::pending("Đang đối chiếu trạng thái…"),
             _ => ActionState::Disabled { reason: None },
         })
+    });
+    let on_press_follow = Callback::new(move |()| {
+        if action_following.get_untracked() {
+            // A pointer or touch press need not focus buttons on every browser. Give Dialog
+            // the actual invoker to restore after both dismissal and confirmation.
+            if let Some(button) = action_ref.get_untracked() {
+                let options = web_sys::FocusOptions::new();
+                options.set_prevent_scroll(true);
+                let _ = button.focus_with_options(&options);
+            }
+            confirm_open.set(true);
+        } else {
+            submit_follow(true);
+        }
     });
     let reconcile_cmd_id = Signal::derive(move || {
         controller.with(|c| match c.phase() {
@@ -386,8 +410,23 @@ pub(super) fn ActiveFollowRegion(
             ActionState::Enabled
         }
     });
+    let cycle_confirm_focus = move |event: leptos::ev::KeyboardEvent| {
+        if event.key() != "Tab" || event.is_composing() || !confirm_open.get_untracked() {
+            return;
+        }
+        let active = document().active_element().map(|element| element.id());
+        let destination = match (event.shift_key(), active.as_deref()) {
+            (true, Some("follow-cancel")) => "follow-confirm-unfollow",
+            (false, Some("follow-confirm-unfollow")) => "follow-cancel",
+            _ => return,
+        };
+        // The native dialog makes the page inert. Wrap its two actions before focus can
+        // leave the document for browser chrome at either edge.
+        event.prevent_default();
+        crate::shell::focus_without_scroll(document().get_element_by_id(destination));
+    };
     view! {
-        <div class="vk-follow-controls">
+        <div class="vk-follow-controls" on:keydown=cycle_confirm_focus>
           <div class="vk-follow-actions">
             <Show when=move || is_owner.get()>
                 <Link variant=LinkVariant::Standalone attr:id="own-profile-edit-link"
@@ -400,13 +439,25 @@ pub(super) fn ActiveFollowRegion(
                     id="follow-action"
                     variant=action_variant
                     state=action_state
+                    pressed=action_following
                     button_ref=action_ref
                     on_press=on_press_follow>
-                    {move || if action_following.get() { "Bỏ theo dõi" } else { "Theo dõi" }}
+                    <span class="vk-follow-label" data-following=move || action_following.get().then_some("true")>
+                        <span class="vk-follow-label__state">
+                            {move || if action_following.get() {
+                                view! { <Icon name=IconName::Check size=IconSize::Small /> "Đang theo dõi" }.into_any()
+                            } else {
+                                view! { <Icon name=IconName::PersonAdd size=IconSize::Small /> "Theo dõi" }.into_any()
+                            }}
+                        </span>
+                        {move || action_following.get().then(|| view! {
+                            <span class="vk-follow-label__unfollow">
+                                <Icon name=IconName::PersonRemove size=IconSize::Small />
+                                "Bỏ theo dõi"
+                            </span>
+                        })}
+                    </span>
                 </Button>
-                <Show when=move || action_mutual.get()>
-                    <span id="follow-mutual" class="vk-follow-mutual">"Theo dõi lẫn nhau"</span>
-                </Show>
             </Show>
             <Show when=move || !is_owner.get() && controller.with(|c| matches!(c.phase(), FollowPhase::Error))>
                 <Button
@@ -417,6 +468,21 @@ pub(super) fn ActiveFollowRegion(
                 </Button>
             </Show>
           </div>
+          <Dialog id="follow-confirm" open=Signal::derive(move || confirm_open.get() && show_action.get())
+              role=DialogRole::AlertDialog dismiss=DismissPolicy::EscapeAndOutside
+              title=format!("Bỏ theo dõi {pen_name}?")
+              on_dismiss=move |_| confirm_open.set(false)
+              actions=move || view! {
+                  <Button id="follow-cancel" variant=ButtonVariant::Text autofocus=true
+                      on_press=move |()| confirm_open.set(false)>"Hủy"</Button>
+                  <Button id="follow-confirm-unfollow" variant=ButtonVariant::Filled on_press=move |()| {
+                      if confirm_open.get_untracked() {
+                          confirm_open.set(false);
+                          submit_follow(false);
+                      }
+                  }>"Bỏ theo dõi"</Button>
+              }
+          />
           <Show when=move || !is_owner.get() && controller.with(|c| matches!(c.phase(), FollowPhase::Loading))>
               <crate::ui::PendingRead label="Đang kiểm tra trạng thái theo dõi…" />
           </Show>

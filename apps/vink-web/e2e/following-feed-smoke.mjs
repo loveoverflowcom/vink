@@ -59,10 +59,11 @@ function publish(author, count, prefix) {
 
 async function toggle(control, base, handle, after) {
   await control.goto(`${base}/@${handle}`);
-  await control.waitFor(`${q('#follow-action')}?.textContent.trim() === ${JSON.stringify(after ? 'Theo dõi' : 'Bỏ theo dõi')}`,
+  await control.waitFor(`${q('#follow-action')}?.getAttribute('aria-pressed') === ${JSON.stringify(String(!after))}`,
     'real profile shows current Follow intent');
   await control.click('#follow-action');
-  await control.waitFor(`${q('#follow-action')}?.textContent.trim() === ${JSON.stringify(after ? 'Bỏ theo dõi' : 'Theo dõi')}`,
+  if (!after) await control.click('#follow-confirm-unfollow');
+  await control.waitFor(`${q('#follow-action')}?.getAttribute('aria-pressed') === ${JSON.stringify(String(after))}`,
     'server confirmed Follow change');
 }
 
@@ -292,13 +293,13 @@ export async function followingFeed(control, other, {base, openPage, check, hold
   const authorResult = `.vk-author-search a[href="/@${b.handle}"][data-profile-return]`;
   await page.waitFor(q(authorResult), 'exact Handle finds the author before their first public work');
   await page.click(authorResult);
-  await page.waitFor(`${q('#author-profile-heading')} && ${q('#follow-action')}?.textContent.trim() === 'Theo dõi'`,
+  await page.waitFor(`${q('#author-profile-heading')} && ${q('#follow-action')}?.getAttribute('aria-pressed') === 'false'`,
     'search result reaches the correct profile and current Follow action');
   const followAck = await holdAnswer(page, 'PUT', '/api/v1/authors/' + b.handle + '/relationship/me');
   await page.click('#follow-action');
   check(await followAck.held() === 200, 'Follow from search profile commits before the ACK is lost');
   await followAck.finish(true);
-  await page.waitFor(`${q('#follow-action')}?.textContent.trim() === 'Bỏ theo dõi'`,
+  await page.waitFor(`${q('#follow-action')}?.getAttribute('aria-pressed') === 'true'`,
     'profile reconciles the real Follow receipt');
   await page.eval('history.back()');
   await page.waitFor(`location.search.includes('mode=authors') && ${q('#explore-mode-following')}`,

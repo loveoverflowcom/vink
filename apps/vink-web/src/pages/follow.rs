@@ -4,8 +4,8 @@ use leptos::prelude::*;
 use leptos_meta::{Link, Meta, Title};
 use leptos_router::hooks::{use_params_map, use_query_map};
 use vink_ui::{
-    ActionState, AvatarSize, BackLink, Button, ButtonVariant, Heading, HeadingLevel,
-    Link as UiLink, LinkVariant, TypeRole,
+    ActionState, AvatarSize, BackLink, Button, ButtonVariant, Heading, HeadingLevel, Icon,
+    IconName, IconSize, Link as UiLink, LinkVariant, TypeRole,
 };
 
 use crate::ui::empty_state::{EmptyArtwork, EmptyState};
@@ -116,14 +116,20 @@ pub(crate) enum RelationshipSummary {
 }
 
 #[component]
-pub(super) fn ProfileActionRegion(
+pub(super) fn ProfileSocial(
     handle: String,
+    pen_name: String,
+    public: Signal<RelationshipSummary>,
     on_summary: Callback<Option<PublicRelationships>>,
     own_relationships: RwSignal<Option<(String, OwnRelationshipsSummary)>>,
 ) -> impl IntoView {
     let session = Session::current();
     let sign_in_open = crate::api::sign_in_open();
     let stored_handle = StoredValue::new(handle);
+    let pen_name = StoredValue::new(pen_name);
+    let mutual_scope = RwSignal::new(None::<String>);
+    let show_mutual =
+        move || mutual_scope.with(|owner| owner.is_some() && *owner == session.profile_scope.get());
 
     #[cfg(feature = "browser")]
     Effect::new(move |_| {
@@ -132,10 +138,18 @@ pub(super) fn ProfileActionRegion(
         }
     });
     #[cfg(not(feature = "browser"))]
-    let _ = (on_summary, own_relationships);
+    let _ = pen_name;
 
     view! {
-        <div id="follow" class="vk-follow-region">
+        <div class="vk-author-social">
+          <div class="vk-author-social__facts">
+            <ProfileRelationships public own=own_relationships.read_only()
+                on_retry=Callback::new(move |()| on_summary.run(None)) />
+            <Show when=show_mutual>
+                <span id="follow-mutual" class="vk-follow-mutual">"Theo dõi lẫn nhau"</span>
+            </Show>
+          </div>
+          <div id="follow" class="vk-follow-region">
             {move || match session.standing.get() {
                 Standing::Anonymous if !sign_in_open => view! {
                     <p id="follow-sign-in-closed" class="vk-muted">"Vink chưa mở đăng nhập."</p>
@@ -143,15 +157,12 @@ pub(super) fn ProfileActionRegion(
                 Standing::Anonymous => {
                     let href = encode_next_target(&stored_handle.get_value());
                     view! {
-                        <UiLink
-                            variant=LinkVariant::Standalone
-                            attr:id="follow-sign-in"
-                            attr:data-profile-return="true"
-                            href=href>
-                            // #588: the guest sees the same action the member gets; Auth asks
-                            // for sign-in after the press and never follows on return.
-                            "Theo dõi"
-                        </UiLink>
+                        // #588: Auth asks after activation and never follows on return.
+                        <a id="follow-sign-in" class=ButtonVariant::Filled.classes()
+                            data-profile-return="true" href=href>
+                            <Icon name=IconName::PersonAdd size=IconSize::Small />
+                            <span class="vk-ui-button__label">"Theo dõi"</span>
+                        </a>
                     }.into_any()
                 }
                 Standing::NeedsPrincipal => {
@@ -178,6 +189,8 @@ pub(super) fn ProfileActionRegion(
                                     <browser::ActiveFollowRegion
                                         scope
                                         handle=stored_handle.get_value()
+                                        pen_name=pen_name.get_value()
+                                        mutual_scope
                                         on_summary
                                         own_relationships
                                     />
@@ -194,12 +207,13 @@ pub(super) fn ProfileActionRegion(
                     view! { <span class="vk-follow-ssr-placeholder"></span> }.into_any()
                 }
             }}
+          </div>
         </div>
     }
 }
 
 #[component]
-pub(super) fn ProfileRelationships(
+fn ProfileRelationships(
     public: Signal<RelationshipSummary>,
     own: ReadSignal<Option<(String, OwnRelationshipsSummary)>>,
     on_retry: Callback<()>,
@@ -252,7 +266,7 @@ pub(super) fn ProfileRelationships(
             }.into_any(),
         };
         if f_count.is_none() && f_href.is_none() && g_count.is_none() && g_href.is_none() {
-            return view! { <span></span> }.into_any();
+            return ().into_any();
         }
         view! {
             <nav id="profile-relationships" class="vk-profile-relationships" aria-label="Quan hệ theo dõi">

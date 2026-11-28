@@ -107,7 +107,7 @@ reduced motion, phản hồi và chuyển khung áp dụng tức thời, phục 
 | --- | --- | --- |
 | Public | Khách, `needs_principal`, chủ và người khác đọc cùng projection khi profile còn hiệu lực. Server kiểm quyền đọc hiện tại. | Bút danh, current Handle, href nội bộ do server cấp, trường có quyền và bài còn public. SSR/no-JS, head, hydration công khai, gợi ý trung tính và cache công khai dùng cùng biểu diễn. Hidden và absent có cùng footprint cả ở placeholder, ảnh, count, cursor và metadata. |
 | Own | Đúng chủ có phiên active. | Giá trị đã lưu/chưa điền, quyền theo trường, version, setup/quota và list/count của mình. App định danh actor từ phiên và kiểm owner, standing, lifecycle, version khi commit. |
-| Viewer | Thành viên active xem target hợp lệ nhận quan hệ của mình, capability, version và receipt được phép. | Theo dõi/Bỏ theo dõi theo trạng thái xác nhận; Mutual chỉ được cấp riêng cho hai đầu cạnh. Người thứ ba, kể cả admin chỉ có quyền moderation, đọc bản public. Self-follow không có action. |
+| Viewer | Thành viên active xem target hợp lệ nhận quan hệ của mình, capability, version và receipt được phép. | Theo dõi/Đang theo dõi theo trạng thái xác nhận; Mutual chỉ được cấp riêng cho hai đầu cạnh. Người thứ ba, kể cả admin chỉ có quyền moderation, đọc bản public. Self-follow không có action. |
 | Feed | Thành viên active đọc trong scope phiên của mình. | Membership từ Graph và bài/mốc từ Publication qua Discovery. Scope này tách khỏi cache Khám phá public. |
 | Phiên hoặc quyền thay đổi | Hết phiên, full suspension hoặc Identity disable đóng own/viewer/Feed và write/replay; quyền public đánh giá độc lập. | Bỏ dữ liệu vừa mất quyền và phản hồi muộn; đưa tới đăng nhập, trạng thái hạn chế hoặc lỗi authority tương ứng. Hạn chế chỉ đăng/bình luận giữ capability Social khi `SOC-DEP-02` có nguồn. Profile đang xóa/đã xóa áp fence cho mọi scope. |
 
@@ -231,10 +231,14 @@ Mỗi vùng dùng sizing, theme, thứ tự focus, overlay và các trạng thá
 
 - **Entry và hành động.** Vùng cạnh danh tính. Với khách, đăng nhập quay về đúng hồ
   sơ nội bộ hoặc trạng thái thay thế nếu đích đã mất. Thành viên khác thấy một nút
-  **Theo dõi** hoặc **Bỏ theo dõi** sau khi đọc quan hệ. Trong lúc tải/lỗi overlay,
+  **Theo dõi** hoặc **Đang theo dõi** sau khi đọc quan hệ. Nút đang theo dõi đổi sang
+  **Bỏ theo dõi** khi rê chuột hoặc focus bàn phím. Trong lúc tải/lỗi overlay,
   status nằm cạnh danh tính; lỗi có Thử lại, không suy ra chưa Follow. Chủ dùng
   Chỉnh hồ sơ. “Theo dõi lẫn nhau” chỉ ở scope viewer của hai đầu cạnh.
-- **Interaction.** Nút gửi desired state với version và ID. Pending giữ vị trí/focus.
+- **Interaction.** Khi đang theo dõi, kích hoạt nút mở hộp thoại “Bỏ theo dõi {bút danh}?”.
+  Focus bắt đầu ở **Hủy**, Escape và bấm ngoài cũng hủy. Khi đóng, focus quay lại nút.
+  Xác nhận mới gửi yêu cầu bỏ theo dõi. Yêu cầu dùng desired state với version và ID.
+  Pending giữ vị trí/focus và trạng thái đã xác nhận.
   Ví dụ, Follow từ v0 đã commit ở v1 nhưng mất ACK. Sau khi tra receipt và đọc
   quan hệ ở v1, người dùng gửi Unfollow bằng ID mới và nhận v2. Khi ACK v1 về muộn,
   nút vẫn là **Theo dõi** theo v2. ACK v1 cũng không cập nhật số đếm hay phát lại
