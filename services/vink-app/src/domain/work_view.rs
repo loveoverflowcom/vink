@@ -47,10 +47,10 @@ pub mod count;
 #[cfg(test)]
 mod tests;
 
-pub use vink_work_view_policy::{WORK_VIEW_MIN_VISIBLE_MS, WorkViewDurationPolicy};
-
-/// VIEW-03: one counted view per reader and work per sliding 24 hours.
-pub const VIEW_WINDOW: Duration = Duration::hours(24);
+/// VIEW-03: one counted view per reader and work per sliding 24 hours. The value is shared with
+/// the Web explanation through `vink-work-view-policy`; the Reader's foreground threshold is a
+/// browser-only emission condition and is deliberately not an input here.
+pub const VIEW_WINDOW: Duration = Duration::hours(vink_work_view_policy::VIEW_WINDOW_HOURS as i64);
 /// Oldest event time (from its UUIDv7) still decided, relative to the decision clock.
 pub const MAX_EVENT_AGE: Duration = Duration::hours(11);
 /// Furthest an event time may lie ahead of the decision clock (client clock skew).

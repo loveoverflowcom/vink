@@ -294,6 +294,8 @@ fn a_replay_inside_the_horizon_always_finds_its_receipt() {
 
 #[test]
 fn window_is_open_through_exactly_24_hours() {
+    // `VDR-WORK-VIEWS@r1` fixes 24 hours; the shared constant cannot drift from it silently.
+    assert_eq!(VIEW_WINDOW, Duration::hours(24));
     let counted = at("2026-12-01T01:00:00Z");
     assert!(window_open(counted, counted));
     assert!(window_open(counted, counted + VIEW_WINDOW));

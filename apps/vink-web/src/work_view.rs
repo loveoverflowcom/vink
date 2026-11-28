@@ -6,30 +6,35 @@
 //! switches, bounded same-event retries, and single-source threshold overrides are verified
 //! deterministically under unit tests.
 
-use vink_work_view_policy::WorkViewDurationPolicy;
+use vink_work_view_policy::{VIEW_WINDOW_HOURS, WorkViewDurationPolicy};
 
 /// Exponential backoff delays (ms) for bounded in-tab retries using the same `event_id`
 /// (`CHOICE-04`). Total retry span (~13 s) stays well within the `VIEW-10` expectation (~1 min)
 /// and terminates on unmount, cancellation, `204`, or permanent `4xx`.
 pub const VIEW_RETRY_BACKOFF_MS: [u32; 3] = [1_000, 3_000, 9_000];
 
-/// Returns the canonical author-facing `UX-07` explanation for the configured default threshold.
-pub fn ux_explanation_vi() -> String {
-    explanation_for_policy(WorkViewDurationPolicy::DEFAULT)
-}
-
-/// Returns the canonical `UX-07` explanation for any [`WorkViewDurationPolicy`] value.
-pub fn explanation_for_policy(policy: WorkViewDurationPolicy) -> String {
-    policy.ux_explanation_vi()
-}
-
-/// First paragraph of the Desk “Cách tính lượt xem” sheet (`DESIGN_SPEC §4`), driven directly
-/// by the shared [`WorkViewDurationPolicy`] so the threshold is never hardcoded a second time.
+/// First paragraph of the Desk “Cách tính lượt xem” sheet (`UX-07`, `DESIGN_SPEC §4`). Both
+/// numbers come from `vink-work-view-policy`: the threshold the Reader waits for and the window
+/// the App counts in, so neither is hardcoded a second time.
 pub fn views_explainer_lead_vi(policy: WorkViewDurationPolicy) -> String {
     format!(
-        "Số lần bài được mở đọc và hiển thị ít nhất {}, mỗi người tối đa một lần trong 24 giờ.",
-        policy.threshold_label_vi()
+        "Số lần bài được mở đọc và hiển thị ít nhất {}, mỗi người tối đa một lần trong {VIEW_WINDOW_HOURS} giờ.",
+        threshold_label_vi(policy)
     )
+}
+
+/// The threshold in Vietnamese copy: `5 giây`, `1,5 giây`, `250 ms`.
+fn threshold_label_vi(policy: WorkViewDurationPolicy) -> String {
+    let ms = policy.min_visible_ms();
+    if ms < 1_000 {
+        return format!("{ms} ms");
+    }
+    let (whole, rem) = (ms / 1_000, ms % 1_000);
+    if rem == 0 {
+        return format!("{whole} giây");
+    }
+    let frac = format!("{rem:03}");
+    format!("{whole},{} giây", frac.trim_end_matches('0'))
 }
 
 /// Lifecycle state of a single intentional public Reader open in one tab.
@@ -702,17 +707,22 @@ mod tests {
             PollAction::Emit { .. }
         ));
 
-        let custom_copy = explanation_for_policy(custom);
-        assert!(custom_copy.contains("1,2 giây"), "{custom_copy}");
-        assert!(!custom_copy.contains("5 giây"), "{custom_copy}");
-        assert!(ux_explanation_vi().contains("5 giây"));
-
         let custom_lead = views_explainer_lead_vi(custom);
         assert!(custom_lead.contains("ít nhất 1,2 giây"), "{custom_lead}");
         assert!(!custom_lead.contains("5 giây"), "{custom_lead}");
-        assert!(
-            views_explainer_lead_vi(WorkViewDurationPolicy::DEFAULT).contains("ít nhất 5 giây")
+        assert_eq!(
+            views_explainer_lead_vi(WorkViewDurationPolicy::DEFAULT),
+            "Số lần bài được mở đọc và hiển thị ít nhất 5 giây, mỗi người tối đa một lần trong 24 giờ."
         );
+    }
+
+    #[test]
+    fn threshold_label_formats_whole_fractional_and_subsecond_values() {
+        let label = |ms| threshold_label_vi(WorkViewDurationPolicy::from_millis(ms).unwrap());
+        assert_eq!(label(5_000), "5 giây");
+        assert_eq!(label(1_500), "1,5 giây");
+        assert_eq!(label(1_250), "1,25 giây");
+        assert_eq!(label(250), "250 ms");
     }
 
     #[test]
