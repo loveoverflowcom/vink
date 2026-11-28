@@ -36,12 +36,25 @@ Mac mini arm64, macOS 15.6, Chrome 158.0.8127.89 qua CDP, Node 22.15.0, rustc 1.
 - Asset phát ra là `vink-editor.js`. Raw tăng 743 B (0,20%), gzip CLI tăng 274 B (0,22%), Brotli quality 11 tăng 236 B (0,22%). Các tệp bundle JSON ghi SHA-256, gzip CLI và các tuỳ chọn nén Node để tái đối chiếu. Receipt đầu vào của esbuild chỉ dùng rà dependency.
 - Mỗi cặp cold/warm mở một document trình duyệt mới vào bản nháp Markdown đã lưu tại `/ban-viet/{id}`, 1440 × 900, 10.000 Unicode scalar tiếng Việt có emoji và dấu tổ hợp. Bỏ 2 cặp đầu, ghi 40 cặp. Cold xóa HTTP cache. Warm mở ngay sau cold. Mốc ready dùng MutationObserver bắt view mount. Mỗi lượt có đúng một resource editor. 40/40 cold có transferSize dương và 40/40 warm bằng 0 ở cả hai lần.
 - Product đo dispatch gõ/caret đồng bộ trên view thật của Leptos (5 warmup + 40 mẫu), hoàn tác thay đổi bằng transaction đảo. Một phép đo riêng gửi CDP `Input.insertText` vào contenteditable (5 + 40), từ timestamp beforeinput đến rAF và task đầu sau rAF. Hai mốc này xấp xỉ cơ hội trình duyệt vẽ. Không có timestamp pixel lên màn hình. p95 task sau rAF tăng 0,40 ms. Mục tiêu p95 xử lý edit ≤16 ms áp dụng cho transaction. Một máy và profile như trên cho p95 cuối 1,40 ms.
-- Long task từ PerformanceObserver trong loạt transaction. Ước lượng frame bỏ lỡ theo khoảng cách rAF so với trung vị 15 frame nghỉ. Fixture 10/50/100/200k đo dispatch/caret đồng bộ, 5 warmup + 40 mẫu mỗi cỡ; không bao gồm thời gian vẽ hay nối Leptos. 40 vòng mount/destroy kiểm DOM, marker của host và callback sau teardown. Heap/GC không được đo.
-- Đã mở ảnh trước/sau. Ở 320 px tiêu đề và đoạn văn xuống dòng trong giấy. Tại 834 px có rail gọn; 1440 px giữ rail và thanh công cụ cạnh giấy. Cả bốn cặp PNG cùng SHA-256. [Ảnh và context baseline](baseline/) · [Ảnh và context final](final/). Text scale ở bốn ảnh dùng DOM override để kiểm hình học. Oracle AX đọc cây accessibility của Chrome. Xem [trace assertion trước](baseline/interaction-and-ax.txt) và [trace assertion sau](final/interaction-and-ax.txt) cho tên textbox, phím, paste, composition, undo và focus.
+- Long task từ PerformanceObserver trong loạt transaction. Ước lượng frame bỏ lỡ theo khoảng cách rAF so với trung vị 15 frame nghỉ. Fixture 10/50/100/200k đo dispatch/caret đồng bộ, 5 warmup + 40 mẫu mỗi cỡ. Phép đo này không bao gồm thời gian vẽ hay nối Leptos. 40 vòng mount/destroy kiểm DOM, marker của host và callback sau teardown. Heap/GC không được đo.
+- Đã mở ảnh trước/sau. Ở 320 px tiêu đề và đoạn văn xuống dòng trong giấy. Tại 834 px có rail gọn. Ở 1440 px giữ rail và thanh công cụ cạnh giấy. Cả bốn cặp PNG cùng SHA-256. [Ảnh và context baseline](baseline/) · [Ảnh và context final](final/). Text scale ở bốn ảnh dùng DOM override để kiểm hình học. Oracle AX đọc cây accessibility của Chrome. Xem [trace assertion trước](baseline/interaction-and-ax.txt) và [trace assertion sau](final/interaction-and-ax.txt) cho tên textbox, phím, paste, composition, undo và focus.
+
+## Nghiệm thu local
+
+| AC | Kết quả và điểm kiểm |
+| --- | --- |
+| 01, 03 | PASS. Corpus Node/TypeScript và editor-format kiểm bốn tổ hợp preset × format. Kiểm heading, B/I, conversion, callback mục lục và quyền sửa ngay trên từng handle. |
+| 02, 05 | PASS. Browser release thật qua editor-format, editor, editor-chrome, reader và standalone (CSR, App API, Identity scratch). Trace có textbox/AX, keyboard/selection, save, CAS, recovery, leave guard và Reader tải 0 asset editor. |
+| 04 | PASS. Read-only chặn lệnh Enter và cả transaction đổi source. Mount lỗi dọn host. Sau import trả về trễ, MutationObserver không thấy mount trên host đã dispose. Cặp callback composition có cả khi doc giữ nguyên. |
+| 06 | PASS cho JS, Rust và Product Chrome. Test Rust `editor::tests::canonical_default_maps_to_plain_for_either_surface` qua ở `545d31df`. CDP composition đã chạy. OS IME và mobile thật có trạng thái riêng bên dưới. |
+| 07 | PASS trên Mac mini và corpus đã ghi. Ba cách đo kích thước tăng tối đa 0,22%, Product processing p95 1,40 ms. Proxy post-rAF p95 tăng 0,40 ms. |
+| 08 | PASS. Rà caller và diff, sửa write qua read-only; sửa oracle phân biệt host Leptos và view thật, điều khiển cache cho ca import trễ. Test registry phát hiện caller trực tiếp của helper mạng cần mapping `standalone` bên cạnh các caller gián tiếp. Registry, static repo, static tokens, rustfmt và diff check đã qua. |
+
+Các thay đổi sau `e8bff712` chỉ chạm hồ sơ, tài liệu và registry chọn scenario. Binary editor và mã Product được đo giữ cùng source. Log lệnh đầy đủ, hai lần oracle chưa đạt trước khi sửa, lần registry thất bại và lần kiểm lại được giữ ngoài target tại `../vink-evidence-r9-617` trên máy thực thi.
 
 ## Chạy lại
 
-Từ gốc repo, dùng đúng toolchain trong repo, Chrome, PostgreSQL scratch qua `VINK_TEST_DATABASE_URL` và `VINK_CHROME`. Dùng một target riêng cho phiên, lưu output bên ngoài target trước khi clean. Lượt baseline dùng checkout sạch ở SHA trên. Sao chép [patch instrumentation](baseline/harness.patch.gz) ra ngoài checkout trước, rồi áp dụng `gzip -dc /path/to/harness.patch.gz | git apply -` vào baseline. Patch chỉ thêm phép đo vào e2e. Đo xong baseline mới chuyển sang source final. Cùng chạy tuần tự các lệnh sau:
+Từ gốc repo, dùng đúng toolchain trong repo, Chrome, PostgreSQL scratch qua `VINK_TEST_DATABASE_URL` và `VINK_CHROME`. Dùng một target riêng cho phiên, lưu output bên ngoài target trước khi clean. Lượt baseline dùng checkout sạch ở SHA trên. Sao chép [patch instrumentation](baseline/harness.patch.gz) ra ngoài checkout trước, rồi áp dụng `gzip -dc /path/to/harness.patch.gz | git apply -` vào baseline. Patch chỉ thêm phép đo vào e2e. Đo xong baseline mới chuyển sang source final. Cùng chạy tuần tự các lệnh sau.
 
 ```sh
 export CARGO_BUILD_JOBS=1 RUST_TEST_THREADS=1
@@ -50,7 +63,7 @@ python3.13 tools/local-budget run --low-disk -- cargo xtask build web --release
 cargo xtask verify web --release --scenario editor-format
 ```
 
-Sao chép JSON và ảnh từ thư mục `target/verify-web/<run>/editor-format` cho mỗi lượt. Đo file JS thực tế `target/site/pkg/vink-editor.js` trong artifact release bằng `wc -c`, `shasum -a 256`, `gzip -n -9 -c` và Node `zlib.brotliCompressSync` với `BROTLI_PARAM_QUALITY=11`. Rerun UI liên quan và Rust ở final:
+Sao chép JSON và ảnh từ thư mục `target/verify-web/<run>/editor-format` cho mỗi lượt. Đo file JS thực tế `target/site/pkg/vink-editor.js` trong artifact release bằng `wc -c`, `shasum -a 256`, `gzip -n -9 -c` và Node `zlib.brotliCompressSync` với `BROTLI_PARAM_QUALITY=11`. Rerun UI liên quan và Rust ở final.
 
 ```sh
 cargo xtask verify web --release --scenario reader --scenario editor-chrome --scenario editor
@@ -58,4 +71,4 @@ cargo xtask verify web --release --scenario standalone
 cargo test --locked --release -p vink-web --features ssr --lib editor::tests
 ```
 
-**IME thật và thiết bị.** CDP composition và input commit tiếng Việt chạy trên Chrome desktop. macOS SimpleTelex có trong máy, runner thiếu Accessibility và PostEvent. Telex/VNI qua OS và Android/iOS thật là **NOT_RUN**. Để chạy lại, dùng phiên GUI có quyền gửi phím thực hoặc người gõ trực tiếp, bật Telex/VNI; trên điện thoại thật bật IME tiếng Việt và mở Bàn viết bằng tài khoản thử trong môi trường scratch. Gõ và sửa “Tiếng Việt” giữa dòng có marker, chọn ngược, dán, undo/redo, dùng toolbar/đổi focus, lưu lúc đang composition; so source và caret sau commit rồi mở lại để so văn bản đã lưu. Ghi OS, IME, browser và thiết bị.
+**IME thật và thiết bị.** CDP composition và input commit tiếng Việt chạy trên Chrome desktop. macOS SimpleTelex có trong máy, runner thiếu Accessibility và PostEvent. Telex/VNI qua OS và Android/iOS thật là **NOT_RUN**. Để chạy lại, dùng phiên GUI có quyền gửi phím thực hoặc người gõ trực tiếp, bật Telex/VNI. Trên điện thoại thật bật IME tiếng Việt và mở Bàn viết bằng tài khoản thử trong môi trường scratch. Gõ và sửa “Tiếng Việt” giữa dòng có marker, chọn ngược, dán, undo/redo, dùng toolbar/đổi focus, lưu lúc đang composition. So source và caret sau commit rồi mở lại để so văn bản đã lưu. Ghi OS, IME, browser và thiết bị.
