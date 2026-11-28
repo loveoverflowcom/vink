@@ -319,7 +319,7 @@ async fn serve(config: ServeConfig) -> Result<(), Failure> {
     let stop = Arc::new(stop);
     let mut background = tokio::task::JoinSet::new();
     let (authority, label, mail) = match &config.authority {
-        AuthorityChoice::NotConfigured => (Authority::NotConfigured, "not_configured", None),
+        AuthorityChoice::NotConfigured => (Authority::not_configured(), "not_configured", None),
         AuthorityChoice::Password => {
             let wake = Arc::new(Notify::new());
             background.spawn(prune_periodically(pool.clone(), stopped.clone()));

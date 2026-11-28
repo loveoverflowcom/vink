@@ -21,13 +21,13 @@ use argon2::password_hash::{PasswordHasher, PasswordVerifier};
 use tokio::sync::Semaphore;
 use unicode_normalization::UnicodeNormalization;
 
-pub const MIN_USERNAME_LEN: usize = 3;
-pub const MAX_USERNAME_LEN: usize = 30;
-pub const MIN_PASSWORD_LEN: usize = 10;
-pub const MAX_PASSWORD_LEN: usize = 128;
+pub(crate) const MIN_USERNAME_LEN: usize = 3;
+pub(crate) const MAX_USERNAME_LEN: usize = 30;
+pub(crate) const MIN_PASSWORD_LEN: usize = 10;
+pub(crate) const MAX_PASSWORD_LEN: usize = 128;
 /// Upper bound on the raw request field before normalization. It leaves room for decomposed
 /// input (several code points per character) while keeping Argon2 input and NFKC work bounded.
-pub const MAX_PASSWORD_INPUT_BYTES: usize = 4096;
+pub(crate) const MAX_PASSWORD_INPUT_BYTES: usize = 4096;
 
 /// A canonical username adhering to policy O-12.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -142,7 +142,7 @@ pub fn hash_password(password: &Password) -> Result<String, HashError> {
 }
 
 /// Verifies a password against a stored PHC Argon2id hash.
-pub fn verify_password(stored_hash: &str, password: &Password) -> bool {
+pub(crate) fn verify_password(stored_hash: &str, password: &Password) -> bool {
     verify_raw(stored_hash, password.expose())
 }
 

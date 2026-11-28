@@ -1,11 +1,16 @@
 //! The authentication authority behind the contract.
 //!
-//! Three configurations exist in a built binary:
-//! - [`Authority::NotConfigured`] (default): every verification answers `authority_not_configured`.
-//! - [`Authority::Native`] with `email_code` (`VINK_IDENTITY_AUTHORITY=email-code`, D-05/S-03 spike):
+//! The application layer of Identity: the transport maps a request to one use case here, the use
+//! case checks that the configuration serves its [`Method`] and orchestrates the store, and the
+//! store decides inside one transaction. Callers never receive the store.
+//!
+//! Configurations in a built binary:
+//! - [`Authority::not_configured`] (default): every verification answers `authority_not_configured`.
+//! - [`Authority::new_email_code`] (`VINK_IDENTITY_AUTHORITY=email-code`, D-05/S-03 spike):
 //!   native accounts proven by a one-time code sent to the address, with opaque server-side sessions.
-//! - [`Authority::Native`] with `password` (`VINK_IDENTITY_AUTHORITY=password`, ACC-03, O-12):
+//! - [`Authority::new_password`] (`VINK_IDENTITY_AUTHORITY=password`, ACC-03, O-12):
 //!   native accounts with username and Argon2id password credentials, without mail dependency.
+//! - [`Authority::new_native`] with both methods, which also serves registration and enrollment.
 //!
 //! Production authentication stays NOT_IMPLEMENTED until a real transport, edge rate limits
 //! and an independent security review exist.
@@ -17,10 +22,16 @@ use uuid::Uuid;
 
 use crate::accounts::{AccountStore, StoreError};
 use crate::contract::{Availability, Credential, SessionFacts, Subject, VerifyCredentialResponse};
-use crate::email_code::AUTHORITY;
+use crate::email_code::{AUTHORITY, ChallengeHandle, Code, EmailAddress};
+use crate::outcome::{
+    ChallengeOutcome, DeletionReceipt, DeletionRejection, EmailChangeOutcome, EmailChangeStart,
+    EnrollmentOutcome, EnrollmentStart, NewSession, PasswordRegistrationError,
+    PasswordSignInRejection, SessionEmail, SignInOutcome,
+};
+use crate::password::{Password, Username};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AuthorityError {
+pub(crate) enum AuthorityError {
     /// No authority exists to ask; a configuration state, not an outage.
     NotConfigured,
     /// The authority or its storage could not answer; nothing was decided.
@@ -39,8 +50,30 @@ pub struct MethodCapabilities {
     pub password: bool,
 }
 
+/// A group of operations that one configuration either serves or answers `not_configured`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Method {
+    /// Session operations of any native configuration: verify, revoke, verified address,
+    /// deletion receipts.
+    Sessions,
+    /// Email-code sign-in, email change and the code proof for deletion.
+    EmailCode,
+    /// Username/password sign-in and the password proof for deletion.
+    Password,
+    /// Registration and enrollment of a username/password: needs both native methods.
+    Enrollment,
+}
+
+/// The configured authority. Each use case checks its [`Method`] before it reaches the store, so
+/// a caller cannot run an operation the configuration does not serve, and the storage behind the
+/// authority is not part of its interface.
 #[derive(Debug)]
-pub enum Authority {
+pub struct Authority {
+    kind: Kind,
+}
+
+#[derive(Debug)]
+enum Kind {
     NotConfigured,
     Native {
         store: AccountStore,
@@ -51,126 +84,319 @@ pub enum Authority {
 }
 
 impl Authority {
+    /// Every verification answers `authority_not_configured`.
+    pub fn not_configured() -> Self {
+        Self {
+            kind: Kind::NotConfigured,
+        }
+    }
+
     pub fn new_email_code(store: AccountStore) -> Self {
-        Self::Native {
+        Self::new_native(
             store,
-            methods: MethodCapabilities {
+            MethodCapabilities {
                 email_code: true,
                 password: false,
             },
-        }
+        )
     }
 
     pub fn new_password(store: AccountStore) -> Self {
-        Self::Native {
+        Self::new_native(
             store,
-            methods: MethodCapabilities {
+            MethodCapabilities {
                 email_code: false,
                 password: true,
             },
-        }
+        )
     }
 
     pub fn new_native(store: AccountStore, methods: MethodCapabilities) -> Self {
-        Self::Native { store, methods }
+        Self {
+            kind: Kind::Native { store, methods },
+        }
     }
 
-    pub fn availability(&self) -> Availability {
-        match self {
-            Authority::NotConfigured => Availability::NotConfigured,
-            Authority::Native { .. } => Availability::Available,
+    #[cfg(test)]
+    pub(crate) fn fixture(fixture: fixture::Fixture) -> Self {
+        Self {
+            kind: Kind::Fixture(fixture),
+        }
+    }
+
+    /// What capabilities and readiness report for `method`. The test fixture reports the session
+    /// operations as available although it serves only `verify`.
+    pub(crate) fn availability(&self, method: Method) -> Availability {
+        let available = match &self.kind {
+            Kind::NotConfigured => false,
+            Kind::Native { methods, .. } => serves(*methods, method),
             #[cfg(test)]
-            Authority::Fixture(_) => Availability::Available,
+            Kind::Fixture(_) => method == Method::Sessions,
+        };
+        if available {
+            Availability::Available
+        } else {
+            Availability::NotConfigured
         }
     }
 
-    /// Availability of the email-code operations (sign-in, revoke, email change).
-    pub fn email_code_availability(&self) -> Availability {
-        match self {
-            Authority::Native { methods, .. } if methods.email_code => Availability::Available,
-            _ => Availability::NotConfigured,
-        }
+    /// `Err(NotConfigured)` unless `method` can run now. A transport calls this before it
+    /// validates a request, so an unconfigured operation answers the same for every body.
+    pub(crate) fn require(&self, method: Method) -> Result<(), AuthorityError> {
+        self.native(method).map(|_| ())
     }
 
-    /// Availability of the password operations (register, sign-in).
-    pub fn password_availability(&self) -> Availability {
-        match self {
-            Authority::Native { methods, .. } if methods.password => Availability::Available,
-            _ => Availability::NotConfigured,
-        }
-    }
-
-    /// Availability of credential enrollment: a mailbox proof (email-code) for a username/password.
-    pub fn enrollment_availability(&self) -> Availability {
-        match self {
-            Authority::Native { methods, .. } if methods.email_code && methods.password => {
-                Availability::Available
-            }
-            _ => Availability::NotConfigured,
-        }
-    }
-
-    /// The account store for session operations (verify, revoke).
-    pub fn store(&self) -> Result<&AccountStore, AuthorityError> {
-        match self {
-            Authority::Native { store, .. } => Ok(store),
+    fn native(&self, method: Method) -> Result<&AccountStore, AuthorityError> {
+        match &self.kind {
+            Kind::Native { store, methods } if serves(*methods, method) => Ok(store),
             _ => Err(AuthorityError::NotConfigured),
         }
     }
 
-    /// The account store, for the email-code operations.
-    pub fn email_code(&self) -> Result<&AccountStore, AuthorityError> {
-        match self {
-            Authority::Native { store, methods } if methods.email_code => Ok(store),
-            _ => Err(AuthorityError::NotConfigured),
-        }
-    }
-
-    /// The account store, for the password operations.
-    pub fn password(&self) -> Result<&AccountStore, AuthorityError> {
-        match self {
-            Authority::Native { store, methods } if methods.password => Ok(store),
-            _ => Err(AuthorityError::NotConfigured),
-        }
-    }
-
-    /// The account store, for credential enrollment (both methods must be configured).
-    pub fn enrollment(&self) -> Result<&AccountStore, AuthorityError> {
-        match self {
-            Authority::Native { store, methods } if methods.email_code && methods.password => {
-                Ok(store)
-            }
-            _ => Err(AuthorityError::NotConfigured),
-        }
-    }
-
-    pub async fn verify(
+    pub(crate) async fn verify(
         &self,
         credential: &Credential,
     ) -> Result<VerifyCredentialResponse, AuthorityError> {
-        match self {
-            Authority::NotConfigured => {
+        match &self.kind {
+            Kind::NotConfigured => {
                 let _ = credential;
                 Err(AuthorityError::NotConfigured)
             }
-            Authority::Native { store, .. } => {
-                Ok(match store.verify(credential.expose()).await? {
-                    Ok(session) => VerifyCredentialResponse::Authenticated {
-                        subject: subject(session.account_id),
-                        authenticated_at: session.authenticated_at,
-                        session: Some(SessionFacts {
-                            id: session.session_id.to_string(),
-                            expires_at: session.expires_at,
-                        }),
-                    },
-                    Err(reason) => VerifyCredentialResponse::Rejected {
-                        reason: Some(reason),
-                    },
-                })
-            }
+            Kind::Native { store, .. } => Ok(match store.verify(credential.expose()).await? {
+                Ok(session) => VerifyCredentialResponse::Authenticated {
+                    subject: subject(session.account_id),
+                    authenticated_at: session.authenticated_at,
+                    session: Some(SessionFacts {
+                        id: session.session_id.to_string(),
+                        expires_at: session.expires_at,
+                    }),
+                },
+                Err(reason) => VerifyCredentialResponse::Rejected {
+                    reason: Some(reason),
+                },
+            }),
             #[cfg(test)]
-            Authority::Fixture(fixture) => fixture.verify(credential),
+            Kind::Fixture(fixture) => fixture.verify(credential),
         }
+    }
+
+    // --- Sessions ---
+
+    /// Logout. `true` only when an active session was revoked by this call.
+    pub(crate) async fn revoke(&self, credential: &str) -> Result<bool, AuthorityError> {
+        Ok(self.native(Method::Sessions)?.revoke(credential).await?)
+    }
+
+    pub(crate) async fn verified_email(
+        &self,
+        credential: &str,
+    ) -> Result<Option<SessionEmail>, AuthorityError> {
+        Ok(self
+            .native(Method::Sessions)?
+            .verified_email(credential)
+            .await?)
+    }
+
+    // --- Email code ---
+
+    pub(crate) async fn start_sign_in(
+        &self,
+        address: &EmailAddress,
+    ) -> Result<ChallengeOutcome, AuthorityError> {
+        Ok(self
+            .native(Method::EmailCode)?
+            .start_sign_in(address)
+            .await?)
+    }
+
+    pub(crate) async fn complete_sign_in(
+        &self,
+        handle: &ChallengeHandle,
+        code: &Code,
+    ) -> Result<SignInOutcome, AuthorityError> {
+        Ok(self
+            .native(Method::EmailCode)?
+            .complete_sign_in(handle, code)
+            .await?)
+    }
+
+    pub(crate) async fn start_email_change(
+        &self,
+        credential: &str,
+        address: &EmailAddress,
+    ) -> Result<EmailChangeStart, AuthorityError> {
+        Ok(self
+            .native(Method::EmailCode)?
+            .start_email_change(credential, address)
+            .await?)
+    }
+
+    pub(crate) async fn complete_email_change(
+        &self,
+        credential: &str,
+        handle: &ChallengeHandle,
+        code: &Code,
+    ) -> Result<EmailChangeOutcome, AuthorityError> {
+        Ok(self
+            .native(Method::EmailCode)?
+            .complete_email_change(credential, handle, code)
+            .await?)
+    }
+
+    // --- Password ---
+
+    /// Signs in with a username/password. A username outside the policy is checked against the
+    /// dummy hash first, so its answer takes as long as a wrong password for a real account.
+    pub(crate) async fn sign_in_password(
+        &self,
+        username: &str,
+        password: &str,
+    ) -> Result<Result<NewSession, PasswordSignInRejection>, AuthorityError> {
+        let store = self.native(Method::Password)?;
+        let Ok(username) = Username::parse(username) else {
+            crate::password::verify_sign_in(None, password)
+                .await
+                .map_err(|_| AuthorityError::Unavailable)?;
+            return Ok(Err(PasswordSignInRejection::InvalidCredentials));
+        };
+        Ok(store.sign_in_password(&username, password).await?)
+    }
+
+    // --- Registration and enrollment (both native methods) ---
+
+    pub(crate) async fn start_registration(
+        &self,
+        address: &EmailAddress,
+    ) -> Result<ChallengeOutcome, AuthorityError> {
+        Ok(self
+            .native(Method::Enrollment)?
+            .start_registration(address)
+            .await?)
+    }
+
+    pub(crate) async fn register_password(
+        &self,
+        address: &EmailAddress,
+        handle: &ChallengeHandle,
+        code: &Code,
+        username: &Username,
+        password: &Password,
+    ) -> Result<Result<NewSession, PasswordRegistrationError>, AuthorityError> {
+        Ok(self
+            .native(Method::Enrollment)?
+            .register_password(address, handle, code, username, password)
+            .await?)
+    }
+
+    pub(crate) async fn start_password_enrollment(
+        &self,
+        credential: &str,
+    ) -> Result<EnrollmentStart, AuthorityError> {
+        Ok(self
+            .native(Method::Enrollment)?
+            .start_password_enrollment(credential)
+            .await?)
+    }
+
+    pub(crate) async fn password_enrollment_status(
+        &self,
+        credential: &str,
+    ) -> Result<Result<bool, crate::contract::CredentialRejection>, AuthorityError> {
+        Ok(self
+            .native(Method::Enrollment)?
+            .password_enrollment_status(credential)
+            .await?)
+    }
+
+    /// Hashes the password before the store opens its transaction, so no row lock waits on
+    /// Argon2, then attaches the credential to the session's own account.
+    pub(crate) async fn enroll_password(
+        &self,
+        credential: &str,
+        handle: &ChallengeHandle,
+        code: &Code,
+        username: &Username,
+        password: Password,
+    ) -> Result<EnrollmentOutcome, AuthorityError> {
+        let store = self.native(Method::Enrollment)?;
+        let hash = crate::password::hash_credential(password)
+            .await
+            .map_err(|_| AuthorityError::Unavailable)?;
+        Ok(store
+            .enroll_password(credential, handle, code, username, &hash)
+            .await?)
+    }
+
+    // --- Account deletion ---
+
+    pub(crate) async fn start_deletion(
+        &self,
+        address: &EmailAddress,
+        expected: Option<Uuid>,
+    ) -> Result<ChallengeOutcome, AuthorityError> {
+        Ok(self
+            .native(Method::EmailCode)?
+            .start_deletion(address, expected)
+            .await?)
+    }
+
+    pub(crate) async fn confirm_deletion_code(
+        &self,
+        handle: &ChallengeHandle,
+        code: &Code,
+        expected: Option<Uuid>,
+        operation_id: Uuid,
+    ) -> Result<Result<DeletionReceipt, DeletionRejection>, AuthorityError> {
+        Ok(self
+            .native(Method::EmailCode)?
+            .complete_deletion_code(handle, code, expected, operation_id)
+            .await?)
+    }
+
+    pub(crate) async fn confirm_deletion_password(
+        &self,
+        username: &Username,
+        password: &str,
+        expected: Option<Uuid>,
+        operation_id: Uuid,
+    ) -> Result<Result<DeletionReceipt, DeletionRejection>, AuthorityError> {
+        Ok(self
+            .native(Method::Password)?
+            .complete_deletion_password(username, password, expected, operation_id)
+            .await?)
+    }
+
+    pub(crate) async fn deletion(
+        &self,
+        operation: Uuid,
+    ) -> Result<Option<DeletionReceipt>, AuthorityError> {
+        Ok(self.native(Method::Sessions)?.deletion(operation).await?)
+    }
+
+    pub(crate) async fn pending_deletions(
+        &self,
+        after: Option<Uuid>,
+    ) -> Result<Vec<DeletionReceipt>, AuthorityError> {
+        Ok(self
+            .native(Method::Sessions)?
+            .pending_deletions(after)
+            .await?)
+    }
+
+    pub(crate) async fn finish_deletion(&self, operation: Uuid) -> Result<(), AuthorityError> {
+        Ok(self
+            .native(Method::Sessions)?
+            .finish_deletion(operation)
+            .await?)
+    }
+}
+
+fn serves(methods: MethodCapabilities, method: Method) -> bool {
+    match method {
+        Method::Sessions => true,
+        Method::EmailCode => methods.email_code,
+        Method::Password => methods.password,
+        Method::Enrollment => methods.email_code && methods.password,
     }
 }
 
@@ -184,7 +410,7 @@ pub fn subject(account: Uuid) -> Subject {
 
 /// Labeled test authority (`authority: "test-fixture"`). Not compiled into binaries.
 #[cfg(test)]
-pub mod fixture {
+pub(crate) mod fixture {
     use time::macros::datetime;
 
     use crate::contract::{Credential, Subject, VerifyCredentialResponse};

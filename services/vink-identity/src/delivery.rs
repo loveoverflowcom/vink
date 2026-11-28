@@ -64,13 +64,13 @@ impl Default for DeliveryPolicy {
 
 /// What to do with a claimed row before sending.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Claim {
+pub(crate) enum Claim {
     Send,
     /// The challenge was used or expired: the code is worthless, never send it.
     Cancel,
 }
 
-pub fn decide_claim(consumed: bool, expired: bool) -> Claim {
+pub(crate) fn decide_claim(consumed: bool, expired: bool) -> Claim {
     if consumed || expired {
         Claim::Cancel
     } else {
@@ -80,14 +80,14 @@ pub fn decide_claim(consumed: bool, expired: bool) -> Claim {
 
 /// What to record after one send.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Outcome {
+pub(crate) enum Outcome {
     Sent,
     Retry { after: Duration },
     Failed,
 }
 
 /// `attempts` counts this send. Pure: `jitter` comes from the caller.
-pub fn decide_outcome(
+pub(crate) fn decide_outcome(
     attempts: i32,
     result: Result<(), Failure>,
     policy: &DeliveryPolicy,
@@ -109,7 +109,7 @@ pub fn decide_outcome(
 }
 
 /// `base · 2^(attempts−1)`, capped at `max_backoff`.
-pub fn backoff(attempts: i32, policy: &DeliveryPolicy) -> Duration {
+pub(crate) fn backoff(attempts: i32, policy: &DeliveryPolicy) -> Duration {
     let exponent = u32::try_from(attempts.saturating_sub(1))
         .unwrap_or(0)
         .min(16);
@@ -120,7 +120,7 @@ pub fn backoff(attempts: i32, policy: &DeliveryPolicy) -> Duration {
 }
 
 /// Records the delivery intent of a challenge in the caller's transaction.
-pub async fn enqueue(
+pub(crate) async fn enqueue(
     tx: &mut Transaction<'_, Postgres>,
     challenge: Uuid,
     purpose: Purpose,
@@ -143,11 +143,11 @@ pub async fn enqueue(
 /// A row this worker holds under `token`.
 #[derive(Debug)]
 pub struct Claimed {
-    pub token: Uuid,
-    pub attempts: i32,
-    pub claim: Claim,
+    pub(crate) token: Uuid,
+    pub(crate) attempts: i32,
+    pub(crate) claim: Claim,
     pub message: Option<Message>,
-    pub challenge: Uuid,
+    pub(crate) challenge: Uuid,
 }
 
 /// Claims up to `policy.batch` due rows and commits the claim (attempt counted, lease set).
@@ -287,7 +287,7 @@ pub async fn finish(pool: &PgPool, claimed: &Claimed, outcome: Final) -> Result<
     Ok(updated.rows_affected() == 1)
 }
 
-pub async fn reschedule(
+pub(crate) async fn reschedule(
     pool: &PgPool,
     claimed: &Claimed,
     after: Duration,

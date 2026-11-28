@@ -23,9 +23,9 @@ use tower::ServiceExt;
 use crate::http::Peer;
 
 /// A peer must send its whole request head within this time.
-pub const HEADER_TIMEOUT: Duration = Duration::from_secs(2);
+pub(crate) const HEADER_TIMEOUT: Duration = Duration::from_secs(2);
 /// How long shutdown waits for open requests before closing them.
-pub const SHUTDOWN_GRACE: Duration = Duration::from_secs(5);
+pub(crate) const SHUTDOWN_GRACE: Duration = Duration::from_secs(5);
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum SocketError {
@@ -47,7 +47,7 @@ impl BoundSocket {
     /// Removes the socket only if the path still holds the file this process bound; a successor
     /// that replaced it keeps its socket. Call it while the listener is open: once it is closed the
     /// filesystem may give a successor's socket the same inode.
-    pub fn remove(&self) {
+    pub(crate) fn remove(&self) {
         match std::fs::symlink_metadata(&self.path) {
             Ok(meta)
                 if meta.file_type().is_socket()

@@ -14,14 +14,13 @@ use sqlx::PgPool;
 use tokio::sync::Notify;
 use tower::ServiceExt;
 use uuid::Uuid;
-use vink_identity::accounts::{
-    AccountStore, ChallengeOutcome, NewSession, PasswordRegistrationError, StoreError,
-};
+use vink_identity::accounts::{AccountStore, StoreError};
 use vink_identity::authority::{Authority, MethodCapabilities};
 use vink_identity::delivery::{DeliveryPolicy, Worker};
 use vink_identity::email_code::{ChallengeHandle, Code, EmailAddress, Policy};
 use vink_identity::http::{IdentityState, Peer, router};
 use vink_identity::mail::LocalOutbox;
+use vink_identity::outcome::{ChallengeOutcome, NewSession, PasswordRegistrationError};
 use vink_identity::password::{Password, Username};
 
 const PASSWORD: &str = "mat-khau-dai-2026";

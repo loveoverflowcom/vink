@@ -28,8 +28,12 @@ mod password;
 mod registration;
 
 fn app(pool: PgPool, caller: Option<u32>) -> Router {
-    router(IdentityState::new(pool, Authority::NotConfigured, caller))
-        .layer(axum::Extension(ConnectInfo(Peer { uid: Some(CALLER) })))
+    router(IdentityState::new(
+        pool,
+        Authority::not_configured(),
+        caller,
+    ))
+    .layer(axum::Extension(ConnectInfo(Peer { uid: Some(CALLER) })))
 }
 
 async fn ready(router: &Router) -> (StatusCode, Value) {

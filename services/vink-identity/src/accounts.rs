@@ -1,7 +1,9 @@
-//! PostgreSQL side of the email-code authority: challenges, accounts, verified addresses and
-//! sessions in the Identity database. Every decision that must be atomic (consume a challenge,
+//! PostgreSQL side of the native authority: challenges, accounts, verified addresses, passwords
+//! and sessions in the Identity database. Every decision that must be atomic (consume a challenge,
 //! provision an account, issue a session; change an address and revoke the other sessions;
-//! disable an account and revoke all its sessions) runs in one transaction with the rows locked.
+//! disable an account and revoke all its sessions) runs in one transaction with the rows locked,
+//! so the transaction boundary stays here rather than in the use case above
+//! ([`crate::authority`]). Results are the storage-free types of [`crate::outcome`].
 //!
 //! Time comparisons use the database clock, including wall-clock checks after lock waits.
 //!
@@ -22,59 +24,15 @@ use crate::email_code::{
     SessionCredential, decide_attempt,
 };
 use crate::mail::Purpose;
+use crate::outcome::{
+    ActiveSession, ChallengeOutcome, EmailChangeOutcome, EmailChangeStart, EnrollmentOutcome,
+    EnrollmentRejection, EnrollmentStart, NewSession, PasswordRegistrationError,
+    PasswordSignInRejection, SessionEmail, SignInOutcome, Throttle,
+};
 use crate::password::{Password, Username};
 
 mod deletion;
-pub use deletion::review_legacy_email_accounts;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PasswordRegistrationError {
-    InvalidCode,
-    ChallengeClosed,
-    UsernameTaken,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PasswordSignInRejection {
-    InvalidCredentials,
-    AccountDisabled,
-    RateLimited,
-}
-
-/// Start of a credential enrollment (ACC-03): the proof is a code mailed to the account's own
-/// verified address.
-#[derive(Debug)]
-pub enum EnrollmentStart {
-    Issued(ChallengeOutcome),
-    /// The account already has a username/password. Changing it is a separate operation.
-    AlreadyEnrolled,
-    /// The account has no verified address to prove control with.
-    NoVerifiedAddress,
-    AccountDisabled,
-    CredentialRejected,
-}
-
-/// Why an enrollment did not attach the credential. Every variant means nothing was written.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum EnrollmentRejection {
-    /// Wrong code; the challenge still accepts another attempt.
-    InvalidCode,
-    /// Expired, used, out of attempts, not this account's, or its address is no longer the
-    /// account's verified address: request a new code.
-    ChallengeClosed,
-    /// The username belongs to an account. The code is NOT spent: pick another username.
-    UsernameTaken,
-    AlreadyEnrolled,
-    AccountDisabled,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum EnrollmentOutcome {
-    /// The credential now belongs to the presenting session's own account.
-    Enrolled,
-    Rejected(EnrollmentRejection),
-    CredentialRejected,
-}
+pub use deletion::{LegacyReviewError, review_legacy_email_accounts};
 
 enum ChallengeScope {
     SignIn,
@@ -103,76 +61,6 @@ impl From<RandomUnavailable> for StoreError {
     }
 }
 
-#[derive(Debug)]
-pub enum ChallengeOutcome {
-    Issued {
-        handle: ChallengeHandle,
-        expires_at: OffsetDateTime,
-    },
-    RateLimited(Throttle),
-}
-
-/// Which ceiling refused a challenge. Logged by label; the contract answer is the same for all.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Throttle {
-    /// Codes per address, any purpose.
-    Address,
-    /// Verified email changes started per account.
-    Account,
-    /// Codes across all addresses: caps mail volume when requests rotate addresses and networks.
-    Global,
-}
-
-impl Throttle {
-    pub fn label(self) -> &'static str {
-        match self {
-            Throttle::Address => "address",
-            Throttle::Account => "account",
-            Throttle::Global => "global",
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum EmailChangeStart {
-    Issued(ChallengeOutcome),
-    /// The address is already this account's own. An address of ANOTHER account is not reported:
-    /// the answer is `Issued` and no mail is sent, so the operation cannot probe who is registered.
-    AddressUnavailable,
-    CredentialRejected,
-}
-
-/// A session verified now.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ActiveSession {
-    pub session_id: Uuid,
-    pub account_id: Uuid,
-    pub authenticated_at: OffsetDateTime,
-    pub expires_at: OffsetDateTime,
-}
-
-#[derive(Debug)]
-pub struct NewSession {
-    pub session_id: Uuid,
-    pub account_id: Uuid,
-    pub credential: SessionCredential,
-    pub authenticated_at: OffsetDateTime,
-    pub expires_at: OffsetDateTime,
-}
-
-#[derive(Debug)]
-pub enum SignInOutcome {
-    Authenticated(NewSession),
-    Rejected(ChallengeRejection),
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum EmailChangeOutcome {
-    Changed,
-    Rejected(ChallengeRejection),
-    CredentialRejected,
-}
-
 #[derive(Debug, Clone)]
 pub struct AccountStore {
     pool: PgPool,
@@ -184,10 +72,6 @@ pub struct AccountStore {
 impl AccountStore {
     pub fn new(pool: PgPool, policy: Policy, wake: Arc<Notify>) -> Self {
         Self { pool, policy, wake }
-    }
-
-    pub fn policy(&self) -> &Policy {
-        &self.policy
     }
 
     /// Consume a registration-only mailbox proof and create the complete credential set atomically.
@@ -384,7 +268,7 @@ impl AccountStore {
 
     /// Reads only whether the session's account currently has a password, without sending mail
     /// or attempting a write. A client can reconcile a lost enrollment response here.
-    pub async fn password_enrollment_status(
+    pub(crate) async fn password_enrollment_status(
         &self,
         credential: &str,
     ) -> Result<Result<bool, CredentialRejection>, StoreError> {
@@ -567,22 +451,23 @@ impl AccountStore {
         }
     }
 
+    /// The verified address of the account behind an active session. `None` for any credential
+    /// that does not name an active session of an enabled account with a verified address.
     pub async fn verified_email(
         &self,
         credential: &str,
-    ) -> Result<crate::contract::VerifiedEmail, crate::contract::ContractError> {
-        use crate::contract::ContractError;
-        let credential =
-            SessionCredential::parse(credential).ok_or(ContractError::CredentialRejected)?;
-        let (session_id, verified_email) = sqlx::query_as("SELECT s.id, e.address FROM sessions s
+    ) -> Result<Option<SessionEmail>, StoreError> {
+        let Some(credential) = SessionCredential::parse(credential) else {
+            return Ok(None);
+        };
+        let row: Option<(Uuid, String)> = sqlx::query_as("SELECT s.id, e.address FROM sessions s
             JOIN accounts a ON a.id = s.account_id JOIN account_emails e ON e.account_id = a.id
             WHERE s.token_hash = $1 AND s.revoked_at IS NULL AND s.expires_at > clock_timestamp() AND a.disabled_at IS NULL")
-            .bind(credential.hash().as_slice()).fetch_optional(&self.pool).await.map_err(StoreError::from)?
-            .ok_or(ContractError::CredentialRejected)?;
-        Ok(crate::contract::VerifiedEmail {
+            .bind(credential.hash().as_slice()).fetch_optional(&self.pool).await?;
+        Ok(row.map(|(session_id, address)| SessionEmail {
             session_id,
-            verified_email,
-        })
+            address,
+        }))
     }
 
     pub async fn start_registration(
