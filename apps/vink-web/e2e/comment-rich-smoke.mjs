@@ -103,8 +103,16 @@ export async function richDiscussion(page,{args,check,rootId,workId,browserConte
           return field.top >= 0 && field.bottom < innerHeight &&
             host.contains(document.elementFromPoint(field.x + field.width / 2, field.y + field.height / 2));
         })()`, 'reply editor inside screenshot viewport');
-        check(await page.eval('document.documentElement.scrollWidth <= innerWidth'),
-          'no horizontal overflow ' + width + '/' + scale + '/' + theme);
+        const layout = await page.eval(`(() => {
+          const root = document.documentElement;
+          const overflow = root.scrollWidth > innerWidth;
+          const outside = overflow ? [...document.querySelectorAll('main *')].filter(el => {
+            const r = el.getBoundingClientRect();
+            return r.width && r.right > innerWidth && !el.closest('[hidden]');
+          }).slice(0, 12).map(el => [el.tagName, el.className, Math.round(el.getBoundingClientRect().right)]) : [];
+          return {overflow, pageWidth:root.scrollWidth, viewport:innerWidth, outside};
+        })()`);
+        check(!layout.overflow, 'horizontal geometry ' + width + '/' + scale + '/' + theme + ' ' + JSON.stringify(layout));
         const capture = await page.capture(`618-reply-${width}-${scale}-${theme}`,
           {target: reply+'-rich', textScaleLane:'dom-override-geometry-only'});
         const rect = capture.targets.required[0].rect;

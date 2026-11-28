@@ -2798,8 +2798,9 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
 .vk-comment-editor { border-radius: var(--vk-radius-md); background: var(--vk-surface-container-highest); }
 .vk-comment-editor .cm-scroller { max-block-size: 12lh; }
 .vk-compact-field [hidden] { display: none; }
+.vk-compact-field, .vk-comment-editor, .vk-comment-format { min-inline-size: 0; max-inline-size: 100%; }
 .vk-comment-format { display: flex; align-items: center; }
-.vk-comment-format [role=group]:not([hidden]) { display: flex; flex-wrap: wrap; }
+.vk-comment-format [role=group]:not([hidden]) { display: flex; flex-wrap: wrap; min-inline-size: 0; max-inline-size: 100%; }
 .vk-comment-format button { min-inline-size: 44px; padding-inline: .5em; }
 .vk-comment-format [data-format-action=bold] button { font-weight: bold; }
 .vk-comment-format [data-format-action=italic] button { font-style: italic; }
