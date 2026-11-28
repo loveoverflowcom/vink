@@ -102,6 +102,8 @@ mod publication_policy;
 mod publication_state;
 #[path = "postgres/publication_state_budget.rs"]
 mod publication_state_budget;
+#[path = "postgres/reputation_outbox.rs"]
+mod reputation_outbox;
 #[path = "postgres/saved_works.rs"]
 mod saved_works;
 #[path = "postgres/social_retirement.rs"]

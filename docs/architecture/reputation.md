@@ -192,7 +192,7 @@ phục/retire, race ngưỡng maturity và boundary, đến muộn/retry/rollbac
 ## 10. Đường triển khai
 
 Nguồn accepted (Thấm/Ưng, DEL-05, publication/lifecycle, nhận xét, standing) → outbox Reputation cùng
-transaction → consumer `vink-worker` theo lô → quyết định pure trong `domain::reputation` → entitlement,
+transaction (`reputation_events`, #645: event community mang ngữ cảnh as-of, marker trigger cho vòng đời) → consumer `vink-worker` theo lô → quyết định pure trong `domain::reputation` → entitlement,
 ledger, projection, snapshot → API đọc theo khóa chính và snapshot. Audit nguồn và chia lát ở
 [registry](../development/reputation.md); hợp đồng đọc ở
 [API dự thảo](../../services/vink-app/contracts/http/v1/reputation.md).
