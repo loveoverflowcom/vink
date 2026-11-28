@@ -107,13 +107,44 @@ fn ProfileForm(scope: StoredValue<String>, initial: OwnProfile) -> impl IntoView
     });
     let guard = crate::navigation::use_navigation_guard();
     let destination = RwSignal::new(None::<String>);
+    let skip_blur =
+        Signal::derive(move || navigating.get_value() || destination.with(Option::is_some));
+    let source_link = StoredValue::new_local(None::<web_sys::HtmlAnchorElement>);
+    let released = StoredValue::new(false);
     let registration = guard.register(move |to| {
-        if !form.read(Editor::unsaved) {
+        if released.get_value() || !form.read(Editor::unsaved) {
             return false;
         }
+        let link = document()
+            .active_element()
+            .and_then(|el| el.closest("a[href]").ok().flatten())
+            .and_then(|el| el.dyn_into::<web_sys::HtmlAnchorElement>().ok())
+            .filter(|a| link_destination(a) == to);
+        source_link.set_value(link);
         destination.set(Some(to.to_string()));
         true
     });
+    let leave = move |_| {
+        let Some(to) = destination.get_untracked() else {
+            return;
+        };
+        let link = source_link.get_value();
+        navigating.set_value(true);
+        destination.set(None);
+        // Let Dialog restore focus before the link's own return/focus handler runs.
+        request_animation_frame(move || {
+            if released.try_set_value(true).is_some() {
+                return;
+            }
+            if let Some(a) = link.filter(|a| a.is_connected() && link_destination(a) == to) {
+                a.click();
+            } else {
+                guard.go(&to);
+            }
+            released.try_set_value(false);
+            navigating.try_set_value(false);
+        });
+    };
     on_cleanup(move || guard.unregister(registration));
     let announcement = Memo::new(move |_| {
         form.read(|e| {
@@ -132,10 +163,10 @@ fn ProfileForm(scope: StoredValue<String>, initial: OwnProfile) -> impl IntoView
         <div class="vk-profile-form grid min-w-0 gap-vk-4">
             <div class="flex min-w-0 items-start gap-vk-3">
                 <div class="shrink-0"><crate::appearance::AccountAvatar /></div>
-                <div class="min-w-0 flex-1"><InlineText form field=Field::Name navigating /></div>
+                <div class="min-w-0 flex-1"><InlineText form field=Field::Name skip_blur /></div>
             </div>
             <handle::HandleRow controller=handle />
-            <InlineText form field=Field::Bio navigating />
+            <InlineText form field=Field::Bio skip_blur />
             <div id="quyen-rieng-tu" node_ref=privacy tabindex="-1" role="group"
                 aria-labelledby="profile-privacy-heading"
                 class="grid min-w-0 gap-vk-2 rounded-vk-lg focus-visible:outline-2 focus-visible:[outline-color:var(--vk-focus-ring)]">
@@ -156,17 +187,19 @@ fn ProfileForm(scope: StoredValue<String>, initial: OwnProfile) -> impl IntoView
             on_dismiss=move |_|destination.set(None)
             actions=move ||view!{
                 <Button id="profile-stay" variant=ButtonVariant::Text on_press=move |_|destination.set(None)>"Ở lại"</Button>
-                <Button id="profile-leave-keep" on_press=move |_|{
-                    if let Some(to)=destination.get_untracked(){destination.set(None);guard.go(&to);}
-                }>"Giữ bản nháp và rời trang"</Button>
+                <Button id="profile-leave-keep" on_press=leave>"Giữ bản nháp và rời trang"</Button>
             }>
             <p>"Bạn có thay đổi chưa được xác nhận. Bản nháp được giữ trong phiên này."</p>
         </Dialog>
     }
 }
 
+fn link_destination(link: &web_sys::HtmlAnchorElement) -> String {
+    format!("{}{}{}", link.pathname(), link.search(), link.hash())
+}
+
 #[component]
-fn InlineText(form: Form, field: Field, navigating: StoredValue<bool>) -> impl IntoView {
+fn InlineText(form: Form, field: Field, skip_blur: Signal<bool>) -> impl IntoView {
     let composing = StoredValue::new(false);
     let pending_blur = StoredValue::new(false);
     let value = Memo::new(move |_| form.read(|e| e.text(field)));
@@ -180,8 +213,15 @@ fn InlineText(form: Form, field: Field, navigating: StoredValue<bool>) -> impl I
         composing.set_value(input.composing);
         form.change(|e| e.input(field, input.value));
         if !input.composing && pending_blur.get_value() {
-            pending_blur.set_value(false);
-            form.commit(field);
+            // Some IMEs deliver the final input after compositionend in this frame.
+            request_animation_frame(move || {
+                if pending_blur.try_get_value() == Some(true) && !composing.get_value() {
+                    pending_blur.set_value(false);
+                    if !skip_blur.get_untracked() {
+                        form.commit(field);
+                    }
+                }
+            });
         }
     });
     let is_field = move |target: Option<web_sys::EventTarget>| {
@@ -190,7 +230,7 @@ fn InlineText(form: Form, field: Field, navigating: StoredValue<bool>) -> impl I
             .is_some_and(|node| node.id() == field.id())
     };
     let blur = move |event: web_sys::FocusEvent| {
-        if !is_field(event.target()) || navigating.get_value() {
+        if !is_field(event.target()) || skip_blur.get_untracked() {
             return;
         }
         if composing.get_value() {
@@ -223,7 +263,7 @@ fn InlineText(form: Form, field: Field, navigating: StoredValue<bool>) -> impl I
     view! {
         <div class="grid min-w-0 gap-vk-1"
             on:compositionstart=move |_| composing.set_value(true)
-            on:focusout=blur on:keydown=keydown>
+            on:focusin=move |_| pending_blur.set_value(false) on:focusout=blur on:keydown=keydown>
             {if field==Field::Name {
                 view!{<TextField id=field.id() label=field.label() value on_input=typed error required=true
                     variant=FieldVariant::FloatingTonal help="Luôn công khai, có thể trùng tên." />}.into_any()

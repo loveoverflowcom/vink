@@ -472,6 +472,17 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   await page.waitFor(`${control}.value === "self" && !${control}.matches(":open") &&
     ${q(BIO_SCOPE+'-confirm')}?.checkVisibility()`, 'keyboard commits only the draft and shows the narrowing warning');
   check((await own(page)).policies.bio === 'everyone', 'choosing a value sends no durable update before Save');
+  // Delay the other tab's broadcast refresh so that its first PUT really
+  // reaches the server with a stale version. Its conflict GET passes the gate.
+  const remoteRefresh=await holdAnswer(staleTab,'GET',API);
+  const staleWrites=[];
+  const watchPut=event=>{
+    if (event.sessionId===staleTab.sessionId && event.method==='Network.requestWillBeSent' &&
+        event.params.request.method==='PUT' && new URL(event.params.request.url).pathname===API) {
+      staleWrites.push(JSON.parse(event.params.request.postData));
+    }
+  };
+  staleTab.cdp.listeners.push(watchPut);
   await page.click(BIO_SCOPE+'-confirm');
   await page.waitFor(q(BIO_SCOPE + ':not(select) [data-icon="lock"]'), 'stored private policy becomes a non-interactive value');
   const narrowed = await own(page);
@@ -512,10 +523,15 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   await guest.click('.vk-author-public button');
   await guest.waitFor(`${q('#author-profile-heading')}?.textContent===${JSON.stringify(SAME_NAME)} &&
     ${q(selector('profile-work-' + ids.a))} && !${q('.vk-author-bio')}`, 'retry loads the current profile and works');
+  check(await remoteRefresh.held()===200,'a real own-profile refresh is held after privacy changed');
   await staleTab.eval(`${q(BIO)}.focus()`);
   await staleTab.key('Enter',2);
   await staleTab.waitFor(`${q(BIO+'-feedback')}?.textContent.includes('Đã lưu')`, 'bio commits independently of a remotely narrowed policy');
-  check((await own(staleTab)).policies.bio==='self','disjoint edit retains the locked policy');
+  check(staleWrites.length===2 && staleWrites[1].expected_version===staleWrites[0].expected_version+1 &&
+    staleWrites[0].policies.bio==='everyone' && staleWrites[1].policies.bio==='self' &&
+    (await own(staleTab)).policies.bio==='self', 'real stale PUT rebases once, retaining the remotely locked key');
+  await remoteRefresh.finish(false,true);
+  staleTab.cdp.listeners=staleTab.cdp.listeners.filter(l=>l!==watchPut);
   await fill(staleTab,BIO,'Tranh chấp cục bộ');
   await fill(page,BIO,bio);
   await page.key('Enter',2);
