@@ -257,7 +257,7 @@ pub(crate) fn ReaderAuthDialog(host: ReaderAuth) -> impl IntoView {
             on:cancel=move |event: leptos::ev::Event| { event.prevent_default(); host.close(CloseReason::Escape, false); }
             on:keydown=move |event| trap_tab(event, host.dialog)>
             <header class="vk-reader-auth-bar">
-                <span class="vk-brand__lockup" role="img" aria-label="Vink"></span>
+                <span class="vk-brand__lockup vk-auth-brand" role="img" aria-label="Vink"></span>
                 <IconButton icon=IconName::Close label="Đóng" id=CLOSE
                     on_press=move |_| { host.close(CloseReason::Dismiss, false); } />
             </header>
@@ -266,7 +266,7 @@ pub(crate) fn ReaderAuthDialog(host: ReaderAuth) -> impl IntoView {
                 {move || match session.standing.get() {
                     Standing::Anonymous | Standing::NeedsPrincipal => None,
                     standing => Some(view! {
-                        <h2 id="reader-auth-title" class="vk-reader-auth-title m-0 wrap-anywhere">{title()}</h2>
+                        <h2 id="reader-auth-title" class="vk-auth-title">{title()}</h2>
                         <p role="status">{if standing == Standing::Suspended {
                             "Tài khoản đang bị tạm khóa trên Vink."
                         } else {

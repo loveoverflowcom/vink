@@ -84,6 +84,12 @@ function inspectAuth(mode) {
     } : null,
     heading: centered(logo) && centered(heading) && getComputedStyle(heading).textAlign === 'center' &&
       (!lead || centered(lead) && getComputedStyle(lead).textAlign === 'center'),
+    columnWidth: bounds.width,
+    brandHeight: box(logo).height,
+    sharedIdentity: bounds.width <= 24 * unit + 1 &&
+      Math.abs(box(logo).height - (innerWidth < 760 ? 2.25 : 2.5) * unit) <= 1 &&
+      (dialog ?? entry).querySelectorAll('.vk-auth-brand').length === 1 &&
+      heading.matches('.vk-auth-title'),
     modalGeometry: !dialog || (
       frame.width <= 30 * parseFloat(getComputedStyle(document.documentElement).fontSize) + 1 &&
       dialog.scrollWidth <= dialog.clientWidth + 1 &&
@@ -113,7 +119,8 @@ function inspectAuth(mode) {
     buttons: buttons.map(el => {
       const style = getComputedStyle(el);
       const glyph = icon(el);
-      return { text: el.textContent.trim(), type: el.type, height: box(el).height, width: box(el).width, border: style.borderTopWidth,
+      return { text: el.textContent.trim(), type: el.type, height: box(el).height, width: box(el).width,
+        border: style.borderTopWidth, radius: parseFloat(style.borderTopLeftRadius),
         tonal: el.classList.contains('vk-ui-button--tonal'),
         filled: el.classList.contains('vk-ui-button--filled'),
         fill: style.backgroundColor, contrast: contrast(style.color, style.backgroundColor),
@@ -131,14 +138,15 @@ export async function checkAuthR31(page, check, scene, mode = 'login') {
   );
   const { account, buttons } = result;
   check(result.order && result.noBackOrDivider && result.noRegistrationEmailShortcut && result.noDeletion &&
-    result.actionGap && result.fits && result.heading && result.modalGeometry &&
+    result.actionGap && result.fits && result.heading && result.modalGeometry && result.sharedIdentity &&
     result.fields.every((f, i) => f.height >= 56 && f.radius === '16px' &&
       (f.focused ? f.outlineStyle === 'solid' && f.outline === '2px' : f.outlineStyle === 'none') && f.border === '0px' &&
       f.fillContrast >= 3 && (!f.focused || f.edgeContrast >= 3) &&
       f.textContrast >= 4.5 && f.inputContrast >= 4.5 &&
       (f.revealContrast === null || f.revealContrast >= 3) &&
       (f.icon ?? null) === spec.icons[i] && (f.iconContrast === null || f.iconContrast >= 3) && f.native && f.labelFits) &&
-    buttons.every(b => b.height >= 48 && b.border === '0px' && b.contrast >= 4.5 && !b.clip) &&
+    buttons.every(b => b.height >= 48 && b.radius >= b.height / 2 &&
+      b.border === '0px' && b.contrast >= 4.5 && !b.clip) &&
     buttons[0].filled && buttons[0].text === spec.primary[1] &&
     buttons[0].icon === spec.primary[2] && buttons[0].iconContrast >= 3 && buttons[0].type === 'submit' &&
     (!spec.method || buttons[1].tonal && buttons[1].text === spec.method[1] &&

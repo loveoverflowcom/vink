@@ -6351,6 +6351,75 @@ async function discussionReadingAndWrites(page) {
     await page.click(`#reply-to-${replyId}`);
     await page.waitFor(`document.activeElement?.id==='reply-composer-${rootId}'`, 're-select reply target');
     await captureDiscussionMatrix(page, 'contract-fixture-flat', `#comment-${rootId}`, 'intercepted-provider-contract-fixture-no-persistence');
+    const identityFixture = structuredClone(currentFixture);
+    const identityThread = identityFixture.roots[0];
+    const longName = 'Người viết ghi lại những câu chuyện của thành phố lúc trời vừa đổ mưa';
+    const longHandle = 'nguoivietnhungcauchuyenkhitroidomua';
+    const replyHandle = 'bandocnhungngaymuatrenphocu';
+    for (const [comment, handle] of [
+      [identityThread.root.comment, longHandle], [identityThread.preview[0], replyHandle],
+    ]) {
+      comment.author_display_name = longName;
+      comment.author = { kind: 'linked', pen_name: longName, handle, href: '/@' + handle };
+    }
+    const deleted = identityThread.preview.at(-1);
+    deleted.author = { kind: 'deleted', label: 'Tài khoản đã xóa' };
+    currentFixture = identityFixture;
+    await wakeDiscussion(page);
+    await page.waitFor(`document.getElementById('comment-${rootId}-author')?.getAttribute('href') === '/@${longHandle}' &&
+      document.getElementById('comment-${replyId}-author')?.getAttribute('href') === '/@${replyHandle}'`,
+    '#615 linked root and reply with the same long pen name');
+    for (const [id, handle] of [[rootId, longHandle], [replyId, replyHandle]]) {
+      const { ax } = await collectElementAccessibility(page, `#comment-${id}-author`);
+      check(ax.role === 'link' && ax.name === `Mở hồ sơ ${longName} (@${handle})`,
+        '#615 each linked byline exposes the full name and its own handle in AX');
+    }
+    for (const [width, height, scale, theme] of [
+      [1440, 900, 100, 'light'], [834, 900, 150, 'light'], [390, 844, 100, 'dark'], [320, 800, 200, 'dark'],
+    ]) {
+      await page.viewport(width, height);
+      const facts = await page.eval(`(async () => {
+        const doc = document.documentElement;
+        doc.dataset.theme = '${theme}';
+        doc.dataset.text = '${scale === 150 ? 150 : 100}';
+        doc.style.fontSize = '${scale === 200 ? '200%' : ''}';
+        await document.fonts.ready;
+        const linked = [['${rootId}', '${longHandle}'], ['${replyId}', '${replyHandle}']].map(([id, expectedHandle]) => {
+          const byline = document.querySelector('#comment-' + id + ' .vk-discussion-byline');
+          const link = byline.querySelector('a');
+          const avatar = link.querySelector('.vk-ui-avatar');
+          const name = link.querySelector('.vk-ui-byline__name');
+          const handle = link.querySelector('.vk-ui-byline__handle');
+          const nameStyle = getComputedStyle(name);
+          return {
+            onlyLink: byline.querySelectorAll('a').length === 1 && !link.querySelector('time'),
+            twoLines: nameStyle.webkitLineClamp === '2' &&
+              name.getBoundingClientRect().height <= 2 * parseFloat(nameStyle.lineHeight) + 1,
+            summaryHandle: getComputedStyle(handle).textOverflow === 'ellipsis' && handle.textContent.trim() === '@' + expectedHandle,
+            size: avatar.getBoundingClientRect().width,
+          };
+        });
+        const neutral = document.querySelector('#comment-${deleted.comment_id} .vk-discussion-byline');
+        const avatar = neutral.querySelector('.vk-ui-avatar');
+        return {
+          linked,
+          neutral: !neutral.querySelector('a, .vk-ui-byline__handle') &&
+            neutral.querySelector('[data-neutral]').textContent === 'Tài khoản đã xóa' &&
+            avatar.dataset.tone === 'neutral' && avatar.dataset.initials === '',
+          fits: doc.scrollWidth <= innerWidth + 1,
+        };
+      })()`);
+      check(facts.neutral && facts.fits && facts.linked.every((entry, i) =>
+        entry.onlyLink && entry.twoLines && entry.summaryHandle && entry.size === (i === 0 ? 44 : 40)),
+      `#615 linked and deleted identity reflows at ${width}/${scale}/${theme} (${JSON.stringify(facts)})`);
+    }
+    currentFixture = fixture;
+    await page.eval("document.documentElement.style.fontSize=''; delete document.documentElement.dataset.theme; delete document.documentElement.dataset.text");
+    await page.viewport(1280);
+    await wakeDiscussion(page);
+    await page.waitFor(`!document.getElementById('comment-${rootId}-author') &&
+      document.querySelector('#comment-${rootId} .vk-ui-byline__name')?.textContent === 'Lan Anh'`,
+    '#615 restore the original projection before submission checks');
     await page.click(`#reply-composer-${rootId}-send`);
     const deadline = Date.now() + 10_000;
     while (!replyRequest) {
@@ -6472,6 +6541,21 @@ async function discussionR5Geometry(page, width, scale, scenario) {
     const rootEndorse = segment?.querySelector('.vk-endorsement .vk-ui-toggle__control');
     const rootReply = segment?.querySelector('[id^="reply-to-"]');
     const nameEl = root.querySelector('.vk-discussion-byline .vk-ui-byline__name');
+    const avatarMetric = comment => {
+      const byline = comment.querySelector('.vk-discussion-byline');
+      const avatar = byline.querySelector('.vk-ui-avatar');
+      const identity = byline.querySelector('.vk-ui-byline__identity');
+      const name = byline.querySelector('.vk-ui-byline__name').getBoundingClientRect();
+      const time = byline.querySelector('time').getBoundingClientRect();
+      const circle = avatar.getBoundingClientRect();
+      const style = getComputedStyle(avatar);
+      return { width: circle.width, height: circle.height, radius: parseFloat(style.borderTopLeftRadius),
+        stroke: parseFloat(style.borderTopWidth), gap: name.left - circle.right,
+        expectedGap: parseFloat(getComputedStyle(identity).columnGap),
+        nameLeft: name.left, timeLeft: time.left, timeTop: time.top,
+        identityBottom: identity.getBoundingClientRect().bottom,
+        bylineRight: identity.parentElement.getBoundingClientRect().right };
+    };
     const time = root.querySelector('time');
     const relative = time.querySelector('[aria-hidden=true]');
     const absolute = time.querySelector('.vk-ui-visually-hidden');
@@ -6504,6 +6588,8 @@ async function discussionR5Geometry(page, width, scale, scenario) {
     return {root:rect(root), group:rect(group), composer:rect(composer), body:rect(body),
       segment:rect(segment), avatarLeft:rect(root.querySelector('.vk-discussion-byline .vk-ui-avatar')).left,
       nameLeft:rect(nameEl).left,
+      avatars:[avatarMetric(root), ...[...group.querySelectorAll('.vk-discussion-comment')].map(avatarMetric)],
+      readerAvatar:document.querySelector('#reader-header .vk-ui-avatar').getBoundingClientRect().width,
       fieldPadLeft:rect(composer.querySelector('.vk-ui-field__control')).left - rect(composer).left,
       fieldPadRight:rect(composer).right - rect(composer.querySelector('.vk-ui-field__control')).right,
       gap:parseFloat(getComputedStyle(group.querySelector('ul')).rowGap),
@@ -6539,6 +6625,13 @@ async function discussionR5Geometry(page, width, scale, scenario) {
   check(geometry.reasons===1 && geometry.targetReasons===0 && geometry.descriptions && geometry.shared, `${scenario}: one uniform branch reason describes every separate target`);
   check(geometry.field && geometry.surface==='rgba(0, 0, 0, 0)' && geometry.rootSeg48 && geometry.buttons,
     `${scenario}: compact native field without an extra card, 48px root segment and >=44px targets`);
+  check(geometry.readerAvatar === 44 && geometry.avatars.length > 1 && geometry.avatars.every((avatar, i) =>
+    avatar.width === (i === 0 ? 44 : 40) && avatar.height === avatar.width &&
+    avatar.radius >= avatar.width / 2 && avatar.stroke === 0 && close(avatar.gap, avatar.expectedGap) &&
+    (avatar.timeTop >= avatar.identityBottom - 1
+      ? close(avatar.timeLeft, avatar.nameLeft)
+      : close(avatar.timeLeft - avatar.bylineRight, avatar.expectedGap))),
+  `${scenario}: Reader header and comment circles, shared gap, timestamp track (${JSON.stringify(geometry.avatars)})`);
   check(geometry.bodyDistinct && geometry.time,
     `${scenario}: distinct name/body typography and relative display with absolute accessible time`);
   check(geometry.contrast>=4.5, `${scenario}: resolved body/metadata/label/button contrast >=4.5 (${geometry.contrast.toFixed(2)})`);
@@ -6552,6 +6645,7 @@ async function discussionR5Geometry(page, width, scale, scenario) {
       textScaleLane: 'dom-override-geometry-only',
       requiredTargets: ['.vk-discussion-reply-composer', '.vk-feedback-composer'],
       boundary: 'intercepted-provider-contract-fixture-no-persistence',
+      geometry,
     });
     await page.eval(`window.scrollTo({left:${scroll.x},top:${scroll.y},behavior:'instant'})`);
   }

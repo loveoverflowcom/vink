@@ -194,7 +194,7 @@ Delta [#328](https://github.com/loveoverflowcom/vink/issues/328) ngày 26/11/202
     - Nhóm `.vk-discussion-reply-group`: hộp tonal lồng một tầng `--vk-surface-container` (radius `20px`), tiêu đề `"Phản hồi"` (không số đếm giả); phản hồi bên trong dùng nút chữ nhỏ theo thứ tự `Ưng · n` → `Trả lời` (+ `OwnRemoveAction`), `min-block-size: 44px`. Đích trả lời đang chọn được đánh dấu viền/nhãn `"Đang là đích trả lời"`.
     - **Responsive**:
       - `< 1024px`: thân nhận xét, nhóm thao tác, `.vk-discussion-reply-group` và `.vk-discussion-reply-composer` dùng cùng hai biên thẻ root, không thụt lề phụ; hai nút ở `320px`/chữ `200%` tự wrap, không cắt nhãn hay tràn ngang (`scrollWidth <= innerWidth + 1`).
-      - `>= 1024px`: ở cấp root, thân, `.vk-discussion-actions`, `.vk-discussion-reply-group` và `.vk-discussion-reply-composer` thụt `padding-inline-start` thẳng cột tên tác giả (`52px`, khớp avatar `40px` + khe `12px`); các phản hồi bên trong `.vk-discussion-reply-group` giữ thẳng biên nhóm, không thêm tầng thụt thứ ba.
+      - `>= 1024px`: ở cấp root, thân, nhóm thao tác, nhánh và ô trả lời thẳng cột tên tác giả. Xem [hợp đồng trục tên R5](#danh-tính-nhận-xét--615) để lấy kích thước đang áp dụng.
 
 ### Đối chiếu trước / sau
 
@@ -245,6 +245,20 @@ ghi, premoderation, xác nhận gỡ, cursor, thứ tự và biên nhận vẫn 
   nhãn hành động đã xác nhận của Ưng và mô tả textarea trỏ vào đích hiện tại.
   Chữ tương đối được tính tại lúc trình bày ở trình duyệt. `time[datetime]`
   giữ dữ liệu thật cùng nhãn thời gian tuyệt đối đọc được qua trợ năng.
+
+### Danh tính nhận xét · #615
+
+- Gốc dùng avatar Reader 44 px và phản hồi dùng Medium 40 px. Avatar tròn, giữ đường kính
+  khi thiếu chỗ. Khe avatar và cụm tên lấy từ `--vk-space-3` (12 px ở chữ 100%).
+  Bút danh tối đa hai dòng, handle tóm tắt một dòng. Tên và handle đầy đủ vẫn nằm trong
+  tên trợ năng của cùng một liên kết hồ sơ. Nhãn trung tính giữ avatar người mặc định
+  và văn bản thuần. Thời gian nằm ngoài liên kết, cạnh tên khi vừa chỗ và xuống hàng
+  theo trục tên khi thiếu chỗ.
+- `--vk-discussion-root-author-inset` ở owner `patterns.css` bằng đường kính avatar gốc
+  cộng khe của bút danh (56 px ở chữ 100%). Từ 1024 CSS px, thân gốc, thao tác, lý do
+  chung, nhóm phản hồi và ô soạn hoặc trạng thái giữ nháp lấy cùng trục này. Dưới
+  breakpoint, các vùng này giữ biên gốc. #616 có thể dùng lại trục cho đường nối;
+  avatar phản hồi và cây hai tầng vẫn thuộc `DiscussionThread`.
 
 Kiểm ảnh Chrome của Product ở sáng/tối, 1440/100%, 390/100–150% và 320/200%.
 Ca trả lời mất đích và response phân trang dùng fixture có nhãn. Tách ảnh

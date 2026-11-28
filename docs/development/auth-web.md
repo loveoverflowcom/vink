@@ -76,7 +76,9 @@ mới nhất tạm thời không xác nhận được phiên. Các trạng thái
 Scenario `password` và `standalone` đi qua phiên thật để kiểm vùng cài đặt, dữ liệu lưu theo tài khoản
 và chuỗi đăng nhập/đăng xuất. [LayoutSpec](../design/me-preferences-r1-209.md).
 Reader [#328](https://github.com/loveoverflowcom/vink/issues/328) gắn cùng view trong
-[host nhận xét](../../apps/vink-web/src/pages/discussion/auth.rs), không chạy qua `/toi`.
+[host nhận xét](../../apps/vink-web/src/pages/discussion/auth.rs). #615 dùng chung cột,
+logo, kiểu chữ, trường `AuthTonal` và hành động với `/toi`. Tiêu đề theo mục đích, cỡ Reader
+và nút Đóng thuộc overlay. Nút Lưu và Gửi là hai điểm vào của overlay này.
 Khách soạn nhận xét gốc và trả lời bằng cùng nút Gửi như thành viên. Khi có nháp đủ điều kiện
 và người đọc kích hoạt Gửi, xác nhận gate, mode và đích trước khi mở Auth hoặc Chọn bút danh.
 Composer phân luồng qua `SendIntent`. Quyền ghi vẫn phải qua `DiscussionController::begin`

@@ -298,10 +298,21 @@ a {
   inline-size: min(100%, 24rem);
 }
 .vk-auth-heading { gap: var(--vk-space-4); }
-.vk-auth-heading .vk-brand__lockup { height: 2.5rem; width: calc(2.5rem * 1018 / 410); max-width: 100%; }
-.vk-auth-heading h2 {
-  margin: 0; font: var(--vk-type-display-weight) var(--vk-text-auth-heading)/var(--vk-type-display-line-height) var(--vk-font-reading);
+.vk-auth-brand {
+  --vk-auth-brand-height: 2.5rem;
+  block-size: var(--vk-auth-brand-height);
+  inline-size: calc(var(--vk-auth-brand-height) * 1018 / 410);
+  max-inline-size: 100%;
+}
+@media (max-width: 759px) {
+  .vk-auth-brand { --vk-auth-brand-height: 2.25rem; }
+}
+.vk-auth-title {
+  margin: 0;
+  font: var(--vk-type-display-weight) var(--vk-auth-title-size, var(--vk-text-auth-heading))/var(--vk-type-display-line-height) var(--vk-font-reading);
   letter-spacing: var(--vk-type-display-tracking);
+  text-align: center;
+  overflow-wrap: anywhere;
 }
 .vk-auth-entry .vk-account-form { inline-size: 100%; }
 .vk-auth-entry .vk-account-actions { display: grid; gap: var(--vk-space-3); margin-block-start: var(--vk-space-1); }
@@ -341,7 +352,6 @@ a {
     align-content: start;
     min-block-size: calc(100svh - var(--vk-ui-bar-height, 5rem) - var(--vk-pen-entry-top));
   }
-  .vk-me .vk-auth-heading .vk-brand__lockup { height: 2.25rem; width: calc(2.25rem * 1018 / 410); }
 }
 
 .vk-main {
@@ -2477,6 +2487,7 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index, .vk-me) { scrol
  * Native top-layer inertness keeps the mounted Reader and its editor out of the tab order. */
 html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
 .vk-reader-auth {
+  --vk-auth-title-size: var(--vk-text-auth-dialog-heading);
   inline-size: min(30rem, calc(100% - 48px));
   max-block-size: calc(100dvh - 48px);
   padding: 24px;
@@ -2492,19 +2503,10 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
   align-items: center;
   margin-block-end: var(--vk-space-4);
 }
-.vk-reader-auth-bar .vk-brand__lockup {
-  grid-column: 2;
-  justify-self: center;
-  max-inline-size: 100%;
-}
+.vk-reader-auth-bar .vk-auth-brand { grid-column: 2; justify-self: center; }
 .vk-reader-auth-bar > .vk-ui-action { grid-column: 3; justify-self: end; }
 .vk-reader-auth-bar .vk-ui-icon-button { min-inline-size: 48px; min-block-size: 48px; }
-.vk-reader-auth-title {
-  font: var(--vk-type-display-weight) var(--vk-text-auth-dialog-heading)/var(--vk-type-display-line-height) var(--vk-font-reading);
-  letter-spacing: var(--vk-type-display-tracking);
-  text-align: center;
-}
-.vk-reader-auth .vk-auth-entry { inline-size: 100%; }
+.vk-reader-auth .vk-auth-entry { margin-inline: auto; }
 .vk-reader-auth-lead {
   margin-block-start: calc(-1 * var(--vk-space-3));
   color: var(--vk-on-surface-variant);
