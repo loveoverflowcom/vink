@@ -8,12 +8,12 @@ const API = '/api/v1/me/profile';
 const EDIT = '/toi/chinh-ho-so';
 const NAME = '#profile-pen-name';
 const BIO = '#profile-bio';
-const SAVE = '#profile-save';
+
 const BACK = '#profile-back';
 const BIO_SCOPE = '#profile-bio-policy';
 const SAME_NAME = 'Một bút danh tiếng Việt rất dài dùng chung trên tác phẩm và nhận xét';
 const own = (page) => page.eval(`fetch('${API}').then(r => r.json())`);
-const message = (s) => `${q('#profile-message')}?.textContent.includes(${JSON.stringify(s)})`;
+
 const selector = (id) => '#' + id;
 
 async function edit(page, base) {
@@ -21,9 +21,9 @@ async function edit(page, base) {
   await page.waitFor(q(NAME), 'profile fields for the confirmed account');
 }
 
-async function save(page) {
-  await page.click(SAVE);
-  await page.waitFor(message('Đã lưu hồ sơ'), 'profile save acknowledged');
+async function commitName(page) {
+  await page.key('Enter');
+  await page.waitFor(`${q(NAME + '-feedback')}?.textContent.includes('Đã lưu')`, 'name acknowledged');
 }
 
 function literal(text) {
@@ -146,11 +146,11 @@ async function accountR5Layouts(page, check) {
         const facts = await page.eval(`(() => {
           const back = ${q(BACK)}, r = back.getBoundingClientRect();
           back.scrollIntoView({block:'start'});
-          return { hit:r.width>=48 && r.height>=48, oneSave:document.querySelectorAll('#profile-save').length===1,
+          return { hit:r.width>=48 && r.height>=48, inline:!document.querySelector('#profile-save, .vk-profile-form [type=submit]'),
             name:back.getAttribute('aria-label'), href:back.getAttribute('href'),
             inside:document.documentElement.scrollWidth<=innerWidth+1 };
         })()`);
-        check(facts.hit && facts.oneSave && facts.inside && facts.name === 'Về Tài khoản' &&
+        check(facts.hit && facts.inline && facts.inside && facts.name === 'Về Tài khoản' &&
           facts.href === '/toi#edit-profile-link', `profile Back, form and viewport at ${width}/${theme}/${scale}`);
         await page.capture(`r5-profile-${width}-${theme}-${scale}`, {
           textScale:Number(scale), textScaleLane:'app-appearance-control',
@@ -210,27 +210,98 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   await page.waitFor(q(NAME), 'keyboard opens edit from Me');
   const a = await own(page);
   const bio = 'Viết bằng mực tím.\n\nMột đoạn nữa.';
+  const writes = [];
+  const watch = event => {
+    if (event.sessionId !== page.sessionId || event.method !== 'Network.requestWillBeSent') return;
+    const {request} = event.params;
+    if (request.method === 'PUT' && new URL(request.url).pathname === API) writes.push(JSON.parse(request.postData));
+  };
+  page.cdp.listeners.push(watch);
   await fill(page, NAME, '   ');
-  await page.click(SAVE);
-  await page.waitFor(`${q(NAME)}.getAttribute('aria-invalid')==='true' &&
-    document.activeElement===${q(NAME)}`, 'invalid pen name returns focus to its field');
-  check(await page.eval(`${q(NAME)}.value==='   '`) && (await own(page)).profile_version === a.profile_version,
-    'validation preserves the typed name and leaves durable state unchanged');
-  await fill(page, NAME, SAME_NAME);
-  await fill(page, BIO, bio);
+  await page.key('Enter');
+  await page.waitFor(`${q(NAME)}.getAttribute('aria-invalid')==='true' && document.activeElement===${q(NAME)}`, 'invalid name retains focus');
+  check(await page.eval(`${q(NAME)}.value==='   '`) && writes.length===0, 'invalid name stays local');
+  await page.key('Escape');
+  await page.waitFor(`${q(NAME)}.value===${JSON.stringify(a.pen_name)}`, 'Escape restores the acknowledged name');
+  await fill(page, NAME, '  ' + a.pen_name + '  ');
+  await page.key('Enter');
+  check(writes.length===0,'normalized identical name sends no request');
+  // The real fields can hold separate drafts (e.g. user re-entry). Seed the second
+  // native input without moving focus, then use keyboard commits on the active field.
   await page.eval(`(() => {
-    const input = ${q(BIO)};
-    input.focus();
-    input.dispatchEvent(new CompositionEvent('compositionstart', {bubbles:true}));
-    input.form.requestSubmit();
+    const el=${q(BIO)};el.value='Đang viết dở';el.dispatchEvent(new InputEvent('input',{bubbles:true}));
   })()`);
-  check((await own(page)).profile_version === a.profile_version, 'composition event prevents a partial profile save');
-  await page.eval(`${q(BIO)}.dispatchEvent(new CompositionEvent('compositionend', {bubbles:true}))`);
+  await fill(page, NAME, 'Thử tên');
+  await page.eval(`${q(NAME)}.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true}))`);
+  await page.key('Enter');
+  check(writes.length===0,'IME Enter cannot commit a partial name');
+  await page.eval(`${q(NAME)}.dispatchEvent(new CompositionEvent('compositionend',{bubbles:true}))`);
   const lost = await holdAnswer(page, 'PUT', API);
-  await page.click(SAVE);
-  check(await lost.held() === 200, 'profile save reached durable commit before the lost answer');
+  await page.key('Enter');
+  check(await lost.held()===200 && writes.length===1 && writes[0].bio===a.bio &&
+    writes[0].expected_version===a.profile_version && writes[0].pen_name==='Thử tên',
+    'first full PUT excludes the unfinished bio');
+  await fill(page, NAME, 'Bản giữa');
+  await page.key('Enter');
+  await fill(page, NAME, SAME_NAME.normalize('NFD'));
+  await page.key('Enter');
+  check(writes.length===1 && await page.eval(`!${q(BIO)}.readOnly && !${q(NAME)}.readOnly`),
+    'later name commits coalesce and fields stay editable while the real ACK is held');
   await lost.finish(true);
-  await page.waitFor(message('khớp với thay đổi'), 'lost profile ACK reconciled from persisted state');
+  await page.waitFor(`${q(NAME)}.value===${JSON.stringify(SAME_NAME)} && ${q(NAME+'-feedback')}?.textContent.includes('Đã lưu')`,
+    'read-back reconciles lost ACK before sending the latest normalized intent');
+  check(writes.length===2 && writes[1].expected_version===a.profile_version+1 && writes[1].bio===a.bio &&
+    (await own(page)).pen_name===SAME_NAME && await page.eval(`${q(BIO)}.value==='Đang viết dở'`),
+    'one successor write preserves the newer intent, draft and durable version');
+  await fill(page, BIO, 'Dòng đầu');
+  await page.key('Enter');
+  check(writes.length===2,'plain Enter in multiline bio does not save');
+  await fill(page, BIO, bio);
+  await page.key('Enter',2);
+  await page.waitFor(`${q(BIO+'-feedback')}?.textContent.includes('Đã lưu')`,'Ctrl+Enter saves bio');
+  check((await own(page)).bio===bio && writes.length===3, 'bio read back from the real server');
+  page.cdp.listeners=page.cdp.listeners.filter(l=>l!==watch);
+  // Drop the next PUT before delivery and its first read-back. Other routes,
+  // including session checks, stay connected to their real owners.
+  const failed = [];
+  const offline = event => {
+    if (event.sessionId!==page.sessionId || event.method!=='Fetch.requestPaused') return;
+    const {requestId,request}=event.params;
+    if (new URL(request.url).pathname===API && !failed.includes(request.method)) {
+      failed.push(request.method);
+      page.send('Fetch.failRequest',{requestId,errorReason:'InternetDisconnected'}).catch(()=>{});
+    } else page.send('Fetch.continueRequest',{requestId}).catch(()=>{});
+  };
+  page.cdp.listeners.push(offline);
+  await page.send('Fetch.enable',{patterns:[{urlPattern:'*'+API,requestStage:'Request'}]});
+  await fill(page,BIO,'Chờ đối chiếu');
+  await page.key('Enter',2);
+  await page.waitFor(`${q(BIO+'-feedback button')}?.textContent.includes('Đối chiếu lại')`,'unknown result offers read-back');
+  page.cdp.listeners=page.cdp.listeners.filter(l=>l!==offline);
+  await page.send('Fetch.disable');
+  check(failed.join(',')==='PUT,GET' && (await own(page)).bio===bio,'unreachable write leaves durable bio alone');
+  await page.click(BACK);
+  await page.waitFor(q('#profile-leave[open]'),'unknown result protected on Back');
+  await page.click('#profile-leave-keep');
+  await page.waitFor(q('#edit-profile-link'),'return to Account during unknown result');
+  await page.click('#edit-profile-link');
+  await page.waitFor(`${q(BIO)}?.value==='Chờ đối chiếu' && ${q(BIO+'-feedback button')}?.textContent.includes('Đối chiếu lại')`,
+    'route re-entry keeps the uncertain command');
+  await page.click(BIO+'-feedback button');
+  await page.waitFor(`${q(BIO+'-feedback button')}?.textContent.includes('Thử lại')`,'unchanged read-back requires explicit retry');
+  check((await own(page)).bio===bio,'read-back does not replay an unseen command');
+  await page.click(BIO+'-feedback button');
+  await page.waitFor(`${q(BIO+'-feedback')}?.textContent.includes('Đã lưu')`,'explicit retry stored the requested bio');
+  await fill(page,BIO,'');
+  await page.eval(`${q(BIO)}.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true}));${q(NAME)}.focus()`);
+  check((await own(page)).bio==='Chờ đối chiếu','blur during composition defers clearing the stored bio');
+  await page.eval(`${q(BIO)}.dispatchEvent(new CompositionEvent('compositionend',{bubbles:true}))`);
+  await page.waitFor(`${q(BIO+'-feedback')}?.textContent.includes('Đã lưu')`,'composition end settles the deferred blur');
+  check((await own(page)).bio===null,'clearing bio is persisted as null');
+  await fill(page,BIO,bio);
+  await page.eval(`${q(NAME)}.focus()`);
+  await page.waitFor(`${q(BIO+'-feedback')}?.textContent.includes('Đã lưu')`,'ordinary text blur commits bio');
+
   await page.click(BACK);
   await page.waitFor(`${q('#me-title')}?.textContent.trim() === ${JSON.stringify(SAME_NAME)}`, 'stored long name returns on Account');
   await page.viewport(320, 800);
@@ -265,39 +336,48 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   await page.waitFor(`${q(BIO)}?.value === ${JSON.stringify(bio)}`, 'Bio survives reload');
   check(await page.eval(`!!document.querySelector('a[aria-current="page"][href="/toi"]')`),
     'Tôi is active in the profile editor');
-  await captureLayouts(page, check, 'edit', '#profile-pen-name, #profile-bio, #profile-save, .vk-profile-form select');
+  await captureLayouts(page, check, 'edit', '#profile-pen-name, #profile-bio, .vk-profile-form select');
   for (const theme of ['light', 'dark']) {
     await page.eval(`document.documentElement.dataset.theme='${theme}'`);
     await page.waitFor(`!document.getAnimations().some(a => a.playState==='running' &&
       a.effect.target?.checkVisibility() && Number.isFinite(a.effect.getComputedTiming().endTime))`,
       'profile colors settled');
-    await textContrast(page, theme, 'profile', ['#profile-save', '#profile-bio', '#profile-pen-name-help']);
+    await textContrast(page, theme, 'profile', ['#profile-pen-name', '#profile-bio', '#profile-pen-name-help']);
   }
   await page.eval("delete document.documentElement.dataset.theme");
   await page.viewport(320, 580);
   await page.eval("document.documentElement.style.fontSize='200%'");
-  await page.eval("const fields = [...document.querySelectorAll('.vk-profile-form select')]; fields.filter(field => !field.disabled && field.checkVisibility()).at(-1)?.focus()");
+  await page.eval(`${q(BIO_SCOPE)}.focus(); ${q(BIO_SCOPE)}.scrollIntoView({block:'center'})`);
+  await page.key('Space');
+  await page.key('ArrowDown');
+  await page.key('Enter');
+  await page.waitFor(`document.activeElement===${q(BIO_SCOPE+'-cancel')}`, 'confirmation starts at Cancel');
   await page.key('Tab');
   await page.waitFor(`(() => {
-    const save=${q(SAVE)}, nav=${q('.vk-ui-bottom-nav')};
-    const r=save.getBoundingClientRect();
-    return document.activeElement === save && r.bottom <= nav.getBoundingClientRect().top+1 &&
-      save.contains(document.elementFromPoint(r.x + r.width/2, r.y + r.height/2));
-  })()`, 'Tab reaches unobscured Save at 320px/200% with a short viewport');
-  await page.capture('author-edit-short-viewport', {scenario:'Save focused', textScale:200});
+    const el=${q(BIO_SCOPE+'-confirm')}, r=el.getBoundingClientRect();
+    return document.activeElement===el && r.bottom<=${q('.vk-ui-bottom-nav')}.getBoundingClientRect().top+1 &&
+      el.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));
+  })()`, 'Tab reaches the unobscured confirmation at 320px/200%');
+  await page.capture('author-edit-short-viewport', {scenario:'privacy confirmation focused',textScale:200});
+  await page.key('Escape');
+  await page.waitFor(`document.activeElement===${q(BIO_SCOPE)} && ${q(BIO_SCOPE)}.value==='everyone'`, 'Escape cancels narrowing');
   await page.viewport(1280);
   await page.eval("document.documentElement.style.fontSize=''");
   await fill(page, BIO, 'Nháp trước khi về Tôi');
   await page.click(BACK);
+  await page.waitFor(q('#profile-leave[open]'), 'leaving with an unfinished bio asks first');
+  await page.click('#profile-leave-keep');
+  check((await own(page)).bio===bio,'pointer navigation did not publish an unfinished bio');
   await page.waitFor("document.activeElement?.id==='edit-profile-link'", 'cancel returns focus to Me entry');
   await page.key('Enter');
   await page.waitFor(`${q(BIO)}?.value==='Nháp trước khi về Tôi'`, 'cancel preserves draft in the same session');
-  await fill(page, BIO, bio);
+  await page.eval(`${q(BIO)}.focus()`);
+  await page.key('Escape');
 
   await edit(other, base);
   const b = await own(other);
   await fill(other, NAME, SAME_NAME);
-  await save(other);
+  await commitName(other);
   const ids = fixture(a.principal_id, b.principal_id);
   const aPath = '/@' + a.handle;
   const bPath = '/@' + b.handle;
@@ -390,9 +470,9 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   await page.key('ArrowDown');
   await page.key('Enter');
   await page.waitFor(`${control}.value === "self" && !${control}.matches(":open") &&
-    ${q('#profile-privacy-change-note')}?.checkVisibility()`, 'keyboard commits only the draft and shows the narrowing warning');
+    ${q(BIO_SCOPE+'-confirm')}?.checkVisibility()`, 'keyboard commits only the draft and shows the narrowing warning');
   check((await own(page)).policies.bio === 'everyone', 'choosing a value sends no durable update before Save');
-  await save(page);
+  await page.click(BIO_SCOPE+'-confirm');
   await page.waitFor(q(BIO_SCOPE + ':not(select) [data-icon="lock"]'), 'stored private policy becomes a non-interactive value');
   const narrowed = await own(page);
   const widen = {principal_id:narrowed.principal_id, expected_version:narrowed.profile_version,
@@ -432,17 +512,22 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   await guest.click('.vk-author-public button');
   await guest.waitFor(`${q('#author-profile-heading')}?.textContent===${JSON.stringify(SAME_NAME)} &&
     ${q(selector('profile-work-' + ids.a))} && !${q('.vk-author-bio')}`, 'retry loads the current profile and works');
-  await staleTab.click(SAVE);
-  await staleTab.waitFor(q('#profile-conflict-heading'), 'stale form displays the current saved version');
-  check(await staleTab.eval(`${q(BIO)}.value==='Bản nháp còn ở tab kia'`), 'CAS conflict preserves typed draft');
-  check(await staleTab.eval(`${q(SAVE)}.dataset.state==='disabled' &&
-    ${q(SAVE)}.getAttribute('aria-disabled')==='true'`), 'Save is visibly and semantically disabled during conflict');
-  await staleTab.eval(`${q('.vk-profile-conflict')}.scrollIntoView({block:'center'})`);
-  await staleTab.capture('author-profile-conflict', {scenario:'real CAS conflict', textScale:100});
-  await staleTab.eval("document.querySelector('.vk-profile-conflict button').click()");
-  await staleTab.waitFor(`document.activeElement?.id==='profile-pen-name' && ${q(BIO)}.value===${JSON.stringify(bio)}`,
-    'choosing the saved version restores focus and value');
-
+  await staleTab.eval(`${q(BIO)}.focus()`);
+  await staleTab.key('Enter',2);
+  await staleTab.waitFor(`${q(BIO+'-feedback')}?.textContent.includes('Đã lưu')`, 'bio commits independently of a remotely narrowed policy');
+  check((await own(staleTab)).policies.bio==='self','disjoint edit retains the locked policy');
+  await fill(staleTab,BIO,'Tranh chấp cục bộ');
+  await fill(page,BIO,bio);
+  await page.key('Enter',2);
+  await page.waitFor(`${q(BIO+'-feedback')}?.textContent.includes('Đã lưu')`, 'remote tab commits a divergent bio');
+  await staleTab.send('Page.bringToFront');
+  await staleTab.eval(`${q(BIO)}.focus()`);
+  await staleTab.key('Enter',2);
+  await staleTab.waitFor(`${q(BIO+'-feedback')}?.textContent.includes('ở nơi khác')`, 'only divergent bio needs a choice');
+  check(await staleTab.eval(`${q(BIO)}.value==='Tranh chấp cục bộ' && !${q(NAME)}.readOnly`),'conflict retains text and independent fields');
+  await staleTab.capture('author-profile-conflict',{scenario:'divergent bio', textScale:100});
+  await staleTab.click(BIO+'-feedback button');
+  await staleTab.waitFor(`document.activeElement===${q(BIO)} && ${q(BIO)}.value===${JSON.stringify(bio)}`, 'accept saved bio and return focus');
   // A held private GET can arrive after logout, login as B, and a new login as A.
   const lateOwn = await holdAnswer(staleTab, 'GET', API);
   await staleTab.goto(base + EDIT);
@@ -455,6 +540,25 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   const ownDisposition = await lateOwn.finish(false, true);
   check(await staleTab.eval(`${q(BIO)}.value==='Nháp của phiên mới'`),
     `old A response cannot overwrite the new A form (${ownDisposition})`);
+
+  // A write has reached App, but its response and the next committed intent
+  // still belong to the old session generation.
+  const lateWrite = await holdAnswer(staleTab,'PUT',API);
+  await staleTab.key('Enter',2);
+  check(await lateWrite.held()===200,'A write reached durable commit before sign-out');
+  await fill(staleTab,BIO,'Lệnh xếp hàng của phiên cũ');
+  await staleTab.key('Enter',2);
+  await switchActor('b');
+  await staleTab.waitFor(`${q(BIO)}?.value===''`,'B never adopts A’s draft or pending status');
+  await switchActor('a');
+  await staleTab.waitFor(`${q(BIO)}?.value==='Nháp của phiên mới'`,'new A observes only the persisted value');
+  await fill(staleTab,BIO,'Chữ mới chưa chốt');
+  await lateWrite.finish(false,true);
+  check(await staleTab.eval(`${q(BIO)}.value==='Chữ mới chưa chốt' && !${q(BIO+'-feedback')}`) &&
+    (await own(staleTab)).bio==='Nháp của phiên mới','late ACK cannot erase new text, claim Saved or send the old queue');
+  await fill(staleTab,BIO,bio);
+  await staleTab.key('Enter',4);
+  await staleTab.waitFor(`${q(BIO+'-feedback')}?.textContent.includes('Đã lưu')`,'Cmd+Enter commits in the new A session');
 
   const discovery = '/?q=rieng&tag=' + encodeURIComponent('tản-văn');
   await guest.goto(base + discovery);
@@ -642,7 +746,7 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
     'removed both profile fixtures from the public corpus before the zero-work Handle checks');
   await edit(page, base);
   await fill(page, NAME, a.pen_name);
-  await save(page);
+  await commitName(page);
   await page.send('Page.bringToFront');
   await page.goto(base + '/toi');
 }

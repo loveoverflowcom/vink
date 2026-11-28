@@ -80,7 +80,9 @@ export async function authorHandles(page, { base, openPage, check, holdAnswer, t
   await page.waitFor(has('#author-handle-refresh'), 'Handle read failure offers a local retry');
   const beforeProfile = await page.eval("fetch('/api/v1/me/profile').then(r => r.json())");
   const bio = 'Bản nháp Bio trong khi đổi địa chỉ';
-  await fill(page, '#profile-bio', bio);
+  // Keep a separate unfinished profile edit without a text-field blur commit.
+  await page.eval(`(() => {const el=${has('#profile-bio')};el.value=${JSON.stringify(bio)};
+    el.dispatchEvent(new InputEvent('input',{bubbles:true}));})()`);
   await page.click('#author-handle-refresh');
   await page.waitFor(enabled(edit), 'retry loads the Handle row');
   await page.click(edit);
@@ -121,6 +123,8 @@ export async function authorHandles(page, { base, openPage, check, holdAnswer, t
   await page.waitFor(`${has(saved)} && !${has(dialog + '[open]')}`, 'suggestion accepted');
   const afterSetup = await own(page);
   await page.click('#own-handle-public-link');
+  await page.waitFor(has('#profile-leave[open]'), 'unfinished profile text protected on Handle link');
+  await page.click('#profile-leave-keep');
   await page.waitFor(`location.pathname === ${JSON.stringify('/@' + initial)} && ${has('#author-profile-heading')}`,
     'open the public profile from the Handle row');
   await page.eval('history.back()');
@@ -130,8 +134,9 @@ export async function authorHandles(page, { base, openPage, check, holdAnswer, t
   check(afterSetup.remaining_changes === 2 && unchangedProfile.profile_version === beforeProfile.profile_version
     && await page.eval(`document.querySelector('#profile-bio').value === ${JSON.stringify(bio)}`),
     'setup and a visit to the public profile leave the draft, version and both turns intact');
-  await page.click('#profile-save');
-  await page.waitFor("document.querySelector('#profile-message')?.textContent === 'Đã lưu hồ sơ.'", 'separate profile save');
+  await page.eval("document.querySelector('#profile-bio').focus()");
+  await page.key('Enter', 2);
+  await page.waitFor("document.querySelector('#profile-bio-feedback')?.textContent.includes('Đã lưu')", 'separate inline bio commit');
   check(await page.eval(`${has(saved)}?.textContent === ${JSON.stringify('@' + initial)}`) &&
     (await own(page)).version === afterSetup.version, 'profile save runs independently and keeps the confirmed address');
 

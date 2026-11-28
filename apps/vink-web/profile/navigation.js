@@ -271,17 +271,6 @@ export function mountProfileNavigation() {
     }, fallback);
   }
 
-  const viewport = window.visualViewport;
-  if (viewport) {
-    const updateKeyboardInset = () => {
-      const inset = viewport.scale === 1 ? Math.max(0, innerHeight - viewport.height - viewport.offsetTop) : 0;
-      document.documentElement.style.setProperty('--vk-profile-keyboard-inset', `${inset}px`);
-    };
-    viewport.addEventListener('resize', updateKeyboardInset);
-    viewport.addEventListener('scroll', updateKeyboardInset);
-    updateKeyboardInset();
-  }
-
   let parked = false;
   let reloading = false;
   window.addEventListener('pagehide', event => {
