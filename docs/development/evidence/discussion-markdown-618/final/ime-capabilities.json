@@ -1,0 +1,8 @@
+{
+  "accessibility": false,
+  "post_event": false,
+  "vietnamese_input_methods": [
+    null,
+    "com.apple.inputmethod.VietnameseSimpleTelex"
+  ]
+}

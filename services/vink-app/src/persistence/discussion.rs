@@ -136,7 +136,9 @@ impl ModeratedRow {
     }
 }
 
-fn stored_format(raw: &str) -> Result<crate::domain::discussion::body::CommentFormat, StoreError> {
+pub(super) fn stored_format(
+    raw: &str,
+) -> Result<crate::domain::discussion::body::CommentFormat, StoreError> {
     use crate::domain::discussion::body::CommentFormat;
     match raw {
         "plain" => Ok(CommentFormat::Plain),

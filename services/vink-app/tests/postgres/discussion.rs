@@ -2184,14 +2184,19 @@ async fn comment_format_upgrade_replays_an_existing_literal_receipt(pool: PgPool
         .execute(&pool)
         .await
         .unwrap();
+    let target = Uuid::from_u128(0x0192_f3a1_0000_7000_8000_0000_0000_0618);
+    sqlx::query("INSERT INTO comments (id,thread_id,kind,replied_to_reply,author_id,body,review,moderation_version,admission_policy,admission_reason)
+        VALUES ($1,$2,'root',false,$3,'Nhận xét gốc','pending',1,'premoderation.v1','policy_premoderation')")
+        .bind(target).bind(thread).bind(dev_seed::SAMPLE_AUTHOR).execute(&pool).await.unwrap();
+    review_raw(&pool, target, "approved", None).await.unwrap();
     let id = Uuid::now_v7();
     let source = "**Cũ** 👩‍💻";
-    sqlx::query("INSERT INTO comments (id,thread_id,kind,replied_to_reply,author_id,body,review,moderation_version,admission_policy,admission_reason)
-        VALUES ($1,$2,'root',false,$3,$4,'pending',1,'premoderation.v1','policy_premoderation')")
-        .bind(id).bind(thread).bind(dev_seed::OTHER_PRINCIPAL).bind(source).execute(&pool).await.unwrap();
+    sqlx::query("INSERT INTO comments (id,thread_id,kind,root_id,root_kind,replied_to_reply,author_id,body,review,moderation_version,admission_policy,admission_reason)
+        VALUES ($1,$2,'reply',$5,'root',false,$3,$4,'pending',1,'premoderation.v1','policy_premoderation')")
+        .bind(id).bind(thread).bind(dev_seed::OTHER_PRINCIPAL).bind(source).bind(target).execute(&pool).await.unwrap();
     // Golden v1 SHA-256 from the pre-format canonical byte encoding at 3bbeefb1.
     sqlx::query("INSERT INTO discussion_command_receipts (actor_id,operation,command_key,payload_digest,comment_id)
-        VALUES ($1,'submit_comment','existing-key',decode('47c209c2d8fd20d218ddc9a6d2bab0f04423cfa78ff7388bda3aa3af1c159c67','hex'),$2)")
+        VALUES ($1,'submit_comment','existing-key',decode('0768b425124930325f2227aa09f92f1631d9dd245670401e6e16a5930f9aa473','hex'),$2)")
         .bind(dev_seed::OTHER_PRINCIPAL).bind(id).execute(&pool).await.unwrap();
     MIGRATOR.run(&pool).await.unwrap();
     let row: (String, String, String, i64) = sqlx::query_as(
@@ -2202,7 +2207,11 @@ async fn comment_format_upgrade_replays_an_existing_literal_receipt(pool: PgPool
     .await
     .unwrap();
     assert_eq!(row, (source.into(), "plain".into(), "pending".into(), 1));
-    let legacy = command(None, source, "existing-key");
+    let legacy = command(
+        Some(CommentId::from_uuid(target)),
+        "**Cu\u{0303}** 👩‍💻",
+        "existing-key",
+    );
     let replay = vink.submit_comment(other(), legacy.clone()).await.unwrap();
     assert!(replay.replayed);
     assert_eq!(replay.comment_id.as_uuid(), id);

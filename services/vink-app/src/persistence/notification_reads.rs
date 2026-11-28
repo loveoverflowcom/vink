@@ -145,6 +145,7 @@ pub struct CommentDecisionDetail {
     pub reason_message: Option<String>,
     /// The writer's own text while it is still present; `None` once removed (never restored).
     pub comment_body: Option<String>,
+    pub body_format: Option<crate::domain::discussion::body::CommentFormat>,
     pub is_current: bool,
     pub decided_at: OffsetDateTime,
 }
@@ -217,7 +218,7 @@ impl PgStore {
         if !comments.is_empty() {
             let ids: Vec<Uuid> = comments.iter().map(|c| c.as_uuid()).collect();
             let rows = sqlx::query(
-                "SELECT c.id, t.work_id, c.author_id, c.moderation_version,
+                "SELECT c.id, t.work_id, c.author_id, c.moderation_version, c.body_format,
                         (c.review = 'approved' AND c.removal IS NULL) AS public,
                         CASE WHEN c.review = 'approved' AND c.removal IS NULL
                                   AND EXISTS (SELECT 1 FROM publications p
@@ -231,6 +232,10 @@ impl PgStore {
             .await
             .map_err(classify)?;
             for row in rows {
+                let format = super::discussion::stored_format(
+                    row.try_get("body_format").map_err(classify)?,
+                )?;
+                let source: Option<String> = row.try_get("body").map_err(classify)?;
                 facts.comments.insert(
                     CommentId::from_uuid(row.try_get("id").map_err(classify)?),
                     CommentFacts {
@@ -238,7 +243,7 @@ impl PgStore {
                         author: PrincipalId::from_uuid(row.try_get("author_id").map_err(classify)?),
                         public: row.try_get("public").map_err(classify)?,
                         moderation_version: row.try_get("moderation_version").map_err(classify)?,
-                        body: row.try_get("body").map_err(classify)?,
+                        body: source.map(|text| format.visible_text(&text)),
                     },
                 );
             }
@@ -359,7 +364,7 @@ impl PgStore {
         let row = sqlx::query(
             "SELECT d.action, d.reason, d.decided_at, t.work_id,
                     (c.moderation_version = d.version) AS is_current,
-                    CASE WHEN c.removal IS NULL THEN c.body END AS body,
+                    CASE WHEN c.removal IS NULL THEN c.body END AS body, c.body_format,
                     (SELECT r.title FROM publications p
                      JOIN revisions r ON r.work_id = p.work_id AND r.id = p.revision_id
                      WHERE p.work_id = t.work_id) AS work_title
@@ -378,16 +383,24 @@ impl PgStore {
         let Some(row) = row else { return Ok(None) };
         let action: String = row.try_get("action").map_err(classify)?;
         let removed = action == "remove";
+        let body: Option<String> = if removed {
+            None
+        } else {
+            row.try_get("body").map_err(classify)?
+        };
         Ok(Some(CommentDecisionDetail {
             work: WorkId::from_uuid(row.try_get("work_id").map_err(classify)?),
             work_title: row.try_get("work_title").map_err(classify)?,
             outcome: if removed { "removed" } else { "rejected" },
             reason_message: row.try_get("reason").map_err(classify)?,
-            comment_body: if removed {
-                None
+            body_format: if body.is_some() {
+                Some(super::discussion::stored_format(
+                    row.try_get("body_format").map_err(classify)?,
+                )?)
             } else {
-                row.try_get("body").map_err(classify)?
+                None
             },
+            comment_body: body,
             is_current: row.try_get("is_current").map_err(classify)?,
             decided_at: row.try_get("decided_at").map_err(classify)?,
         }))

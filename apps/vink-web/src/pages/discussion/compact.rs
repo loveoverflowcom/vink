@@ -78,8 +78,9 @@ pub(super) fn CompactField(
             let scope = owner.get();
             let text = value.get();
             let changed_owner = observed.with_value(|old| old.as_ref() != Some(&scope));
+            let editable = mode.get() == FieldMode::Editable;
             if changed_owner
-                || mode.get() != FieldMode::Editable
+                || !editable
                 || handle.with_value(|view| view.as_ref().is_some_and(|v| v.text() != text))
             {
                 native_epoch.update_value(|n| *n += 1);

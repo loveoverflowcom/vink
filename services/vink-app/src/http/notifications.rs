@@ -822,6 +822,7 @@ async fn comment_decision(
         "outcome": detail.outcome,
         "action_required": false,
         "comment_body": detail.comment_body,
+        "body_format": detail.body_format,
         "reason": { "code": Value::Null, "message": detail.reason_message },
         "is_current": detail.is_current,
         "decided_at": rfc3339(detail.decided_at),

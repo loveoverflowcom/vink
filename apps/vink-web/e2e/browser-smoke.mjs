@@ -6889,7 +6889,7 @@ async function discussionR5Geometry(page, width, scale, scenario) {
       time:!Number.isNaN(Date.parse(time.dateTime)) && absolute?.textContent===time.title
         && !!relative?.textContent.trim() && relative.textContent!==time.title,
       rootSeg48:[rootEndorse, rootReply].every(b=>{const r=b.getBoundingClientRect();return r.width>=48 && r.height>=48;}),
-      buttons:[...thread.querySelectorAll('button')].every(b=>{const r=b.getBoundingClientRect();return r.width>=44 && r.height>=44 && r.left>=0 && r.right<=innerWidth+1;})};
+      buttons:[...thread.querySelectorAll('button')].filter(b=>b.checkVisibility()).every(b=>{const r=b.getBoundingClientRect();return r.width>=44 && r.height>=44 && r.left>=0 && r.right<=innerWidth+1;})};
   })()`);
   const close = (a,b)=>Math.abs(a-b)<=1.5;
   const isDesktop = width >= 1024;
