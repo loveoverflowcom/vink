@@ -61,11 +61,11 @@ fn ProfileName(
             let label = profile_label(&name, &profile.handle);
             view! {
                 <Link href=profile.href attr:id=id attr:data-profile-return="true" attr:aria-label=label>
-                    {name}
+                    <span class="vk-discussion-context__name">{name}</span>
                 </Link>
             }.into_any()
         }
-        None => view! { <span>{name}</span> }.into_any(),
+        None => view! { <span class="vk-discussion-context__name">{name}</span> }.into_any(),
     }
 }
 
@@ -849,6 +849,9 @@ pub fn DiscussionThread(
     #[prop(optional, into)]
     reply_target_id: Signal<Option<String>>,
     #[prop(optional)] reply_footer: Option<ChildrenFn>,
+    /// Caller-owned composer and kept-draft UI, mounted once in the flat reply lane.
+    #[prop(optional)]
+    reply_draft: Option<ChildrenFn>,
     /// Without it, `on_remove` is the removal itself (samples and previews).
     #[prop(optional)]
     removal: Option<RemoveConfirmation>,
@@ -891,15 +894,18 @@ pub fn DiscussionThread(
         <div class="vk-discussion-thread grid gap-vk-3 min-w-0">
             {move || root.get().map(|comment| discussion_comment(comment, true, reply_expanded, ctx))
                 .unwrap_or_else(|| view! { <p class="vk-muted">"Bình luận gốc không còn hiển thị."</p> }.into_any())}
-            <div class="vk-discussion-reply-group min-w-0" hidden=move || facts.get().replies.is_empty() && !has_more_replies.get()>
-            <ul class="vk-discussion-replies grid gap-[16px] [list-style:none] p-0 m-0 [border:0]" aria-label="Phản hồi theo thứ tự cũ đến mới">
-                <For each=move || { facts.get().replies.into_iter().map(|comment| comment.id).collect::<Vec<_>>() } key=|id| id.clone()
-                    children=move |id| {
-                        let comment = Memo::new(move |_| facts.get().replies.into_iter().find(|comment| comment.id == id));
-                        view! { <li class="min-w-0">{move || comment.get().map(|comment| discussion_comment(comment, false, Signal::stored(false), ctx))}</li> }
-                    } />
-            </ul>
-            {reply_footer.map(|footer| footer())}
+            <div class="vk-discussion-reply-lane">
+                <div class="vk-discussion-reply-group min-w-0" hidden=move || facts.get().replies.is_empty() && !has_more_replies.get()>
+                    <ul class="vk-discussion-replies grid gap-[16px] [list-style:none] p-0 m-0 [border:0]" aria-label="Phản hồi theo thứ tự cũ đến mới">
+                        <For each=move || { facts.get().replies.into_iter().map(|comment| comment.id).collect::<Vec<_>>() } key=|id| id.clone()
+                            children=move |id| {
+                                let comment = Memo::new(move |_| facts.get().replies.into_iter().find(|comment| comment.id == id));
+                                view! { <li class="min-w-0">{move || comment.get().map(|comment| discussion_comment(comment, false, Signal::stored(false), ctx))}</li> }
+                            } />
+                    </ul>
+                    {reply_footer.map(|footer| footer())}
+                </div>
+                {reply_draft.map(|draft| draft())}
             </div>
             <p class="vk-discussion-shared-reason" id=reason_id hidden=move || shared_block.get().is_none()>{move || shared_block.get().map(|block| EndorsementKind::Comment.reason(block))}</p>
         </div>
@@ -977,7 +983,7 @@ fn discussion_comment(
     let author_id = format!("comment-{}-author", comment.id);
     let context_id = format!("comment-{}-context-author", comment.id);
     let author_label = comment.author.name.clone();
-    // A reply sits in the tonal reply group: one step smaller than a root (#352).
+    // The flat reply tier uses a smaller avatar than the root (#615).
     let size = if is_root {
         AvatarSize::Reader
     } else {
@@ -1006,7 +1012,8 @@ fn discussion_comment(
                 DiscussionContext::Root => ().into_any(),
                 DiscussionContext::Unavailable => view! { <p class=DISCUSSION_CONTEXT_CLASS>"Bình luận được trả lời không còn hiển thị"</p> }.into_any(),
                 DiscussionContext::Reply { name, href, profile } => view! {
-                    <p class=DISCUSSION_CONTEXT_CLASS>"Đang trả lời "
+                    <p class=DISCUSSION_CONTEXT_CLASS>
+                        <span class="vk-discussion-context__prefix">"Đang trả lời"</span>{" "}
                         <ProfileName name profile id=context_id />
                         {href.map(|href| view! { <Link href>"Đến bình luận"</Link> })}
                     </p>

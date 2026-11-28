@@ -515,11 +515,27 @@ a {
 .vk-discussion-copy-status[data-copied="true"] { color: var(--vk-success); font-weight: var(--vk-type-label-weight); }
 
 /* The contextual heading and the recovery note are separate from the field surface. */
-.vk-discussion-composer-heading { padding-inline: var(--vk-space-2); }
-.vk-discussion-reply-target > p {
+/* Reserve enough of the heading for the name at 200% while retaining the close target. */
+.vk-discussion-composer-heading {
+  align-items: start;
+  column-gap: min(var(--vk-space-2), 8px);
+  padding-inline: min(var(--vk-space-2), 8px);
+}
+.vk-discussion-composer-context {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: min(var(--vk-space-2), 8px);
+  padding-block: var(--vk-space-2);
+  color: var(--vk-on-surface-variant);
+  line-height: var(--vk-type-body-line-height);
+}
+.vk-discussion-composer-context > p {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--vk-space-1);
   margin: 0;
-  color: var(--vk-on-surface);
-  font-weight: var(--vk-type-section-weight);
   overflow-wrap: anywhere;
 }
 .vk-discussion-target-lost__head { display: flex; align-items: flex-start; gap: 10px; }
@@ -531,7 +547,7 @@ a {
   margin-block: var(--vk-space-6);
   min-width: 0;
 }
-.vk-discussion-reply-composer { display: grid; gap: var(--vk-space-3); margin-block-start: var(--vk-space-3); min-width: 0; }
+.vk-discussion-reply-composer { display: grid; gap: var(--vk-space-3); min-width: 0; }
 .vk-discussion-reply-composer[hidden] { display: none; }
 .vk-discussion-reply-composer > .vk-ui-action { justify-self: start; }
 
@@ -568,7 +584,7 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: var(--vk-space-2) var(--vk-space-3);
-  margin-block-start: var(--vk-space-3);
+  justify-self: start;
   padding: 6px 8px 6px 14px;
   border-radius: var(--vk-radius-xl);
   background: var(--vk-surface-container-high);

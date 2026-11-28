@@ -18,7 +18,8 @@ import { discoveryReading, discoveryCorpus, tagRecovery } from './discovery-smok
 import { authorSearch } from './author-search-smoke.mjs';
 import { discoveryChipGeometry } from './discovery-chip-geometry.mjs';
 import { endorsementAsAuthor, endorsementAsReader } from './endorsement-smoke.mjs';
-import { authWeb } from './auth-smoke.mjs';
+import { authWeb, fabricate } from './auth-smoke.mjs';
+import { captureRequest } from './auth-browser-network.mjs';
 import { notifications } from './notifications-smoke.mjs';
 import { readerAuthClosed } from './reader-auth-smoke.mjs';
 import { accountDeletion, closedAccountAppearance, passwordAuth, standalone } from './auth-password-smoke.mjs';
@@ -6230,7 +6231,9 @@ async function discussionReadingAndWrites(page) {
   const rootId = fixture.roots[0].root.comment.comment_id;
   const replyId = fixture.roots[0].preview[0].comment_id;
   let currentFixture = structuredClone(fixture);
-  let replyRequest;
+  const replyRequests = [];
+  const replyPage = JSON.parse(readFileSync(new URL('../../../services/vink-app/contracts/http/v1/fixtures/discussion.public.replies.json', import.meta.url), 'utf8'));
+  const replyCursors = [];
   let heldInitialPublic = null;
   let holdInitialRead = true;
   let failRead = true;
@@ -6247,7 +6250,18 @@ async function discussionReadingAndWrites(page) {
   const fixtureListener = message => {
     if (message.sessionId !== page.sessionId || message.method !== 'Fetch.requestPaused') return;
     const path = decodeURIComponent(new URL(message.params.request.url).pathname);
-    if (message.params.request.method === 'POST' && path === new URL(`${endpoint}/comments`).pathname) { replyRequest = message.params.requestId; return; }
+    if (message.params.request.method === 'POST' && path === new URL(`${endpoint}/comments`).pathname) {
+      replyRequests.push(message.params);
+      return;
+    }
+    if (message.params.request.method === 'GET' && path === new URL(`${endpoint}/public/roots/${rootId}/replies`).pathname) {
+      replyCursors.push(new URL(message.params.request.url).searchParams.get('cursor'));
+      page.send('Fetch.fulfillRequest', { requestId: message.params.requestId, responseCode: 200,
+        responseHeaders: [{ name: 'Content-Type', value: 'application/json' }],
+        body: Buffer.from(JSON.stringify(replyPage)).toString('base64'),
+      }).catch(() => {});
+      return;
+    }
     if (message.params.request.method !== 'GET' || path !== new URL(`${endpoint}/public`).pathname) {
       page.send('Fetch.continueRequest', { requestId: message.params.requestId }).catch(() => {});
       return;
@@ -6327,6 +6341,23 @@ async function discussionReadingAndWrites(page) {
     // visibility and draft assertions below independently observe the actual composer.
     const rootReply = `#feedback-region #reply-to-${rootId}`;
     const replyMatches = expanded => matchesAXButton(page, rootReply, { name: 'Trả lời', expanded });
+    const hiddenRootId = fixture.roots[1].root.comment_id;
+    await discussionReplyLane(page, rootId, { replies: 3, pageControl: true });
+    await discussionReplyLane(page, hiddenRootId, { replies: 1 });
+    const contextReplyId = fixture.roots[0].preview[1].comment_id;
+    const context = '#comment-' + contextReplyId + ' .vk-discussion-context';
+    await discussionContextTypography(page, context);
+    const { ax: replyList } = await collectElementAccessibility(page, '#thread-' + rootId + ' .vk-discussion-replies');
+    check(replyList.role === 'list' && replyList.name === 'Phản hồi theo thứ tự cũ đến mới',
+      '#616 the flat reply tier is a named native list in AX');
+    check(await page.eval(`(() => {
+      const published = document.querySelector('${context}');
+      const name = published.querySelector('.vk-discussion-context__name');
+      const unavailable = document.querySelector('#comment-${fixture.roots[0].preview.at(-1).comment_id} .vk-discussion-context');
+      return name.textContent === 'Minh' && !name.closest('a') &&
+        published.querySelector('a')?.getAttribute('href') === '#comment-${replyId}' &&
+        unavailable.textContent === 'Bình luận được trả lời không còn hiển thị' && !unavailable.querySelector('a');
+    })()`), '#616 published context keeps the correct comment link and safe text fallback');
     check(await replyMatches(false), '#560 root reply is an accessible collapsed button');
     check(!await replyMatches(true)
       && !await matchesAXButton(page, rootReply, { name: 'Mở bình luận', expanded: false }),
@@ -6342,12 +6373,26 @@ async function discussionReadingAndWrites(page) {
       '#561 reply textarea exposes its contextual description and keeps an independent label');
     check(await matchesAXButton(page, editorSelector + '-close', { name: 'Đóng ô trả lời, giữ nháp' }),
       '#561 close icon is an action with a name and no disclosure state');
-    await page.typeAtEnd(`#reply-composer-${rootId}`, 'Bản trả lời có ngữ cảnh\n\n  Giữ nguyên 👩‍💻');
+    const draft = 'Bản trả lời có ngữ cảnh\n\n  Giữ nguyên 👩‍💻 đ';
+    await discussionReplyLane(page, rootId, { replies: 3, pageControl: true, composer: true });
+    await discussionContextTypography(page, '#reply-composer-' + rootId + '-target');
+    await page.typeAtEnd(editorSelector, draft.slice(0, -1));
+    await page.send('Input.imeSetComposition', { text: 'd', selectionStart: 1, selectionEnd: 1 });
+    await page.send('Input.imeSetComposition', { text: 'đ', selectionStart: 1, selectionEnd: 1 });
+    await page.send('Input.insertText', { text: 'đ' });
+    check(await page.eval(`document.activeElement?.value === ${JSON.stringify(draft)}`) && replyRequests.length === 0,
+      '#616 CDP composition commits Vietnamese in the native reply textarea without submitting');
+    await page.eval(`window.discussionReplyComposerNode = document.querySelector('${editorSelector}');
+      window.discussionReplyComposerNode.setSelectionRange(1, 4, 'backward')`);
     check(await page.eval(`document.querySelector('#comment-${replyId}')?.dataset.replyTarget==='true' && document.querySelector('.vk-discussion-reply-target')?.dataset.target==='reply'`), 'targeted reply highlights inside the branch');
     check(await page.eval(`document.querySelectorAll('.vk-discussion-replies .vk-discussion-replies').length===0 && document.querySelectorAll('#reply-composer-${rootId}').length===1`), 'reply-to-reply mounts one composer in its root and no third indentation level');
     await page.click('.vk-discussion-reply-target button');
     await page.waitFor(`document.activeElement?.id==='reply-composer-${rootId}' && document.querySelector('.vk-discussion-reply-target')?.dataset.target==='root'`, 'selecting the root again keeps draft and focus');
-    check(await page.eval(`document.querySelector('#reply-composer-${rootId}')?.value.includes('Giữ nguyên')`), 'clearing target preserves draft');
+    check(await page.eval(`(() => {
+      const field = document.activeElement;
+      return field === window.discussionReplyComposerNode && field.value === ${JSON.stringify(draft)} &&
+        field.selectionStart === 1 && field.selectionEnd === 4 && field.selectionDirection === 'backward';
+    })()`), '#616 changing the target to the root keeps the exact textarea, Unicode draft and backward selection');
     await page.click(`#reply-to-${replyId}`);
     await page.waitFor(`document.activeElement?.id==='reply-composer-${rootId}'`, 're-select reply target');
     await captureDiscussionMatrix(page, 'contract-fixture-flat', `#comment-${rootId}`, 'intercepted-provider-contract-fixture-no-persistence');
@@ -6362,6 +6407,10 @@ async function discussionReadingAndWrites(page) {
       comment.author_display_name = longName;
       comment.author = { kind: 'linked', pen_name: longName, handle, href: '/@' + handle };
     }
+    Object.assign(identityThread.preview[1].reply_to, {
+      author_display_name: longName, author: identityThread.preview[0].author,
+    });
+    identityThread.preview[1].body = 'Tiếng Việt ở cuối phố.\n\nMưa rơi qua thềm. 👩‍💻';
     const deleted = identityThread.preview.at(-1);
     deleted.author = { kind: 'deleted', label: 'Tài khoản đã xóa' };
     currentFixture = identityFixture;
@@ -6374,8 +6423,16 @@ async function discussionReadingAndWrites(page) {
       check(ax.role === 'link' && ax.name === `Mở hồ sơ ${longName} (@${handle})`,
         '#615 each linked byline exposes the full name and its own handle in AX');
     }
+    const linkedTarget = '#comment-' + contextReplyId + '-context-author';
+    const { ax: targetLink } = await collectElementAccessibility(page, linkedTarget);
+    check(targetLink.role === 'link' && targetLink.name === `Mở hồ sơ ${longName} (@${replyHandle})` &&
+      await page.eval(`document.querySelector('${linkedTarget}').getAttribute('href') === '/@${replyHandle}'`),
+      '#616 the published context links the intended profile when two authors share a name');
+    await page.click('#reply-to-' + rootId);
+    await page.waitFor(`document.activeElement?.matches('${editorSelector}')`, '#616 long-name composer root selection');
     for (const [width, height, scale, theme] of [
-      [1440, 900, 100, 'light'], [834, 900, 150, 'light'], [390, 844, 100, 'dark'], [320, 800, 200, 'dark'],
+      [1440, 900, 100, 'light'], [834, 900, 150, 'light'], [390, 844, 100, 'dark'],
+      [320, 800, 200, 'dark'], [320, 800, 200, 'light'],
     ]) {
       await page.viewport(width, height);
       const facts = await page.eval(`(async () => {
@@ -6409,6 +6466,19 @@ async function discussionReadingAndWrites(page) {
           fits: doc.scrollWidth <= innerWidth + 1,
         };
       })()`);
+      await discussionContextTypography(page, context);
+      const composerHeading = editorSelector + '-target';
+      await discussionContextTypography(page, composerHeading);
+      const { ax: currentEditor } = await collectElementAccessibility(page, editorSelector);
+      check(currentEditor.description === `Trả lời ${longName}` && await page.eval(`(() => {
+        const target = document.querySelector('${composerHeading}');
+        const icon = target.previousElementSibling, close = document.querySelector('${editorSelector}-close');
+        return !target.querySelector('a') && document.querySelectorAll('${composerHeading}').length === 1 &&
+          icon.dataset.icon === 'reply' && icon.getAttribute('aria-hidden') === 'true' &&
+          icon.getAttribute('focusable') === 'false' && icon.getBoundingClientRect().right < target.getBoundingClientRect().left &&
+          target.getBoundingClientRect().right < close.getBoundingClientRect().left;
+      })()`), `#616 full long composer target remains in AX with a decorative leading icon and trailing close at ${width}/${scale}/${theme}`);
+      await discussionReplyLane(page, rootId, { replies: 3, pageControl: true, composer: true });
       check(facts.neutral && facts.fits && facts.linked.every((entry, i) =>
         entry.onlyLink && entry.twoLines && entry.summaryHandle && entry.size === (i === 0 ? 44 : 40)),
       `#615 linked and deleted identity reflows at ${width}/${scale}/${theme} (${JSON.stringify(facts)})`);
@@ -6420,17 +6490,24 @@ async function discussionReadingAndWrites(page) {
     await page.waitFor(`!document.getElementById('comment-${rootId}-author') &&
       document.querySelector('#comment-${rootId} .vk-ui-byline__name')?.textContent === 'Lan Anh'`,
     '#615 restore the original projection before submission checks');
+    await page.click('#reply-to-' + replyId);
+    await page.waitFor(`document.activeElement?.matches('${editorSelector}')`, '#616 reselect reply-to-reply');
     await page.click(`#reply-composer-${rootId}-send`);
     const deadline = Date.now() + 10_000;
-    while (!replyRequest) {
+    while (!replyRequests.length) {
       if (Date.now() > deadline) throw new Error('timed out waiting for held fixture reply intent');
       await sleep(50);
     }
+    const [replyRequest] = replyRequests;
+    const request = JSON.parse(replyRequest.request.postData);
+    check(request.target_id === replyId && request.body === draft && !!request.command_key,
+      '#616 reply-to-reply posts the exact target and composed draft through the existing request');
     check(await page.eval(`(() => { const b = document.querySelector('#reply-composer-${rootId}-send'); const f = document.querySelector('#reply-composer-${rootId}'); return b?.getAttribute('aria-busy')==='true' && getComputedStyle(b.querySelector(':scope > .vk-ui-icon')).display==='none' && !!b.querySelector('.vk-ui-button__status svg') && f?.readOnly===false && b.querySelector('.vk-ui-button__status').getBoundingClientRect().right <= b.querySelector('.vk-ui-button__label').getBoundingClientRect().left; })()`), 'R4 Sending keeps the field editable and places the progress indicator before its label');
     await page.eval(`window.discussionReplyComposerNode = document.querySelector('#reply-composer-${rootId}');
       window.discussionReplyComposerNode.setSelectionRange(1, 4, 'backward')`);
     await page.click('#reply-composer-' + rootId + '-close');
     await page.waitFor(`document.querySelector('#reply-composer-${rootId}') === window.discussionReplyComposerNode && window.discussionReplyComposerNode.getClientRects().length === 0 && document.activeElement?.id==='reply-to-${replyId}' && document.querySelector('.vk-discussion-reply-kept')?.textContent.includes('Bản trả lời được giữ lại')`, 'reply composer collapsed cleanly with R4 kept pill');
+    await discussionReplyLane(page, rootId, { replies: 3, pageControl: true, kept: true });
     check(await replyMatches(false), '#561 closing the editor restores the collapsed AX state');
     await page.click('#reopen-reply-' + rootId);
     await page.waitFor(`document.activeElement === window.discussionReplyComposerNode &&
@@ -6439,12 +6516,15 @@ async function discussionReadingAndWrites(page) {
       window.discussionReplyComposerNode.selectionDirection === 'backward' &&
       document.querySelector('#reply-composer-${rootId}-send')?.dataset.state === 'pending'`,
       'reopening restores focus and preserves the native textarea, selection and pending transport');
-    await page.send('Fetch.fulfillRequest', { requestId: replyRequest, responseCode: 201,
+    check(replyRequests.length === 1, '#616 reopening a pending reply never issues an extra submission');
+    await page.send('Fetch.fulfillRequest', { requestId: replyRequest.requestId, responseCode: 201,
       responseHeaders: [{ name: 'Content-Type', value: 'application/json' }],
       body: Buffer.from(JSON.stringify({ comment_id: '0192f3a1-0000-7000-8000-000000000099', status: 'pending', replayed: false })).toString('base64'),
     });
     await page.waitFor(`document.querySelector('#reply-composer-${rootId}')?.value==='' && document.querySelector('.vk-discussion-reply-composer [data-testid=discussion-receipt]')?.textContent.includes('Chờ duyệt')`, 'unchanged reply clears only when its pending receipt arrives after reopening');
     await page.typeAtEnd(`#reply-composer-${rootId}`, 'Giữ nguyên bản trả lời mới 👩‍💻');
+    check(await page.eval("!document.getElementById('comment-0192f3a1-0000-7000-8000-000000000099')"),
+      '#616 a pending receipt stays outside the public reply list');
     check(true, 'intercepted fixture only: collapse/reopen does not cancel the feature transport or strand Sending');
     currentFixture = structuredClone(fixture);
     currentFixture.roots[0].preview = currentFixture.roots[0].preview.filter(comment => comment.comment_id !== replyId);
@@ -6487,6 +6567,9 @@ async function discussionReadingAndWrites(page) {
     await page.waitFor(`document.querySelector('#comment-${nextRootId}') && document.querySelector('#root-pagination') && document.querySelector('#comments-mode')?.getAttribute('aria-busy') === 'false'`, 'retry appends the returned page exactly once');
     check(JSON.stringify(readCursors.slice(beforePaging)) === JSON.stringify(['next-root-cursor', 'next-root-cursor']), 'failed page and its retry each issue one GET with the same cursor');
     check(await page.eval(`!!document.querySelector('#comment-${rootId}') && document.querySelector('#reply-composer-${rootId}')?.value.includes('Giữ nguyên')`), 'successful paging keeps prior comments and draft');
+    await discussionReplyLane(page, nextRootId, { replies: 0 });
+    await captureRootReplyComparison(page, nextRootId);
+    await discussionReplyLane(page, nextRootId, { replies: 0 });
     const readsWithTail = readCursors.length;
     await wakeDiscussion(page);
     await sleep(250);
@@ -6505,8 +6588,17 @@ async function discussionReadingAndWrites(page) {
     await page.eval(`document.documentElement.style.fontSize='200%'; document.querySelector('[data-testid=discussion-chain-restarted]').scrollIntoView({block:'center'})`);
     check(await page.eval(`document.documentElement.scrollWidth <= innerWidth + 1`), 'chain restart notice reflows at 390px / text 200%');
     await page.capture('discussion-chain-restarted-390-200', { scenario: '#202-head-refresh', viewport: {width:390}, textScale:200, boundary: 'intercepted-provider-contract-fixture-no-persistence' });
+    const replyPageButton = '#thread-' + rootId + ' .vk-discussion-pagination button';
+    await page.click(replyPageButton);
+    const pagedReplyId = replyPage.replies[0].comment_id;
+    await page.waitFor(`!!document.getElementById('comment-${pagedReplyId}')`, '#616 next reply page stays in the existing root lane');
+    check(JSON.stringify(replyCursors) === JSON.stringify([fixture.roots[0].preview_next_cursor]) &&
+      await page.eval(`document.querySelector('${editorSelector}') === window.discussionReplyComposerNode &&
+        window.discussionReplyComposerNode.value.includes('Giữ nguyên')`),
+      '#616 loading a reply page preserves its root, composer node and draft');
+    await discussionReplyLane(page, rootId, { replies: 4, pageControl: true, composer: true });
     currentFixture = { ...fixture, roots: [], next_cursor: null };
-    await wakeDiscussion(page);
+    await page.goto(`${args.base}/tac-pham/${SAMPLE_WORK}`);
     await page.waitFor(`document.querySelector('.vk-discussion-empty') && document.querySelector('#comments-mode')?.getAttribute('aria-busy') === 'false'`, 'authoritative empty discussion state');
     check(await page.eval(`document.querySelector('.vk-discussion-empty')?.textContent.includes('Chưa có nhận xét nào được hiển thị.') && !document.querySelector('#discussion-load-retry') && document.querySelector('#root-list')?.dataset.hasMore === 'false' && !document.querySelector('#feedback-region .vk-ui-list-end')`), 'R4 empty state renders cleanly without error button or list end');
     check(await page.eval(`(() => {
@@ -6530,6 +6622,176 @@ async function discussionReadingAndWrites(page) {
     await page.eval(`document.documentElement.style.fontSize=''; delete document.documentElement.dataset.theme`);
     await page.viewport(1280);
   }
+}
+
+async function standaloneDiscussionReply(cdp) {
+  const { browserContextId } = await cdp.send('Target.createBrowserContext');
+  try {
+    const page = await openPage(cdp, browserContextId);
+    const fixture = JSON.parse(readFileSync(new URL('../../../services/vink-app/contracts/http/v1/fixtures/discussion.public.get.json', import.meta.url), 'utf8'));
+    fixture.work_id = SAMPLE_WORK;
+    const rootId = fixture.roots[0].root.comment.comment_id;
+    const reads = `/api/v1/works/${SAMPLE_WORK}/discussion`;
+    // Only the discussion projection is supplied by the contract fixture. The
+    // Reader, guest Session and Auth dialog run through the real standalone host.
+    const release = await fabricate(page, 'GET', reads + '/public', 200, fixture);
+    await page.goto(`${args.base}/tac-pham/${SAMPLE_WORK}`);
+    await page.waitFor(`document.querySelector('#reply-to-${rootId}') &&
+      document.querySelector('#reader-auth')?.dataset.standing === 'anonymous'`, '#616 CSR loaded a guest reply target');
+    await release();
+    const posts = captureRequest(page, 'POST', reads + '/comments');
+    try {
+      const editor = '#reply-composer-' + rootId;
+      await page.click('#reply-to-' + rootId);
+      await page.waitFor(`document.activeElement?.matches('${editor}')`, '#616 CSR reply focus');
+      await discussionReplyLane(page, rootId, { replies: 3, pageControl: true, composer: true });
+      await discussionContextTypography(page, editor + '-target');
+      await page.typeAtEnd(editor, 'Phản hồi chưa gửi.');
+      check(posts.count() === 0 && await page.eval("!document.querySelector('#reader-auth').open"),
+        '#616 CSR opening and typing a guest reply does not open Auth or post');
+      await page.click(editor + '-send');
+      await page.waitFor("document.querySelector('#reader-auth')?.open", '#616 CSR explicit Send opens guest Auth');
+      check(posts.count() === 0, '#616 CSR opening Auth never submits the guest reply');
+    } finally {
+      posts.close();
+    }
+    check(page.errors.length === 0, '#616 CSR reply context has no console exceptions');
+  } finally {
+    await cdp.send('Target.disposeBrowserContext', { browserContextId });
+  }
+}
+
+async function discussionReplyLane(page, rootId, expected) {
+  const geometry = await page.eval(`(() => {
+    const thread = document.getElementById('thread-${rootId}');
+    const pattern = thread.querySelector('.vk-discussion-thread');
+    const root = pattern.firstElementChild;
+    const lane = pattern.querySelector(':scope > .vk-discussion-reply-lane');
+    const group = lane.querySelector(':scope > .vk-discussion-reply-group');
+    const list = group.querySelector(':scope > ul');
+    const comments = [...list.querySelectorAll('.vk-discussion-comment')];
+    const composer = lane.querySelector(':scope > .vk-discussion-reply-composer');
+    const kept = lane.querySelector(':scope > .vk-discussion-reply-kept');
+    const page = group.querySelector('.vk-discussion-pagination');
+    const rect = el => el?.checkVisibility() ? el.getBoundingClientRect().toJSON() : null;
+    const line = getComputedStyle(lane, '::before');
+    const laneBox = rect(lane), rootBox = rect(root), groupBox = rect(group);
+    const composerBox = rect(composer), keptBox = rect(kept);
+    const avatars = comments.map(comment => rect(comment.querySelector('.vk-ui-avatar')));
+    const bodies = comments.map(comment => rect(comment.querySelector('.vk-discussion-body')));
+    const name = rect(root.querySelector('.vk-ui-byline__name'));
+    const [first, last] = [groupBox ?? composerBox ?? keptBox, keptBox ?? composerBox ?? groupBox];
+    const swatch = document.createElement('span');
+    lane.append(swatch);
+    swatch.style.color = 'var(--vk-outline-variant)';
+    const outline = getComputedStyle(swatch).color;
+    swatch.remove();
+    return {
+      replies: comments.length, flat: list.children.length === comments.length &&
+        comments.every(comment => comment.parentElement.parentElement === list) && !list.querySelector('ul'),
+      group: !!groupBox, composer: !!composerBox, kept: !!keptBox, pageControl: !!rect(page),
+      groupTransparent: getComputedStyle(group).backgroundColor === 'rgba(0, 0, 0, 0)',
+      mount: laneBox, root: rootBox, name, first, last, avatars, bodies, composerBox, keptBox,
+      next: rect(thread.nextElementSibling),
+      rail: laneBox && {
+        width: parseFloat(line.borderInlineStartWidth), x: laneBox.left + parseFloat(line.insetInlineStart),
+        top: laneBox.top + parseFloat(line.insetBlockStart),
+        bottom: laneBox.bottom - parseFloat(line.insetBlockEnd),
+        decorative: line.pointerEvents === 'none' && line.borderInlineStartColor === outline,
+      },
+      fits: document.documentElement.scrollWidth <= innerWidth + 1,
+      desktop: innerWidth >= 1024,
+    };
+  })()`);
+  const visible = expected.replies > 0 || !!(expected.pageControl || expected.kept || expected.composer);
+  const label = `#616 lane ${rootId.slice(-4)} ${JSON.stringify(expected)}`;
+  check(geometry.flat && geometry.fits && geometry.groupTransparent && geometry.replies === expected.replies &&
+    geometry.group === (expected.replies > 0 || !!expected.pageControl) &&
+    geometry.pageControl === !!expected.pageControl && geometry.composer === !!expected.composer &&
+    geometry.kept === !!expected.kept && !!geometry.mount === visible, label);
+  if (!visible) return;
+  const { mount, root, name, first, last, rail, avatars, bodies, composerBox, keptBox, next } = geometry;
+  const gutter = mount.left - root.left;
+  check((geometry.desktop ? gutter > 0 && (!name || Math.abs(mount.left - name.left) <= 1) : gutter >= 20 && gutter <= 28) &&
+    rail.width === 1 && rail.decorative && rail.x >= root.left && rail.x + rail.width + 4 <= mount.left &&
+    rail.top >= root.bottom && Math.abs(rail.top - first.top) <= 1 && Math.abs(rail.bottom - last.bottom) <= 1 &&
+    (!next || rail.bottom <= next.top) &&
+    avatars.every(box => Math.abs(box.left - mount.left) <= 1 && box.left > rail.x + rail.width) &&
+    bodies.every(box => box.left >= mount.left && box.right <= mount.right + 1) &&
+    [composerBox, keptBox].every(box => !box || Math.abs(box.left - mount.left) <= 1),
+  `${label}: 1px connector and aligned children stay inside their own thread (gutter ${gutter}px)`);
+}
+
+async function discussionContextTypography(page, selector) {
+  const metric = await page.eval(`(() => {
+    const container = document.querySelector(${JSON.stringify(selector)});
+    const prefix = container.querySelector('.vk-discussion-context__prefix');
+    const target = container.querySelector('.vk-discussion-context__name');
+    const prefixStyle = getComputedStyle(prefix), targetStyle = getComputedStyle(target);
+    const swatch = document.createElement('span');
+    container.append(swatch);
+    swatch.style.color = 'var(--vk-on-surface-variant)';
+    const prefixColor = getComputedStyle(swatch).color;
+    swatch.style.color = 'var(--vk-on-surface)';
+    const targetColor = getComputedStyle(swatch).color;
+    swatch.remove();
+    const style = getComputedStyle(target);
+    return {
+      prefix: Number(prefixStyle.fontWeight), target: Number(targetStyle.fontWeight),
+      prefixRole: prefixStyle.color === prefixColor && prefixStyle.color !== targetColor,
+      targetRole: targetStyle.color === targetColor,
+      lineClamp: style.webkitLineClamp,
+      lines: target.getBoundingClientRect().height / parseFloat(style.lineHeight),
+    };
+  })()`);
+  check(metric.prefix === 400 && metric.target === 600 && metric.prefixRole && metric.targetRole &&
+    metric.lineClamp === '2' && metric.lines > 0 && metric.lines <= 2.05,
+  `#616 reply context uses normal/secondary prefix and semibold/on-surface target within two lines (${selector}: ${JSON.stringify(metric)})`);
+}
+
+// Compare the same root-only thread on the shipped Reader and the candidate.
+async function captureRootReplyComparison(page, rootId) {
+  const editor = '#reply-composer-' + rootId;
+  await page.eval(`document.getElementById('reply-to-${rootId}').focus()`);
+  await page.key('Enter');
+  await page.waitFor(`document.activeElement?.matches('${editor}')`, '#616 root-only reply field focused');
+  for (const [width, scale] of [[1440, 100], [320, 200]]) {
+    await page.viewport(width, 900);
+    const geometry = await page.eval(`(async () => {
+      document.documentElement.dataset.theme = 'dark';
+      document.documentElement.style.fontSize = '${scale === 200 ? '200%' : ''}';
+      await document.fonts.ready;
+      const root = document.querySelector('#comment-${rootId}');
+      const thread = document.querySelector('#thread-${rootId}');
+      const composer = thread.querySelector('.vk-discussion-reply-composer');
+      const lane = thread.querySelector('.vk-discussion-reply-lane');
+      const heading = composer.querySelector('.vk-discussion-reply-target p');
+      const name = heading.querySelector('.vk-discussion-context__name');
+      root.scrollIntoView({ block: 'start', behavior: 'instant' });
+      const rect = el => el?.getBoundingClientRect().toJSON() ?? null;
+      return { root: rect(root), composer: rect(composer), lane: rect(lane),
+        railWidth: lane ? getComputedStyle(lane, '::before').borderInlineStartWidth : null,
+        prefixWeight: getComputedStyle(heading.querySelector('.vk-discussion-context__prefix') ?? heading).fontWeight,
+        targetWeight: getComputedStyle(heading.querySelector('.vk-discussion-context__name') ?? heading).fontWeight,
+        nameClipped: name && name.scrollHeight > name.clientHeight + 1,
+        focus: document.activeElement?.id, scrollWidth: document.documentElement.scrollWidth,
+      };
+    })()`);
+    await discussionReplyLane(page, rootId, { replies: 0, composer: true });
+    check(geometry.nameClipped === false, '#616 short target stays fully visible even at 320px / 200%');
+    await page.capture(`discussion-root-reply-${width}-${scale}-dark`, {
+      scenario: '#616-root-reply-composer', boundary: 'intercepted-provider-contract-fixture-no-persistence',
+      requestedScene: { width, height: 900, scale, theme: 'dark' },
+      textScaleLane: 'dom-override-geometry-only',
+      requiredTargets: [`#comment-${rootId}`, editor], geometry,
+    });
+  }
+  await page.eval("document.documentElement.style.fontSize=''; delete document.documentElement.dataset.theme");
+  await page.viewport(1280, 900);
+  await page.key('Tab', SHIFT);
+  await page.waitFor(`document.activeElement?.matches('${editor}-close:focus-visible')`, '#616 reverse Tab reaches visible close focus');
+  await page.key('Space');
+  await page.waitFor(`document.activeElement?.id === 'reply-to-${rootId}'`, '#616 keyboard close restores focus to the initiating root');
 }
 
 async function discussionR5Geometry(page, width, scale, scenario) {
@@ -6566,7 +6828,17 @@ async function discussionR5Geometry(page, width, scale, scenario) {
       return rgb[0]*0.2126+rgb[1]*0.7152+rgb[2]*0.0722;
     };
     const ratio=(a,b)=>{const x=luminance(a),y=luminance(b);return (Math.max(x,y)+0.05)/(Math.min(x,y)+0.05);};
-    const surface=getComputedStyle(group).backgroundColor;
+    const resolveBackground = node => {
+      const layers = [];
+      for (let element = node; element; element = element.parentElement) {
+        layers.unshift(getComputedStyle(element).backgroundColor);
+      }
+      const context = document.createElement('canvas').getContext('2d');
+      for (const color of layers) { context.fillStyle = color; context.fillRect(0, 0, 1, 1); }
+      return 'rgb(' + [...context.getImageData(0, 0, 1, 1).data].slice(0, 3).join(', ') + ')';
+    };
+    const replyBody = group.querySelector('.vk-discussion-body');
+    const surface = resolveBackground(replyBody);
     const fieldBg=getComputedStyle(composer.querySelector('.vk-ui-field__control')).backgroundColor;
     const ratios=[
       ratio(getComputedStyle(group.querySelector('.vk-discussion-body')).color,surface),
@@ -6614,12 +6886,15 @@ async function discussionR5Geometry(page, width, scale, scenario) {
   check(
     close(geometry.body.left, expectedLeft)
       && close(geometry.segment.left, expectedLeft)
-      && close(geometry.group.left, expectedLeft)
+      && close(geometry.group.left, geometry.composer.left)
+      && (isDesktop ? close(geometry.group.left, expectedLeft)
+        : geometry.group.left - expectedLeft >= 20 && geometry.group.left - expectedLeft <= 28)
       && close(geometry.group.right, geometry.root.right)
-      && close(geometry.composer.left, expectedLeft)
       && close(geometry.composer.right, geometry.root.right),
-    `${scenario}: R4 alignment (${isDesktop ? 'desktop name-track indent' : 'mobile full width'}) (${JSON.stringify(geometry)})`
+    `${scenario}: #616 reply lane and composer align, with desktop on the root author axis and mobile in the gutter (${JSON.stringify(geometry)})`
   );
+  const rootId = await page.eval("document.querySelector('.vk-discussion-root').id.slice(7)");
+  await discussionReplyLane(page, rootId, { replies: 3, pageControl: true, composer: true });
   check(close(geometry.fieldPadLeft, geometry.fieldPadRight) && geometry.gap===16, `${scenario}: symmetrical composer inset and 16px reply spacing`);
   check(geometry.headingStatic && geometry.segmentOrderOk && geometry.segmentCornersOk, `${scenario}: quiet heading, semantic oldest-first order and R4 root segmented Ưng|Trả lời 6px inner corners`);
   check(geometry.reasons===1 && geometry.targetReasons===0 && geometry.descriptions && geometry.shared, `${scenario}: one uniform branch reason describes every separate target`);
@@ -6866,7 +7141,10 @@ try {
     await closedAccountAppearance(page, { args, check });
     await readerAuthClosed(page, { args, check });
   }
-  else if (args.phase === 'standalone') await standalone(page, { args, check, openPage: (isolated) => openPage(cdp, isolated) });
+  else if (args.phase === 'standalone') {
+    await standaloneDiscussionReply(cdp);
+    await standalone(page, { args, check, openPage: (isolated) => openPage(cdp, isolated) });
+  }
   else if (args.phase === 'auth-password') await passwordAuth(page, { args, check, textContrast, openPage: (isolated) => openPage(cdp, isolated) });
   else if (args.phase === 'account-deletion') await accountDeletion(page, { args, check, openPage: (isolated) => openPage(cdp, isolated) });
   else if (args.phase === 'publication-author') await publicationAuthor(page, { args, check, openPage: (isolated) => openPage(cdp, isolated), capture: (target, name, evidence) => target.capture(name, evidence) });
