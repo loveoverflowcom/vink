@@ -1339,23 +1339,25 @@ fn RootThreadView(
                     }>{move || state.read().reply_errors.get(&root.get_value()).map_or("Xem thêm phản hồi", PageReadFailure::action)}</Button>
             </Show>
             </div>
+                }.into_any())
+                reply_draft=std::sync::Arc::new(move || view! {
+                    <Show when=move || !read_only && controller.read().collapsed_with_work(&key.get_value())>
+                        <div class="vk-discussion-reply-kept">
+                            <p role="status">"Bản trả lời được giữ lại"</p>
+                            <Button id=format!("reopen-reply-{}", root.get_value()) variant=ButtonVariant::Text
+                                on_press=move |_| {
+                                    controller.update(|c| c.reopen(&key.get_value()));
+                                    #[cfg(feature = "browser")]
+                                    focus_discussion_control(format!("reply-composer-{}", root.get_value()));
+                            }>"Mở lại"<span class="vk-ui-visually-hidden">" bình luận"</span></Button>
+                        </div>
+                    </Show>
+                    <Show when=move || !read_only && controller.read().drafts.contains_key(&key.get_value())>
+                        <div class="vk-discussion-reply-composer" hidden=move || !reply_expanded.get()>
+                            <DiscussionComposer key=key.get_value() controller state refresh root_target reselect_id />
+                        </div>
+                    </Show>
                 }.into_any()) />
-            <Show when=move || !read_only && controller.read().collapsed_with_work(&key.get_value())>
-                <div class="vk-discussion-reply-kept">
-                    <p role="status">"Bản trả lời được giữ lại"</p>
-                    <Button id=format!("reopen-reply-{}", root.get_value()) variant=ButtonVariant::Text
-                        on_press=move |_| {
-                        controller.update(|c| c.reopen(&key.get_value()));
-                        #[cfg(feature = "browser")]
-                        focus_discussion_control(format!("reply-composer-{}", root.get_value()));
-                    }>"Mở lại"<span class="vk-ui-visually-hidden">" bình luận"</span></Button>
-                </div>
-            </Show>
-            <Show when=move || !read_only && controller.read().drafts.contains_key(&key.get_value())>
-                <div class="vk-discussion-reply-composer" hidden=move || !reply_expanded.get()>
-                    <DiscussionComposer key=key.get_value() controller state refresh root_target reselect_id />
-                </div>
-            </Show>
         </section>
     }
 }
@@ -1483,14 +1485,20 @@ fn DiscussionComposer(
                 {is_reply.then(|| {
                     let recovery_context_id = context_id.clone();
                     view! {
-                    <div class="vk-discussion-composer-heading grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-vk-2 min-w-0">
+                    <div class="vk-discussion-composer-heading grid grid-cols-[minmax(0,1fr)_auto] min-w-0">
                         <div class="vk-discussion-reply-target" data-target=move || match controller.read().reply_target(&key.get_value()) {
                             Some(ReplyTarget::Root) => "root",
                             Some(ReplyTarget::Reply { .. }) => "reply",
                             _ => "unavailable",
                         }>
                             <Show when=move || reply_target.with(Option::is_some)>
-                                <p id=context_id.clone()>{move || reply_target.get().map(|name| format!("Trả lời {name}"))}</p>
+                                <div class="vk-discussion-composer-context">
+                                    <Icon name=IconName::Reply size=IconSize::Small />
+                                    <p id=context_id.clone()>
+                                        <span class="vk-discussion-context__prefix">"Trả lời"</span>{" "}
+                                        <span class="vk-discussion-context__name">{move || reply_target.get()}</span>
+                                    </p>
+                                </div>
                             </Show>
                             <Show when=move || matches!(controller.read().reply_target(&key.get_value()), Some(ReplyTarget::Reply { .. })) && root_target.get().is_some()>
                                 <Button variant=ButtonVariant::Text on_press=move |_| {

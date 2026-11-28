@@ -255,7 +255,7 @@ Smoke kiểm hydration, hai khổ thơ, CSS, font và import module editor.
 | `review` | Sample App, tag catalog, tác giả + admin + reviewer trong scratch | `review-withdrawn`, phản đối tại Bàn viết, quyền API ca/quyết định, snapshot Markdown và Reader SSR/hydrate |
 | `auth` | App scratch migrate/seed + Identity scratch/local outbox | `auth` với session thật |
 | `password` | App password scratch migrate + Identity native scratch/local outbox | `auth-password`, bao gồm scope Thông báo trước và sau logout/re-login qua App Gateway, không cần phase auth/main |
-| `standalone` | Artifact CSR + proxy loopback, API-only, Identity và App DB scratch | Reader, tìm kiếm, lịch sử, mật khẩu, editor, bảo vệ bản nháp và Lượt xem qua hai tài khoản thật (gửi lại sau commit, Bàn viết, đổi phiên) |
+| `standalone` | Artifact CSR + proxy loopback, API-only, Identity và App DB scratch | Reader, tìm kiếm, lịch sử, mật khẩu, editor, bảo vệ bản nháp và Lượt xem qua hai tài khoản thật (gửi lại sau commit, Bàn viết, đổi phiên). #616 mở ô trả lời của khách với projection có nhãn, kiểm hình học và Auth khi Gửi |
 | `author-search` | App password scratch và Identity native, fixture hồ sơ với bút danh trùng | `author-search`, SSR/no-JS, IME mô phỏng, Back, phân trang và Theo dõi theo phiên |
 | `publication` | App publication scratch migrate/seed/catalog + Identity scratch/local outbox | `publication-author` |
 | `notifications` | Sample App scratch với loopback author; CDP mô phỏng Auth và các API Thông báo | `notifications` (tab đủ quyền, badge, popover, hộp thư, quyết định, reflow và fence ở client) |

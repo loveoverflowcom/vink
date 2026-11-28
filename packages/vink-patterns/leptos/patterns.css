@@ -56,6 +56,7 @@
 .vk-discussion-root,
 .vk-discussion-thread {
   --vk-discussion-root-author-inset: calc(var(--vk-size-avatar-reader) + var(--vk-space-3));
+  --vk-discussion-reply-inset: clamp(20px, var(--vk-space-6), 28px);
 }
 .vk-discussion-byline {
   --vk-discussion-author-inset: calc(var(--vk-size-avatar-md) + var(--vk-space-3));
@@ -84,7 +85,25 @@
 }
 /* The reply context belongs to the byline above it, closer than the comment's own rhythm. */
 .vk-discussion-byline + .vk-discussion-context { margin-block-start: calc(min(var(--vk-space-2), 8px) * -1); }
-.vk-discussion-reply-group { padding: var(--vk-space-3); border-radius: var(--vk-radius-lg); background: var(--vk-surface-container); }
+/* The branch owns one line. Empty/closed composers remain mounted but take no space. */
+.vk-discussion-reply-lane {
+  position: relative;
+  display: grid;
+  gap: var(--vk-space-3);
+  margin-inline-start: var(--vk-discussion-reply-inset);
+  min-inline-size: 0;
+}
+.vk-discussion-reply-lane:not(:has(> .vk-discussion-reply-group:not([hidden]), > .vk-discussion-reply-composer:not([hidden]), > .vk-discussion-reply-kept)) {
+  display: none;
+}
+.vk-discussion-reply-lane::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: calc(var(--vk-discussion-reply-inset) / -2);
+  border-inline-start: 1px solid var(--vk-outline-variant);
+  pointer-events: none;
+}
 .vk-discussion-shared-reason { margin: 0; padding-inline: 16px; font-size: var(--vk-type-caption-size); color: var(--vk-on-surface-variant); }
 .vk-discussion-root > .vk-discussion-thread > .vk-discussion-shared-reason { padding-inline: 0; }
 .vk-discussion-comment:focus { outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring); outline-offset: var(--vk-size-focus-offset); }
@@ -98,7 +117,26 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-.vk-discussion-context { color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); }
+.vk-discussion-context {
+  color: var(--vk-on-surface-variant);
+  font-size: var(--vk-type-caption-size);
+  line-height: var(--vk-type-caption-line-height);
+}
+.vk-discussion-context__prefix {
+  color: var(--vk-on-surface-variant);
+  font-weight: var(--vk-type-body-weight);
+}
+.vk-discussion-context > a { min-inline-size: 0; max-inline-size: 100%; }
+.vk-discussion-context__name {
+  color: var(--vk-on-surface);
+  font-weight: var(--vk-type-section-weight);
+  min-inline-size: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
 .vk-discussion-status { color: var(--vk-on-surface); font-weight: var(--vk-type-label-weight); }
 .vk-discussion-action-segment { gap: var(--vk-space-1); }
 .vk-discussion-action-segment[data-root="true"] { gap: 2px; }
@@ -273,11 +311,11 @@
   font-weight: var(--vk-type-label-weight);
 }
 @media (min-width: 1024px) {
+  .vk-discussion-root > .vk-discussion-thread {
+    --vk-discussion-reply-inset: var(--vk-discussion-root-author-inset);
+  }
   .vk-discussion-root > .vk-discussion-thread > .vk-discussion-comment > :is(.vk-discussion-status, .vk-discussion-body, .vk-discussion-actions),
-  .vk-discussion-root > .vk-discussion-thread > .vk-discussion-shared-reason,
-  .vk-discussion-root > .vk-discussion-thread > .vk-discussion-reply-group,
-  .vk-discussion-root > .vk-discussion-reply-composer,
-  .vk-discussion-root > .vk-discussion-reply-kept {
+  .vk-discussion-root > .vk-discussion-thread > .vk-discussion-shared-reason {
     margin-inline-start: var(--vk-discussion-root-author-inset);
   }
 }
@@ -386,7 +424,6 @@
 @media (max-width: 359px) {
   .vk-discussion-thread > .vk-discussion-comment, .vk-discussion-shared-reason { padding-inline: 12px; }
   .vk-discussion-root > .vk-discussion-thread > .vk-discussion-comment { padding-inline: 0; }
-  .vk-discussion-reply-group { padding-inline: var(--vk-space-3); }
 }
 
 .vk-feedback-composer__footer .vk-ui-button[aria-busy="true"]:has(> .vk-ui-icon) > .vk-ui-icon { display: none; }
@@ -409,7 +446,6 @@
 .vk-discussion-remove-confirm > p { display: flex; align-items: flex-start; gap: 8px; margin: 0; color: var(--vk-on-surface); font-weight: var(--vk-type-label-weight); overflow-wrap: anywhere; }
 .vk-discussion-remove-confirm > p > .vk-ui-icon { color: var(--vk-error); flex-shrink: 0; margin-block-start: 2px; }
 
-.vk-discussion-context { line-height: var(--vk-type-caption-line-height); }
 .vk-discussion-thread > .vk-muted { margin: 0; padding-inline: 16px; }
 @media (forced-colors: active) {
   .vk-discussion-action-segment[data-root="true"] .vk-endorsement[data-kind="comment"] .vk-ui-toggle__control,

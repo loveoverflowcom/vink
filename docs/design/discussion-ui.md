@@ -48,7 +48,8 @@ endpoint tra cứu đúng scope, không quét toàn bộ hội thoại hoặc đ
 Hướng C đã chọn từ [issue #134](https://github.com/loveoverflowcom/vink/issues/134),
 [LayoutSpec R3.1](https://drive.google.com/file/d/1S4xxyEpjtt4r6g9i8G8iJviWR_c_dQ8i/view)
 và [desktop R1.3](https://drive.google.com/file/d/1G18GyQHrmYdxplNd9kdsn05hKRjl5AW8/view).
-Phần này thay geometry lịch sử D2T-03; controller, API, authority và recovery vẫn giữ owner.
+Phần này ghi geometry lịch sử R3.1. [#616](#ngữ-cảnh-và-trục-phản-hồi--616)
+cập nhật riêng hai biên và nền nhóm. Controller, API, authority và recovery vẫn giữ owner.
 
 ```text
 #feedback-region — cùng measure Reader
@@ -228,8 +229,8 @@ ghi, premoderation, xác nhận gỡ, cursor, thứ tự và biên nhận vẫn 
   #own-comments · lượt tải riêng, mục riêng, lỗi hoặc phân trang thật
   #root-list · gốc/neo theo thứ tự cũ → mới
     Bút danh và thời gian · nội dung có xuống dòng · Ưng · Trả lời
-    Nhóm tonal · phản hồi phẳng có ngữ cảnh khi trỏ tới phản hồi khác
-    Ô soạn · Trả lời [bút danh], Đóng, textarea Viết phản hồi, Gửi
+    Trục phản hồi · phản hồi phẳng có ngữ cảnh khi trỏ tới phản hồi khác
+      Ô soạn · icon Trả lời, Trả lời [bút danh], Đóng, textarea Viết phản hồi, Gửi
   Phân trang khi còn cursor, trạng thái rỗng/lỗi/phục hồi đúng ngữ cảnh
 ```
 
@@ -256,10 +257,43 @@ ghi, premoderation, xác nhận gỡ, cursor, thứ tự và biên nhận vẫn 
   theo trục tên khi thiếu chỗ.
 - `--vk-discussion-root-author-inset` ở owner `patterns.css` bằng đường kính avatar gốc
   cộng khe của bút danh (56 px ở chữ 100%). Từ 1024 CSS px, thân gốc, thao tác, lý do
-  chung, nhóm phản hồi và ô soạn hoặc trạng thái giữ nháp lấy cùng trục này. Dưới
-  breakpoint, các vùng này giữ biên gốc. #616 có thể dùng lại trục cho đường nối;
-  avatar phản hồi và cây hai tầng vẫn thuộc `DiscussionThread`.
+  chung và trục phản hồi lấy cùng vị trí này. Dưới breakpoint, phần gốc ở biên
+  bài đọc và trục phản hồi dùng gutter giới hạn theo #616.
 
 Kiểm ảnh Chrome của Product ở sáng/tối, 1440/100%, 390/100–150% và 320/200%.
 Ca trả lời mất đích và response phân trang dùng fixture có nhãn. Tách ảnh
 Preview khỏi kết quả kiểm Product.
+
+### Ngữ cảnh và trục phản hồi · #616
+
+[Issue #616](https://github.com/loveoverflowcom/vink/issues/616) ghi hướng chủ sản phẩm
+chọn ngày 27/11/2026. [Ảnh c248](https://drive.google.com/file/d/1vnhc2zJ50wQ5pUkI82Ztstyg-SPc72fG/view)
+là ảnh hiện trạng của ô trả lời, dùng để đối chiếu phân cấp. Cập nhật này thay riêng
+yêu cầu đồng biên và nhóm tonal của #134/#128 cùng kiểu trình bày ngữ cảnh lịch sử.
+Thứ tự cũ đến mới, ownership hai tầng và quyền công khai tiếp tục theo
+[ADR](../architecture/discussion-ownership.md). `VDR-DISCUSSION-R4@r1` vẫn sở hữu
+vùng riêng, xác nhận gỡ, biên nhận chờ duyệt và thông báo đóng.
+
+- `DiscussionThread` sở hữu một wrapper trình bày từ phản hồi đầu đến điểm cuối
+  của phản hồi, phân trang hoặc bản soạn còn hiển thị. Ở desktop từ 1024 CSS px,
+  wrapper nằm trên trục `--vk-discussion-root-author-inset` (56 px ở chữ 100%).
+  Màn hẹp thụt theo `--vk-space-6`, giới hạn 20–28 CSS px. Đường dọc 1 CSS px dùng
+  `--vk-outline-variant` giữa gutter, bên ngoài chữ, avatar và vùng focus. Khi nhánh
+  rỗng và ô soạn đóng, wrapper không chiếm chỗ. Neo gốc trung tính dùng cùng lane.
+- Các phản hồi chia chung một biên, kể cả khi phản hồi trỏ tới một phản hồi khác.
+  Nhánh dùng nền Reader. Dấu tonal của đích đang chọn vẫn theo trạng thái editor.
+  `ul` có tên “Phản hồi theo thứ tự cũ đến mới”. Pseudo-element trang trí không nhận pointer
+  hay focus và không thêm node vào cây trợ năng.
+- Đầu ô soạn dùng icon Reply trang trí phía trước, “Trả lời” regular ở
+  `on-surface-variant`, tên semibold ở `on-surface`, nút đóng ở cuối. Ngữ cảnh đã đăng
+  dùng cùng phân cấp chữ với “Đang trả lời”. Tên dài giới hạn hai dòng. Textarea vẫn nhận tên đầy đủ của đích qua `aria-describedby`. Tên đã đăng có
+  link hồ sơ khi projection cấp `ProfileLink`. Hành động đến nhận xét chỉ xuất hiện
+  khi đích công khai đã tải. Ô soạn dùng tên dạng văn bản lấy từ draft hợp lệ,
+  và mô tả phục hồi dùng cùng ID khi đích mất.
+- `RootThreadView` đưa ô soạn và bản thu gọn vào slot cố định của nhánh. Controller
+  tiếp tục giữ nháp, selection, focus, IME, biên nhận và quyền gửi. Khi thu ô, native
+  textarea được giữ. Mở lại đưa focus về đúng field. Đường nối dừng ở toàn bộ khối
+  cuối đang hiển thị, kể cả khi khối đó là ô soạn hoặc “Bản trả lời được giữ lại”.
+
+[Ánh xạ DOM/AX](../development/web-semantics.md#từ-yêu-cầu-tới-bằng-chứng) ·
+[Lệnh và phạm vi evidence](../development/discussion-ui-evidence.md).

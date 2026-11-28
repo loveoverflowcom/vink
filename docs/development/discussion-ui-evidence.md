@@ -1,5 +1,68 @@
 # D2T-03 — phạm vi triển khai và bằng chứng
 
+## Ngữ cảnh trả lời và đường nối · #616
+
+Đối chứng Product Reader trên Mac mini arm64, macOS 15.6, Chrome 158 và PostgreSQL 17 scratch.
+Base `3ad02db8` chạy mã Product từ `develop` sau #615 với probe chụp ảnh trong
+runner. Candidate `6f32edd6` chạy cùng fixture. Commit `7465ae0c` bổ sung phép kiểm
+thứ tự và mô tả sau khi thu hồi đích. [LayoutSpec](../design/discussion-ui.md#ngữ-cảnh-và-trục-phản-hồi--616)
+· [Bản đồ Semantic UI](web-semantics.md#từ-yêu-cầu-tới-bằng-chứng).
+
+Ảnh [c248](https://drive.google.com/file/d/1vnhc2zJ50wQ5pUkI82Ztstyg-SPc72fG/view)
+được mở cùng [manifest](https://drive.google.com/file/d/1aSRfwKgtDpwg8leGGswwpEBOT0_O6H7J/view).
+Capture lịch sử dùng nguồn tổng hợp `91191186`, 1440 × 900, tối, chữ 100%, đã
+đăng nhập và focus ô trả lời. Đối chứng mới dùng cùng route
+`/tac-pham/33333333-3333-4333-8333-333333333333`, App thật với định danh local và
+cùng projection root-only được cung cấp qua CDP cho cả hai phiên bản.
+Tên fixture trong đối chứng là “Lan Anh”.
+
+| Cảnh đã mở trước và sau | Gutter trước → sau | Độ đậm prefix/tên trước → sau | Connector |
+| --- | --- | --- | --- |
+| 1440 × 900, Dark, 100%, focus ô trả lời root | 56 → 56 CSS px | 600/600 → 400/600 | 1 CSS px, dừng ở ô soạn |
+| 320 × 900, Dark, 200%, focus ô trả lời root | 0 → 28 CSS px | 600/600 → 400/600 | 1 CSS px, tên ngắn hiển thị đủ |
+| 1440 × 900, Light, 100%, ba phản hồi và đích là reply | 56 → 56 CSS px | Xác nhận theo ngữ cảnh đã đăng và ô soạn | 1 CSS px, đi qua phân trang đến ô soạn |
+
+Bộ đối chứng hai phía có 97 mục PNG và context mỗi phía. Chọn các ảnh
+`discussion-root-reply-1440-100-dark`, `discussion-root-reply-320-200-dark` và
+`discussion-contract-fixture-flat-1440-light`. Manifest và `paired-measurements.json`
+đi cùng ảnh. Chiều ngang tài liệu là 1425 và 305 CSS px ở hai cảnh tối trên, đều
+nằm trong viewport. Ảnh 320 thể hiện phần trên của composer. Các thao tác phía dưới
+được kiểm bằng browser và truy cập qua cuộn dọc.
+
+- `cargo xtask verify web --scenario discussion` — PASS trên base và candidate.
+  Ca root dùng App/PG thật, kể cả commit, mất ACK, retry và CAS đóng bình luận.
+  Đa số nhánh dài, hồ sơ trùng bút danh, cursor và ca thu hồi dùng projection
+  HTTP có nhãn chặn ở trình duyệt. POST trả lời có kiểm chính xác đích và Unicode,
+  giữ ACK rồi trả receipt chờ duyệt bằng fixture. Bài kiểm Auth dùng server thật.
+- Kiểm reflow sáng/tối ở 320/360/390/834/1024/1280/1440 CSS px, gồm ca chữ 150%
+  và 200%. 150% là mức giao diện hỗ trợ. Mức 200% là phép thử chữ lớn bằng DOM override.
+  AX của Chrome xác nhận tên, mô tả, list và nút. Tab/Enter/Space đi qua đường dùng thật.
+  Composition qua CDP được kiểm riêng. IME hệ điều hành, trình đọc màn hình và
+  điện thoại thật chưa chạy.
+- Chọn wrapper trình bày vì pager, composer và nháp thu gọn có chiều cao độc lập.
+  Theme và chữ dùng chung CSS recipe. Draft cấp tên trong composer. Projection
+  công khai cấp link hồ sơ cho phản hồi đã đăng.
+
+Kiểm bổ sung trên `7465ae0c` chạy
+`cargo xtask verify web --scenario discussion --scenario auth --scenario standalone --capture checks`
+và đạt cả ba scenario. Auth giữ nháp, selection, focus và cuộn khi xác nhận phiên
+thật trên Identity scratch. Một POST trả lời thật chỉ đến sau thao tác Gửi rõ ràng.
+Trên CSR, test #616 dùng projection có nhãn và dialog Auth thật. Mở/nhập nháp giữ
+0 POST, kích hoạt Gửi mở dialog và vẫn giữ 0 POST. Nhóm đo RSS đạt đỉnh lấy mẫu
+7.903.616 KiB trong ba scenario chạy tuần tự.
+
+`./tools/local-budget run --low-disk -- cargo test --locked -p vink-patterns`
+đạt 30 test. Lượt đầu phát hiện oracle SSR còn đòi nhãn đã bỏ ở #573. Oracle
+mới kiểm `aria-expanded` trên đúng nút gốc và duy nhất một dấu đích ở đúng phản hồi.
+
+| Chiều tự review | Kết quả trên host đã kiểm |
+| --- | --- |
+| Functional | PASS Reader SSR/hydrate và CSR. Chuyển đích, public/own, phân trang, gửi, trạng thái mất ACK và thu hồi đích. |
+| Geometry | PASS một trục phản hồi. Đo biên 0/1/n, anchor gốc ẩn, hai nhánh, composer và nháp thu gọn. |
+| Visual | PASS ba cặp ảnh đã mở. Sửa lần đầu cắt tên ngắn ở 320/200. Ảnh chạy lại cho thấy “Lan Anh” đủ chữ. |
+| Accessibility/Responsive | PASS Chrome AX, tương phản và ma trận reflow. Mức 200% dùng DOM override. |
+| Interaction | PASS Chrome input, focus, selection và CDP composition. IME hệ điều hành, trình đọc màn hình và thiết bị thật ở trạng thái NOT_RUN. |
+
 ## Nhận xét R4 trên Linux · PR #366
 
 Base `ac77a0fa1fed42a8f25a1795991d253b64cb4ff8`. Commit [10ea20b](https://github.com/loveoverflowcom/vink/commit/10ea20ba63aa0c08edd072c6a7f32d3a5bf846c6) sửa FieldMode, root segment/geometry, composer Sending, clipboard và read-only. Commit [d2092b6](https://github.com/loveoverflowcom/vink/commit/d2092b67de3e0699921876dd1460a64e41875530) giữ tác phẩm trong DOM trong khi lần GET nhận xét đầu tiên đang chờ. [LayoutSpec R4](../design/discussion-ui.md) và [bộ tham chiếu Drive](https://drive.google.com/drive/folders/1OpT6_uY1GG-oGvhSl6b5xsmgSsM7hVdE). Đã mở 12 ảnh 01/01b, 02/02b, 03/03b, 04–08 và 10. Ảnh 04 cho phép gõ trong Sending, lần gửi giữ snapshot bất biến.
