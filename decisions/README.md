@@ -18,11 +18,9 @@ lý do và các quyết định ngoài phạm vi nhập. Các registry phát tri
 
 ## Điểm Vink (Reputation V1)
 
-[VDR-REPUTATION@r1](proposals/VDR-REPUTATION.r1.toml) ghi mười tám lựa chọn nghiệp vụ từ sáu lượt
-review 27/11/2026 của [Epic #600](https://github.com/loveoverflowcom/vink/issues/600);
+[VDR-REPUTATION@r1](proposals/VDR-REPUTATION.r1.toml) ghi Q01..44 từ review 27–28/11/2026 của [Epic #600](https://github.com/loveoverflowcom/vink/issues/600);
 [VDR-REPUTATION-CONTRACT@r1](proposals/VDR-REPUTATION-CONTRACT.r1.toml) ghi hướng backend đề xuất.
-Cả hai `PENDING`, chưa signoff exact revision/SHA-256; formula, eligibility, lifecycle chi tiết
-và cách tăng trưởng theo kỳ còn review. [PRD §19](../prd/requirements.md#19-điểm-vink-reputation-v1),
+Cả hai `PENDING`, chưa signoff exact revision/SHA-256; hướng formula/eligibility/growth/snapshot đã chọn, numeric/technical qualification còn OPEN. [PRD §19](../prd/requirements.md#19-điểm-vink-reputation-v1),
 [đặc tả](../docs/architecture/reputation.md), [registry](../docs/development/reputation.md).
 
 ## Social Graph

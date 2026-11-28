@@ -7,76 +7,42 @@ và [VDR-REPUTATION-CONTRACT@r1](../../decisions/proposals/VDR-REPUTATION-CONTRA
 
 ## Why / thuật ngữ
 
-Đo sự ghi nhận của cộng đồng đối với sáng tác và nhận xét, không đồng nhất uy tín với chất lượng
-văn học hoặc độ nổi tiếng. Impact, Contribution là hai dữ kiện thành phần độc lập; rating là
-chỉ số tổng hợp không dự đoán xác suất thắng; period growth đo đóng góp mới hợp lệ theo kỳ, trừ các tương tác bị thu hồi trong kỳ kể cả nhận trước kỳ (REP-Q07).
-PrincipalId là identity, WorkId là entitlement đích của Impact; RevisionId vẫn là anchor nguồn.
-Không cấp quyền hay xếp hạng tác phẩm bằng score.
+Điểm Vink = Reputation Rating, Điểm tăng trưởng = Growth Score (không phải rating delta).
+Hai thành phần nội bộ Ảnh hưởng/Đóng góp (Impact/Contribution), không public raw; không Elo,
+không quyền ACL/ranking tác phẩm. WorkId dedup actor qua eligible revision anchors; superseded
+khác hidden/vi phạm. Contribution actor+CommentId; comment edit deferred COM-10/LVE-FR-04.
+Current eligibility theo Q13/Q20/Q21: lifecycle remove neutral growth; actor deletion DEL-05,
+recipient deletion purge, full suspension recipient ẩn mọi kỳ; actor suspension không cascade.
+Q30 principal age; Q32 source receipt transitions and provenance, no current-age fallback.
+Q11 comment-only eligible; baseline-only không Top Rating.
 
-## Semantics đã được chọn và điểm mở
+## Q41 — invariant credit (chọn, sửa Q07/Q12/Q36)
+Current selection/eligibility tách community credit; per entitlement có 2 state machines độc lập week/month:
+UNSEEN(0) -> ACTIVE(1) khi first eligible effective community ON trong covered period (+1);
+ACTIVE -> WITHDRAWN_PENDING(0, withdrawal period) khi voluntary effective OFF còn eligible (-1);
+ON lại cùng withdrawal period -> ACTIVE (+1 bù, không fresh credit);
+qua boundary vẫn OFF -> BURNED(0 terminal); ON/OFF sau burn = 0.
+Baseline/preactivation hoặc held maturity -> BURNED, current-only. No-op/duplicate/retry/rollback/stale và mất một anchor khi còn anchor hợp lệ không sinh delta.
+Net credit cuối - đầu kỳ = -1/0/+1 cho community transitions; lifetime net 0 hoặc 1 trước weight. Week/month độc lập, không cộng tuần suy tháng. Accepted event-time [start,end) Asia/Ho_Chi_Minh, đúng end thuộc kỳ mới; late/replay theo authoritative order và coverage.
+Neutral lifecycle (privacy/withdrawn/hidden/delete/DEL-05/formula/maturity/backfill/correction) không giả ON/OFF: park credit khi tạm ineligible, restore không grant mới; OFF khi ineligible retire/burn không trừ; terminal invalidation/deletion retire không resurrect. End-start oracle áp community state, không lấy effective eligibility làm credit. Privacy/deletion/verified correction có thể remove/restate historical contributions separately, versioned; không giữ unsafe signal chỉ để bảo toàn growth.
+Oracle: tuần 1 +1, tuần 2 -1, tuần 3 relike 0, tuần 4 unlike 0; nếu OFF/ON khác tuần cùng tháng thì month net 0. Model thêm same-period loops, multiple anchors, hidden/restore/retire, threshold/boundary race, late/retry/rollback, expiry.
 
-- Impact: một đơn vị (actor, WorkId) dù nhiều revision; các anchor nguồn giữ nguyên theo LVE-FR-04.
-  Xác định effective entitlement từ tập anchor hợp lệ, không cộng lại khi thêm anchor thứ hai.
-  Khi còn anchor hợp lệ, việc bỏ một anchor không làm mất entitlement. Audit policy historical
-  anchor khi revision không còn hiện hành; không đánh đồng superseded với hidden/admin-removed.
-- Contribution: Ưng theo đúng nguồn comment; không nhân điểm lên root, work hoặc parent.
-  Comment edit/revision và tombstone hợp lệ cần review theo luật nguồn hiện hành.
-- Q13: private/withdrawn, xóa hoặc admin gỡ nội dung loại phần score liên quan khỏi current eligibility;
-  không tự ghi giảm community growth do lifecycle. Restore chỉ từ entitlement còn hợp lệ, không tăng
-  growth. Quyền privacy/deletion hiện hành và correction gian lận đã xác minh thắng historical projection;
-  có thể sửa/ẩn kỳ cũ nếu cần, không giữ số sai chỉ vì kỳ đã đóng. Report chưa xác minh không tự trừ điểm.
-  DEL-05 thu hồi endorsement do principal xóa tạo ra; không hồi sinh principal hoặc source đã xóa.
-  Unlike/un-Ưng của entitlement còn hiệu lực làm giảm score và growth kỳ thu hồi kể cả endorsement
-  trước kỳ. Re-like theo Q12; attribution account deletion, verified correction và comment edit/tombstone
-  còn OPEN; không triển khai policy ngầm.
-- Đình chỉ toàn bộ tài khoản nhận điểm: không public rating, không xuất hiện trong bất kỳ thống kê
-  public nào (cả kỳ đã đóng); giữ facts còn hợp lệ, đánh giá lại trước khi khôi phục sau đình chỉ,
-  không reset điểm, không ghi standing restore thành growth. Hạn chế riêng đăng/bình luận khác
-  full suspension. Q14: với actor bị đình chỉ, giữ endorsement hợp lệ đã tạo trước đó cho người nhận,
-  không cascade thu hồi chỉ vì standing của actor đổi. Source capability vẫn chặn ghi không được phép;
-  invalidation đã xác minh hoặc account deletion theo DEL-05 thu hồi đúng authority, không restore
-  tương tác vô hiệu vĩnh viễn khi hết đình chỉ.
-- Q11: member chỉ đóng góp nhận xét có thể có score và tham gia thống kê, không đòi có bài công khai.
-  Q17: profile đủ quyền có thể đọc baseline thật nếu ready; top rating chỉ member có đóng góp hợp lệ,
-  fast growth chỉ growth dương. Historical top theo facts as-of kỳ, current privacy/standing thắng;
-  filter trước limit/cursor. Precision cho positivity và tie-breaker còn review; không thêm work gate.
-- Q16: thêm eligibility gate tuổi tài khoản hoặc mức hoạt động của actor, chỉ cho reputation, không
-  đổi capability/source count Thấm/Ưng. Chưa chọn ngưỡng hoặc time basis, không dùng tuổi từ lần tạo
-  profile nếu khác account authority. Audit durable authoritative account facts, original accepted
-  event-time vs worker processing time, unknown legacy evidence, maturity/reclassification và
-  versioned eligibility; không suy tuổi/hoạt động từ handle, không network trong write transaction.
-  Interaction chưa đủ eligibility không được coi là contribution hợp lệ. Policy cho interaction trước
-  ngưỡng và lịch sử backfill còn OPEN; không tạo credit tự động khi retry/maturation.
-- Follow, saved, private views, content counts không đi vào rating hoặc growth.
+## Q42 — maturity (chọn)
+Durable bounded job một lần/actor, effective_at=created_at+7 ngày, recheck held eligible facts as-of threshold và lifecycle/order fences; current rating được ghi nhận, growth burned cả lịch. OFF trước threshold không maturity; first real eligible ON sau threshold nếu chưa được ghi nhận có thể credit theo Q37. Không dùng processing time; no-op/race/replay không mất/nhân/hồi sinh; không network Identity. Kỳ chuyển tiếp Q33 độc lập tuần/tháng.
 
-## Period growth — không lấy đơn giản score cuối kỳ trừ đầu kỳ
+## Q43 — Top Growth (chọn)
+Net weighted growth >0 AND >=3 distinct eligible actors mỗi actor có net-positive weighted community credit cho recipient trong kỳ, sau privacy/correction. Nhiều entitlement cùng actor chỉ count 1; unlike-only, zero, neutral/maturity/backfill/burned không count. Không expose actor IDs/count. Ngưỡng 3 là heuristic chưa có thực nghiệm, không bảo đảm k-anonymity/anti-collusion; test differencing. Không thêm gate cho Top Rating.
 
-Tuần bắt đầu thứ Hai 00:00, tháng bắt đầu ngày 1 00:00 theo Asia/Ho_Chi_Minh; biểu diễn khoảng
-[start, end), UTC storage/instant chuẩn. Kỳ được gán theo thời điểm nghiệp vụ accepted có thẩm
-quyền, không theo thời điểm worker xử lý; xử lý late events, checkpoint, boundary, replay.
-Nguồn thời điểm/backdating/retention cụ thể phải audit. Thống kê uy tín cao là current rating
-đủ điều kiện; tăng nhanh theo tuần/tháng là growth metric. Backend hỗ trợ thống kê kỳ hiện tại và kỳ đã kết thúc (REP-Q09), có retention theo Q15 và coverage;
-Q10: top rating lấy current rating nếu kỳ đang diễn ra, rating as-of end boundary nếu kỳ đã đóng,
-không lấy đỉnh, không thay điểm kỳ cũ bằng điểm hiện tại. Chọn event-time/watermark có thể tái lập,
-bao gồm member có điểm hợp lệ nhưng không đổi trong kỳ. Kỳ chưa đủ coverage hoặc correction đang
-chờ không giả finalized snapshot; rule late correction, formula version và UI history còn OPEN.
+## Q44 — snapshot (chọn có điều kiện correctness)
+Open top-k immutable snapshot generation/as_of, target 5–10 phút đo thực tế (không SLA); profile PK projection gần realtime. Closed top100+50 reserve/table/period, không dense member history; retain minimized ledger/checkpoint đủ exact as-of reconstruction toàn eligible population (kể cả member không biến động). Reserve chỉ optimization, không guarantee: >50 excluded, restore/outsider/correction đổi ordering hoặc thiếu candidates -> offline refill/rebuild từ toàn population, không false-complete/stale/unsafe. Nếu thiếu evidence mark incomplete/unavailable. Current privacy/standing/deletion gate trước limit/cursor, invalidate/withhold unsafe snapshot/cache ngay; cursor bound snapshot/version/visibility generation, reject/restart stale. Closed ordinary later score không đổi as-of-end; authoritative late/correction có version. Q15 retain 52 closed weeks/12 closed months + open; source/fence/audit retention tách, minimize/purge.
 
-Growth không được tăng do restore, backfill không đủ lịch sử, formula version switch hay lặp
-on/off. Growth có dấu: bỏ một tương tác cũ đang đủ điều kiện làm giảm growth của kỳ thu hồi;
-+80 điểm từ tương tác mới và -30 do bỏ tương tác tháng trước => +50 (ví dụ minh họa, không phải
-formula). Thu hồi chỉ khi effective entitlement thực sự đổi (không giảm nếu còn anchor hợp lệ);
-no-op/retry không trừ thêm. Q12: trong từng kỳ, re-like đủ điều kiện cùng entitlement bù trừ khoản
-thu hồi trong chính kỳ đó, không tạo đóng góp mới. Nếu thu hồi thuộc kỳ trước đã đóng, giữ mức
-thu hồi kỳ đó; re-like kỳ này chỉ khôi phục current rating, không cộng growth mới.
-Tuần/tháng độc lập (boundary khác nhau): ví dụ bỏ -30 tuần 1, Thấm lại tuần 2 cùng tháng =>
-weekly growth -30/0, monthly phần biến động này 0 (minh họa cùng attribution, không phải formula).
-Không tính monthly growth bằng tổng weekly growth. Xử lý chuỗi lặp, lần đầu nhận rồi bỏ/khôi phục,
-precision/attribution phi tuyến và correction có thẩm quyền vẫn cần review; không tạo credit giả. Q13: admin/private/delete nội dung làm đổi score hiện hành nhưng không tự ghi delta growth.
-Correction của số liệu sai đã xác minh, quyền riêng tư và xóa dữ liệu là đường riêng, có thể sửa/ẩn
-lịch sử; không giữ hidden signal để bảo toàn leaderboard. Attribution khi xóa tài khoản còn review. Không cộng dồn
-các delta làm tròn theo thứ tự batch một cách tùy tiện: với hàm phi tuyến phải so sánh phép tính
-trên net eligible facts/fixed reference hoặc attribution có tính tái lập; chỉ chọn sau fixtures
-và owner review. Không công khai dữ liệu kỳ nếu delta có thể tiết lộ đóng góp private đã rút.
+## Operator correction Q38
+
+Authorized operator CLI, single anchor/entitlement or bounded actor-recipient set at watermark,
+not blanket ban on future interactions. Evidence/reason, dry-run/explicit apply, audited
+idempotent invalidation fence. Reputation-only, source counts unchanged. Recompute current and
+affected retained periods from all eligible as-of facts; corrected revision/as_of, privacy wins.
+If evidence missing withhold, no false rank. No admin UI/automatic detection.
 
 ## Retention — Q15
 
@@ -92,14 +58,14 @@ một cách máy móc: đặc tả minimization, nguồn rebuild/anti-replay và
 Chỉ lưu dữ liệu cần thiết, không suy quyền lưu raw history/PII vô hạn; đánh giá storage, WAL
 và khả năng dựng lại khi compact/purge, kể cả đối với entitlement cũ vẫn hiệu lực.
 
-## Scientific review (initial synthetic comparison, chưa hiệu chỉnh)
+## Scientific review — selected direction, qualification pending
 
-Xem [scientific review SR-01](../development/reputation-science.md): so sánh synthetic có cùng mốc
-chuẩn hóa giữa log, căn bậc hai và hàm từng đoạn; weights 50:50, 60:40, 70:30, 80:20; marginal growth,
-fixed-unit growth, age/activity gate trade-offs. Candidate log và fixed reference chưa duyệt.
-Cần calibration/skew/correlation, privacy inference, concentrated voting/abuse, precision/extremes,
-versioning, realistic source coverage, Quint/Kani và benchmark. Không gọi log là anti-abuse.
-Owner duyệt formula/growth semantics và eligibility threshold/maturity trước kích hoạt.
+[SR-01](../development/reputation-science.md) synthetic comparisons; Q25–Q28 choose
+60:40 normalized log R=1000+400*(0.6*f(I)+0.4*f(C)), f(x)=ln(1+x/k)/ln(1+reference/k).
+Initial candidate k=10/reference=100 each component; qualify numeric constants and canonical precision
+locally; half-up integer display once, rank unrounded, no business cap but checked numeric bounds.
+G=2.4*dI+1.6*dC exact tenths. No prod access. 7-day gate and >=3 actors heuristic not empirical optimum.
+Exact signoff and evidence required before runtime.
 
 ## How (candidate, không khóa schema)
 
@@ -110,14 +76,7 @@ Không mặc định dùng stream Notifications (coverage/retention khác); khô
 cho V1. Không external infra nếu chưa có evidence. Audit source owners Endorsement, publication,
 discussion, principal standing/deletion, outbox; giữ lock order, fencing, idempotency và bounded
 batch. Version policy/formula/schema độc lập; đổi formula không tự tạo growth; replay không
-double count. Q18: backfill current score từ toàn bộ facts hiện có đủ eligibility; consistent watermark/catch-up,
-kiểm source completeness và event-time/age/standing provenance. Chỉ dựng kỳ lịch sử nếu chứng minh
-coverage; nếu thiếu evidence thì chưa đủ dữ kiện/coverage rõ, không fabricate baseline/growth.
-Không lấy timestamp worker hoặc updated_at ghi đè làm proof lần tương tác đầu nếu chưa audit. Giữ projection theo kỳ thưa nếu phù hợp, không mặc định
-snapshot mọi thành viên mỗi ngày. Cần chứng minh reconstruct/close kỳ với cả member không đổi điểm,
-không sao chép điểm hiện tại vào kỳ cũ, tránh global scan trên request; chọn sparse change history hoặc
-materialized close theo benchmark. Retention kỳ đã chọn; retention nguồn/ledger/fence, correction, purge/checkpoint và version compatibility
-phải được đặc tả và đo trước rollout; không hứa lưu vô hạn.
+double count. Q18/Q32/Q33 proof-backed current backfill, no preactivation history, first full week/month independently, baseline burned. Q44 snapshot and minimized exact as-of reconstruction source; retention and correction qualified, no dense history or request-time rank.
 
 Privacy: guest/public score và statistics chỉ dựa trên dữ liệu đủ điều kiện hiện hành;
 không trả raw components. Thiết kế invalidation/generation guard fail closed cho mọi projection
@@ -135,14 +94,16 @@ SOC-PRIV, DEL, LVE, RANK, TOP, SAV. Không quyền mới từ rating.
 | REP-INV-04 | Period boundary, late processing, replay và restore/version changes không tạo growth giả; output theo policy đã duyệt. |
 | REP-INV-05 | Quyền hiện hành thắng projection/cache cũ; deletion, private và moderation không rò rỉ. |
 | REP-INV-06 | Batch/read bounded, no request-time global recompute; rank tác phẩm và ACL độc lập. |
-| REP-INV-07 | Thu hồi tương tác cũ làm giảm growth khi entitlement thực sự mất; re-like bù thu hồi cùng kỳ, không credit mới hoặc sửa kỳ trước do re-like khác kỳ; formula/lifecycle restore không tạo growth. Week/month tính độc lập. |
+| REP-INV-07 | Q41 credit machine per calendar -1/0/+1, burned boundary fence, no repeated debit/credit; neutral and correction separate. |
 | REP-INV-08 | Kỳ đã đóng có coverage/version/retention rõ; full suspension và deletion/privacy hiện hành thắng dữ liệu lịch sử; không fake history. |
 | REP-INV-09 | Top rating theo current khi kỳ mở, rating as-of end khi đóng; không dùng peak, không đổi theo score hiện tại sau close; late/privacy correction theo policy. Member đủ điều kiện chỉ nhận Ưng không bị loại vì không có bài. |
 | REP-INV-10 | Lifecycle remove nội dung đổi current eligibility, không tự ghi âm community growth; correction/privacy/deletion có thẩm quyền thắng lịch sử. Đình chỉ actor không cascade thu hồi endorsement trước đó còn hợp lệ; DEL-05/invalidation vẫn áp dụng. |
 | REP-INV-11 | Chỉ phục vụ kỳ mở và 52 tuần/12 tháng đã đóng gần nhất có coverage; expiry/purge/replay không hồi sinh kỳ hết hạn, không phá current facts hoặc anti-replay; không giữ PII trái deletion. |
-| REP-INV-12 | Q16 eligibility gate versioned, chỉ facts đủ điều kiện tạo reputation, không đổi source Thấm/Ưng; event-time/unknown/maturity theo policy, retry/replay không biến thành new credit. |
-| REP-INV-13 | Q17 top rating loại baseline-only; growth list chỉ dương; filter authority/eligibility trước limit/cursor, kể cả kỳ đóng. |
-| REP-INV-14 | Q18 backfill current từ valid existing facts; thiếu provenance không được giả eligible/0; historical coverage được chứng minh, không growth giả, concurrent snapshot+catch-up không mất/nhân effect. |
+| REP-INV-12 | Q30/Q42 age 7d, maturity current-only at threshold; no-op/retry/race no fake credit, source unchanged. |
+| REP-INV-13 | Top Rating valid-only, Top Growth positive and >=3 distinct net-positive actors; current authority before limit, no raw actor data. |
+| REP-INV-14 | Proof-backed current, baseline burn, first full periods, no fake history/zero. |
+| REP-INV-15 | Operator correction authority, audit/fence/idempotency, source count isolation, full-population as-of correction. |
+| REP-INV-16 | Reserve exhaustion/outsider restore/correction cannot false-complete; exact rebuild, snapshot cursor and visibility fence. |
 
 Các chi tiết API ở [contract](../../services/vink-app/contracts/http/v1/reputation.md), trạng thái
 và evidence ở [registry](../development/reputation.md).

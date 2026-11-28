@@ -108,25 +108,20 @@ marginal nhưng phải chỉ rõ reference/ordering và bảo đảm bù trừ k
 log trực tiếp lên signed delta (âm có thể ngoài domain); không cộng delta làm tròn theo event.
 Growth formula/scale chưa được chọn; positivity Q17 xác định theo precision contract được duyệt.
 
-## SR-01C: eligibility và abuse review
+## SR-01C: eligibility and abuse — historical alternatives
 
-Q16=B yêu cầu gate tuổi hoặc hoạt động trước khi actor tạo reputation credit; không thay quyền
-Thấm/Ưng nguồn. Candidate age-only 7/14/30 ngày hoặc age+activity (không dùng score để mở quyền);
-age-only rẻ hơn nếu có authority timestamp, activity có nguy cơ farm và false positive, cần thêm facts.
-Không tự chọn ngưỡng; số ngày minh họa không có bằng chứng tối ưu. Gate timing candidate:
-at accepted event-time (không tự credit khi actor đủ tuổi sau đó) vs delayed maturity (cần durable
-pending/re-evaluate, explicit growth timing, chống stockpile). Không suy quyền tăng điểm vì replay.
-Audit account created_at vs principal/profile creation, verified binding và source timestamps, snapshot
-coverage và privacy. Legacy eligibility khi không có provenance phải được chốt; không fake age.
-Q18 chỉ backfill eligible facts; history cần đầy đủ source/provenance. Q14 không tự thu hồi vì suspension.
+Age-only vs activity; age gate/WorkId dedup/log not anti-collusion. Concentrated actors can
+produce same rating as many distinct actors. Privacy differencing needs tests; no report-only
+deduction. Initial alternatives retained in earlier commits.
 
-Cả ba công thức chỉ nhìn I/C: 1000 eligible votes tập trung từ 10 actors nhiều tác phẩm có thể cho
-cùng điểm với 1000 actors khác nhau nếu effective counts giống nhau. WorkId dedup chỉ chống revision
-duplicate, không chứng minh độc lập actor. Age gate không chống account farming lâu dài. Candidate
-offline/worker detection of concentration, reciprocal rings, burst; review false positives (bạn đọc
-trung thành), appeal/verified correction. Không auto trừ từ report, không AI/graph scan trong request,
-không thêm cap/unique-voter weight khi chưa owner duyệt. Privacy differencing cần test cả tổng và
-growth (raw component bị ẩn không tự chứng minh privacy).
+## Final review (28/11/2026; supersedes candidate choices)
+
+Q25–28 selected normalized log, 60:40, 1000/400, half-up once and canonical unrounded rank;
+k=10/reference=100 synthetic candidate requiring numeric qualification. G=2.4*dI+1.6*dC exact tenths,
+Q41 credit/burn machine not rating delta. Q30/42 7d principal age, held maturity current-only,
+no fake legacy. Q43 >=3 distinct net-positive actors heuristic not k-anonymity. Q40 ledger + CLI
+correction, no offline concentration report. Q44 snapshot/reserve/exact rebuild fallback.
+Prior numeric tables remain historical comparisons, not open choices or signoff.
 
 ## Evidence và giới hạn
 
@@ -138,8 +133,4 @@ deterministic Rust fixed precision. Reproduce theo biểu thức ở trên, khô
 Không dùng user data, không fit tham số, không đo correlation thực tế, không benchmark PostgreSQL.
 Chưa chạy cargo decision validate, Quint, Kani, DB hoặc HTTP. Tách model/proof và runtime evidence.
 
-Next REP-S01: audit nguồn và policy, synthetic/authorized aggregate distribution (quantiles, skew,
-correlation, sensitivity/rank reversals, new-user/specialist fairness, abuse concentration, privacy),
-golden vectors, rounding and version cutover, propose owner choices:
-(1) age/activity threshold, (2) eligibility timing/legacy, (3) growth unit, (4) shape/normalization/
-weights/scale sau calibration. Giữ formula/eligibility PENDING, không signoff/activation từ SR-01.
+Next S01: synthetic/local-only distributions, skew/sensitivity/precision/golden vectors, source coverage audit, privacy and state/correction/snapshot oracles. No prod access without separate grant. Exact payload/hash signoff pending, runtime NOT_RUN.
