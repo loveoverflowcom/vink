@@ -564,6 +564,9 @@ a {
 .vk-discussion [data-tone="adverse"] { background: var(--vk-error-container); color: var(--vk-on-error-container); }
 .vk-discussion [data-tone="success"] { background: var(--vk-success-container); color: var(--vk-on-success-container); }
 .vk-discussion [data-tone="neutral"] { background: var(--vk-surface-container-highest); color: var(--vk-on-surface-variant); }
+/* Let private Markdown bodies and their moderation actions reflow at narrow Reader widths. */
+.vk-discussion-recovered, .vk-discussion-own-card { grid-template-columns: minmax(0, 1fr); }
+.vk-discussion-own-card > *, .vk-discussion-own-chip { min-inline-size: 0; max-inline-size: 100%; }
 .vk-discussion-own-card { background: var(--vk-surface-container-low); color: var(--vk-on-surface); }
 .vk-discussion-own-head .vk-ui-heading,
 .vk-discussion-own-head p { margin: 0; }
@@ -2076,7 +2079,7 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index, .vk-me) { scrol
 }
 
 /* Own comment bodies preserve authored lines at every text size. */
-.vk-discussion-own-body { white-space: pre-wrap; overflow-wrap: anywhere; }
+.vk-discussion-own-body { justify-self: stretch; white-space: pre-wrap; overflow-wrap: anywhere; }
 
 .vk-discovery #community-stream:focus-visible {
   outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring);

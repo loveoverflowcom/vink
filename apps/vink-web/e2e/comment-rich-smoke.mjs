@@ -109,7 +109,7 @@ export async function richDiscussion(page,{args,check,rootId,workId,browserConte
           const outside = overflow ? [...document.querySelectorAll('main *')].filter(el => {
             const r = el.getBoundingClientRect();
             return r.width && r.right > innerWidth && !el.closest('[hidden]');
-          }).slice(0, 12).map(el => [el.tagName, el.className, Math.round(el.getBoundingClientRect().right)]) : [];
+          }).slice(0, 12).map(el => [el.tagName, el.className, el.getBoundingClientRect().x, el.getBoundingClientRect().width, el.parentElement.className]) : [];
           return {overflow, pageWidth:root.scrollWidth, viewport:innerWidth, outside};
         })()`);
         check(!layout.overflow, 'horizontal geometry ' + width + '/' + scale + '/' + theme + ' ' + JSON.stringify(layout));
