@@ -3469,6 +3469,18 @@ async function timestampPresentation(page) {
       await page.goto(args.base+'/ban-viet');
       await page.waitFor("document.querySelector('.vk-draft-row time')?.textContent==='2/1/1890'", 'historical 00:09:21 offset crosses midnight');
     } finally { await historical.disable(); }
+    const unavailable = await page.send('Page.addScriptToEvaluateOnNewDocument',{source:`{
+      const format = Intl.DateTimeFormat;
+      Intl.DateTimeFormat = function(locale,...rest) {
+        if (locale==='vi-VN') throw new RangeError('viewer formatter unavailable');
+        return new format(locale,...rest);
+      };
+      Intl.DateTimeFormat.prototype = format.prototype;
+    }`});
+    try {
+      await page.goto(path);
+      await page.waitFor(`document.documentElement.dataset.hydrated==='true' && document.querySelector('${selected}')?.textContent.endsWith(' UTC')`, 'unavailable viewer formatter falls back to labelled UTC');
+    } finally { await page.send('Page.removeScriptToEvaluateOnNewDocument',{identifier:unavailable.identifier}); }
     await page.goto(args.base+'/ban-viet/'+SAMPLE_WORK);
     await page.waitFor(EDITOR_READY,'actual editor before the presentation tick');
     await holdEditorDebounce(page);
@@ -7216,6 +7228,24 @@ try {
   }
   else if (args.phase === 'discussion') await discussionPhase(page);
   else if (args.phase === 'appearance-shell') await appearanceShellPhase(page);
+  else if (args.phase === 'time-surfaces') {
+    await page.viewport(1440, 900);
+    await page.send('Emulation.setTimezoneOverride', {timezoneId:'America/Los_Angeles'});
+    await page.send('Emulation.setEmulatedMedia', {features:[LIGHT_SYSTEM]});
+    await page.send('Page.addScriptToEvaluateOnNewDocument', {source:"Date.now = () => Date.parse('2026-11-28T08:00:00Z')"});
+    const gate = new DraftGate(page);
+    gate.list = {body:{drafts:[
+      {work_id:SAMPLE_WORK,title:'Mùa gió chướng',version:2,updated_at:'2026-11-27T18:30:00Z'},
+      {work_id:'88888888-8888-4888-8888-000000000010',title:'Hiên nhà còn nắng',version:1,updated_at:'2026-11-28T07:57:00Z'},
+    ]}};
+    await gate.enable();
+    try {
+      await page.goto(args.base+'/ban-viet');
+      await page.waitFor("document.querySelectorAll('.vk-draft-row time').length===2 && !document.querySelector('.vk-draft-row time').innerText.includes('UTC')", 'Desk local presentation');
+      await page.capture('time-desk',{scenario:'#619',target:'.vk-draft-row time'});
+    } finally { await gate.disable(); }
+    await notifications(page,{args,check});
+  }
   else if (args.phase === 'reader-saved-time') {
     await page.viewport(1440, 900);
     await page.send('Emulation.setTimezoneOverride', {timezoneId:'Asia/Ho_Chi_Minh'});

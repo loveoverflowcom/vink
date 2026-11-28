@@ -518,6 +518,19 @@ export async function notifications(page, { args, check, checkBottomNavigation, 
     boundary: 'Chrome-CDP-dom-override-geometry', skipSceneValidation: true,
   });
 
+  if (args.phase === 'time-surfaces') {
+    controlled.rows.slice(0,3).forEach((row,index) => {
+      row.updated_at = ['2026-11-28T07:57:00Z','2026-11-27T18:30:00Z','2026-10-01T13:00:00Z'][index];
+    });
+    await page.goto(args.base+'/thong-bao');
+    await page.waitFor("document.querySelectorAll('main .vk-notif-row').length===3", 'same three notification groups');
+    await page.capture('time-inbox',{scenario:'#619',target:'main .vk-notif-row'});
+    await page.goto(`${args.base}/thong-bao/nhan-xet/${adverse.comment_id}/${adverse.moderation_version}`);
+    await page.waitFor("document.querySelector('.vk-notif-decision__panel')?.textContent.includes('Lý do riêng của nhận xét')", 'comment moderation decision');
+    await page.capture('time-decision',{scenario:'#619',target:'.vk-notif-decision__panel'});
+    return;
+  }
+
   if (args['notification-baseline'] === 'yes') {
     await page.goto(`${args.base}/`);
     await page.waitFor(mounted, 'notification shell mounted');
