@@ -83,13 +83,33 @@ export async function editorCoreContracts(page, { args, check, sampleWork }) {
     await gate.held();
     await page.waitFor("document.querySelector('[data-testid=editor-body][data-state=loading]')", 'loading editor host');
     if (leave) {
-      await page.eval("window.pendingHost=document.querySelector('[data-testid=editor-body]');document.querySelector('#back-to-desk').click()");
-      await page.waitFor("location.pathname === '/ban-viet' && window.pendingHost && !pendingHost.isConnected", 'client navigation disposed the original editor host');
+      await page.eval(`(() => {
+        const host = document.querySelector('[data-testid=editor-body]');
+        window.pendingProbe = { host, mounted: false, initialChildren: [...host.childNodes].map(n => n.nodeName) };
+        const observer = new MutationObserver(records => {
+          for (const record of records) {
+            if (record.type === 'attributes' || [...record.addedNodes].some(n =>
+              n.matches?.('.cm-editor') || n.querySelector?.('.cm-editor'))) pendingProbe.mounted = true;
+          }
+        });
+        observer.observe(host, { childList: true, attributes: true, attributeFilter: ['data-vink-editor'] });
+        pendingProbe.observer = observer;
+        document.querySelector('#back-to-desk').click();
+      })()`);
+      await page.waitFor("location.pathname === '/ban-viet' && window.pendingProbe && !pendingProbe.host.isConnected", 'client navigation disposed the original editor host');
     }
     await gate.finish(!leave, true);
     if (leave) {
-      check(await page.eval("!pendingHost.firstChild && !pendingHost.hasAttribute('data-vink-editor') && !document.querySelector('.cm-editor')"),
-        'late import after the Desk owner left creates no detached or connected view');
+      const result = await page.eval(`(() => {
+        const {host, mounted, initialChildren, observer} = pendingProbe;
+        observer.disconnect();
+        delete window.pendingProbe;
+        return {mounted, initialChildren, finalChildren: [...host.childNodes].map(n => n.nodeName),
+          detachedViews: host.querySelectorAll('.cm-editor').length,
+          connectedViews: document.querySelectorAll('.cm-editor').length, marked: host.hasAttribute('data-vink-editor')};
+      })()`);
+      check(!result.mounted && !result.marked && !result.detachedViews && !result.connectedViews,
+        'late import after navigation creates no transient, detached or connected view: ' + JSON.stringify(result));
     } else {
       await page.waitFor("document.querySelector('[data-testid=editor-body][data-state=failed]')", 'module failure reaches the Product body state');
       check(await page.eval("!document.querySelector('.cm-editor')"), 'failed module never exposes an editable partial body');
