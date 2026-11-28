@@ -1197,6 +1197,17 @@ export async function standalone(page, {args, check, openPage}) {
     && !document.querySelector('main a[href="/toi"], #notification-page-title')`),
     'CSR Inbox keeps its URL and has no guest-only account prompt');
 
+  await page.goto(base + '/ban-viet');
+  await page.waitFor(q('.vk-desk-access--guest'), '#612 standalone resolves the guest Desk');
+  check(await page.eval(`Boolean(document.querySelector('#desk-sign-in.vk-ui-button--filled')) &&
+    Boolean(document.querySelector('.vk-desk-access--guest a.vk-ui-button--tonal > svg[data-icon=explore]:first-child')) &&
+    !performance.getEntriesByType('resource').some(e =>
+      ['/api/v1/author/works', '/api/v1/drafts'].includes(new URL(e.name).pathname))`),
+    '#612 standalone guest actions render without any private list request');
+  await page.click('#desk-sign-in');
+  await page.waitFor(`location.pathname === '/toi' && new URLSearchParams(location.search).get('next') === '/ban-viet' && ${q(LOGIN)}`,
+    '#612 standalone guest sign-in preserves the Desk return target');
+
   await seedLegacyAppearance(page);
   await firstPaintAppearance(page, base, check, 'csr');
   await page.goto(base + '/toi');

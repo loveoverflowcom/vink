@@ -30,7 +30,7 @@ use crate::pages::work_info::TagLoad;
 use crate::tag_state::{TagStatus, TagTicket};
 use crate::ui::{
     adapters,
-    empty_state::{EmptyArtwork, EmptyState},
+    empty_state::{EmptyArtwork, EmptyState, ExploreRecovery},
     patterns::AuthorWorkRow,
 };
 use vink_markdown_text::submission::{SubmissionBody, SubmissionIssues, check_submission};
@@ -102,20 +102,24 @@ fn DeskSession(session: crate::account::Session) -> impl IntoView {
         match session.standing.get() {
         Standing::Unknown => view! { <DeskLoading /> }.into_any(),
         Standing::Active(_) if session.checking() => view! { <DeskLoading /> }.into_any(),
-        Standing::Anonymous if sign_in_open => view! {
-            <DeskAccess title="Đăng nhập để mở Bàn viết" message="Viết và mở bản thảo riêng của bạn.">
-                <a id="desk-sign-in" class=ButtonVariant::Filled.classes() href=sign_in>
-                    <Icon name=IconName::Lock size=IconSize::Small />
-                    <span class="vk-ui-button__label">"Đăng nhập"</span>
-                </a>
-                <vink_ui::Link href="/" variant=vink_ui::LinkVariant::Standalone>"Khám phá tác phẩm"</vink_ui::Link>
-            </DeskAccess>
-        }.into_any(),
-        Standing::Anonymous => view! {
-            <DeskAccess title="Vink chưa mở đăng nhập" message="Trong lúc này, bạn có thể đọc các tác phẩm công khai.">
-                <a class=ButtonVariant::Filled.classes() href="/">"Khám phá tác phẩm"</a>
-            </DeskAccess>
-        }.into_any(),
+        Standing::Anonymous => {
+            let (title, message) = if sign_in_open {
+                ("Đăng nhập để mở Bàn viết", "Không gian riêng để viết và lưu bản thảo.")
+            } else {
+                ("Vink chưa mở đăng nhập", "Trong lúc này, bạn có thể đọc các tác phẩm công khai.")
+            };
+            view! {
+                <DeskAccess guest=true title message>
+                    {sign_in_open.then(|| view! {
+                        <a id="desk-sign-in" class=ButtonVariant::Filled.classes() href=sign_in>
+                            <Icon name=IconName::Lock size=IconSize::Small />
+                            <span class="vk-ui-button__label">"Đăng nhập"</span>
+                        </a>
+                    })}
+                    <ExploreRecovery label="Khám phá tác phẩm" />
+                </DeskAccess>
+            }.into_any()
+        },
         Standing::NeedsPrincipal => view! {
             <DeskAccess title="Đặt bút danh để bắt đầu" message="Hoàn tất bút danh trong Tài khoản để viết và mở bản thảo của bạn.">
                 <a id="desk-pen-name" class=ButtonVariant::Filled.classes() href=sign_in>"Đặt bút danh"</a>
@@ -139,9 +143,14 @@ fn DeskSession(session: crate::account::Session) -> impl IntoView {
 }
 
 #[component]
-fn DeskAccess(title: &'static str, message: &'static str, children: Children) -> impl IntoView {
+fn DeskAccess(
+    title: &'static str,
+    message: &'static str,
+    #[prop(optional)] guest: bool,
+    children: Children,
+) -> impl IntoView {
     view! {
-        <div class="vk-desk-access" data-testid="desk-access">
+        <div class="vk-desk-access" class:vk-desk-access--guest=guest data-testid="desk-access">
             <EmptyState icon=IconName::Lock heading=HeadingLevel::H2 title message>
                 {children()}
             </EmptyState>

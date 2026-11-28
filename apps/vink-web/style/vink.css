@@ -1779,6 +1779,10 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index, .vk-me) { scrol
   background: var(--vk-primary);
   color: var(--vk-on-primary);
 }
+.vk-profile-modes .vk-explore-modes a[aria-current="page"][aria-describedby] {
+  background: var(--vk-action-tonal-container);
+  color: var(--vk-action-tonal-content);
+}
 .vk-profile-modes .vk-explore-modes a[aria-current="page"]::after { display: none; }
 .vk-profile-modes__compact { display: none; }
 @container (inline-size < 22rem) {
@@ -1794,7 +1798,11 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index, .vk-me) { scrol
     background: var(--vk-surface-container-highest);
     cursor: pointer;
   }
-  .vk-profile-modes__compact summary::after { content: "▾"; }
+  .vk-profile-modes__compact summary[data-saved] {
+    background: var(--vk-action-tonal-container);
+    color: var(--vk-action-tonal-content);
+  }
+  .vk-profile-modes__compact summary::after { content: "▾" / ""; }
   .vk-profile-modes__compact[open] .vk-explore-modes { margin-block-start: var(--vk-space-2); }
 }
 .vk-saved-section { margin-block-start: calc(var(--vk-space-8) + var(--vk-space-2)); }
@@ -1806,7 +1814,6 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index, .vk-me) { scrol
   clip-path: inset(50%);
   white-space: nowrap;
 }
-#saved-privacy-note { color: var(--vk-on-surface-variant); display: flex; align-items: center; gap: var(--vk-space-2); }
 .vk-saved-list {
   display: grid;
   gap: 8px;
@@ -2139,6 +2146,30 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index, .vk-me) { scrol
 .vk-main :is(.vk-state-page, .vk-state-page > .vk-state-slot) > .vk-empty-state:not(.vk-empty-state--compact, .vk-empty-state--region) { margin-block: auto; }
 .vk-desk--index > :is(.vk-desk-access, .vk-desk-loading),
 .vk-draft-list > .vk-desk-loading { margin-block: auto; }
+.vk-desk-access--guest {
+  inline-size: min(100%, 28rem, 480px);
+  align-self: center;
+  border-radius: var(--vk-radius-xl);
+  background-color: var(--vk-surface-container-high);
+}
+.vk-desk-access--guest .vk-empty-state {
+  padding: clamp(24px, 6vw, 32px);
+}
+.vk-desk-access--guest .vk-empty-state__title { font-family: var(--vk-font-ui); }
+.vk-desk-access--guest .vk-empty-state__icon {
+  background-color: var(--vk-surface-container-highest);
+}
+.vk-desk-access--guest .vk-empty-state__actions {
+  --vk-ui-control-radius: var(--vk-radius-full);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  inline-size: 100%;
+  gap: var(--vk-space-2);
+}
+.vk-desk-access--guest .vk-ui-button {
+  min-block-size: 48px;
+  padding-inline: min(var(--vk-space-4), 16px);
+}
 /* Only real rows need room below the error. Empty retained results still center the state. */
 .vk-draft-list:has(> #draft-results:not(:empty)) > .vk-desk-list-error--retained { margin-block: 0; }
 /* Flex keeps the margins block layout used to collapse, so a nav without links must not offset it. */

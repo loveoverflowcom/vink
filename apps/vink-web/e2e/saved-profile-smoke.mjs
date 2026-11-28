@@ -1,6 +1,7 @@
 import { STANDING, cookies, fabricate, fill, q, signOut } from './auth-smoke.mjs';
 import { captureRequest, holdAnswer } from './auth-browser-network.mjs';
 import { matchesAXButton } from './visual-evidence.mjs';
+import { tap } from './work-view-navigation.mjs';
 
 const WORK = '33333333-3333-4333-8333-333333333333';
 const READER = '/tac-pham/' + WORK;
@@ -21,7 +22,7 @@ async function documentFacts(page, path) {
   return page.eval(`fetch(${JSON.stringify(path)}).then(async r => {
     const html = await r.text();
     const dom = new DOMParser().parseFromString(html, 'text/html');
-    return {status:r.status, privateMarkup:!!dom.querySelector('#profile-modes,#saved-list,#saved-privacy-note')
+    return {status:r.status, privateMarkup:!!dom.querySelector('#profile-modes,#saved-list,#profile-saved-privacy')
       || /href="[^"]*\\/da-luu"/.test(html), notFound:dom.querySelector('${NOT_FOUND}')?.textContent.trim() ?? null};
   })`);
 }
@@ -59,7 +60,8 @@ export async function savedProfileJourney(page, { args, check, ssr = false, lost
     '#389 Chrome AX identifies a separate unsave button with the readable title');
   const list = await read(page, LIST);
   check(list.status === 200 && list.cache === 'private, no-store' && list.body.items.some(row => row.work_id === WORK)
-    && !('total' in list.body) && await page.eval(`${q('#profile-modes [aria-current=page]')}?.textContent.trim() === 'Đã lưu'`),
+    && !('total' in list.body) && await page.eval(`${q('#profile-modes [aria-current=page]')}?.textContent.trim() === 'Đã lưu'
+      && document.querySelector('#saved-tail').textContent.trim()==='' && !document.querySelector('#saved-privacy-note')`),
     '#389 owner list response is no-store and has no total, and navigation marks the current page');
 
   // Replace only saved_at on the real membership response to distinguish calendar zones.
@@ -96,7 +98,20 @@ export async function savedProfileJourney(page, { args, check, ssr = false, lost
   await page.waitFor(`${q('#profile-modes')} && location.pathname === ${JSON.stringify(publicPath)}`, '#389 owner can move to Tác phẩm');
   await chooseMode('saved');
   await page.waitFor(q(open), '#389 owner can open Đã lưu from the public profile');
-  if (!ssr) await geometry(page, check);
+  await savedModeAccessibility(page, check, '#profile-mode-saved');
+  if (!ssr) {
+    await geometry(page, check);
+    await page.viewport(320, 900);
+    const disclosure = '#profile-modes summary';
+    await savedModeAccessibility(page, check, disclosure);
+    await page.eval("document.querySelector('#profile-modes summary').focus()");
+    await page.key('Enter');
+    await page.waitFor(q('#profile-modes details[open]'), '#612 Enter expands the compact profile selector');
+    await savedModeAccessibility(page, check, '#profile-mode-saved-compact');
+    await tap(page, disclosure);
+    await page.waitFor(`!${q('#profile-modes details[open]')}`, '#612 tapping the compact selector closes it');
+    await page.viewport(1024, 900);
+  }
 
   const beforeTop = await page.eval(`${q(open)}.focus(); ${q(open)}.getBoundingClientRect().top`);
   await page.key('Enter');
@@ -130,15 +145,30 @@ export async function savedProfileJourney(page, { args, check, ssr = false, lost
   return { path, publicPath };
 }
 
+async function savedModeAccessibility(page, check, selector) {
+  const { root } = await page.send('DOM.getDocument');
+  const { nodeId } = await page.send('DOM.querySelector', { nodeId: root.nodeId, selector });
+  const { nodes: [mode] } = await page.send('Accessibility.getPartialAXTree', { nodeId, fetchRelatives: false });
+  check(mode?.name?.value === 'Đã lưu' && mode?.description?.value === 'Danh sách riêng tư, chỉ bạn xem được.'
+    && await page.eval(`(() => {
+      const el = document.querySelector(${JSON.stringify(selector)});
+      return (el.tagName==='SUMMARY' || el.getAttribute('aria-current')==='page') &&
+        el.firstElementChild.matches('svg[data-icon=lock][aria-hidden=true]') &&
+        !el.querySelector('svg[data-icon=check]');
+    })()`), '#612 names the Saved control and describes privacy in Chrome AX: ' + selector);
+}
+
 async function geometry(page, check) {
   const bad = [];
-  for (const width of [320, 390, 1024]) {
+  for (const width of [320, 390, 834, 1440]) {
     for (const theme of ['light', 'dark']) {
       for (const scale of [100, 150, 200]) {
-        await page.viewport(width, 900);
+        await page.viewport(width, width === 834 ? 1112 : 900);
         const facts = await page.eval(`(async () => {
           document.documentElement.dataset.theme = '${theme}';
-          document.documentElement.style.fontSize = '${scale}%';
+          document.documentElement.style.fontSize = ${scale === 200 ? "'200%'" : "''"};
+          if (${scale} === 150) document.documentElement.dataset.text = '150';
+          else delete document.documentElement.dataset.text;
           await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
           const a = ${q(open)}.getBoundingClientRect(), b = ${q(remove)}.getBoundingClientRect();
           return {fits:document.scrollingElement.scrollWidth <= innerWidth + 1 && b.right <= innerWidth + 1,
@@ -147,16 +177,16 @@ async function geometry(page, check) {
         })()`);
         if (!(facts.fits && facts.sizing && facts.avatar)) bad.push([width, theme, scale, facts]);
         if ((width === 390 && scale === 100) || (width === 320 && theme === 'dark' && scale === 200) ||
-            (width === 1024 && theme === 'light' && scale === 100)) {
+            (width === 834 && theme === 'light' && scale === 100)) {
           if (width === 320) {
             await page.eval("document.querySelector('#saved-list').scrollIntoView({block:'center',behavior:'instant'})");
           }
-          await page.capture(`saved-profile-${width}-${theme}-${scale}`, {requiredTargets:['#saved-list']});
+          await page.capture(`saved-profile-${width}-${theme}-${scale}`, {requiredTargets:['#profile-modes', '#saved-list']});
         }
       }
     }
   }
-  check(bad.length === 0, '#389 responsive geometry across 18 viewport, theme and text-size combinations ' + JSON.stringify(bad));
+  check(bad.length === 0, '#389 responsive geometry across 24 viewport, theme and text-size combinations ' + JSON.stringify(bad));
   await page.eval("document.documentElement.style.fontSize = ''; document.documentElement.dataset.theme = 'light'");
   await page.viewport(1024, 900);
 }
@@ -176,6 +206,9 @@ export async function savedProfilePrivacy(page, { args, check, openPage, paths, 
       '#585 public works retain a named section with the shorter heading');
     await outsider.goto(base + path);
     await outsider.waitFor(q(NOT_FOUND), '#389 guest direct destination returns ordinary NotFound');
+    check(await outsider.eval(`${q(NOT_FOUND)}.querySelector('a[href="/"].vk-ui-button--tonal')
+      ?.firstElementChild.matches('svg[data-icon=explore][aria-hidden=true]') &&
+      !${q('#profile-saved-privacy')}`), '#612 denied Saved uses the shared leading Explore icon');
     check(outsiderCalls.count() === 0, '#389 guest never requests the private list');
     await outsider.goto(base + '/toi');
     await outsider.waitFor(`${STANDING} === 'anonymous'`, '#389 CSR guest account form');

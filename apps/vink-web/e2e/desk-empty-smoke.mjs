@@ -1,6 +1,7 @@
 // #259: use the existing CDP runner and private-list transport gate. These fixtures
 // prove presentation/interaction, not database search or publication semantics.
 import { wakeDesk } from './desk-lifecycle.mjs';
+import { tap } from './work-view-navigation.mjs';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
@@ -22,11 +23,15 @@ export async function deskGuest(page, {args, check}, signInOpen) {
     await page.goto(path);
     await page.waitFor("document.querySelector('[data-testid=desk-access]') && document.querySelector('#navigation-account a[href=\"/toi\"]')", '#308 confirmed guest Desk and rail');
     const title = signInOpen ? 'Đăng nhập để mở Bàn viết' : 'Vink chưa mở đăng nhập';
+    const description = signInOpen ? 'Không gian riêng để viết và lưu bản thảo.' :
+      'Trong lúc này, bạn có thể đọc các tác phẩm công khai.';
+    const explore = '.vk-desk-access .vk-empty-state__actions a[href="/"]';
     check(await page.eval(`document.querySelector('.vk-desk-access h2').textContent===${JSON.stringify(title)}
       && !document.querySelector('#draft-search, #draft-sort, #retry-drafts, #create-draft')
       && !document.querySelector('#draft-list-title') && document.querySelectorAll('#desk h1').length===1
       && Boolean(document.querySelector('#desk-sign-in'))===${signInOpen}
-      && document.querySelector('.vk-desk-access .vk-empty-state__actions a[href="/"]')?.textContent==='Khám phá tác phẩm'
+      && document.querySelector('.vk-desk-access .vk-empty-state__message')?.textContent===${JSON.stringify(description)}
+      && document.querySelector(${JSON.stringify(explore)})?.textContent==='Khám phá tác phẩm'
       && document.querySelectorAll('.vk-desk-access .vk-empty-state__actions a').length===${signInOpen ? 2 : 1}`),
       '#308 guest actions reflect this deployment’s sign-in capability');
     if (signInOpen) {
@@ -41,21 +46,43 @@ export async function deskGuest(page, {args, check}, signInOpen) {
     }
     const label = signInOpen ? 'Đăng nhập' : 'Tài khoản';
     const { root } = await page.send('DOM.getDocument');
+    const { nodeId: exploreNode } = await page.send('DOM.querySelector', { nodeId: root.nodeId, selector: explore });
+    const { nodes: [exploreLink] } = await page.send('Accessibility.getPartialAXTree', {
+      nodeId: exploreNode, fetchRelatives: false,
+    });
+    check(exploreLink?.role.value === 'link' && exploreLink.name?.value === 'Khám phá tác phẩm',
+      '#612 the Explore icon is decorative and the link has its visible name');
+    check(await page.eval(`(() => {
+      const link = document.querySelector(${JSON.stringify(explore)});
+      const icon = link.firstElementChild;
+      return link.classList.contains('vk-ui-button--tonal') &&
+        icon.matches('svg[data-icon=explore][aria-hidden=true]') &&
+        icon.getBoundingClientRect().right <= link.lastElementChild.getBoundingClientRect().left;
+    })()`), '#612 both sign-in gates use the leading Explore catalog icon on a tonal link');
     for (const width of [320,390,834,1440]) for (const theme of ['light','dark']) for (const scale of [100,150,200]) {
       const navSelector = (width<760 ? '#bottom-navigation' : '#navigation-account')+' a[data-destination=me]';
-      await page.viewport(width, width<760 ? 844 : 760);
+      await page.viewport(width, width < 760 ? 844 : width === 834 ? 1112 : 760);
       await page.eval(`document.documentElement.dataset.theme='${theme}'; document.documentElement.style.fontSize='${scale}%';
         document.fonts.ready.then(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))))`);
       const layout = await page.eval(`(() => {
         const box = selector => document.querySelector(selector).getBoundingClientRect();
         const panel = document.querySelector('.vk-desk-access'), panelStyle=getComputedStyle(panel);
         const nav = document.querySelector(${JSON.stringify(navSelector)});
-        const actions = [...panel.querySelectorAll('a')].map(a=>a.getBoundingClientRect());
+        const controls = [...panel.querySelectorAll('a')];
+        const actions = controls.map(a=>a.getBoundingClientRect());
+        const panelBounds = panel.getBoundingClientRect();
         return {
           centerDelta:(box('.vk-desk-access').top+box('.vk-desk-access').bottom
             -box('#heading').bottom-24-box('.vk-main').bottom+parseFloat(getComputedStyle(document.querySelector('.vk-main')).paddingBottom))/2,
           border:panelStyle.borderWidth, width:document.documentElement.scrollWidth,
-          transparent:panelStyle.backgroundColor==='rgba(0, 0, 0, 0)',
+          tonal:panelStyle.backgroundColor!=='rgba(0, 0, 0, 0)' &&
+            panelStyle.backgroundColor!==getComputedStyle(document.body).backgroundColor &&
+            panelStyle.backgroundImage==='none',
+          radius:panelStyle.borderTopLeftRadius, panelWidth:panelBounds.width,
+          stacked:actions.length===1 || actions[0].bottom<=actions[1].top,
+          fullWidth:actions.every(r=>Math.abs(r.width-actions[0].width)<1) &&
+            actions[0].width >= panelBounds.width-65,
+          labelsFit:controls.every(a=>a.lastElementChild.scrollWidth<=a.lastElementChild.clientWidth+1),
           nav:nav.textContent.trim(),
           target:actions.every(r=>r.height>=48 && r.width>=48 && r.left>=0 && r.right<=innerWidth),
         };
@@ -63,27 +90,60 @@ export async function deskGuest(page, {args, check}, signInOpen) {
       const { nodeId } = await page.send('DOM.querySelector', { nodeId: root.nodeId, selector: navSelector });
       const { nodes: [guestLink] } = await page.send('Accessibility.getPartialAXTree', { nodeId, fetchRelatives: false });
       const name = guestLink?.role.value==='link' ? guestLink.name?.value : undefined;
-      check(layout.width<=width && layout.transparent && layout.border==='0px' && layout.target &&
+      check(layout.width<=width && layout.tonal && layout.border==='0px' && layout.radius==='28px' &&
+        layout.panelWidth<=480 && layout.target && layout.stacked && layout.fullWidth && layout.labelsFit &&
         layout.nav===label && name===label &&
         (scale===200 || Math.abs(layout.centerDelta)<=2),
         '#308 guest Desk geometry/labels '+[width,theme,scale].join('/')+' '+JSON.stringify({ ...layout, name }));
-      if (width===390 || width===1440 && scale===100) {
+      if (width===834 && scale===100 || width===320 && scale===200) {
         await page.capture('desk-guest-'+[signInOpen?'open':'closed',width,theme,scale].join('-'), {
-          scenario:'#308-guest-desk', boundary:'real-App-session',
+          scenario:'#612-guest-desk', boundary:'real-App-session', requiredTargets:['.vk-desk-access--guest', explore],
         });
       }
       if (width<=390 && scale===200) {
         check(await page.eval(`(() => {
-          const cta=document.querySelector('.vk-desk-access .vk-empty-state__actions a');
-          cta.scrollIntoView({block:'center'});
-          const rect=cta.getBoundingClientRect(), bar=document.querySelector('#bottom-navigation').getBoundingClientRect();
-          const hit=document.elementFromPoint(rect.left+rect.width/2, rect.top+rect.height/2);
-          return rect.top>=0 && rect.bottom<=bar.top+1 && cta.contains(hit);
-        })()`), '#308 guest primary action scrolls clear of the bottom navigation '+width+'/'+theme);
+          const actions = [...document.querySelectorAll('.vk-desk-access .vk-empty-state__actions a')];
+          const bar = document.querySelector('#bottom-navigation').getBoundingClientRect();
+          return actions.every(cta => {
+            cta.scrollIntoView({block:'center', behavior:'instant'});
+            const rect = cta.getBoundingClientRect();
+            const hit = document.elementFromPoint(rect.left+rect.width/2, rect.top+rect.height/2);
+            return rect.top>=0 && rect.bottom<=bar.top+1 && cta.contains(hit);
+          });
+        })()`), '#612 both guest actions scroll clear of the bottom navigation '+width+'/'+theme);
+        if (width===320) {
+          await page.capture('desk-guest-actions-'+[signInOpen?'open':'closed',width,theme,scale].join('-'), {
+            scenario:'#612-guest-desk-actions', boundary:'real-App-session', requiredTargets:[explore],
+          });
+        }
         await page.eval('scrollTo(0,0)');
       }
     }
-    await page.eval("document.documentElement.style.fontSize=''; delete document.documentElement.dataset.theme; document.querySelector('#navigation-primary a[href=\"/ban-viet\"]').focus()");
+    await page.eval("document.documentElement.style.fontSize=''; delete document.documentElement.dataset.theme");
+    await page.viewport(320, 844);
+    await page.eval(`(async () => {
+      const link = document.querySelector(${JSON.stringify(explore)});
+      link.scrollIntoView({block:'center', behavior:'instant'});
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    })()`);
+    check(await page.eval(`(() => {
+      const link = document.querySelector(${JSON.stringify(explore)});
+      const r = link.getBoundingClientRect();
+      return link.contains(document.elementFromPoint(r.x+r.width/2, r.y+r.height/2));
+    })()`), '#612 Explore is the touch target after mobile reflow');
+    await tap(page, explore);
+    await page.waitFor("location.pathname==='/' && document.querySelector('.vk-discovery')", '#612 tapping Explore opens the public route');
+    await page.eval('history.back()');
+    await page.waitFor("location.pathname==='/ban-viet' && document.querySelector('.vk-desk-access--guest')", '#612 Back returns to the guest Desk');
+    await page.viewport(1440, 760);
+    if (signInOpen) {
+      await page.eval("document.querySelector('#desk-sign-in').focus()");
+      await page.key('Enter');
+      await page.waitFor("location.pathname==='/toi' && new URLSearchParams(location.search).get('next')==='/ban-viet' && document.querySelector('#password-login')", '#612 guest sign-in opens the form with the Desk return target');
+      await page.eval('history.back()');
+      await page.waitFor("location.pathname==='/ban-viet' && document.querySelector('#desk-sign-in')", '#612 Back returns from sign-in to the guest Desk');
+    }
+    await page.eval("document.querySelector('#navigation-primary a[href=\"/ban-viet\"]').focus()");
     const guestIcons = scope => page.eval(`(() => {
       const root = document.querySelector(${JSON.stringify(scope)});
       const get = key => {

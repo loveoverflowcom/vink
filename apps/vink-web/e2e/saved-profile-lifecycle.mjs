@@ -106,8 +106,11 @@ export async function savedProfileLifecycle(page, { args, check, paths }) {
     check(await append.held() === 200, '#389 holds the real cursor page before testing transport failure');
     await append.finish(true, true);
     await page.waitFor(`${count(20)} && ${q('#saved-more')}?.textContent.trim() === 'Thử lại'`, '#389 append failure keeps the current page');
-    await page.click('#saved-more');
+    await page.eval("document.querySelector('#saved-more').focus()");
+    await page.key('Enter');
     await page.waitFor(`${count(records.length - 1)} && ${q(open(secondPage.id))}`, '#389 cursor retry appends each remaining row once');
+    await page.waitFor(`document.activeElement?.id === 'saved-tail' &&
+      ${q('#saved-tail')}.textContent.trim() === ''`, '#612 the exhausted list keeps the keyboard focus target without footer copy');
 
     await page.click(open(secondPage.id));
     await page.waitFor(`location.pathname === '/tac-pham/${secondPage.id}' && ${q('#reader-paper')}`, '#389 opens a second-page work');

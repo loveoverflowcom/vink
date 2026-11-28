@@ -25,9 +25,9 @@ Hồ sơ /@handle
     khách/người khác → Tác phẩm công khai
     đúng chủ → nav “Hồ sơ của tôi” → Tác phẩm | Đã lưu (link, aria-current=page)
   /@handle/da-luu (đúng chủ)
-    “Chỉ mình bạn thấy danh sách này.”
+    Đã lưu có icon khóa và mô tả riêng tư trong cây trợ năng (cả menu gọn).
     #saved-list (ul) → li → liên kết bài nếu đọc được → nút Bỏ lưu độc lập
-    #saved-tail → Xem thêm | tiến trình | lỗi và Thử lại | Đã hết danh sách
+    #saved-tail → Xem thêm | tiến trình | lỗi và Thử lại; giữ đích focus sau trang cuối
 ```
 
 Ở cả CSR và SSR, xác nhận phiên và chủ hồ sơ trước khi tải hoặc hiện vùng riêng. Khách/người khác mở URL tab thấy NotFound giống đường dẫn không tồn tại. Hồ sơ công khai và nội dung SSR không chứa tab, link, count hay dữ liệu riêng. Khi phiên đổi, xóa vùng riêng, cả trang đã tải lẫn phản hồi cũ.
@@ -54,7 +54,7 @@ Chỉ đúng chủ thấy hai chế độ cùng vị trí tiêu đề “Tác ph
 | Đọc được | Một cột thẻ cách 8 px. “{Thể loại} · lưu {dd/mm/yyyy}” (thiếu thể loại chỉ hiện ngày lưu), nhan đề, bút danh và @handle nếu có quyền. Link mở bài ≥ 44 px; nút Bỏ lưu 48 × 48 px là phần tử anh em của link, tên “Bỏ lưu: {nhan đề}”. |
 | Ẩn / tác giả hoặc tài khoản tác giả đã xóa | Icon + đúng câu “Nội dung đã được ẩn” / “Nội dung đã được tác giả xoá” + Bỏ lưu với tên truy cập trung tính. Không ngày, liên kết đọc hay metadata. Admin gỡ/missing không chiếm hàng. Công khai lại thì chiếu lại như PRD. |
 | Trống / tải lần đầu | Chỉ sau trang thành công rỗng mới hiện “Chưa lưu bài nào.”, hướng dẫn “Bấm Lưu ở cuối một tác phẩm để đọc lại sau ở đây.” và “Khám phá tác phẩm”. Trong khi tải, skeleton sau 300 ms, “Vẫn đang tải…” sau 8 s. Lỗi đọc lần đầu có Thử lại. |
-| Tải thêm | Giữ hàng, focus và vị trí cuộn. “Đang tải thêm…”; khi lỗi “Chưa tải thêm được. Các bài đã tải vẫn ở nguyên.” + “Thử lại”. Cuối chuỗi hiện “Đã hết danh sách”. |
+| Tải thêm | Giữ hàng, focus và vị trí cuộn. “Đang tải thêm…”; khi lỗi “Chưa tải thêm được. Các bài đã tải vẫn ở nguyên.” + “Thử lại”. Khi hết trang, danh sách kết thúc ở hàng cuối và giữ đích focus của thao tác tải thêm (#612). |
 | Bỏ lưu | Pending trong nút, giữ hàng tới ACK. Lỗi “Chưa bỏ lưu được. Bài vẫn nằm trong danh sách.”; mất ACK “Chưa xác nhận được.” + “Kiểm tra lại”. Sau ACK chuyển focus đến link hoặc nút còn dùng được ở hàng kế, rồi hàng trước hoặc tiêu đề trống. Báo “Đã bỏ lưu “{nhan đề}”.” nếu còn được đọc, nếu không “Đã bỏ lưu.”; không có Hoàn tác. |
 | Mở bài → Back | Giữ vị trí cuộn và focus của hàng theo WorkId trong cùng phiên, đối soát quyền và dữ liệu trước khi vẽ lại. Nếu hàng mất, focus về tiêu đề. |
 
