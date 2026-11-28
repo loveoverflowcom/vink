@@ -6534,6 +6534,11 @@ async function discussionReadingAndWrites(page) {
     check(await page.eval(`document.querySelector('#reply-composer-${rootId}')?.value.includes('Giữ nguyên') && document.querySelector('#reply-composer-${rootId}-send')?.getAttribute('aria-disabled')==='true' && document.querySelector('.vk-discussion-target-lost')?.textContent.includes('Bình luận được trả lời không còn hiển thị') && document.querySelectorAll('.vk-discussion-replies .vk-discussion-comment').length===3`), 'revoked context shows warning card with copy/reselect without claiming deletion');
     await page.eval(`[...document.querySelectorAll('.vk-discussion-target-lost button')].find(b=>b.textContent.includes('Sao chép nháp'))?.click()`);
     await page.waitFor(`document.querySelector('.vk-discussion-target-lost [data-copied="true"]')?.textContent.includes('Đã sao chép nháp')`, 'revoked context copy feedback');
+    const { ax: revokedEditor } = await collectElementAccessibility(page, editorSelector);
+    check(revokedEditor.description === 'Bình luận được trả lời không còn hiển thị' &&
+      await page.eval(`document.querySelectorAll('${editorSelector}-target').length === 1 &&
+        !document.querySelector('#thread-${rootId} .vk-discussion-composer-context')`),
+      '#616 a revoked target has one recovery description in AX and removes the stale name');
     await captureDiscussionMatrix(page, 'revoked-target', '.vk-discussion-target-lost', 'intercepted-provider-contract-fixture-no-persistence');
     const revokedDraft = await page.eval(`document.querySelector('#reply-composer-${rootId}').value`);
     check(await page.eval('navigator.clipboard.readText()') === revokedDraft, 'revoked context copy writes exact draft to real clipboard');
@@ -6597,6 +6602,9 @@ async function discussionReadingAndWrites(page) {
         window.discussionReplyComposerNode.value.includes('Giữ nguyên')`),
       '#616 loading a reply page preserves its root, composer node and draft');
     await discussionReplyLane(page, rootId, { replies: 4, pageControl: true, composer: true });
+    const chronological = [...fixture.roots[0].preview, ...replyPage.replies].map(row => 'comment-' + row.comment_id);
+    check(await page.eval(`JSON.stringify([...document.querySelectorAll('#thread-${rootId} .vk-discussion-replies article')].map(row => row.id)) === ${JSON.stringify(JSON.stringify(chronological))}`),
+      '#616 replies retain the public cursor order without a nested tier');
     currentFixture = { ...fixture, roots: [], next_cursor: null };
     await page.goto(`${args.base}/tac-pham/${SAMPLE_WORK}`);
     await page.waitFor(`document.querySelector('.vk-discussion-empty') && document.querySelector('#comments-mode')?.getAttribute('aria-busy') === 'false'`, 'authoritative empty discussion state');
@@ -7143,6 +7151,7 @@ try {
   }
   else if (args.phase === 'standalone') {
     await standaloneDiscussionReply(cdp);
+    await page.send('Page.bringToFront');
     await standalone(page, { args, check, openPage: (isolated) => openPage(cdp, isolated) });
   }
   else if (args.phase === 'auth-password') await passwordAuth(page, { args, check, textContrast, openPage: (isolated) => openPage(cdp, isolated) });
