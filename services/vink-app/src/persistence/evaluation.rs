@@ -125,7 +125,7 @@ pub fn scripted_outcome(claim: &ClaimedJob, honoured: &[&str]) -> Option<WorkEva
     }
     match scenario {
         "approve" => Some(WorkEvaluatorAnswer::from_json(
-            r#"{"verdict":"approve","message":"Yêu cầu công khai của bạn đã được chấp nhận trong chế độ thử nghiệm."}"#,
+            r#"{"verdict":"approve","message":"Tác phẩm được duyệt tự động trong chế độ thử nghiệm."}"#,
         )),
         "reject" => Some(WorkEvaluatorAnswer::from_json(
             r#"{"verdict":"reject","reason_code":"safety_policy","message":"Yêu cầu công khai đã bị từ chối theo kịch bản thử nghiệm. Kết quả này không đánh giá nội dung tác phẩm."}"#,

@@ -45,11 +45,14 @@ async function stop(child) {
 async function reflow(page, message) {
   for (const theme of ['light','dark']) for (const width of [320,390,834,1440]) for (const scale of [100,150,200]) {
     await page.viewport(width, 900);
+    await page.send('Emulation.setEmulatedMedia', {features:[{name:'prefers-color-scheme', value:theme}]});
     await page.eval(`document.documentElement.dataset.theme='${theme}'; document.documentElement.style.fontSize='${scale}%'`);
     const geometry = await page.eval(`new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => {
       const text = document.querySelector('.vk-notif-decision__reason p');
       const sheet = document.querySelector('#desk-review-content');
-      resolve({ message:text?.innerText, clipped:text?.scrollWidth > text?.clientWidth+1,
+      const painted = innerWidth === ${width} && matchMedia('(prefers-color-scheme: ${theme})').matches
+        && Math.round(parseFloat(getComputedStyle(document.documentElement).fontSize) / 16 * 100) === ${scale};
+      resolve({ painted, message:text?.innerText, clipped:text?.scrollWidth > text?.clientWidth+1,
         overflow:sheet?.scrollWidth > sheet?.clientWidth+1 });
     })))`);
     if (geometry.overflow) {
@@ -57,8 +60,9 @@ async function reflow(page, message) {
         el.getBoundingClientRect().right > document.querySelector('#desk-review-content').getBoundingClientRect().right + 1)
         .map(el => [el.tagName, el.className, Math.round(el.getBoundingClientRect().width)])`));
     }
-    assert.deepEqual(geometry, {message, clipped:false, overflow:false}, `${width}/${theme}/${scale}`);
+    assert.deepEqual(geometry, {painted:true, message, clipped:false, overflow:false}, `${width}/${theme}/${scale}`);
   }
+  await page.send('Emulation.setEmulatedMedia', {features:[]});
   await page.send('Emulation.clearDeviceMetricsOverride');
   await page.eval("delete document.documentElement.dataset.theme; document.documentElement.style.fontSize=''");
 }
@@ -97,7 +101,7 @@ export async function evaluatorMessage(page, args, openPage) {
     await page.send('Page.bringToFront');
     for (const rejected of [false, true]) {
       const outcome = rejected ? 'rejected' : 'approved';
-      const title = `[Mẫu] Quyết định ${outcome}`;
+      const title = `[Mẫu] Quyết định ${outcome} – Hành trình trở về qua những miền ký ức của một người viết`;
       const body = `Nội dung riêng của bản gửi ${outcome}.`;
       const work = uuid(await newDraft(page, base, title, body));
       await pickFormTag(page);
@@ -123,7 +127,9 @@ export async function evaluatorMessage(page, args, openPage) {
       const message = sql(appDb, `SELECT h.evaluator_message FROM work_revision_decision_history h
         JOIN work_evaluation_jobs j ON j.id=h.evaluation_id AND j.revision_id=h.revision_id AND j.work_id=h.work_id
         WHERE h.work_id='${work}' AND h.revision_id='${revision}' AND h.decision_version=${version} AND j.state='applied'`);
-      assert.match(message, /thử nghiệm/u);
+      assert.equal(message, rejected
+        ? 'Yêu cầu công khai đã bị từ chối theo kịch bản thử nghiệm. Kết quả này không đánh giá nội dung tác phẩm.'
+        : 'Tác phẩm được duyệt tự động trong chế độ thử nghiệm.');
       assert.equal(row.reason_message, message);
       assert.equal(row.decision_reason, message);
       assert.equal(row.reason_code ?? null, rejected ? 'safety_policy' : null);
@@ -148,16 +154,26 @@ export async function evaluatorMessage(page, args, openPage) {
       assert.equal(exact.body.reason.code,row.reason_code ?? null);
       const desk = (await get(page, `/api/v1/works/${work}/publication/review`)).body;
       assert.equal(desk.decisions.find(d => d.revision_id===revision && d.decision_version===version)?.reason_message,message);
-      await page.goto(`${base}/ban-viet?review=${work}`);
+      await page.goto(`${base}/ban-viet`);
+      const trigger = `#desk-review-trigger-${work}`;
+      await page.waitFor(`document.querySelector('${trigger}')`, 'work card in Desk');
+      assert.ok(!(await page.eval('document.querySelector("main").innerText')).includes(message));
+      await page.eval(`document.querySelector('${trigger}').focus()`);
+      await page.key('Enter');
       await page.waitFor(`document.querySelector('#desk-review-content')?.innerText.includes(${JSON.stringify(message)})`, 'private Desk message');
       await page.capture(`evaluator-${outcome}-desk`);
+      await page.key('Escape');
+      await page.waitFor(`location.search === '' && document.activeElement?.matches('${trigger}')`, 'Escape restores work card focus');
       await page.goto(`${base}/thong-bao`);
       const link = `main .vk-notif-row__link[href*="review=${work}"][href*="revision=${revision}"][href*="decision=${version}"]`;
       await page.waitFor(`document.querySelector(${JSON.stringify(link)})`, 'real receiver row in inbox');
       assert.ok(!(await page.eval('document.querySelector("main").innerText')).includes(message));
-      await page.click(link);
+      await page.eval(`document.querySelector(${JSON.stringify(link)}).focus()`);
+      await page.key('Enter');
       await page.waitFor(`document.querySelector('.vk-notif-decision__reason p')?.innerText === ${JSON.stringify(message)}`, 'exact decision message');
       await page.capture(`evaluator-${outcome}-detail`);
+      const {nodes} = await page.send('Accessibility.getFullAXTree');
+      assert.ok(nodes.some(n => !n.ignored && n.name?.value === message), 'message in Chrome accessibility tree');
       await reflow(page,message);
       const pub = await fetch(`${base}/api/v1/works/${work}/publication`);
       assert.equal(pub.status,rejected ? 404 : 200);
