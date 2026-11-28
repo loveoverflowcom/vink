@@ -39,7 +39,7 @@ use vink_app::http::{AppState, router};
 use vink_app::persistence::{self, PgStore, lazy_pool};
 use vink_app::{dev_seed, identity, runtime};
 
-const USAGE: &str = "usage: vink-app [serve|serve-api|migrate|dev-seed]\n       vink-app admin add <principal-uuid> [<reason>]\n       vink-app admin remove <principal-uuid> [<reason>]\n       vink-app admin list\n       vink-app moderator grant <principal-uuid> <note>\n       vink-app moderator revoke <principal-uuid>\n       vink-app moderator list\n       vink-app principal suspend <principal-uuid> <reason>\n       vink-app principal reinstate <principal-uuid>\n       vink-app principal list|backfill-handles\n       vink-app tag list\n       vink-app tag history [<limit>]\n       vink-app tag create <catalog-version> <form|theme> <label>\n       vink-app tag rename <catalog-version> <tag-uuid> <label>\n       vink-app tag describe <catalog-version> <tag-uuid> [<description>]\n       vink-app tag alias <catalog-version> <tag-uuid> <label>\n       vink-app tag retire <catalog-version> <tag-uuid> [<successor-uuid>]\n       vink-app outbox status\n       vink-app outbox dead [<limit>]\n       vink-app outbox requeue <event-uuid> <consumer> <note>\n       vink-app notifications status\n       vink-app notifications activate|deactivate <note>\n       vink-app notifications dead [<limit>]\n       vink-app notifications requeue <event-uuid> <note>\n       vink-app notifications replay <since-rfc3339> <note>\n       vink-app reputation status\n       vink-app reputation activate|deactivate <note>\n       vink-app post-review request|result|status|pending\n       vink-app maintenance prune";
+const USAGE: &str = "usage: vink-app [serve|serve-api|migrate|dev-seed]\n       vink-app admin add <principal-uuid> [<reason>]\n       vink-app admin remove <principal-uuid> [<reason>]\n       vink-app admin list\n       vink-app moderator grant <principal-uuid> <note>\n       vink-app moderator revoke <principal-uuid>\n       vink-app moderator list\n       vink-app principal suspend <principal-uuid> <reason>\n       vink-app principal reinstate <principal-uuid>\n       vink-app principal list|backfill-handles\n       vink-app tag list\n       vink-app tag history [<limit>]\n       vink-app tag create <catalog-version> <form|theme> <label>\n       vink-app tag rename <catalog-version> <tag-uuid> <label>\n       vink-app tag describe <catalog-version> <tag-uuid> [<description>]\n       vink-app tag alias <catalog-version> <tag-uuid> <label>\n       vink-app tag retire <catalog-version> <tag-uuid> [<successor-uuid>]\n       vink-app outbox status\n       vink-app outbox dead [<limit>]\n       vink-app outbox requeue <event-uuid> <consumer> <note>\n       vink-app notifications status\n       vink-app notifications activate|deactivate <note>\n       vink-app notifications dead [<limit>]\n       vink-app notifications requeue <event-uuid> <note>\n       vink-app notifications replay <since-rfc3339> <note>\n       vink-app reputation status\n       vink-app reputation activate|deactivate <note>\n       vink-app reputation backfill dry-run|apply\n       vink-app reputation reconcile check|fix\n       vink-app reputation correct dry-run|apply <key> <impact|contribution|pair>:<uuid>:<uuid> <note>\n       vink-app post-review request|result|status|pending\n       vink-app maintenance prune";
 
 #[derive(Debug, PartialEq, Eq)]
 enum AdminCommand {
@@ -214,6 +214,14 @@ fn parse_notifications(args: &[String]) -> Result<NotificationsCommand, String> 
 enum ReputationCommand {
     Status,
     Activate(bool, String),
+    Backfill(bool),
+    Reconcile(bool),
+    Correct {
+        apply: bool,
+        key: String,
+        scope: vink_app::persistence::reputation_projection::CorrectionScope,
+        note: String,
+    },
 }
 
 fn parse_reputation(args: &[String]) -> Result<ReputationCommand, String> {
@@ -222,7 +230,39 @@ fn parse_reputation(args: &[String]) -> Result<ReputationCommand, String> {
         Some(verb @ ("activate" | "deactivate")) if args.len() >= 2 => Ok(
             ReputationCommand::Activate(verb == "activate", operator_note(&args[1..])?),
         ),
-        _ => Err("expected `status` or `activate|deactivate <note>`".into()),
+        Some("backfill") if args.len() == 2 => match args[1].as_str() {
+            "dry-run" => Ok(ReputationCommand::Backfill(false)),
+            "apply" => Ok(ReputationCommand::Backfill(true)),
+            _ => Err("expected `backfill dry-run|apply`".into()),
+        },
+        Some("reconcile") if args.len() == 2 => match args[1].as_str() {
+            "check" => Ok(ReputationCommand::Reconcile(false)),
+            "fix" => Ok(ReputationCommand::Reconcile(true)),
+            _ => Err("expected `reconcile check|fix`".into()),
+        },
+        Some("correct") if args.len() >= 5 => {
+            let apply = match args[1].as_str() {
+                "dry-run" => false,
+                "apply" => true,
+                _ => return Err("expected `correct dry-run|apply ...`".into()),
+            };
+            let key = args[2].clone();
+            if key.is_empty() || key.chars().count() > 100 || key.chars().any(char::is_control) {
+                return Err("expected an idempotency key of 1 to 100 characters".into());
+            }
+            let scope =
+                vink_app::persistence::reputation_projection::CorrectionScope::parse(&args[3])
+                    .ok_or_else(|| {
+                        "expected a scope `impact|contribution|pair:<uuid>:<uuid>`".to_string()
+                    })?;
+            Ok(ReputationCommand::Correct {
+                apply,
+                key,
+                scope,
+                note: operator_note(&args[4..])?,
+            })
+        }
+        _ => Err("expected `status`, `activate|deactivate <note>`, `backfill dry-run|apply`, `reconcile check|fix` or `correct dry-run|apply <key> <scope> <note>`".into()),
     }
 }
 
@@ -907,6 +947,93 @@ async fn reputation(config: &Config, command: ReputationCommand) -> Result<(), F
             );
             Ok(())
         }
+        ReputationCommand::Backfill(apply) => {
+            use persistence::reputation_projection::{BackfillRefusal, backfill};
+            match backfill(&pool, apply).await.map_err(failed)? {
+                Ok(report) => {
+                    println!(
+                        "{} ready_at={} week_start={} month_start={} entitlements={} effective={} profiles={} reflected_events={}",
+                        if report.applied {
+                            "applied"
+                        } else {
+                            "dry-run (rolled back)"
+                        },
+                        report.ready_at,
+                        report.week_start.get(),
+                        report.month_start.get(),
+                        report.entitlements,
+                        report.effective,
+                        report.profiles,
+                        report.reflected_events
+                    );
+                    Ok(())
+                }
+                Err(BackfillRefusal::NotActive) => Err(Failure::Runtime(
+                    "reputation is inactive: activate producers before the backfill".into(),
+                )),
+                Err(BackfillRefusal::AlreadyReady) => Err(Failure::Runtime(
+                    "the projection is already ready; nothing was written".into(),
+                )),
+            }
+        }
+        ReputationCommand::Reconcile(fix) => {
+            let drift = persistence::reputation_projection::reconcile(&pool, fix)
+                .await
+                .map_err(failed)?;
+            for row in &drift {
+                println!(
+                    "{}\tstored={:?}\texpected={:?}",
+                    row.recipient, row.stored, row.expected
+                );
+            }
+            println!(
+                "{} drifted profile(s){}",
+                drift.len(),
+                if fix { "; rewritten" } else { "" }
+            );
+            Ok(())
+        }
+        ReputationCommand::Correct {
+            apply,
+            key,
+            scope,
+            note,
+        } => {
+            use persistence::reputation_projection::{CorrectionOutcome, correct};
+            match correct(&pool, &key, scope, &note, apply)
+                .await
+                .map_err(failed)?
+            {
+                CorrectionOutcome::NotReady => Err(Failure::Runtime(
+                    "the projection is not ready; run the backfill first".into(),
+                )),
+                CorrectionOutcome::Planned {
+                    entitlements,
+                    ledger_rows,
+                } => {
+                    println!(
+                        "dry-run: would retire {entitlements} entitlement(s) and restate {ledger_rows} ledger row(s); nothing was written"
+                    );
+                    Ok(())
+                }
+                CorrectionOutcome::Applied {
+                    entitlements,
+                    ledger_rows,
+                } => {
+                    println!(
+                        "applied: retired {entitlements} entitlement(s), restated {ledger_rows} ledger row(s); audited"
+                    );
+                    Ok(())
+                }
+                CorrectionOutcome::AlreadyApplied => {
+                    println!("already applied under this key; nothing was written");
+                    Ok(())
+                }
+                CorrectionOutcome::KeyReused => Err(Failure::Runtime(
+                    "this key was used for another scope; nothing was written".into(),
+                )),
+            }
+        }
         ReputationCommand::Activate(active, note) => {
             match outbox::set_activation(&pool, active, &note)
                 .await
@@ -1312,10 +1439,38 @@ mod tests {
             parse_reputation(&args(&["deactivate", "ops: tạm dừng"])),
             Ok(ReputationCommand::Activate(false, "ops: tạm dừng".into()))
         );
+        assert_eq!(
+            parse_reputation(&args(&["backfill", "dry-run"])),
+            Ok(ReputationCommand::Backfill(false))
+        );
+        assert_eq!(
+            parse_reputation(&args(&["reconcile", "fix"])),
+            Ok(ReputationCommand::Reconcile(true))
+        );
+        let actor = "22222222-2222-4222-8222-222222222222";
+        let work = "33333333-3333-4333-8333-333333333333";
+        let correction = parse_reputation(&args(&[
+            "correct",
+            "apply",
+            "case-1",
+            &format!("impact:{actor}:{work}"),
+            "ops:",
+            "bằng",
+            "chứng",
+        ]))
+        .unwrap();
+        assert!(matches!(
+            correction,
+            ReputationCommand::Correct { apply: true, .. }
+        ));
         for bad in [
             &["activate"][..],
             &["status", "x"][..],
             &["backfill"][..],
+            &["backfill", "now"][..],
+            &["reconcile"][..],
+            &["correct", "apply", "k", "pair:x:y", "note"][..],
+            &["correct", "maybe", "k", "pair:x:y", "note"][..],
             &[][..],
         ] {
             assert!(parse_reputation(&args(bad)).is_err(), "{bad:?}");

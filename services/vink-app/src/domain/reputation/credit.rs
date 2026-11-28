@@ -32,6 +32,36 @@ impl CreditState {
             _ => 0,
         }
     }
+
+    /// Stored code; `WithdrawnPending` keeps its period in a separate column.
+    pub const fn code(self) -> &'static str {
+        match self {
+            Self::Unstarted => "unstarted",
+            Self::Unseen => "unseen",
+            Self::Active => "active",
+            Self::WithdrawnPending(_) => "withdrawn",
+            Self::Burned => "burned",
+        }
+    }
+
+    pub const fn pending(self) -> Option<PeriodIndex> {
+        match self {
+            Self::WithdrawnPending(period) => Some(period),
+            _ => None,
+        }
+    }
+
+    /// Restores a stored state; a pending period exists exactly for `withdrawn`.
+    pub fn restore(code: &str, pending: Option<PeriodIndex>) -> Option<Self> {
+        match (code, pending) {
+            ("unstarted", None) => Some(Self::Unstarted),
+            ("unseen", None) => Some(Self::Unseen),
+            ("active", None) => Some(Self::Active),
+            ("withdrawn", Some(period)) => Some(Self::WithdrawnPending(period)),
+            ("burned", None) => Some(Self::Burned),
+            _ => None,
+        }
+    }
 }
 
 /// What happened to the entitlement, as far as credit is concerned.

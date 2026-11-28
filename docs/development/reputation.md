@@ -10,7 +10,7 @@ REP-01..14. Đặc tả: [miền](../architecture/reputation.md), [SR-01](reputa
 | --- | --- |
 | Sản phẩm | [VDR-REPUTATION@r1](../../decisions/proposals/VDR-REPUTATION.r1.toml) Q01..Q44 `PRODUCT_CONFIRMED` — [signoff](../../decisions/signoffs/VDR-REPUTATION.r1.toml) ngày 28/11/2026, SHA-256 `2c009b7ca218269251edc6bf363914e5c1d4123cbfd49c18f4820231ba0cc3ee`. |
 | Kiến trúc | [VDR-REPUTATION-CONTRACT@r1](../../decisions/proposals/VDR-REPUTATION-CONTRACT.r1.toml) K1..K9 `Provisional` — [signoff](../../decisions/signoffs/VDR-REPUTATION-CONTRACT.r1.toml), SHA-256 `7d60f8ae7ed146e033ce8ed352feaf6ac1798fd041693692500a2277231b0963`. Mỗi lát chứng minh lựa chọn của mình; chưa `Accepted`. |
-| Triển khai | `core` từ #644: `services/vink-app/src/domain/reputation` (công thức fixed-point, entitlement/anchor, máy Q41, lịch, maturity, gate bảng). Outbox nguồn (#645): migration `20261208000000_reputation_outbox`, producer Thấm/Ưng, trigger marker, `vink-app reputation status|activate|deactivate`. Consumer, projection, route: `NOT_IMPLEMENTED`. |
+| Triển khai | `core` từ #644: `services/vink-app/src/domain/reputation` (công thức fixed-point, entitlement/anchor, máy Q41, lịch, maturity, gate bảng). Outbox nguồn (#645): migration `20261208000000_reputation_outbox`, producer Thấm/Ưng, trigger marker, `vink-app reputation status|activate|deactivate`. Projection (#646): consumer `vink-worker`, entitlement/ledger/profile, maturity, `vink-app reputation backfill|reconcile|correct`. Thống kê kỳ, route: `NOT_IMPLEMENTED`. |
 | Bằng chứng | SR-01 tổng hợp; unit + golden + Quint replay + Kani cho pure core (mục 4). PostgreSQL, HTTP, benchmark: `NOT_RUN`. |
 
 <!-- vdr: active VDR-REPUTATION@r1 -->
@@ -42,7 +42,7 @@ Không công khai runtime trước bằng chứng privacy/performance của S06 
 | REP-S01 | [PR #601](https://github.com/loveoverflowcom/vink/pull/601) | SSOT, SR-01, audit nguồn, hai proposal + signoff | Xong khi #601 merge |
 | REP-S02 | [#644](https://github.com/loveoverflowcom/vink/issues/644) | `domain::reputation`: công thức fixed-point, entitlement/anchor, eligibility, máy Q41, lịch, golden vectors, Quint + replay, Kani | `core`; không I/O |
 | REP-S03 | [#645](https://github.com/loveoverflowcom/vink/issues/645) | Migration, outbox Reputation ghi cùng transaction ở mọi nguồn trong mục 2, công tắc activation | `persistence-api` (outbox) |
-| REP-S04 | [#646](https://github.com/loveoverflowcom/vink/issues/646) | Consumer `vink-worker`, projection hiện hành, maturity Q42, backfill Q33, correction CLI Q38, rebuild/reconcile | S03 merged |
+| REP-S04 | [#646](https://github.com/loveoverflowcom/vink/issues/646) | Consumer `vink-worker`, projection hiện hành, maturity Q42, backfill Q33, correction CLI Q38, rebuild/reconcile | `worker-provider` (projection) |
 | REP-S05 | [#647](https://github.com/loveoverflowcom/vink/issues/647) | Credit tuần/tháng, Top Rating/Top Growth, snapshot/dự phòng/rebuild, retention/expiry | S04 merged |
 | REP-S06 | [#648](https://github.com/loveoverflowcom/vink/issues/648) | HTTP đọc, privacy/cache/cursor, qualification PG + HTTP, benchmark, runbook | S05 merged; không public trước gate |
 
@@ -100,6 +100,33 @@ Rollback: `migrations-rollback/20261208000000_reputation_outbox.down.sql` từ c
 | `cargo check -p vink-app --tests`, `cargo clippy -p vink-app --lib --bins --tests -- -D warnings` | PASS | compile/lint |
 | `cargo xtask verify postgres` (gồm `tests/postgres/reputation_outbox.rs`, 7 test), `verify quick` | NOT_RUN: dừng theo yêu cầu chủ sản phẩm, chờ verify lại | PostgreSQL |
 | Đo overhead ghi Thấm trước/sau (AC-07 #645) | NOT_RUN | scratch DB |
+
+## 4c. Projection S04 (#646)
+
+Migration `20261209000000_reputation_projection`: `reputation_readiness`, facts as-of (`reputation_work_facts`,
+`reputation_comment_facts`, `reputation_principal_facts`), `reputation_anchors` (Thấm theo revision, có fence
+order), `reputation_entitlements` (hai máy Q41), `reputation_profiles` (I, C, `score_micros`), `reputation_ledger`
+(net mỗi entitlement mỗi kỳ ∈ {−1, 0, 1}) và `reputation_corrections` (append-only).
+
+| Owner | Hành vi |
+| --- | --- |
+| `persistence/reputation_projection.rs` `consume_batch` | Khóa advisory một batch, event theo `id`, áp `entitlement::apply`, xóa event trong cùng transaction; maturity trước sự kiện sau ngưỡng của actor và quét actor bị giữ. |
+| `backfill` | REPEATABLE READ khi producer đang bật: facts, anchor, entitlement, profile; xóa event mà snapshot đã phản ánh; đặt `ready_at` và kỳ đầy đủ đầu tiên. Từ chối khi chưa bật hoặc đã sẵn sàng. |
+| `reconcile` | Đếm lại I/C từ entitlement hiệu lực, báo lệch, `fix` ghi lại. |
+| `correct` | Phạm vi `impact|contribution:<actor>:<target>` hoặc `pair:<actor>:<recipient>` tại lúc apply; retire (Terminal), xóa ledger của entitlement (viết lại lịch sử), audit, idempotent theo key; số nguồn không đổi. |
+| `reputation_worker.rs` | Vòng lặp trong `vink-worker`, `VINK_WORKER_REPUTATION=disabled` để dừng. |
+
+Thứ tự vận hành: `vink-app reputation activate <note>` → `vink-app reputation backfill dry-run` → `… apply`
+→ worker tự áp event; `vink-app reputation reconcile check` định kỳ. Tắt khẩn: `deactivate` (producer) và
+`VINK_WORKER_REPUTATION=disabled` (consumer). Runbook đầy đủ thuộc #648.
+
+Giới hạn đã biết: maturity áp theo trạng thái đã xử lý tới batch chứa ngưỡng, nên lệch tối đa một batch so với
+as-of chính xác; dựng lại toàn bộ từ nguồn (giữ lịch sử credit) chưa có — `reconcile` chỉ đếm lại profile.
+
+| Lệnh | Kết quả | Boundary |
+| --- | --- | --- |
+| `cargo clippy -p vink-app --lib --bins --tests -- -D warnings`, `cargo check -p vink-app --tests` | PASS | compile/lint |
+| `cargo xtask verify postgres` (gồm `tests/postgres/reputation_projection.rs`, 6 test), `verify quick` | NOT_RUN: dừng theo yêu cầu chủ sản phẩm, chờ verify lại | PostgreSQL |
 
 ## 5. Acceptance của epic theo lát
 

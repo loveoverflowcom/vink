@@ -17,4 +17,5 @@ pub mod notification_relay;
 pub mod notification_transport;
 pub mod outbox_worker;
 pub mod persistence;
+pub mod reputation_worker;
 pub mod runtime;
