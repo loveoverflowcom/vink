@@ -42,6 +42,8 @@ async function checkPresets() {
     const options = { preset: 'comment', format: 'markdown', text: 'Trăng',
       readOnly: true, labelledBy: 'label', describedBy: 'hint', onChange() {} };
     const locked = core.createEditor(host, options);
+    locked.view.contentDOM.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    locked.view.dispatch({ changes: { from: 0, insert: 'x' }, userEvent: 'input.type' });
     const readonly = !locked.view.contentDOM.isContentEditable && locked.view.state.readOnly &&
       !core.applyInlineFormat(locked, 'bold') && core.getText(locked) === options.text;
     let duplicateRefused = false;

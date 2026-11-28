@@ -129,8 +129,12 @@ export function createEditor(host: HTMLElement, options: EditorOptions): EditorH
       doc: options.text,
       extensions: [
         history(),
-        EditorState.readOnly.of(options.readOnly === true),
-        EditorView.editable.of(options.readOnly !== true),
+        options.readOnly ? [
+          EditorState.readOnly.of(true),
+          EditorView.editable.of(false),
+          // Commands such as insertNewline can dispatch even on a non-editable DOM node.
+          EditorState.changeFilter.of(() => false),
+        ] : [],
         preset === 'comment' ? compactMarkdown.of(true) : [],
         markdownCompartment.of(initialFormat === 'markdown' ? markdownExtension : []),
         // Enter breaks the line without copying indentation: alternating poem indents stay
