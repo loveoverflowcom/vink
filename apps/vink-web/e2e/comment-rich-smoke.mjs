@@ -92,9 +92,13 @@ export async function richDiscussion(page,{args,check,rootId,workId,browserConte
           document.documentElement.dataset.theme = '${theme}';
           document.documentElement.getBoundingClientRect(); document.fonts.ready`);
         const target = JSON.stringify(reply + '-rich');
-        await page.waitFor(`(() => {
+        await page.waitFor(`(async () => {
+          const settled = () => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          // The Reader applies its saved viewport anchor after the text-size change.
+          await settled();
           const host = document.querySelector(${target});
           host.scrollIntoView({block:'center', behavior:'instant'});
+          await settled();
           const field = host.getBoundingClientRect();
           return field.top >= 0 && field.bottom < innerHeight &&
             host.contains(document.elementFromPoint(field.x + field.width / 2, field.y + field.height / 2));
