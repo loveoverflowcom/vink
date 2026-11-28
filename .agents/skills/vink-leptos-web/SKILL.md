@@ -87,6 +87,8 @@ Tags have a separate version and require an explicit save. Use `EditorSession` a
 the body through `BodySource::snapshot`. Route exits through `NavigationGuard` so the
 author can handle pending edits before leaving. [Editor data and save behavior](../../../docs/development/public-read-freshness.md#luồng-và-lifetime-hiện-hành)
 
+Choose the runtime surface independently of body format. The desk mounts the Document preset; the internal Comment preset shares CommonMark inline decoration and skips title/outline. See [mount options, callback ownership and teardown](../../../apps/vink-web/editor/README.md). Discussion still uses its existing TextArea.
+
 The JS editor bridge owns mount, subscriptions, selection and teardown. Preserve the editor
 instance across ordinary reactive updates; dispose listeners and timers when its owner ends.
 Use stable domain IDs for dynamic rows instead of array positions.

@@ -74,6 +74,30 @@ try {
     assert.equal(state.doc.toString(), c.source, c.id);
   }
 
+  // Exercise the shared command with a real state/history. Browser tests cover DOM focus.
+  for (const kind of ['bold', 'italic', 'link']) {
+    const word = 'Vie\u0323\u0302t';
+    let state = EditorState.create({ doc: word, selection: { anchor: 0, head: word.length },
+      extensions: [md.history()] });
+    const target = {
+      get state() { return state; },
+      dispatch(spec) { state = state.update(spec).state; },
+      focus() {},
+    };
+    assert.equal(md.applyInlineFormat(target, kind), true);
+    const expected = kind === 'link' ? '[' + word + ']()' : (kind === 'bold' ? '**' : '*') + word + (kind === 'bold' ? '**' : '*');
+    assert.equal(state.doc.toString(), expected);
+    // History commands dispatch a Transaction, as EditorView.dispatch does.
+    const commandTarget = { get state() { return state; }, dispatch(tr) { state = tr.state; } };
+    assert.equal(md.undo(commandTarget), true);
+    assert.equal(state.doc.toString(), word);
+    assert.equal(md.redo(commandTarget), true);
+    assert.equal(state.doc.toString(), expected);
+    target.composing = true;
+    assert.equal(md.applyInlineFormat(target, kind), false);
+    assert.equal(state.doc.toString(), expected);
+  }
+
   // Duplicate heading labels keep distinct offsets; fences/escaped/HTML are excluded.
   const docSource = [
     '# Tên đầu',

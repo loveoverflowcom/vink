@@ -247,7 +247,7 @@ Smoke kiểm hydration, hai khổ thơ, CSS, font và import module editor.
 | `desk` | Sample App/author, response fixture có nhãn, browser context riêng và App khách tắt sign-in | `authorWorks`, `draftDashboard`, `deskEmptyState`, `draftR6Hierarchy`, `timestampPresentation`, `draftPagination`, `selectChevron`, `deskGuest` |
 | `editor-chrome` | Sample App/author, nháp mới và tag catalog | `editorChrome` gọi `editorPaperFirst`, `editorWriting`, reflow, AX, CDP IME, race và recovery matrices |
 | `editor` | Sample App/author và catalog thật | Cùng client navigation Reader → Desk → nháp, Vietnamese input, save/reload, conflict, leave/back, late ACK, undo/redo và `draftTags` |
-| `editor-format` | Sample App/author và nháp fixture tạo qua API/UI | `deskRefusesLossyOpen`, `markdownLivePreviewAndFormatPicker`, `editorDeskRegressions`, `markdownBudget` |
+| `editor-format` | Sample App/author và nháp fixture tạo qua API/UI | `deskRefusesLossyOpen`, `markdownLivePreviewAndFormatPicker`, `editorDeskRegressions`, `deskBudget` (route Product, cold/warm và input), `markdownBudget` (dispatch CM), `editorCoreContracts` (preset, mount trễ/lỗi) |
 | `storage` | App scratch, hai tab Chrome và reopen cùng profile | `publicStorage`/`storageReopened`, IndexedDB envelope/transaction/epoch/quota/migration; chạy một lần khi ghép với `main` |
 | `discovery` | Seed/catalog + corpus SQL riêng | `discovery-corpus` |
 | `restart` | `restart-prepare` lưu và reload nháp riêng, catalog Đô thị/Mùa; stop → retire tag → start | Giữ `afterRestartPhase` và `retiredTagAfterRestart` cho đúng draft/version/title, tag và unsaved buffer |

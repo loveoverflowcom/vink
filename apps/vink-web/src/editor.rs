@@ -12,6 +12,46 @@ use serde::Deserialize;
 
 use crate::contract::DocumentFormatDto;
 
+/// The surface controls editing capabilities independently of the persisted body's representation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EditorPreset {
+    Document,
+    Comment,
+}
+
+impl EditorPreset {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Document => "document",
+            Self::Comment => "comment",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BodyFormat {
+    Plain,
+    Markdown,
+}
+
+impl BodyFormat {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Plain => "plain",
+            Self::Markdown => "markdown",
+        }
+    }
+}
+
+impl From<DocumentFormatDto> for BodyFormat {
+    fn from(format: DocumentFormatDto) -> Self {
+        match format {
+            DocumentFormatDto::Default => Self::Plain,
+            DocumentFormatDto::Markdown => Self::Markdown,
+        }
+    }
+}
+
 /// Ids of the visible label and hint that name and describe the text box.
 pub const BODY_LABEL_ID: &str = "editor-body-label";
 pub const BODY_HINT_ID: &str = "editor-body-hint";
@@ -202,7 +242,7 @@ pub fn BodyEditor(
             let alive = alive.clone();
             leptos::task::spawn_local(async move {
                 let loaded = bridge::EditorHandle::load().await;
-                if !alive.load(Ordering::Relaxed) {
+                if !alive.load(Ordering::Relaxed) || !host.is_connected() {
                     return;
                 }
                 let outline_signal = source.outline;
@@ -210,15 +250,24 @@ pub fn BodyEditor(
                 let mounted = loaded.and_then(|()| {
                     bridge::EditorHandle::mount(
                         &host,
-                        &source.loaded.get_value(),
-                        format,
-                        move || {
-                            on_change.run(());
-                        },
-                        move |json: String| {
-                            if let Ok(snapshot) = serde_json::from_str::<OutlineSnapshot>(&json) {
-                                outline_signal.try_set(snapshot);
-                            }
+                        bridge::MountOptions {
+                            preset: EditorPreset::Document,
+                            text: &source.loaded.get_value(),
+                            format: format.into(),
+                            labelled_by: BODY_LABEL_ID,
+                            described_by: &format!(
+                                "{BODY_HINT_ID} {BODY_TITLE_ERROR_ID} submission-body-errors"
+                            ),
+                            read_only: false,
+                            on_change: Box::new(move || on_change.run(())),
+                            // The desk form observes composition from title, body and tag inputs.
+                            on_composition: None,
+                            on_outline: Some(Box::new(move |json: String| {
+                                if let Ok(snapshot) = serde_json::from_str::<OutlineSnapshot>(&json)
+                                {
+                                    outline_signal.try_set(snapshot);
+                                }
+                            })),
                         },
                     )
                 });
@@ -253,13 +302,13 @@ pub fn BodyEditor(
 }
 
 #[cfg(feature = "browser")]
-mod bridge {
+pub mod bridge {
     use js_sys::{Object, Reflect};
     use wasm_bindgen::closure::Closure;
     use wasm_bindgen::prelude::*;
     use web_sys::HtmlElement;
 
-    use super::{BODY_HINT_ID, BODY_LABEL_ID, BODY_TITLE_ERROR_ID};
+    use super::{BodyFormat, EditorPreset};
     use crate::contract::DocumentFormatDto;
 
     #[wasm_bindgen(module = "/editor/bridge.js")]
@@ -286,11 +335,24 @@ mod bridge {
         fn jump_to_heading(handle: &JsValue, from: f64, generation: f64) -> bool;
     }
 
+    pub struct MountOptions<'a> {
+        pub preset: EditorPreset,
+        pub format: BodyFormat,
+        pub text: &'a str,
+        pub labelled_by: &'a str,
+        pub described_by: &'a str,
+        pub read_only: bool,
+        pub on_change: Box<dyn FnMut()>,
+        pub on_composition: Option<Box<dyn FnMut(bool)>>,
+        pub on_outline: Option<Box<dyn FnMut(String)>>,
+    }
+
     /// A mounted view. Dropping it destroys the view, then releases the callbacks.
     pub struct EditorHandle {
         handle: JsValue,
         _on_change: Closure<dyn FnMut()>,
-        _on_outline: Closure<dyn FnMut(String)>,
+        _on_outline: Option<Closure<dyn FnMut(String)>>,
+        _on_composition: Option<Closure<dyn FnMut(bool)>>,
     }
 
     impl EditorHandle {
@@ -299,40 +361,37 @@ mod bridge {
             Ok(())
         }
 
-        pub fn mount(
-            host: &HtmlElement,
-            text: &str,
-            format: DocumentFormatDto,
-            on_change: impl FnMut() + 'static,
-            on_outline: impl FnMut(String) + 'static,
-        ) -> Result<Self, JsValue> {
-            let on_change = Closure::wrap(Box::new(on_change) as Box<dyn FnMut()>);
-            let on_outline = Closure::wrap(Box::new(on_outline) as Box<dyn FnMut(String)>);
+        pub fn mount(host: &HtmlElement, config: MountOptions<'_>) -> Result<Self, JsValue> {
+            let on_change = Closure::wrap(config.on_change);
+            let on_composition = config.on_composition.map(Closure::wrap);
+            let on_outline = config
+                .on_outline
+                .filter(|_| config.preset == EditorPreset::Document)
+                .map(Closure::wrap);
             let options = Object::new();
             for (key, value) in [
-                ("text", JsValue::from_str(text)),
-                ("format", JsValue::from_str(format.as_str())),
-                ("labelledBy", JsValue::from_str(BODY_LABEL_ID)),
-                (
-                    "describedBy",
-                    JsValue::from_str(&format!(
-                        "{BODY_HINT_ID} {BODY_TITLE_ERROR_ID} submission-body-errors"
-                    )),
-                ),
+                ("text", config.text),
+                ("preset", config.preset.as_str()),
+                ("format", config.format.as_str()),
+                ("labelledBy", config.labelled_by),
+                ("describedBy", config.described_by),
             ] {
-                Reflect::set(&options, &JsValue::from_str(key), &value)?;
+                Reflect::set(&options, &key.into(), &value.into())?;
             }
-            Reflect::set(&options, &JsValue::from_str("onChange"), on_change.as_ref())?;
-            Reflect::set(
-                &options,
-                &JsValue::from_str("onOutline"),
-                on_outline.as_ref(),
-            )?;
+            Reflect::set(&options, &"readOnly".into(), &config.read_only.into())?;
+            Reflect::set(&options, &"onChange".into(), on_change.as_ref())?;
+            if let Some(callback) = &on_outline {
+                Reflect::set(&options, &"onOutline".into(), callback.as_ref())?;
+            }
+            if let Some(callback) = &on_composition {
+                Reflect::set(&options, &"onComposition".into(), callback.as_ref())?;
+            }
             let handle = create_editor(host, &options)?;
             Ok(Self {
                 handle,
                 _on_change: on_change,
                 _on_outline: on_outline,
+                _on_composition: on_composition,
             })
         }
 
@@ -349,7 +408,7 @@ mod bridge {
         }
 
         pub fn apply_converted_document(&self, format: DocumentFormatDto, text: &str) {
-            apply_converted_document(&self.handle, format.as_str(), text);
+            apply_converted_document(&self.handle, BodyFormat::from(format).as_str(), text);
         }
 
         pub fn apply_heading(&self, level: u8) -> bool {
@@ -369,5 +428,25 @@ mod bridge {
         fn drop(&mut self) {
             destroy_editor(&self.handle);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn canonical_default_maps_to_plain_for_either_surface() {
+        assert_eq!(
+            BodyFormat::from(DocumentFormatDto::Default).as_str(),
+            "plain"
+        );
+        assert_eq!(
+            BodyFormat::from(DocumentFormatDto::Markdown).as_str(),
+            "markdown"
+        );
+        assert_eq!(EditorPreset::Document.as_str(), "document");
+        assert_eq!(EditorPreset::Comment.as_str(), "comment");
+        assert_eq!(DocumentFormatDto::Default.as_str(), "default");
     }
 }
