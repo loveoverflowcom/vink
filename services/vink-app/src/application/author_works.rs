@@ -33,6 +33,7 @@ pub struct PublicationSummary {
     pub latest_revision_id: Option<RevisionId>,
     pub latest_moderation: Option<String>,
     pub review_withdrawn: bool,
+    pub has_review_context: bool,
     /// Content/title and tag identity comparison against the current public revision.
     /// None when there is no draft/public revision or legacy metadata is unknown.
     pub has_draft_changes: Option<bool>,

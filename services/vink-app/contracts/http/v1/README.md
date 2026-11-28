@@ -718,10 +718,13 @@ của session hiện hành; query/parser/cursor kế thừa `/drafts` (owner/que
 Response `works` + `next_cursor` (null ở cuối); [fixture](fixtures/author.works.page.json).
 Mỗi work có title, draft_version nullable, updated_at và publication summary nullable (unknown).
 Summary giữ audience/lifecycle/generation, intent/latest revision + moderation,
-review_withdrawn, has_draft_changes nullable và current_public nullable.
+`review_withdrawn`, `has_draft_changes` nullable và `current_public` nullable.
+`has_review_context` cho biết có ý định gửi duyệt, pointer, revision bị rút hoặc một lần gửi duyệt
+trong lịch sử. Chụp snapshot riêng chưa gửi không tạo ngữ cảnh. Summary null hoặc field vắng
+ở provider cũ nghĩa là chưa biết. Chi tiết kiểm duyệt được tra riêng khi mở.
 Current public có revision_id/title và hai số `tham`, `comments` nullable: zero thật khác
 unavailable/null. Không phải tổng Thấm lịch sử, không Hữu ích comment, không manuscript/voter IDs.
-Hai truy vấn batch cùng read snapshot; metric failure có thể giữ title/status với counters null.
+Trang và các nhóm chỉ số dùng SELECT batch trong cùng read snapshot. Lỗi đọc chỉ số có thể giữ title/status với counters null.
 Chi tiết semantics, fallback work không draft và giới hạn: [registry](../../../../../docs/development/desk-author-feedback.md).
 
 ### Lượt xem của tác giả (#342, VIEW-07..09, VIEW-12)

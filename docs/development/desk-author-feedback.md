@@ -1,11 +1,11 @@
 # Bàn viết — read-model tác giả và Thấm/Nhận xét (#214)
 
-Lựa chọn read-model được đưa vào [VDR-AUTHOR-WORK-FEEDBACK@r1](../../decisions/proposals/VDR-AUTHOR-WORK-FEEDBACK.r1.toml), **PENDING**. Thấm theo revision; Nhận xét đếm public thread, không reset theo revision. Không chốt POLICY-01 B/C hoặc O-07.
+Lựa chọn read-model được đưa vào [VDR-AUTHOR-WORK-FEEDBACK@r2](../../decisions/proposals/VDR-AUTHOR-WORK-FEEDBACK.r2.toml), **PENDING**. Thấm theo revision; Nhận xét đếm public thread, không reset theo revision. Không chốt POLICY-01 B/C hoặc O-07.
 
 Một lát dọc `persistence-api` + `web`, sau #213 tại base
 `b28e4bdd42eb84c1f45a7ebff4b983cfbc9f9567`. Giữ nguyên API nháp cũ; không thêm tracking,
 xếp hạng, native, danh sách người Thấm, kế thừa vote hoặc policy tích lũy.
-[LayoutSpec](../design/desk-author-feedback.md) sở hữu bố cục. [Delta R4.4](../design/redesign-r4/desk-moderation.md) bổ sung chi tiết kiểm duyệt mở theo nhu cầu từ mỗi thẻ.
+[LayoutSpec](../design/desk-author-feedback.md) sở hữu bố cục. [Delta R4.4](../design/redesign-r4/desk-moderation.md) bổ sung chi tiết kiểm duyệt mở theo nhu cầu.
 
 ## Quyết định và phạm vi
 
@@ -72,6 +72,15 @@ Trước delta 25/11/2026, #410 có liên kết “Đọc” mở bản công kh
   icon, menu, CTA khác, click số liệu hay vùng giữ chỗ; giữ nguyên liên kết mở bản thảo/editor của
   hàng/nhan đề và giữ nguyên Reader công khai). Giao diện hiện hành triển khai theo
   [LayoutSpec Lượt xem r3](../design/work-views.md) (đồng bộ R4.3/R4.4 và `docs/design/desk-author-feedback.md`).
+
+### Ngữ cảnh kiểm duyệt (#614)
+
+`has_review_context` là dữ kiện riêng trong publication summary. SELECT đầu kiểm intent, pointer
+và revision bị rút, cùng `EXISTS` theo khóa `(work_id, revision_id)` của `work_revision_moderation`
+trên các WorkId đã phân trang. Một bản chụp chưa gửi không có moderation row. Bản chụp mới hơn
+không che moderation row của lần gửi cũ. API trả cờ cho tác giả trong cùng snapshot no-store.
+Web chỉ ẩn lối vào khi provider trả `false`. Summary null hoặc field vắng giữ khả năng mở.
+Review detail vẫn được đọc theo yêu cầu và xác minh quyền riêng cho đích hiện hành.
 
 ## Owners và kiểm chứng
 

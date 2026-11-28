@@ -14,6 +14,7 @@
         "latest_revision_id": "44444444-4444-4444-8444-444444444445",
         "latest_moderation": "pending",
         "review_withdrawn": false,
+        "has_review_context": true,
         "has_draft_changes": true,
         "current_public": {
           "revision_id": "44444444-4444-4444-8444-444444444444",

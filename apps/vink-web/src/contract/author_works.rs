@@ -17,6 +17,12 @@ pub struct AuthorWorkCard {
     #[serde(default)]
     pub views: Option<WorkViewsSummary>,
 }
+impl AuthorWorkCard {
+    pub(crate) fn shows_review_action(&self) -> bool {
+        self.publication.as_ref().and_then(|p| p.has_review_context) != Some(false)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorkViewsSummary {
     pub state: WorkViewsState,
@@ -45,6 +51,9 @@ pub struct PublicationSummary {
     pub latest_revision_id: Option<String>,
     pub latest_moderation: Option<Decision>,
     pub review_withdrawn: bool,
+    /// Older projections omit this fact. Keep review reachable until absence is confirmed.
+    #[serde(default)]
+    pub has_review_context: Option<bool>,
     pub has_draft_changes: Option<bool>,
     pub current_public: Option<CurrentPublicSummary>,
 }
@@ -61,6 +70,23 @@ mod tests {
     use super::*;
     fn labels(summary: &crate::ui::patterns::AuthorWorkSummary) -> Vec<&'static str> {
         summary.status.iter().map(|label| label.short).collect()
+    }
+
+    #[test]
+    fn author_work_review_action_hides_only_confirmed_absence() {
+        let page: AuthorWorkList = serde_json::from_str(include_str!(
+            "../../../../services/vink-app/contracts/http/v1/fixtures/author.works.views.json"
+        ))
+        .unwrap();
+        assert!(page.works[0].shows_review_action()); // public
+        assert!(page.works[2].shows_review_action()); // private with history
+        assert!(page.works[3].shows_review_action()); // withdrawn
+        let mut draft = page.works[4].clone();
+        assert!(!draft.shows_review_action());
+        draft.publication.as_mut().unwrap().has_review_context = None;
+        assert!(draft.shows_review_action()); // older provider
+        draft.publication = None;
+        assert!(draft.shows_review_action()); // unknown projection
     }
 
     #[test]

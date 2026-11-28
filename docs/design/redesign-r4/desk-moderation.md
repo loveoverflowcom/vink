@@ -10,12 +10,12 @@ chưa được xem. DQ-05 và DQ-10 vẫn `OPEN`.
 - `desk` → `draft-results` → một `draft-row-{WorkId}`. Giữ nhan đề, thời gian, tối đa
   ba nhãn sự thật có icon và cụm số liệu **Thấm → Nhận xét → Lượt xem** (đã bỏ nút/link “Đọc”
   theo delta 25/11 `D-02`, #323/#514 — xem [LayoutSpec Lượt xem r3](../work-views.md)). Hành động
-  “Xem kiểm duyệt” (Tonal 48 có icon `verified-user` từ r3) đứng cạnh liên kết mở bản thảo, giữ
-  nguyên đích, quyền và tên tác phẩm cho công nghệ hỗ trợ.
+  “Xem kiểm duyệt” (Text có icon `verified-user`) đứng cạnh liên kết mở bản thảo khi có
+  ngữ cảnh hoặc chưa xác nhận được ngữ cảnh. Tên truy cập bao gồm tên tác phẩm.
 - `desk-review` → tiêu đề hộp thoại và nút Đóng → `desk-review-content` → tên/bản gửi,
   trạng thái, lý do, hồ sơ và hành động hợp lệ → “Lịch sử phiên bản và quyết định”.
 - Bản hiện tại trong hộp thoại mặc định ưu tiên ý định gửi duyệt, sau đó đến bản công khai,
-  rồi bản gửi gần nhất. Trạng thái “Đang công khai” gắn với pointer. Khi mở đích quyết định
+  rồi bản chụp gần nhất. Trạng thái “Đang công khai” gắn với pointer. Khi mở đích quyết định
   cụ thể, hiển thị đúng bản và số quyết định, kể cả khi quyết định đã được thay thế.
 - Giữ token bề mặt và kiểu chữ R4.3. Hộp thoại tái dùng `DialogKind::Sheet` của Vink,
   canh giữa trên desktop và neo đáy dưới 760 px. Chữ dài có thể xuống dòng, nội dung cuộn
@@ -24,10 +24,10 @@ chưa được xem. DQ-05 và DQ-10 vẫn `OPEN`.
 
 ## Bảng trạng thái thiết kế
 
-| Dữ liệu mẫu | Thẻ theo R4.3 | Chi tiết |
+| Dữ liệu mẫu | Thẻ theo Desk R5 | Chi tiết |
 | --- | --- | --- |
-| Riêng tư, chưa có bản gửi | Chỉ mình tôi | Chưa có bản gửi để xem |
-| Đã chụp và chưa gửi | Trạng thái tác phẩm theo danh sách | Bản chưa gửi duyệt |
+| Riêng tư, chưa có bản gửi | Chỉ mình tôi, ẩn nút kiểm duyệt khi đã xác nhận | Liên kết trực tiếp hiện “Chưa có bản gửi để xem” |
+| Đã chụp và chưa gửi | Ẩn nút khi chỉ có bản chưa gửi. Hiện nút nếu bản cũ có lịch sử | Bản chưa gửi duyệt cùng lịch sử hiện có |
 | R1 công khai, R2 pending | Có bản công khai và bản mới chờ duyệt | Mở R2. R1 nằm trong lịch sử, vẫn là bản đang công khai |
 | R1 công khai, R2 needs admin | Có bản công khai và bản mới chuyển người duyệt | Mở R2. Không có yêu cầu tác giả thao tác |
 | R1 công khai, R2 bị từ chối | Có bản công khai và bản mới bị từ chối | Lý do dài xuống dòng. Chỉ hiện nút xem xét khi máy chủ cho phép |

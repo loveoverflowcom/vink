@@ -73,8 +73,8 @@ fn DeskHeading(
             <div class="vk-desk-heading__title flex flex-wrap items-center gap-[8px] [min-inline-size:0]">
             <h1 id="desk-title" class="vk-ui-heading vk-ui-type-page-title" tabindex="-1">"Bàn viết"</h1>
             {private.then(|| view! {
-                <span class="vk-desk-heading__privacy inline-flex text-vk-on-surface-variant" title="Bản nháp chỉ bạn đọc được">
-                    <vink_ui::Icon name=IconName::Lock /><span class="vk-ui-visually-hidden">"Bản nháp chỉ bạn đọc được"</span>
+                <span class="vk-desk-heading__privacy inline-flex text-vk-on-surface-variant" aria-hidden="true" title="Bản nháp chỉ bạn đọc được">
+                    <vink_ui::Icon name=IconName::Lock />
                 </span>
             })}
             </div>
@@ -562,8 +562,9 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
             </DeskAccess>
         })}
         <Show when=move || access_error.with(Option::is_none)>
-            <section id="drafts" class="vk-drafts-region [min-inline-size:0]" aria-label="Tác phẩm của bạn">
+            <section id="drafts" class="vk-drafts-region [min-inline-size:0]" aria-labelledby="draft-list-title" aria-describedby="draft-privacy-description">
                 <h2 id="draft-list-title" class="vk-ui-visually-hidden" tabindex="-1">"Tác phẩm của bạn"</h2>
+                <p id="draft-privacy-description" hidden>"Bản nháp và số liệu chỉ mình bạn xem được. Thấm và Nhận xét thuộc bản đang công khai."</p>
                 <div class="vk-desk-works gap-vk-3 [min-inline-size:0]" data-testid="draft-content"
                     aria-busy=move || if loading.get() { "true" } else { "false" }>
                     <Show when=move || applied.with(|q| !crate::draft_list::search_key(q).is_empty())>
@@ -578,7 +579,6 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
                         filtered=Signal::derive(move || applied.with(|q| !crate::draft_list::search_key(q).is_empty()))
                         first_use no_results creation can_create create create_format clear more refresh refresh_disabled open_review explainer_open />
                 </div>
-                <p class="vk-desk-privacy vk-muted">"Bản nháp của bạn là riêng tư. Số liệu chỉ mình bạn thấy; Thấm và Nhận xét thuộc bản đang công khai."</p>
             </section>
             <ViewsExplainerDialog open=explainer_open pages />
             <DeskReview session />
@@ -678,10 +678,9 @@ fn CreateDraftControls(
     can_create: Signal<bool>,
     create: Callback<()>,
     create_format: RwSignal<DocumentFormatDto>,
-    #[prop(default = false)] first: bool,
 ) -> impl IntoView {
     view! {
-        <div class="vk-desk-create flex-wrap [align-items:end] [gap:min(var(--vk-space-2),8px)_min(var(--vk-space-3),12px)] [min-inline-size:0] [max-inline-size:100%]">
+        <div class="vk-desk-create flex flex-wrap items-center [gap:min(var(--vk-space-2),8px)_min(var(--vk-space-3),12px)] [min-inline-size:0] [max-inline-size:100%]">
             <Select id="create-draft-format" label="Định dạng bản thảo"
                 variant=SelectVariant::Inset16 required=true
                 options=vec![ChoiceOption::new("default", "Mặc định"), ChoiceOption::new("markdown", "Markdown")]
@@ -694,14 +693,13 @@ fn CreateDraftControls(
                 })
             />
             <Button variant=ButtonVariant::Filled
-                leading=IconName::Add id="create-draft" on_press=move |_| create.run(())
+                leading=IconName::Edit id="create-draft" on_press=move |_| create.run(())
                 state=Signal::derive(move || if creation.get() == CreateState::Pending { ActionState::pending("Đang tạo…") } else { blocked(!can_create.get()) })
             >
                 {move || match creation.get() {
                     CreateState::Pending => "Đang tạo…",
-                    CreateState::Reconciled => "Tạo thêm bản thảo",
-                    _ if first => "Viết bản thảo đầu tiên",
-                    _ => "Tạo bản thảo",
+                    CreateState::Reconciled => "Viết thêm",
+                    _ => "Viết",
                 }}
             </Button>
         </div>
@@ -719,7 +717,7 @@ fn CreateNotice(
             return view! {
                 <div data-testid="create-notice">
                     <InlineNotice title="Đã tải lại danh sách bản thảo."
-                        message="Hãy kiểm tra bản thảo gần đây. Nếu vẫn muốn tạo bản khác, chọn Tạo thêm bản thảo."
+                        message="Hãy kiểm tra bản thảo gần đây. Nếu vẫn muốn tạo bản khác, chọn Viết thêm."
                         tone=Tone::Info announce=Announce::Polite />
                 </div>
             }.into_any();
@@ -839,7 +837,7 @@ fn DraftListView(
                         </Button>
                     </Show>
                 </div>
-                <div id="draft-tools" class="vk-draft-tools [max-inline-size:100%]" hidden=move || !show_tools.get()>
+                <div id="draft-tools" class="vk-draft-tools ms-auto [min-inline-size:0] [max-inline-size:100%]" hidden=move || !show_tools.get()>
                     <Select id="draft-sort" label="Sắp xếp" required=true variant=SelectVariant::Inset16
                         options=vec![ChoiceOption::new("recent", "Mới nhất"), ChoiceOption::new("title", "Tên A–Z")]
                         value=Signal::derive(move || Some(if sort.get() == DraftSort::Title { "title" } else { "recent" }.to_string()))
@@ -855,7 +853,7 @@ fn DraftListView(
             <Show when=move || first_use.get()>
                 <div data-testid="draft-empty">
                     <EmptyState artwork=EmptyArtwork::FirstDraft title="Chưa có tác phẩm nào" message="Một trang dành riêng cho những điều bạn muốn viết.">
-                        <CreateDraftControls creation can_create create create_format first=true />
+                        <CreateDraftControls creation can_create create create_format />
                     </EmptyState>
                 </div>
             </Show>
@@ -888,19 +886,24 @@ fn DraftListView(
                     </div>
                 }
             })}
-            <ul id="draft-results" class="vk-draft-rows grid gap-vk-2 m-0 p-0 [list-style:none] empty:hidden" aria-label="Tác phẩm đã tải" role="list">
+            <ul id="draft-results" class="vk-draft-rows grid gap-vk-3 p-0 [list-style:none] empty:hidden" aria-label="Tác phẩm đã tải" role="list">
                 <For each=move || pages.with(|p| p.drafts.clone())
                     key=|draft| draft.work_id.clone()
                     children=move |draft| {
                         let id = draft.work_id.clone();
-                        let fallback = adapters::author_work_summary(&draft);
-                        let work = Signal::derive(move || pages.with(|p| p.drafts.iter().find(|d| d.work_id == id)
-                            .map(adapters::author_work_summary).unwrap_or_else(|| fallback.clone())));
+                        let fallback = (adapters::author_work_summary(&draft), draft.shows_review_action());
+                        let row = Memo::new(move |_| pages.with(|p| p.drafts.iter().find(|d| d.work_id == id)
+                            .map(|d| (adapters::author_work_summary(d), d.shows_review_action()))
+                            .unwrap_or_else(|| fallback.clone())));
+                        let work = Signal::derive(move || row.with(|(summary, _)| summary.clone()));
                         let review_work_id = draft.work_id.clone();
                         view! {
-                            <li id=format!("draft-row-{}", draft.work_id) class="vk-draft-row [min-inline-size:0] [&>.vk-author-work]:bg-transparent [&>.vk-author-work:has(a:hover)]:bg-vk-bg-inset [&>.vk-author-work]:rounded-none" data-testid="draft-row">
+                            <li id=format!("draft-row-{}", draft.work_id) class="vk-draft-row [min-inline-size:0]" data-testid="draft-row">
                                 <AuthorWorkRow work review_action=Box::new(move || view! {
-                                    <ReviewTrigger work_id=review_work_id title=Signal::derive(move || work.with(|w| w.title.clone())) open=open_review />
+                                    <Show when=move || row.with(|(_, show_review)| *show_review)>
+                                        <ReviewTrigger work_id=review_work_id.clone()
+                                            title=Signal::derive(move || row.with(|(w, _)| w.title.clone())) open=open_review />
+                                    </Show>
                                 }.into_any()) />
                             </li>
                         }

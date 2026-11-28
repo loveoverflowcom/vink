@@ -53,6 +53,10 @@ SELECT page.work_id, page.version, page.title, page.updated_at,
        wp.intent_revision_id, im.moderation AS intent_moderation,
        latest.id AS latest_revision_id, lm.moderation AS latest_moderation,
        wp.review_withdrawn_revision_id IS NOT NULL AS review_withdrawn,
+       (wp.intent_revision_id IS NOT NULL OR wp.review_withdrawn_revision_id IS NOT NULL
+        OR p.revision_id IS NOT NULL OR EXISTS (
+           SELECT 1 FROM work_revision_moderation m WHERE m.work_id = page.work_id
+        )) AS has_review_context,
        p.revision_id AS public_revision_id, pr.title AS public_title,
        CASE WHEN d.work_id IS NULL OR pr.id IS NULL THEN NULL ELSE
            d.title IS DISTINCT FROM pr.title OR d.document IS DISTINCT FROM pr.document OR
@@ -150,6 +154,7 @@ struct Row {
     latest_revision_id: Option<Uuid>,
     latest_moderation: Option<String>,
     review_withdrawn: bool,
+    has_review_context: bool,
     public_revision_id: Option<Uuid>,
     public_title: Option<String>,
     has_draft_changes: Option<bool>,
@@ -169,6 +174,7 @@ impl Row {
             latest_revision_id: self.latest_revision_id.map(RevisionId::from_uuid),
             latest_moderation: self.latest_moderation,
             review_withdrawn: self.review_withdrawn,
+            has_review_context: self.has_review_context,
             has_draft_changes: self.has_draft_changes,
             current_public: self
                 .public_revision_id

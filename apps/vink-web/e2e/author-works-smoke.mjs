@@ -3,12 +3,34 @@ import { wakeDesk } from './desk-lifecycle.mjs';
 // #214 & #514 (Work Views Design r3). Real provider/Reader anchor check, then explicitly fabricated state/race/geometry/explainer cases.
 export async function authorWorks(page, {args,check,DraftGate,sleep}) {
   console.log('Author works #214 / #514 (Work Views r3): current-public facts, D-01/D-02, views states, explainer and reflow:');
+  const reviewReads = [];
+  const recordReview = ({sessionId, method, params}) => {
+    if (sessionId === page.sessionId && method === 'Network.requestWillBeSent') {
+      const path = new URL(params.request.url).pathname;
+      if (path.endsWith('/publication/review')) reviewReads.push(path);
+    }
+  };
+  page.cdp.listeners.push(recordReview);
   await page.goto(args.base+'/ban-viet');
   await page.waitFor(`document.querySelector('[data-testid=draft-content]')?.getAttribute('aria-busy')==='false'`, 'real author list');
   const real=await page.eval(`fetch('/api/v1/author/works?limit=24').then(async r=>({status:r.status,cache:r.headers.get('cache-control'),body:await r.json()}))`);
   check(real.status===200 && real.cache==='no-store' && !JSON.stringify(real.body).includes('document'), 'real author API is no-store and contains no manuscript');
   const published=real.body.works.find(w=>w.publication?.current_public);
+  const {nodes} = await page.send('Accessibility.getFullAXTree');
+  const region = nodes.find(node => node.role?.value === 'region' && node.name?.value === 'Tác phẩm của bạn');
+  check(region?.description?.value.includes('Bản nháp và số liệu chỉ mình bạn xem được.'),
+    '#614 the private works landmark exposes its description in the accessibility tree');
+  check(reviewReads.length === 0, '#614 mounting the real list sends no review detail requests');
   if (published) {
+    const trigger = '#desk-review-trigger-' + published.work_id;
+    check(published.publication.has_review_context === true, '#614 owner API confirms review context for the published work');
+    await page.click(trigger);
+    await page.waitFor("document.querySelector('#desk-review[open] details')", '#614 real owner review detail loads');
+    check(reviewReads.length === 1 && reviewReads[0].endsWith('/' + published.work_id + '/publication/review'),
+      '#614 opening the sheet reads exactly one matching work');
+    await page.key('Escape');
+    await page.waitFor("!document.querySelector('#desk-review[open]') && document.activeElement?.id === " + JSON.stringify(trigger.slice(1)),
+      '#614 Escape restores focus to the initiating row');
     const reader=await page.eval(`fetch('/api/v1/works/${published.work_id}/reader').then(r=>r.json())`);
     check(reader.revision_id===published.publication.current_public.revision_id, 'real Reader and Desk share the current public revision');
     const endorsements=await page.eval(`fetch('/api/v1/works/${published.work_id}/endorsements').then(r=>r.json())`);
@@ -26,19 +48,20 @@ export async function authorWorks(page, {args,check,DraftGate,sleep}) {
     await page.eval('history.back()');
     await page.waitFor(`location.pathname==='/ban-viet' && document.querySelector('#draft-row-${published.work_id} .vk-draft-row__link') && document.querySelector('[data-testid=draft-content]')?.getAttribute('aria-busy')==='false'`, '#514 browser Back restores the Desk');
   }
+  page.cdp.listeners = page.cdp.listeners.filter(listener => listener !== recordReview);
   const title='Những ngày mưa ở khuỷu đường cũ, nơi người trở về vẫn nhớ tiếng Việt và những khổ thơ chưa kịp đặt tên'.normalize('NFD');
-  const state={audience:'public',lifecycle:'active',generation:3,intent_revision_id:'r2',intent_moderation:'pending',latest_revision_id:'r2',latest_moderation:'pending',review_withdrawn:false,has_draft_changes:true,current_public:{revision_id:'r1',title:'Tên của bản đang công khai',tham:0,comments:123456789}};
+  const state={audience:'public',lifecycle:'active',generation:3,intent_revision_id:'r2',intent_moderation:'pending',latest_revision_id:'r2',latest_moderation:'pending',review_withdrawn:false,has_review_context:true,has_draft_changes:true,current_public:{revision_id:'r1',title:'Tên của bản đang công khai',tham:0,comments:123456789}};
   const countedViews=(count,counted_since=null)=>({state:'counted',count,counted_since});
   const card=(i,publication=state,views=countedViews(1234,'2026-12-01T01:00:00Z'))=>({work_id:`88888888-8888-4888-8888-${String(i).padStart(12,'0')}`,title:i===0?title:`[214] Tác phẩm ${i}`,draft_version:3,updated_at:'2026-11-15T12:00:00Z',publication,views});
-  const privatePub={...state,audience:'private',current_public:null,intent_revision_id:null,intent_moderation:null,latest_revision_id:null,latest_moderation:null,generation:1};
+  const privatePub={...state,audience:'private',current_public:null,intent_revision_id:null,intent_moderation:null,latest_revision_id:null,latest_moderation:null,has_review_context:false,generation:1};
   const withdrawnPub={...state,audience:'public',current_public:null,review_withdrawn:true,intent_revision_id:null,intent_moderation:null,latest_moderation:'rejected'};
   const works=[
     card(0,state,countedViews(1234,'2026-12-01T01:00:00Z')),
     card(1,privatePub,{state:'never_public',count:null,counted_since:null}),
     card(2,{...state,current_public:{revision_id:'r1',title:'[214] Tác phẩm 2',tham:12,comments:3},intent_moderation:'rejected',latest_moderation:'rejected'},countedViews(0,null)),
-    card(3,{...state,audience:'future',current_public:null},{state:'not_started',count:null,counted_since:null}),
+    card(3,{...state,audience:'future',current_public:null,has_review_context:undefined},{state:'not_started',count:null,counted_since:null}),
     card(4,{...state,current_public:{...state.current_public,tham:null,comments:null}},{state:'unavailable',count:null,counted_since:null}),
-    {...card(5,privatePub,countedViews(3,null)),draft_version:null},
+    {...card(5,{...privatePub,latest_revision_id:'unsent',has_review_context:true},countedViews(3,null)),draft_version:null},
     card(6,withdrawnPub,countedViews(5,'2026-11-21T00:00:00Z')),
   ];
   works[1].title = "";
@@ -88,11 +111,12 @@ export async function authorWorks(page, {args,check,DraftGate,sleep}) {
       const workId = row.id.slice('draft-row-'.length);
       const review = buttons[0];
       const noReaderLink = !row.querySelector('.vk-author-work__reader') && ![...links].some(a => a.pathname.startsWith('/tac-pham/') || a.textContent.trim()==='Đọc');
+      if (workId === '${works[1].work_id}') return noReaderLink && buttons.length === 0;
       return noReaderLink && buttons.length === 1 && review.id === 'desk-review-trigger-' + workId &&
         review.classList.contains('vk-ui-button--text') &&
         Boolean(review.querySelector('[data-icon=verified-user]')) &&
         review.getAttribute('aria-haspopup') === 'dialog' && review.textContent.trim() === 'Xem kiểm duyệt';
-    })`), '#514 D-02 zero Read button/link and every row exposes one quiet verified-user review button (#593)');
+    })`), '#514 D-02 zero Read button/link and #614 review is quiet, absent for confirmed never-submitted and retained for pending/rejected/withdrawn/history/unknown');
     check(await page.eval(`(() => {
       const row=document.querySelector('#draft-row-${works[0].work_id}');
       const title=row.querySelector('.vk-draft-row__title'), metadata=row.querySelector('.vk-author-work__status');
@@ -100,7 +124,7 @@ export async function authorWorks(page, {args,check,DraftGate,sleep}) {
       return editor.contains(title) && editor.contains(metadata) && !row.querySelector('.vk-author-work__reader') &&
         editor.getAttribute('href')==='/ban-viet/${works[0].work_id}';
     })()`), '#514 D-02 editor link covers status, title and metrics with no sibling Read link');
-    // #593 compares the resting row, independently of the prior pointer position.
+    // Compare the resting row independently of the prior pointer position.
     await page.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:0,y:0});
     await page.eval(`Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{})))`);
     check(await page.eval(`(() => {
@@ -110,8 +134,13 @@ export async function authorWorks(page, {args,check,DraftGate,sleep}) {
       const rT=tham.getBoundingClientRect(), rC=comments.getBoundingClientRect(), rV=views.getBoundingClientRect();
       const labels=[...first.querySelectorAll('.vk-author-work__label')];
       const zeroViews=document.querySelector('#draft-row-${works[2].work_id} [data-testid=author-work-views]');
-      return shape.borderRadius==='0px' && shape.backgroundColor==='rgba(0, 0, 0, 0)' &&
-        getComputedStyle(document.querySelector('#draft-results')).rowGap==='8px' &&
+      const list = document.querySelector('#draft-results');
+      const controls = document.querySelector('.vk-draft-controls');
+      const space = list.getBoundingClientRect().top - controls.getBoundingClientRect().bottom;
+      return parseFloat(shape.borderRadius) === 20 && shape.backgroundColor !== 'rgba(0, 0, 0, 0)' &&
+        shape.backgroundColor !== getComputedStyle(list.closest('.vk-main')).backgroundColor &&
+        shape.borderTopWidth === '0px' && shape.boxShadow === 'none' &&
+        getComputedStyle(list).rowGap === '12px' && space >= 24 && space <= 32 &&
         getComputedStyle(tham).fontVariantNumeric==='tabular-nums' &&
         getComputedStyle(views).fontVariantNumeric==='tabular-nums' &&
         tham.title==='0 Thấm' && comments.title==='123.456.789 nhận xét' &&
@@ -122,7 +151,7 @@ export async function authorWorks(page, {args,check,DraftGate,sleep}) {
         comments.querySelector('[data-icon=chat-bubble-outline]').getBoundingClientRect().width===20 &&
         views.querySelector('[data-icon=visibility-outline]').getBoundingClientRect().width===20 &&
         labels.length===3 && labels.map(l=>l.dataset.tone).join(',')==='ok,quiet,attn';
-    })()`), '#593 flat Desk rows: transparent resting surface, 8px gap, tabular Vietnamese grouping, D-01 horizontal order, 22/20/20 icons and selective tonal badges');
+    })()`), '#614 Desk rows: quiet surface, 20px radius, 12px gap, 24–32px after controls, tabular Vietnamese grouping, D-01 horizontal order, 22/20/20 icons and selective tonal badges');
 
     // #514 UX-07 accessible Views explainer trigger & dialog (desktop light + mobile dark captures).
     await page.viewport(1440);

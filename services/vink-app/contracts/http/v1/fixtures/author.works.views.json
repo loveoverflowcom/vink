@@ -14,6 +14,7 @@
         "latest_revision_id": "66666666-6666-4666-8666-666666666601",
         "latest_moderation": "approved",
         "review_withdrawn": false,
+        "has_review_context": true,
         "has_draft_changes": false,
         "current_public": {
           "revision_id": "66666666-6666-4666-8666-666666666601",
@@ -42,6 +43,7 @@
         "latest_revision_id": "66666666-6666-4666-8666-666666666602",
         "latest_moderation": "approved",
         "review_withdrawn": false,
+        "has_review_context": true,
         "has_draft_changes": false,
         "current_public": {
           "revision_id": "66666666-6666-4666-8666-666666666602",
@@ -70,6 +72,7 @@
         "latest_revision_id": "66666666-6666-4666-8666-666666666603",
         "latest_moderation": "approved",
         "review_withdrawn": false,
+        "has_review_context": true,
         "has_draft_changes": false,
         "current_public": null
       },
@@ -93,6 +96,7 @@
         "latest_revision_id": "66666666-6666-4666-8666-666666666604",
         "latest_moderation": "rejected",
         "review_withdrawn": true,
+        "has_review_context": true,
         "has_draft_changes": false,
         "current_public": null
       },
@@ -116,6 +120,7 @@
         "latest_revision_id": null,
         "latest_moderation": null,
         "review_withdrawn": false,
+        "has_review_context": false,
         "has_draft_changes": null,
         "current_public": null
       },
@@ -139,6 +144,7 @@
         "latest_revision_id": "66666666-6666-4666-8666-666666666606",
         "latest_moderation": "approved",
         "review_withdrawn": false,
+        "has_review_context": true,
         "has_draft_changes": false,
         "current_public": {
           "revision_id": "66666666-6666-4666-8666-666666666606",

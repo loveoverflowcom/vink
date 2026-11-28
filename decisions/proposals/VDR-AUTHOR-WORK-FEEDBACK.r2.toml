@@ -1,0 +1,31 @@
+version = 1
+id = "VDR-AUTHOR-WORK-FEEDBACK"
+revision = 2
+
+[base]
+revision = 1
+sha256 = "4616ced97f723fac18cc31b1c11639d1eb7649b83340bb2d702d92999a3a14a7"
+
+[content]
+kind = "architecture"
+domain = "publication"
+title = "Read-model tác giả, số liệu công khai và lối vào kiểm duyệt"
+resolution = """
+Giữ một row mỗi WorkId thuộc tác giả, kể cả khi không có bản nháp đang sửa. Giữ audience, lifecycle, intent, moderation và public pointer là các sự thật riêng. Has_draft_changes so nội dung, tên và thứ tự metadata. Thấm neo revision đang công khai, Nhận xét đếm public projection của thread và Lượt xem theo WorkId lấy trong cùng snapshot. Savepoint lỗi trả unavailable. Giữ riêng đăng nhập, quyền đọc và no-store.
+Desk R5 (#614) dùng has_review_context trong publication summary. SELECT trang kiểm ý định, phiên bản công khai, phiên bản bị rút hoặc tồn tại moderation row theo WorkId. Bản chụp mới chưa gửi không che lịch sử. Chỉ xác nhận false mới ẩn nút Xem kiểm duyệt. Dữ kiện thiếu hoặc summary unknown vẫn giữ lối vào. Đọc sheet khi mở, tra đúng phiên bản/quyết định và recheck owner ở endpoint chi tiết.
+"""
+rationale = """
+R1 ghi kiến trúc của PR #222. #342 thêm SELECT batch Lượt xem. Latest moderation ở #614 không đủ phân biệt tác phẩm có bản chụp chưa gửi sau một lần gửi cũ. Tra tồn tại bằng khóa sẵn có trên các WorkId của trang giữ chi phí trong SELECT hiện hành. WORK-VIEWS và luật xuất bản, phản đối, kiểm duyệt vẫn do các owner tương ứng quản lý.
+"""
+requires = [
+    "LVE-PR-01-CHOICE-02@r1",
+    "O-17@r2",
+    "USER-02@r1",
+]
+related_ids = [
+    "AUD-01",
+    "LVE-FR-04",
+    "NOTIF-03",
+    "O-07",
+    "RANK-02",
+]

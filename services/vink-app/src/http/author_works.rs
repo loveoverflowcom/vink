@@ -56,6 +56,7 @@ pub struct PublicationSummary {
     pub latest_revision_id: Option<String>,
     pub latest_moderation: Option<String>,
     pub review_withdrawn: bool,
+    pub has_review_context: bool,
     pub has_draft_changes: Option<bool>,
     pub current_public: Option<CurrentPublicSummary>,
 }
@@ -87,6 +88,7 @@ impl From<app::AuthorWorkPage> for AuthorWorkList {
                         latest_revision_id: p.latest_revision_id.map(|id| id.to_string()),
                         latest_moderation: p.latest_moderation,
                         review_withdrawn: p.review_withdrawn,
+                        has_review_context: p.has_review_context,
                         has_draft_changes: p.has_draft_changes,
                         current_public: p.current_public.map(|p| CurrentPublicSummary {
                             revision_id: p.revision_id.to_string(),
@@ -129,6 +131,7 @@ mod tests {
                     latest_revision_id: Some(revision("44444444-4444-4444-8444-444444444445")),
                     latest_moderation: Some("pending".into()),
                     review_withdrawn: false,
+                    has_review_context: true,
                     has_draft_changes: Some(true),
                     current_public: Some(app::CurrentPublicSummary {
                         revision_id: revision("44444444-4444-4444-8444-444444444444"),
@@ -183,6 +186,7 @@ mod tests {
                 latest_revision_id: None,
                 latest_moderation: None,
                 review_withdrawn: false,
+                has_review_context: false,
                 has_draft_changes: None,
                 current_public: None,
             }
@@ -196,6 +200,7 @@ mod tests {
                 latest_revision_id: Some(revision),
                 latest_moderation: Some(if withdrawn { "rejected" } else { "approved" }.into()),
                 review_withdrawn: withdrawn,
+                has_review_context: true,
                 has_draft_changes: Some(false),
                 current_public: public.then(|| app::CurrentPublicSummary {
                     revision_id: revision,

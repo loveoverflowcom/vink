@@ -143,15 +143,15 @@ const watchNodes = (page, name, selector, kind, owner = '#drafts') => page.eval(
 })()`);
 
 // Visual cluster (artwork top → actions bottom) against the free region: from the last visible
-// control above the slot (after its margin) to the end of `.vk-main`'s content box minus the privacy paragraph.
+// control above the slot (after its margin) to the end of `.vk-main`'s content box.
 // Document coordinates, so the result does not depend on the scroll position.
 const PLACEMENT = `(() => {
   const box = el => el.getBoundingClientRect(), state = root.querySelector('.vk-empty-state');
   let prev = root.previousElementSibling; while (prev && !box(prev).height) prev = prev.previousElementSibling;
-  const main = document.querySelector('.vk-main'), privacy = document.querySelector('.vk-desk-privacy'), ps = getComputedStyle(privacy);
+  const main = document.querySelector('.vk-main'), privacy = document.querySelector('.vk-desk-privacy');
   const top = (prev ? box(prev).bottom + parseFloat(getComputedStyle(prev).marginBlockEnd)
     : box(root.parentElement).top) + scrollY;
-  const bottom = box(main).bottom + scrollY - parseFloat(getComputedStyle(main).paddingBottom) - privacy.offsetHeight - parseFloat(ps.marginTop) - parseFloat(ps.marginBottom);
+  const bottom = box(main).bottom + scrollY - parseFloat(getComputedStyle(main).paddingBottom) - (privacy ? privacy.offsetHeight + parseFloat(getComputedStyle(privacy).marginTop) + parseFloat(getComputedStyle(privacy).marginBottom) : 0);
   const groupTop = box(state.querySelector('img')).top + scrollY, groupBottom = box(state.querySelector('.vk-empty-state__actions')).bottom + scrollY;
   const round = n => Math.round(n * 10) / 10;
   return { region: [round(top), round(bottom)], group: [round(groupTop), round(groupBottom)], gapAbove: round(groupTop - top), gapBelow: round(bottom - groupBottom), centerDelta: round((groupTop + groupBottom - top - bottom) / 2) };
@@ -333,9 +333,13 @@ export async function deskEmptyState(page, { args, check, DraftGate, textContras
         await page.capture(`desk-art-${state}-${width}-${theme}-${scale}`, { scenario: '#259-empty-artwork', state, target, boundary: 'intercepted-private-summary-transport', requestedScene: {width,height:900,theme,scale} });
         await page.eval(`document.querySelector(${JSON.stringify(action)}).focus(); document.querySelector(${JSON.stringify(action)}).scrollIntoView({block:'center'})`);
         check(await page.eval(`(() => {const r=document.querySelector(${JSON.stringify(action)}).getBoundingClientRect(),b=document.querySelector('.vk-ui-bottom-nav'),limit=b?.getClientRects().length?b.getBoundingClientRect().top:innerHeight; return r.top>=0 && r.bottom<=limit+1 && r.width>=44 && r.height>=44;})()`), `#259 ${state} ${width}/${theme}/${scale}: recovery reachable above navigation`);
-        await page.eval(`scrollTo(0,document.documentElement.scrollHeight)`);
-        check(await page.eval(`(() => {const p=document.querySelector('.vk-desk-privacy'),r=p.getBoundingClientRect(),b=document.querySelector('.vk-ui-bottom-nav'),limit=b?.getClientRects().length?b.getBoundingClientRect().top:innerHeight;return r.bottom<=limit+1 && r.top>=0 && p.textContent.includes('bản đang công khai') && document.querySelector('#heading [title="Bản nháp chỉ bạn đọc được"]');})()`), `#259 ${state} ${width}/${theme}/${scale}: list caption is reachable and the header explains draft privacy`);
-        if (width < 760 && scale === 200) await page.capture(`desk-art-${state}-${width}-${theme}-${scale}-privacy`, { scenario: '#259-private-copy', state, target: '.vk-desk-privacy', boundary: 'intercepted-private-summary-transport', requestedScene: {width,height:900,theme,scale} });
+        if (!baseline) check(await page.eval(`(() => {
+          const region = document.querySelector('#drafts');
+          const description = document.getElementById(region.getAttribute('aria-describedby'));
+          const lock = document.querySelector('#heading [title="Bản nháp chỉ bạn đọc được"]');
+          return description?.hidden && description.textContent.includes('bản đang công khai') &&
+            lock?.getAttribute('aria-hidden') === 'true' && !document.querySelector('.vk-desk-privacy');
+        })()`), `#614 ${state} ${width}/${theme}/${scale}: one accessible privacy description and no visual footer`);
       }
       if (!baseline) check(network.length===beforeMatrix, `#259 ${state}: viewport, text scale and theme changes request no additional artwork`);
     }
@@ -477,7 +481,7 @@ async function sessionFence(page, {args,check,gate,settled}) {
     await gate.fulfill(await gate.next('gets'),200,{drafts:[]}); await settled();
     await gate.fulfill(post,201,{work_id:'99999999-9999-4999-8999-000000000258',title:'',version:1,document:{format:'default',source:''},updated_at:'2026-11-16T00:00:00Z'});
     await page.eval(`new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))`);
-    check(gate.postCount===count && await page.eval(`location.pathname==='/ban-viet' && document.querySelectorAll('#create-draft').length===1 && document.querySelector('#create-draft').getAttribute('aria-disabled')!=='true' && document.querySelector('#create-draft').textContent==='Viết bản thảo đầu tiên'`), '#259 late successful create from old session cannot navigate, retry POST or change new first-use state');
+    check(gate.postCount===count && await page.eval(`location.pathname==='/ban-viet' && document.querySelectorAll('#create-draft').length===1 && document.querySelector('#create-draft').getAttribute('aria-disabled')!=='true' && document.querySelector('#create-draft').textContent==='Viết'`), '#259 late successful create from old session cannot navigate, retry POST or change new first-use state');
     if(error) throw error;
   } finally {
     await page.send('Fetch.disable');

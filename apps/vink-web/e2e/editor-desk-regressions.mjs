@@ -28,13 +28,16 @@ export async function firstDraftFormat(page, { args, check }) {
     await page.waitFor(`document.querySelector('${picker}').value === 'markdown'`, 'native Markdown option selected by keyboard');
   }
   check(await page.eval(`(() => {
-    const radius = getComputedStyle(document.querySelector('#create-draft')).getPropertyValue('--vk-radius-control-48').trim();
+    const button = document.querySelector('#create-draft');
+    if (button.textContent !== 'Viết' || !button.querySelector('[data-icon=edit]') || button.querySelector('[data-icon=add]')) return false;
     return ['#create-draft-format', '#create-draft'].every(id => {
-      const style = getComputedStyle(document.querySelector(id));
+      const target = document.querySelector(id);
+      const style = getComputedStyle(target);
+      const radius = style.getPropertyValue('--vk-radius-full').trim();
       return ['borderTopLeftRadius','borderTopRightRadius','borderBottomLeftRadius','borderBottomRightRadius']
-        .every(corner => style[corner] === radius);
+        .every(corner => style[corner] === radius) && target.getBoundingClientRect().height >= 48 && style.borderTopWidth === '0px';
     });
-  })()`), '#409 native format Select and create use the symmetric R4 control radius');
+  })()`), '#614 first-use native format Select and Viết share a borderless pill shape with a 48px minimum');
   await checkSelectGeometry(page, picker, check, '#262 first draft at 320px / text200', { icon: 16, inset: 16, reserve: 52, gap: 20 });
   await page.key('Tab');
   check(await page.eval(`(() => {
@@ -59,6 +62,11 @@ export async function firstDraftFormat(page, { args, check }) {
     (document.querySelector('#draft-title') !== null) === ${format === 'default'} &&
     (document.querySelector('#editor-markdown-toolbar') !== null) === ${format === 'markdown'} &&
     document.querySelectorAll('.cm-editor').length === 1`), `#262 reload opens the stored ${format} editor and controls`);
+  await page.goto(args.base + '/ban-viet');
+  const row = '#draft-row-' + id;
+  await page.waitFor(`document.querySelector('${row} a[href^="/ban-viet/"]')`, 'real new draft on Desk');
+  check(await page.eval(`!document.querySelector('${row} .vk-desk-review-action')`),
+    '#614 a real never-submitted draft opens in Editor and has no review action on Desk');
 }
 
 async function write(page, path, method, body) {
