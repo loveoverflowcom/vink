@@ -450,8 +450,10 @@ của runner hiện hữu, kiểm loading/first-use/search miss/clear, node/care
 rejection. Ma trận 320/390/834/1440 × light/dark × root text100/200 kiểm art sizing, CTA/privacy
 clearance; [evidence và giới hạn](evidence/empty-webp-259/README.md) tách fixtures với real
 create/paging trong `draftDashboard`/`draftPagination`. Không đổi Editor hoặc read/create model.
-Từ [#411](https://github.com/loveoverflowcom/vink/issues/411), khách và các trạng thái
-`DeskAccess` dùng `EmptyState` trên nền trang. Lần đầu dùng minh họa riêng tư hiện có; màn chờ
+`DeskAccess` dùng `EmptyState` chung từ [#411](https://github.com/loveoverflowcom/vink/issues/411).
+Từ [#612](https://github.com/loveoverflowcom/vink/issues/612), khách có nền tonal riêng với
+CTA Khám phá dùng icon điều hướng và CTA đăng nhập theo khả năng của deployment. Các trạng thái
+bút danh, tạm khóa hoặc cần kiểm tra lại phiên giữ trình bày trên nền trang. Lần đầu dùng minh họa riêng tư; màn chờ
 dùng skeleton UIS-03 sau 300 ms. Lỗi đọc danh sách và lối thử lại ở vùng kết quả, giữ phần
 đã tải cùng query của phiên hiện tại. `deskGuest` và `deskEmptyState` theo dõi request, reflow
 ở chữ 100%/150%/stress 200%, thay đổi trạng thái và focus của dock.

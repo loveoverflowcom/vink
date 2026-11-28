@@ -166,7 +166,12 @@ Nguồn là yêu cầu của chủ sản phẩm ghi tại #522 về căn hàng v
 
 ### 5.2. Khách, lần đầu, đang tải và lỗi
 
-Khách và các biến thể `DeskAccess` dùng EmptyState trên nền trang, CTA theo khả năng đăng nhập.
+Khách đã xác nhận dùng EmptyState trên nền `surface-container-high` căn giữa, bo 28 px,
+rộng tối đa 480 px và padding 24–32 px ([#612](https://github.com/loveoverflowcom/vink/issues/612)).
+Khóa 56 px dẫn vào tiêu đề và một câu hỗ trợ. CTA xếp dọc, ngang bằng nhau và cao ít nhất 48 px.
+Khi mở đăng nhập, nút filled “Đăng nhập” đứng trước nút tonal “Khám phá tác phẩm”. Khi đóng,
+chỉ còn nút Khám phá và thông báo chưa mở đăng nhập. Cả hai trường hợp dùng icon Explore ở đầu
+nhãn. Các biến thể bút danh, tạm khóa và kiểm tra lại phiên vẫn dùng EmptyState trên nền trang.
 Phiên chưa đủ quyền không đọc danh sách riêng. Lần đầu giữ minh họa và dùng chung nút “Viết”
 có icon bút với danh sách có tác phẩm. Select giữ tên truy cập “Định dạng bản thảo” theo DQ-06. DQ-04 ẩn kính lúp/sắp xếp ở kho rỗng vẫn
 `OPEN`; đề xuất ẩn khi ô không có chữ phải giữ node và tái kiểm khi có query hoặc lỗi.

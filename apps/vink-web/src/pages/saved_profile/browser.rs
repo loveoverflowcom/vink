@@ -119,14 +119,18 @@ pub(super) fn Modes(handle: String, saved: bool) -> impl IntoView {
     let saved_target = format!("{works_href}/da-luu");
     let saved_href = safe_profile_return_for_owner(&saved_target, Some(&handle))
         .expect("verified canonical profile handle");
+    const PRIVACY: &str = "profile-saved-privacy";
     let links = move |suffix: &str| {
         [(false, "Tác phẩm", works_href.clone()), (true, "Đã lưu", saved_href.clone())]
             .into_iter()
             .map(|(is_saved, label, href)| {
                 let id = if is_saved { "profile-mode-saved" } else { "profile-mode-works" };
                 view! {
-                    <a id=format!("{id}{suffix}") href=href aria-current=(is_saved == saved).then_some("page")>
-                        {(is_saved == saved).then(|| view! { <Icon name=IconName::Check /> })}
+                    <a id=format!("{id}{suffix}") href=href aria-current=(is_saved == saved).then_some("page")
+                        aria-describedby=is_saved.then_some(PRIVACY)>
+                        {(is_saved || !saved).then(|| view! {
+                            <Icon name=if is_saved { IconName::Lock } else { IconName::Check } />
+                        })}
                         {label}
                     </a>
                 }
@@ -134,9 +138,13 @@ pub(super) fn Modes(handle: String, saved: bool) -> impl IntoView {
     };
     view! {
         <nav id="profile-modes" class="vk-profile-modes" aria-label="Hồ sơ của tôi">
+            <span id=PRIVACY class="vk-ui-visually-hidden">"Danh sách riêng tư, chỉ bạn xem được."</span>
             <div class="vk-explore-modes vk-profile-modes__wide">{links("")}</div>
             <details class="vk-profile-modes__compact">
-                <summary>{if saved { "Đã lưu" } else { "Tác phẩm" }}</summary>
+                <summary data-saved=saved.then_some("true") aria-describedby=saved.then_some(PRIVACY)>
+                    {saved.then(|| view! { <Icon name=IconName::Lock /> })}
+                    {if saved { "Đã lưu" } else { "Tác phẩm" }}
+                </summary>
                 <div class="vk-explore-modes">{links("-compact")}</div>
             </details>
         </nav>

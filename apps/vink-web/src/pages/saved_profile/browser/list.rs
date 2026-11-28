@@ -455,7 +455,6 @@ pub(super) fn SavedList(owner: VerifiedOwner) -> impl IntoView {
     Effect::new(move |_| list.read(Intent::Initial));
     view! {
         <h2 id=HEADING class="vk-saved-heading" tabindex="-1">"Đã lưu"</h2>
-        <p id="saved-privacy-note"><Icon name=IconName::Lock />"Chỉ mình bạn thấy danh sách này."</p>
         <Show when=move || initial.get()>
             <div id="saved-initial">
                 {move || if state.with(|list| list.initial_error) {
@@ -497,9 +496,6 @@ pub(super) fn SavedList(owner: VerifiedOwner) -> impl IntoView {
                     on_press=move |_| list.read(Intent::Append)>
                     {move || if state.with(|list| list.append_error) { "Thử lại" } else { "Xem thêm" }}
                 </Button>
-            </Show>
-            <Show when=move || !more.get() && !initial.get() && !empty.get()>
-                <p>"Đã hết danh sách"</p>
             </Show>
         </div>
         <p id="saved-snack" role="status">{move || state.with(|list| list.notice.clone())}</p>

@@ -153,10 +153,13 @@ pub(crate) fn ReadFailure(
 
 /// A recovery destination, independent of the browser history stack.
 #[component]
-pub(crate) fn ExploreRecovery(#[prop(default = "/".to_owned())] href: String) -> impl IntoView {
+pub(crate) fn ExploreRecovery(
+    #[prop(default = "/".to_owned())] href: String,
+    #[prop(default = "Về Khám phá")] label: &'static str,
+) -> impl IntoView {
     view! {
         <a class=vink_ui::ButtonVariant::Tonal.classes() href=href>
-            <vink_ui::Icon name=vink_ui::IconName::Explore />"Về Khám phá"
+            <vink_ui::Icon name=vink_ui::IconName::Explore /><span class="vk-ui-button__label">{label}</span>
         </a>
     }
 }
