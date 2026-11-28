@@ -96,7 +96,7 @@ export async function readerBeforeHydration(page, { args, check }) {
           focus: document.activeElement === coldDraft,
           text: coldDraft.value === 'Mưa đầu mùa 👩‍💻',
           selection: coldDraft.selectionStart === coldSelection[0] && coldDraft.selectionEnd === coldSelection[1],
-          adopted: document.querySelector('#root-composer-format').hidden
+          adopted: !document.querySelector('#root-composer-format').checkVisibility()
         })`);
         check(Object.values(kept).every(Boolean),
           'hydration adopts native text and keeps node, focus and selection ' + JSON.stringify(kept));

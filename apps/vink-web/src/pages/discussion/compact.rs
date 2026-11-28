@@ -1,6 +1,6 @@
 //! The Discussion adapter owns the native field, focus and the explicit upgrade gesture.
 use leptos::{html, prelude::*};
-use vink_ui::{FieldMode, FieldVariant, TextArea, TextInput};
+use vink_ui::{Button, ButtonVariant, FieldMode, FieldVariant, TextArea, TextInput};
 
 use crate::discussion_state::{ComposerKey, DiscussionController};
 
@@ -246,12 +246,16 @@ pub(super) fn CompactField(
             <span id=label_id class="vk-ui-visually-hidden">{label}</span>
             <div id=rich_id node_ref=host class="vk-comment-editor" hidden=move || !active.get()></div>
             <div class="vk-comment-format" hidden=move || mode.get() != FieldMode::Editable>
-                <button id=activate_id type="button" hidden=move || active.get() || edited.get() on:click=move |_| activate()
-                    aria-busy=move || loading.get().to_string()>"Định dạng"</button>
-                <div role="group" aria-label="Định dạng nhận xét" hidden=move || !active.get()>
+                <span hidden=move || active.get() || edited.get() aria-busy=move || loading.get().to_string()>
+                    <Button id=activate_id variant=ButtonVariant::Text on_press=move |_| activate()>"Định dạng"</Button>
+                </span>
+                <div role="group" aria-label="Định dạng nhận xét" hidden=move || !active.get()
+                    on:mousedown=|event| event.prevent_default()>
                     {[("bold","Đậm","B"),("italic","Nghiêng","I"),("link","Liên kết","Liên kết"),("quote","Trích dẫn","❝"),("list","Danh sách","•")].into_iter().map(|(kind,name,text)| view! {
-                        <button type="button" aria-label=name title=name data-format-action=kind
-                            on:mousedown=|event| event.prevent_default() on:click=move |_| command(kind)>{text}</button>
+                        <span data-format-action=kind title=name>
+                            <Button variant=ButtonVariant::Text accessible_label=name.to_owned()
+                                on_press=move |_| command(kind)>{text}</Button>
+                        </span>
                     }).collect_view()}
                 </div>
             </div>

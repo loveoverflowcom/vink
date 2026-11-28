@@ -23,7 +23,7 @@ export async function richDiscussion(page,{args,check,rootId,workId,browserConte
     await open(root);
     const toolbar='.vk-compact-field:has(#root-composer) [data-format-action=';
     for(const [kind,label] of [['bold','Đậm'],['italic','Nghiêng'],['link','Liên kết'],['quote','Trích dẫn'],['list','Danh sách']]){
-      const button=toolbar+kind+']';
+      const button=toolbar+kind+'] button';
       check(await page.eval('document.querySelector('+JSON.stringify(button)+').getAttribute("aria-label")')===label,'compact action '+label);
       await page.click(button);
       check((await source(root)).length>0,'command changes source '+kind);

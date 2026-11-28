@@ -2799,19 +2799,7 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
 .vk-comment-editor .cm-scroller { max-block-size: 12lh; }
 .vk-compact-field [hidden] { display: none; }
 .vk-comment-format { display: flex; align-items: center; }
-.vk-comment-format button {
-  appearance: none;
-  min-block-size: 44px;
-  min-inline-size: 44px;
-  padding-inline: .5em;
-  border: 0;
-  border-radius: var(--vk-radius-sm);
-  background: transparent;
-  color: var(--vk-primary);
-  font: inherit;
-  cursor: pointer;
-}
-.vk-comment-format button:hover { background: var(--vk-surface-container-high); }
-.vk-comment-format [data-format-action=bold] { font-weight: bold; }
-.vk-comment-format [data-format-action=italic] { font-style: italic; }
-.vk-comment-format button:focus-visible { outline: 2px solid currentColor; }
+.vk-comment-format [role=group] { display: flex; flex-wrap: wrap; }
+.vk-comment-format button { min-inline-size: 44px; padding-inline: .5em; }
+.vk-comment-format [data-format-action=bold] button { font-weight: bold; }
+.vk-comment-format [data-format-action=italic] button { font-style: italic; }

@@ -560,6 +560,8 @@ pub struct QueueEntry {
     #[serde(default)]
     pub body_format: CommentFormat,
     pub body: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub body_text: Option<String>,
     pub created_at: String,
     pub version: i64,
     pub can_decide: bool,
