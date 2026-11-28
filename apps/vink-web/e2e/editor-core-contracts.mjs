@@ -76,8 +76,20 @@ export async function editorCoreContracts(page, { args, check, sampleWork }) {
   check(witness.readonly && witness.duplicateRefused && witness.failedCleanly,
     'read-only and mount fences preserve one live owner and release a failed initial callback');
 
+  // A cached module may never enter Fetch's response stage. Each failure/late-load
+  // witness needs a fresh document and an actual network response to control.
+  await page.send('Network.setCacheDisabled', { cacheDisabled: true });
+  try {
+    await checkPendingImports(page, args, check, sampleWork);
+  } finally {
+    await page.send('Network.setCacheDisabled', { cacheDisabled: false });
+  }
+}
+
+async function checkPendingImports(page, args, check, sampleWork) {
   const path = '/pkg/vink-editor.js';
   for (const leave of [false, true]) {
+    await page.goto('about:blank');
     const gate = await holdAnswer(page, 'GET', path);
     await page.goto(args.base + '/ban-viet/' + sampleWork);
     await gate.held();
