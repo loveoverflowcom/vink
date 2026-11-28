@@ -273,6 +273,7 @@ pub const BROWSER_MODULES: &[(&str, &[Scenario], &[&str])] = {
         ("apps/vink-web/e2e/draft-pagination-smoke.mjs", &[S::Desk], &[]),
         ("apps/vink-web/e2e/editor-autosave.mjs", &[S::Editor, S::EditorChrome, S::Restart], &[]),
         ("apps/vink-web/e2e/editor-desk-regressions.mjs", &[S::EditorFirstDraft, S::EditorFormat], &[]),
+        ("apps/vink-web/e2e/editor-core-contracts.mjs", &[S::EditorFormat], &[]),
         ("apps/vink-web/e2e/editor-markdown-budget.mjs", &[S::EditorFormat], &[]),
         ("apps/vink-web/e2e/editor-paper-first-smoke.mjs", &[S::EditorChrome, S::EditorFormat], &[]),
         ("apps/vink-web/e2e/editor-writing-smoke.mjs", &[S::EditorChrome], &[]),

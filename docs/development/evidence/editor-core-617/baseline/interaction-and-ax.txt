@@ -1,0 +1,26 @@
+# verify-editor-format.log
+  ok  one lazy editor import per Desk document
+  ok  40 paired edits on the mounted Product desk preserve the source
+  ok  Product contenteditable accepted all 45 CDP committed characters
+  ok  40 runtime mount/destroy cycles release editor DOM and callback owners
+  ok  markdown: textbox named Nội dung
+  ok  #256 rearward selection survives revealing multiline syntax without changing the source
+  ok  #256 save waits for the active composition inside a link
+  ok  #256 reopen, reveal, paste and undo kept a single live EditorView for this activation
+  ok  #256 persisted bytes still contain the multiline URL and both line breaks
+  ok  #257 connected pre-edit outline command is refused across A→B→A even when the source matches again
+  ok  #257 separate write advances the scratch draft version
+  ok  #257 a version conflict preserves the local source and editor
+  ok  #257 reload restores full source and rebuilds the tail outline after explicit conflict recovery
+  ok  #257 Chrome Markdown budget 10000 scalars, p95 ms {"parse":1.5,"traversal":0.2,"typing":0.5,"caret":1}
+  ok  #257 Chrome Markdown budget 50000 scalars, p95 ms {"parse":3.6,"traversal":0.5,"typing":0.4,"caret":0.5}
+  ok  #257 Chrome Markdown budget 100000 scalars, p95 ms {"parse":6.3,"traversal":0.8,"typing":0.5,"caret":0.6}
+  ok  #257 Chrome Markdown budget 200000 scalars, p95 ms {"parse":11,"traversal":1.5,"typing":0.7,"caret":0.5}
+browser-smoke: PASS (editor-format)
+  PASS  selected prerequisites
+  PASS  visual evidence oracles: manifest, PNG, overflow, AX, modal unit tests
+  PASS  selected artifacts
+  PASS  browser bundle contains no credentials
+  PASS  scratch database: tag catalog through `vink-app tag`
+  PASS  scenario editor-format (editor-format)
+  PASS  server stops gracefully on SIGTERM
