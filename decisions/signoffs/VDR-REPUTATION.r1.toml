@@ -1,0 +1,9 @@
+version = 1
+id = "VDR-REPUTATION"
+revision = 1
+sha256 = "2c009b7ca218269251edc6bf363914e5c1d4123cbfd49c18f4820231ba0cc3ee"
+status = "PRODUCT_CONFIRMED"
+decided_on = "2026-11-28"
+source = """
+Chủ sản phẩm duyệt trong phiên hoàn thiện PR #601 (REP-S01, #600) ngày 28/11/2026. Câu hỏi: “Bạn có duyệt hai revision sau để tôi ghi signoff vào PR trước khi merge không? VDR-REPUTATION@r1 (sản phẩm Q01..Q44, sha 2c009b7ca218…) → PRODUCT_CONFIRMED; VDR-REPUTATION-CONTRACT@r1 (kiến trúc K1..K9, sha 7d60f8ae7ed1…) → PROVISIONAL.” Trả lời nguyên văn: “Duyệt cả hai r1 (Recommended)”. Phạm vi: đúng revision r1, SHA-256 2c009b7ca218269251edc6bf363914e5c1d4123cbfd49c18f4820231ba0cc3ee (Q01..Q44 của Điểm Vink V1). Lựa chọn kỹ thuật còn mở thuộc từng lát #644–#648; không bật public runtime trước gate privacy/performance của #648.
+"""

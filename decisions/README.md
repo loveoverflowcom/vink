@@ -16,6 +16,17 @@ lý do và các quyết định ngoài phạm vi nhập. Các registry phát tri
 
 [#607](https://github.com/loveoverflowcom/vink/issues/607) xác nhận email bắt buộc khi tạo tài khoản. [VDR-AUTH-VERIFIED-EMAIL@r1](proposals/VDR-AUTH-VERIFIED-EMAIL.r1.toml) là bản ghi chờ signoff đúng revision/hash. O-11@r2 giữ nguyên lịch sử đề xuất recovery.
 
+## Điểm Vink (Reputation V1)
+
+[VDR-REPUTATION@r1](proposals/VDR-REPUTATION.r1.toml) ghi lời chọn Q01..Q44 từ review 27–28/11/2026 của
+[Epic #600](https://github.com/loveoverflowcom/vink/issues/600): hai thành phần Thấm/Ưng, công thức log 60:40, tăng
+trưởng cố định theo máy credit Q41, thống kê tuần/tháng, snapshot và correction.
+[VDR-REPUTATION-CONTRACT@r1](proposals/VDR-REPUTATION-CONTRACT.r1.toml) ghi hướng kiến trúc K1..K9 (outbox riêng,
+độ chính xác số nguyên, worker, snapshot). Chủ sản phẩm signoff ngày 28/11/2026: sản phẩm `PRODUCT_CONFIRMED`
+([signoff](signoffs/VDR-REPUTATION.r1.toml)), kiến trúc `PROVISIONAL` ([signoff](signoffs/VDR-REPUTATION-CONTRACT.r1.toml)).
+[PRD §19](../prd/requirements.md#19-điểm-vink-reputation-v1), [đặc tả](../docs/architecture/reputation.md),
+[registry](../docs/development/reputation.md).
+
 ## Social Graph
 
 [VDR-DISCOVERY-FOLLOWING-VISIBILITY@r1](proposals/VDR-DISCOVERY-FOLLOWING-VISIBILITY.r1.toml)

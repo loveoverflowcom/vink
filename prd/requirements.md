@@ -556,3 +556,33 @@ Quan hệ lưu giữ định danh và thời điểm lưu, không sao chép nhan
 | SAV-INV-05 · PRODUCT_CONFIRMED | Lưu/bỏ lưu chỉ tác động danh sách của chủ. So trước/sau: audience, publication, kiểm duyệt, Thấm/Ưng, xếp hạng và thông báo đều độc lập. |
 
 **DEFERRED** gồm thư mục/playlist, tìm kiếm trong danh sách, ghi chú, vị trí đọc dở, offline, chia sẻ/công khai, lưu bình luận và CMP/native. Trạng thái revision TOML, hợp đồng HTTP, LayoutSpec và mức triển khai tra tại [registry Lưu bài](../docs/development/saved-works.md).
+
+## 19. Điểm Vink (Reputation V1)
+
+[EPIC #600](https://github.com/loveoverflowcom/vink/issues/600) · Backend only. Lời chọn Q01..Q44 của
+chủ sản phẩm (27–28/11/2026) nằm trong [VDR-REPUTATION@r1](../decisions/proposals/VDR-REPUTATION.r1.toml),
+hướng kiến trúc trong [VDR-REPUTATION-CONTRACT@r1](../decisions/proposals/VDR-REPUTATION-CONTRACT.r1.toml)
+(`PRODUCT_CONFIRMED` / `Provisional`, signoff 28/11/2026). Mức triển khai và bằng chứng tra ở
+[registry](../docs/development/reputation.md); không coi mục nào dưới đây là đã chạy chỉ vì có trong PRD. [Đặc tả miền](../docs/architecture/reputation.md) ·
+[SR-01](../docs/development/reputation-science.md) · [hợp đồng API dự thảo](../services/vink-app/contracts/http/v1/reputation.md).
+
+| ID · nguồn | Quy tắc nghiệp vụ | Ví dụ nghiệm thu |
+| --- | --- | --- |
+| REP-01 · Q01, Q25..Q27, Q39 | Công khai một “Điểm Vink” từ hai thành phần nội bộ: Ảnh hưởng (Thấm nhận được) và Đóng góp (Ưng nhận được). R = 1000 + 400 × (0,6 × f(I) + 0,4 × f(C)), f(x) = ln(1 + x/10)/ln 11. Không Follow, lượt xem, lượt lưu hay số bài; không trả thành phần thô. | I = C = 0 → 1000; I = C = 100 → 1400; (300, 20) → 1417. Lỗi hay chưa sẵn sàng → unavailable, không 1000. |
+| REP-02 · Q02, Q19, Q23 | Ảnh hưởng tính một đơn vị cho mỗi (người Thấm, WorkId) qua các anchor hợp lệ; Đóng góp tính mỗi (người Ưng, CommentId). Revision bị thay thế bình thường vẫn là anchor; revision bị ẩn thì không. Số Thấm công khai của nguồn không đổi. | Cùng người Thấm hai revision → 1 đơn vị. Mất một anchor khi còn anchor khác → không giảm. |
+| REP-03 · Q03, Q13, Q14, Q20, Q21 | Điểm theo eligibility hiện hành, không decay. Riêng tư, rút về, xóa, admin gỡ hay DEL-05 đổi điểm hiện hành nhưng không ghi âm tăng trưởng. Đình chỉ actor không thu hồi tương tác hợp lệ cũ. Xóa người nhận loại khỏi mọi thống kê. | Tác phẩm chuyển riêng tư rồi công khai lại → điểm về như cũ, tăng trưởng không đổi. |
+| REP-04 · Q04, Q09, Q10, Q15 | Tuần thứ Hai–Chủ nhật và tháng lịch, Asia/Ho_Chi_Minh, [start, end). Kỳ mở theo snapshot hiện hành; kỳ đóng theo điểm as-of end. Giữ kỳ mở + 52 tuần + 12 tháng đã đóng. | Sự kiện đúng 00:00 thứ Hai thuộc tuần mới. Tuần thứ 53 đã đóng hết hạn, tháng tính riêng. |
+| REP-05 · Q05, Q07, Q12, Q28, Q36, Q41 | Điểm tăng trưởng G = 2,4 × dI + 1,6 × dC (chính xác 0,1) từ máy credit Q41 cho từng entitlement, độc lập tuần và tháng; không phải hiệu số rating. | Thấm tuần 1 +2,4; bỏ tuần 2 −2,4; Thấm lại tuần 3 0; bỏ tuần 4 0. OFF/ON khác tuần cùng tháng → tháng 0. |
+| REP-06 · Q06, Q08 | Điểm và thống kê công khai cả với khách cho hồ sơ đủ điều kiện. Người nhận bị đình chỉ toàn bộ bị ẩn khỏi mọi kỳ; phục hồi không reset, không tạo tăng trưởng. Quyền hiện hành chạy trước limit và cache. | Snapshot cũ chứa người vừa bị đình chỉ → không trả người đó. |
+| REP-07 · phạm vi #600 | Độc lập với Đề xuất, Top 100 tác phẩm, Thấm/Ưng nguồn, Follow, Lưu, AI, kiểm duyệt và auth/ACL. Không ưu tiên tác phẩm hay mở quyền theo điểm. | Bật/tắt Reputation không đổi kết quả RANK-04, TOP, SAV-03 hay quyền. |
+| REP-08 · Q22, Q44 | Điểm hồ sơ đọc projection theo khóa chính; top-k đọc snapshot bất biến (mục tiêu 5–10 phút). Kỳ đóng giữ top 100 + 50 dự phòng; thiếu ứng viên hoặc thứ tự đổi thì dựng lại từ toàn quần thể; cursor gắn generation. | Correction đưa người ngoài vào top kỳ đóng → dựng lại, không trả danh sách thiếu như đầy đủ. |
+| REP-09 · Q11 | Người chỉ nhận Ưng vẫn có điểm và vào thống kê khi đủ điều kiện; không cần tác phẩm công khai. | Thành viên không có bài, có 300 Ưng hợp lệ → 1229 và có thể vào Top Rating. |
+| REP-10 · Q15 | Retention thống kê theo số kỳ; cleanup bounded, idempotent; không giả 0 khi hết hạn. Retention nguồn/ledger/fence/audit tách riêng, tối thiểu; privacy/deletion thắng retention. | Replay sự kiện cũ không công bố lại kỳ hết hạn; purge không phá điểm hiện hành hay dedup. |
+| REP-11 · Q16, Q30, Q31, Q37, Q42 | Chỉ ghi nhận tương tác của actor có tuổi principal ≥ 7 × 24 giờ (App principals.created_at). Tại ngưỡng, các tương tác đang ON còn hợp lệ vào điểm hiện hành, tăng trưởng của chúng burned. | Actor 3 ngày tuổi Thấm → chưa tính; ngày 7 → điểm tăng, tăng trưởng không đổi. Bỏ trước ngưỡng rồi Thấm lại sau ngưỡng → +2,4. |
+| REP-12 · Q17, Q29, Q43 | Top Rating chỉ gồm người có ghi nhận hợp lệ. Top Growth cần G > 0 và ≥ 3 actor khác nhau có net credit dương. Top 100, trang mặc định 20, tối đa 100, điểm canonical giảm dần rồi PrincipalId tăng dần. Không trả số actor. | Hai actor nhiều tương tác → không vào Top Growth. |
+| REP-13 · Q18, Q32, Q33 | Backfill facts hợp lệ hiện hành có bằng chứng; thiếu bằng chứng thì loại và ghi coverage. Không lịch sử trước activation; kỳ đầy đủ đầu tiên riêng mỗi lịch, credit tại boundary là baseline burned. | Ngày activation: điểm hiện hành đúng, tăng trưởng tuần đầu bằng 0 cho tương tác cũ. |
+| REP-14 · Q34, Q38, Q40 | Correction chỉ qua operator CLI có thẩm quyền, có bằng chứng, dry-run, audit, idempotent; chỉ tác động Reputation, số công khai của nguồn giữ nguyên; dựng lại kỳ bị ảnh hưởng từ toàn quần thể. Không tự trừ vì report. | Apply lặp cùng khóa → một hiệu lực; số Thấm công khai của bài không đổi. |
+
+**Còn mở về kỹ thuật** (chọn theo bằng chứng ở từng lát): schema và lease outbox, checkpoint, nhịp snapshot
+và refill, index/cursor, số đo WAL/khóa/độ trễ. Sửa nhận xét hoãn tới COM-10/LVE-FR-04. Không có UI
+leaderboard hay lịch sử trong epic này.

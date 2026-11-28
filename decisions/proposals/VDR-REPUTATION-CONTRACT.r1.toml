@@ -1,0 +1,100 @@
+version = 1
+id = "VDR-REPUTATION-CONTRACT"
+revision = 1
+
+[content]
+kind = "architecture"
+domain = "reputation"
+title = "Kiến trúc backend Reputation V1: nguồn sự kiện, ledger, projection, snapshot và độ chính xác"
+resolution = """
+Thực thi VDR-REPUTATION@r1 trong App (modular monolith, PostgreSQL `vink`). Không thêm service,
+database, Redis hay Kafka. Hướng DESIGN_PROPOSED; mỗi lát chứng minh lựa chọn của mình bằng bằng chứng
+local trước khi coi là xong.
+
+K1 Owner. `domain::reputation` (pure Rust, không Axum/SQLx/tokio) sở hữu entitlement và anchor,
+eligibility, máy credit Q41 tuần/tháng, lịch Asia/Ho_Chi_Minh, công thức và các version.
+`application` điều phối; `persistence` ghi; HTTP chỉ đọc projection/snapshot.
+
+K2 Độ chính xác. I và C là số nguyên kiểm biên trong [0, 2^40); ngoài biên là lỗi policy
+(unavailable), không cắt. Điểm canonical `score_micros = floor(R × 10^6)` tính bằng số học nguyên
+fixed-point xác định, không dùng f64 trong đường canonical. Điểm hiển thị
+`floor((score_micros + 500000) / 10^6)` bằng đúng half-up một lần của R vì R chỉ là số nguyên khi
+f(I), f(C) đều nguyên. Xếp hạng: score_micros giảm dần, PrincipalId tăng dần. Tăng trưởng lưu theo phần
+mười: `g_tenths = 24 × dI + 16 × dC` (i64 checked). Golden vectors SR-01 (Decimal 60 chữ số) là oracle.
+formula_version, eligibility_policy_version và schema version độc lập; đổi công thức không tạo tăng
+trưởng.
+
+K3 Đường sự kiện (CHOICE-07 = B). Một outbox Reputation riêng trong DB App, ghi trong cùng
+transaction với thay đổi accepted của nguồn: `set_endorsement` khi version Thấm/Ưng đổi, purge
+DEL-05 trong `account_deletion`, thay đổi con trỏ publication/lifecycle/hidden revision, gỡ hoặc ẩn
+nhận xét, đình chỉ và khôi phục principal, xóa tài khoản người nhận. Event mang khóa nghiệp vụ,
+accepted_order/version, thời điểm accepted (now() của transaction nguồn, cùng giá trị với
+receipts.created_at) và loại community/neutral. Bước ghi outbox đi sau khóa hiện có, không đổi thứ
+tự khóa, không gọi mạng trong transaction. Stream Notifications không phải authority: có activation
+gate, retention inbox, chỉ Thấm/Ưng và không phủ lifecycle.
+
+K4 Lưu trữ (CHOICE-08 = A). Entitlement theo (actor, WorkId) và (actor, CommentId) với tập anchor hợp
+lệ và hai trạng thái credit; ledger actor–người nhận tối thiểu theo kỳ (Q40); một hàng projection
+mỗi principal (I, C, score_micros, versions, readiness); snapshot top-k kỳ mở bất biến và bảng kỳ
+đóng top 100 + 50; checkpoint đủ dựng lại as-of. Consumer áp delta idempotent theo event id cộng khóa
+nghiệp vụ/order; counter không âm, không tràn.
+
+K5 Worker. Consumer trong `vink-worker`: claim lease ngắn, batch theo người nhận, retry có backoff,
+không gọi mạng khi giữ khóa. Job maturity Q42 bền, một lần mỗi actor, theo effective_at. Snapshot,
+expiry và purge bounded, idempotent. Rebuild/reconcile từ nguồn. Có công tắc disable và backlog quan
+sát được.
+
+K6 Backfill (CHOICE-09 = A). Snapshot nhất quán của facts hiện hành + watermark/catch-up; kỳ đầy đủ
+đầu tiên theo Q33, baseline burned; không lịch sử trước activation.
+
+K7 Correction Q38. Subcommand operator của `vink-app` với dry-run/apply, lý do, audit, idempotency key
+và fence; dựng lại các kỳ còn giữ bị ảnh hưởng từ toàn quần thể; số công khai của nguồn giữ nguyên.
+
+K8 Đọc. Điểm hồ sơ đọc projection theo PK; top-k đọc snapshot với cursor gắn
+snapshot/version/visibility generation. Gate privacy/standing/deletion hiện hành chạy trước limit.
+Phân biệt disabled/unavailable/incomplete/expired/forbidden/deleted với baseline 1000 thật. Không trả
+thành phần thô, số actor hay danh tính actor. Không tính log, rank toàn cục hay aggregate nguồn lúc
+request.
+
+K9 Rollout. Không public trước signoff đúng revision của VDR-REPUTATION@r1 và bằng chứng
+privacy/performance của S06.
+
+Lát tuần tự: S01 #601 SSOT; S02 domain + Quint/Kani; S03 schema + outbox nguồn; S04 worker, projection,
+maturity, correction, backfill; S05 thống kê kỳ, snapshot, retention; S06 HTTP, qualification,
+runbook. Lựa chọn còn mở, chọn theo bằng chứng ở từng lát: tên bảng/cột, lease outbox, chiến lược
+checkpoint, nhịp snapshot và refill, index/cursor, và số đo WAL/khóa/độ trễ.
+"""
+rationale = """
+Epic #600, review cuối 28/11/2026 (Q01..Q44) và audit nguồn trên develop@b69f34bc
+(docs/development/reputation.md). Audit cho thấy: receipts Thấm/Ưng append-only có
+committed_version/order nhưng không có thứ tự toàn cục; purge DEL-05 bỏ chọn endorsement trực tiếp,
+không ghi receipt; Notifications có activation gate và không phủ lifecycle; principals.created_at có sẵn
+cho Q30. Vì vậy chọn outbox riêng ghi cùng transaction thay vì dựa vào receipts hay Notifications.
+SR-01 cho thấy f64 chỉ cách biên làm tròn micro khoảng 4,8e-7 trên lưới 10^6 cặp, nên đường canonical
+dùng số nguyên xác định. Đây là đề xuất kiến trúc; giữ PENDING tới khi chủ sản phẩm signoff đúng
+revision và SHA-256.
+"""
+requires = [
+    "VDR-DECISION-SIGNOFF@r1",
+    "VDR-REPUTATION@r1",
+]
+related_ids = [
+    "DEL-05",
+    "OPS-01",
+    "OPS-03",
+    "RANK-04",
+    "REP-01",
+    "REP-02",
+    "REP-03",
+    "REP-04",
+    "REP-05",
+    "REP-06",
+    "REP-07",
+    "REP-08",
+    "REP-09",
+    "REP-10",
+    "REP-11",
+    "REP-12",
+    "REP-13",
+    "REP-14",
+]
