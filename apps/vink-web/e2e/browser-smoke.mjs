@@ -6613,7 +6613,10 @@ async function discussionReadingAndWrites(page) {
     currentFixture = { ...fixture, roots: [], next_cursor: null };
     await page.goto(`${args.base}/tac-pham/${SAMPLE_WORK}`);
     await page.waitFor(`document.querySelector('.vk-discussion-empty') && document.querySelector('#comments-mode')?.getAttribute('aria-busy') === 'false'`, 'authoritative empty discussion state');
-    check(await page.eval(`document.querySelector('.vk-discussion-empty')?.textContent.includes('Chưa có nhận xét nào được hiển thị.') && !document.querySelector('#discussion-load-retry') && document.querySelector('#root-list')?.dataset.hasMore === 'false' && !document.querySelector('#feedback-region .vk-ui-list-end')`), 'R4 empty state renders cleanly without error button or list end');
+    await page.waitFor(`document.documentElement.dataset.hydrated === 'true' &&
+      document.querySelector('.vk-discussion-empty')?.textContent.includes('Chưa có nhận xét nào được hiển thị.') &&
+      !document.querySelector('#discussion-load-retry') && document.querySelector('#root-list')?.dataset.hasMore === 'false' &&
+      !document.querySelector('#feedback-region .vk-ui-list-end')`, 'R4 hydrated empty state without retry or list end');
     check(await page.eval(`(() => {
       const empty = document.querySelector('.vk-discussion-empty');
       const region = empty.closest('#feedback-region').getBoundingClientRect();
