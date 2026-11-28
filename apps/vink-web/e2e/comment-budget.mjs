@@ -62,6 +62,25 @@ export async function commentBudget(page, {args, check}) {
         // Reader records a foreground view after five seconds even with no edits.
         // Settle the actual view candidate before measuring the typing-only interval.
         await page.waitFor("performance.getEntriesByType('resource').some(r=>new URL(r.name).pathname.endsWith('/views'))",'foreground view settled before typing');
+        await page.eval(`new Promise(resolve => {
+          const intervals = [];
+          let last;
+          function frame(now) {
+            if (last !== undefined) intervals.push(now - last);
+            last = now;
+            if (intervals.length === 15) {
+              window.vkFrames = {idle: intervals, measured: [], running: true};
+              const track = time => {
+                vkFrames.measured.push(time - last);
+                last = time;
+                if (vkFrames.running) requestAnimationFrame(track);
+              };
+              requestAnimationFrame(track);
+              resolve();
+            } else requestAnimationFrame(frame);
+          }
+          requestAnimationFrame(frame);
+        })`);
         const initial=out.network.length;
         for(let i=0;i<45;i++){
           await page.eval(`document.addEventListener('beforeinput',e=>{const t=e.timeStamp;let endInput=null;document.addEventListener('input',()=>queueMicrotask(()=>{endInput=performance.now()-t}),{once:true});window.sample=null;requestAnimationFrame(()=>{const raf=performance.now()-t;setTimeout(()=>window.sample={inputMs:endInput,raf,post:performance.now()-t},0)})},{once:true})`);
@@ -74,12 +93,51 @@ export async function commentBudget(page, {args, check}) {
           if(i>=5) out.caret.push(await page.eval('window.caretSample'));
           await page.key('ArrowRight');
         }
+        out.frames = await page.eval(`(() => {
+          vkFrames.running = false;
+          const period = [...vkFrames.idle].sort((a,b) => a-b)[7];
+          return {period, intervals: vkFrames.measured, estimatedMissedFrames:
+            vkFrames.measured.reduce((sum, dt) => sum + Math.max(0, Math.round(dt / period) - 1), 0)};
+        })()`);
         out.requestsDuringTyping=out.network.slice(initial);
         out.after=await page.eval('vkTiming');
         out.dom=await page.send('Memory.getDOMCounters');
         await page.capture('618-root-editing',{target:selector});
       }
     }
+    const count = async () => {
+      await page.send('HeapProfiler.collectGarbage');
+      return {
+        dom: await page.send('Memory.getDOMCounters'),
+        heap: await page.send('Runtime.getHeapUsage'),
+        owners: await page.eval("document.querySelectorAll('.vk-discussion-reply-composer').length"),
+        editors: await page.eval("document.querySelectorAll('[data-vink-editor=comment]').length"),
+      };
+    };
+    await page.goto('about:blank');
+    await page.goto(args.base+path);
+    await page.waitFor("document.documentElement.dataset.hydrated==='true' && document.querySelector('[id^=reply-to-]')", 'fresh guest thread');
+    const rootId = await page.eval("document.querySelector('[id^=reply-to-]').id.slice('reply-to-'.length)");
+    const reply = '#reply-composer-' + rootId;
+    out.lifecycle = {cycles:40, before:await count()};
+    await page.click('#reply-to-' + rootId);
+    const richReply = await page.eval("!!document.querySelector(" + JSON.stringify(reply+'-format') + ")");
+    if (richReply) {
+      await page.click(reply+'-format');
+      await page.waitFor("document.querySelector("+JSON.stringify(reply+'-rich .cm-content')+") === document.activeElement", 'paired reply ready');
+    }
+    await page.send('Input.insertText',{text:'Giữ nháp qua nhiều lần mở'});
+    for (let n = 0; n < out.lifecycle.cycles; n++) {
+      await page.click(reply+'-close');
+      await page.click('#reopen-reply-'+rootId);
+    }
+    out.lifecycle.reopened = await count();
+    check(await page.eval("document.querySelector("+JSON.stringify(reply)+").value === 'Giữ nháp qua nhiều lần mở'"),
+      'paired lifecycle retains the guest reply draft');
+    await page.eval("document.querySelector('a[href=\"/\"]').click()");
+    await page.waitFor("!document.querySelector('#root-composer')", 'paired Reader unmount');
+    out.lifecycle.after = await count();
+    check(out.lifecycle.after.editors === 0 && out.lifecycle.after.owners === 0, 'paired unmount releases composer owners');
     writeFileSync(join(dirname(args.state),'comment-budget.json'),JSON.stringify(out,null,2));
     check(!out.requestsDuringTyping.length,'no network activity during typing');
   } finally {
