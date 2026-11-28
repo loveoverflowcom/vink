@@ -6,12 +6,14 @@ use vink_ui::*;
 
 mod notification;
 pub use notification::{
-    NotificationGroup, NotificationLeading, NotificationRow, NotificationRowFacts,
+    NotificationGroup, NotificationLeading, NotificationRow, NotificationRowFacts, NotificationTime,
 };
 
 mod timestamp;
-use timestamp::Timestamp;
-pub use timestamp::{first_public_date_hcm, updated_at_label, work_view_date_hcm};
+pub use timestamp::{
+    TimeList, TimeMode, Timestamp, inbox_day_group, provide_display_clock, timestamp_millis,
+    updated_at_label, work_view_date_hcm,
+};
 
 mod tags;
 pub use tags::{
@@ -104,7 +106,7 @@ pub fn WorkByline(
         <div class="vk-work-byline grid [row-gap:min(var(--vk-space-1),4px)] min-w-0 wrap-anywhere" data-size=size.id()>
             <AuthorIdentity author id=profile_id size />
             // Outside the profile link: time is metadata of the work, not of the person.
-            <span class="vk-work-byline__date"><Timestamp instant=published_at /></span>
+            <span class="vk-work-byline__date"><Timestamp instant=published_at disclosure=true /></span>
         </div>
     }
 }
@@ -1012,7 +1014,7 @@ fn discussion_comment(
             <div class="vk-discussion-byline">
                 <AuthorIdentity author=comment.author id=Some(author_id) size />
                 // Outside the profile link.
-                <Timestamp instant=published_at relative=true />
+                <Timestamp instant=published_at disclosure=true />
             </div>
             {comment.context.map(|context| match context {
                 DiscussionContext::Root => ().into_any(),

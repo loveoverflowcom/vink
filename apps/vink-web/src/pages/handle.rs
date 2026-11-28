@@ -5,7 +5,6 @@ use leptos_router::hooks::{use_params_map, use_query_map};
 use vink_ui::{HiddenField, Link as UiLink};
 
 use crate::ui::empty_state::{EmptyArtwork, EmptyState, NotFoundContent};
-use crate::ui::patterns::first_public_date_hcm;
 
 const NO_PUBLIC_WORKS: &str = "Chưa có tác phẩm công khai.";
 
@@ -186,11 +185,9 @@ fn works_region(
         Some(ProfileWorks::Page { works, next_cursor }) => {
             let next = next_cursor.map(|cursor| format!("{href}?cursor={cursor}"));
             let body = if !works.is_empty() {
-                let items = works
-                    .into_iter()
-                    .map(|work| view! { <ProfileWorkItem work /> })
-                    .collect_view();
-                view! { <ul class="vk-author-works">{items}</ul> }.into_any()
+                view! { <vink_patterns::TimeList><ul class="vk-author-works">
+                    {works.into_iter().map(|work| view! { <ProfileWorkItem work /> }).collect_view()}
+                </ul></vink_patterns::TimeList> }.into_any()
             } else if continued || next.is_some() {
                 view! { <EmptyState compact=true hook="vk-author-works-empty"
                 message="Trang này không còn tác phẩm." /> }
@@ -245,10 +242,8 @@ fn ProfileWorkItem(work: ProfileWork) -> impl IntoView {
         tags,
     } = work;
     let primary_tag = tags.into_iter().next().map(|tag| tag.label);
-    let date = first_published_at.and_then(|instant| {
-        first_public_date_hcm(&instant).map(|label| {
-            view! { <time class="vk-feed-date" datetime=instant title="Công khai lần đầu">{label}</time> }
-        })
+    let date = first_published_at.filter(|s| vink_patterns::timestamp_millis(s).is_some()).map(|instant| {
+        view! { <vink_patterns::Timestamp class="vk-feed-date" context="Công khai lần đầu" instant mode=vink_patterns::TimeMode::Date /> }
     });
     let separate = primary_tag.is_some() && date.is_some();
     let meta = (primary_tag.is_some() || date.is_some()).then(|| {
@@ -646,7 +641,13 @@ mod tests {
             );
         }
         let first = &out[..out.find("profile-work-w-2").unwrap()];
-        assert!(first.contains("<span class=\"vk-public-row__tag\">Thơ</span> · <time datetime=\"2026-10-29T18:00:00Z\" title=\"Công khai lần đầu\" class=\"vk-feed-date\">30/10/2026</time>"), "{first}");
+        assert!(
+            first.contains("Thơ</span> · ")
+                && first.contains("datetime=\"2026-10-29T18:00:00Z\"")
+                && first.contains("Công khai lần đầu")
+                && first.contains("29/10/2026, 18:00 UTC"),
+            "{first}"
+        );
         assert!(
             !first.contains("Ký ức"),
             "only the primary tag is shown: {first}"

@@ -107,7 +107,7 @@ fn CommentDecisionDetail(decision: CommentDecision) -> impl IntoView {
             </div>
             <h1 class="vk-ui-heading vk-notif-title">{title}</h1>
             <p>{decision.work_title.unwrap_or_else(|| "Tác phẩm không còn hiển thị".into())}" · "
-                <time datetime=decision.decided_at.clone()>{vink_patterns::updated_at_label(&decision.decided_at)}</time>
+                <vink_patterns::Timestamp instant=decision.decided_at mode=vink_patterns::TimeMode::Absolute disclosure=true />
             </p>
             <div class="vk-notif-decision__reason">
                 <h2 class="vk-ui-heading">"Lý do"</h2>

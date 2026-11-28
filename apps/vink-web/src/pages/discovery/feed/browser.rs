@@ -376,6 +376,7 @@ pub(super) fn ActiveFeed(
         phase.get() != Phase::Loading
             && feed.with(|state| state.owner.in_flight_intent() == Some(Intent::Refresh))
     });
+    let context = StoredValue::new(context);
     let can_append = Memo::new(move |_| feed.with(|state| state.chain.next_cursor.is_some()));
     view! {
         <div class="vk-feed-content" aria-busy=move || (phase.get() == Phase::Loading || appending.get() || refreshing.get()).to_string()>
@@ -409,9 +410,9 @@ pub(super) fn ActiveFeed(
                 }
             }}
             <Show when=move || !ids.with(Vec::is_empty)>
-                <ul class=super::super::EXPLORE_WORK_LIST_CLASS id="following-cards" role="list">
+                <vink_patterns::TimeList><ul class=super::super::EXPLORE_WORK_LIST_CLASS id="following-cards" role="list">
                     <For each=move || ids.get() key=Clone::clone children={
-                        let context = context.clone();
+                        let context = context.get_value();
                         move |id| {
                             let row = id.clone();
                             let work = Memo::new(move |_| feed.with(|state| {
@@ -421,7 +422,7 @@ pub(super) fn ActiveFeed(
                                 cached_unverified=Signal::stored(false) /> }
                         }
                     } />
-                </ul>
+                </ul></vink_patterns::TimeList>
             </Show>
             <Show when=move || can_append.get()>
                 <div class="my-vk-6">

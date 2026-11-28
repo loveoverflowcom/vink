@@ -304,7 +304,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
       initials.selectNodeContents(avatar.querySelector('.vk-ui-avatar__initials'));
       const ink = initials.getBoundingClientRect();
       const excerpt = row.querySelector('.vk-public-row__excerpt').getBoundingClientRect();
-      const expectedDate = time ? new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(time.dateTime)) : null;
+      const expectedDate = time ? new Intl.DateTimeFormat('vi-VN', {}).format(new Date(time.dateTime)) : null;
       return {
         named: document.getElementById(row.querySelector('a').getAttribute('aria-labelledby')) === title,
         card: rowStyle.borderTopLeftRadius === '20px' && rowStyle.borderBottomRightRadius === '20px'
@@ -323,7 +323,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
       };
     })()`);
     check(cardLayout.named && cardLayout.card && cardLayout.date && cardLayout.ordered && cardLayout.square && cardLayout.fits && Math.abs(cardLayout.diameter - 36 * scale / 100) < 1,
-      '#308/#336/#405 separate bg-content card bo 20 gap 8, tertiary eyebrow with HCM date, title and initials fit ' + [theme,width,scale,JSON.stringify(cardLayout)].join('/'));
+      '#308/#336/#405 separate bg-content card bo 20 gap 8, tertiary eyebrow with viewer-local first-public date, title and initials fit ' + [theme,width,scale,JSON.stringify(cardLayout)].join('/'));
     if (width === 320 && scale === 200) {
       const card = await page.eval(`(() => {
         const row = document.querySelector('.vk-public-row');

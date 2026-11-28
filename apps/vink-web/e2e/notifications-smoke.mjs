@@ -473,6 +473,40 @@ async function inboxSessionStates(page, { args, check }, controlled) {
   await page.goto(args.base + '/');
 }
 
+async function notificationTime(page, {args,check}, controlled) {
+  const {rows, calls, state} = controlled;
+  const saved = rows.map(r => r.updated_at);
+  const pageSize = state.pageSize;
+  state.pageSize = rows.length;
+  const stamps = ['2026-11-28T07:50:00Z','2026-11-27T18:30:00Z','invalid','2026-12-02T08:00:00Z'];
+  stamps.forEach((t,i)=>rows[i].updated_at=t);
+  // LA 23:59 → 00:01. Drive only the real presentation timer; transport timers keep their cadence.
+  const setup = await page.send('Page.addScriptToEvaluateOnNewDocument',{source:`{
+    window.testNow = Date.parse('2026-11-28T07:59:00Z'); Date.now = () => testNow;
+    const start = window.setInterval.bind(window);
+    window.setInterval = (fn,ms,...args) => {if(ms===60000) window.minuteTick=fn;return start(fn,ms,...args);};
+  }`});
+  try {
+    await page.send('Emulation.setTimezoneOverride',{timezoneId:'America/Los_Angeles'});
+    await page.goto(args.base+'/thong-bao');
+    const list='main .vk-notif-group__list';
+    await page.waitFor(`document.querySelector('${list}')?.textContent.includes('9 phút trước') && document.querySelector('${list}').textContent.includes('Chưa rõ thời gian')`, 'valid, invalid and future inbox groups');
+    check(await page.eval(`document.querySelector('${list}').textContent.includes('Sắp tới') && !document.querySelector('${list} [datetime="invalid"]')`),'unknown and future instants have distinct groups');
+    const reads = calls.filter(c=>c.path===inbox || c.method==='POST').length;
+    await page.eval(`window.targetNotice=document.querySelector('${list} a'); targetNotice.focus({preventScroll:true}); window.testNow+=120000; minuteTick()`);
+    await page.waitFor(`targetNotice.querySelector('time:last-of-type') && targetNotice.innerText.includes('11 phút trước') && !document.querySelector('${list}').innerText.includes('Hôm nay')`, 'midnight regroups existing rows without a reload');
+    check(await page.eval(`document.activeElement===targetNotice && targetNotice.isConnected`) && calls.filter(c=>c.path===inbox || c.method==='POST').length===reads,'rollover retains focus and sends no inbox read, Seen or Read');
+    const ax=await page.send('Accessibility.getFullAXTree');
+    check(ax.nodes.some(n=>n.role?.value==='link' && n.description?.value?.includes('GMT-08:00')),'Chrome AX describes the linked notification with the full local time and offset');
+    await page.click('main .vk-time-list-toggle');
+    check(await page.eval(`targetNotice.innerText.includes('GMT-08:00') && !targetNotice.querySelector('button')`),'the list disclosure exposes the correct exact instant without activating the notice');
+  } finally {
+    saved.forEach((t,i)=>rows[i].updated_at=t); state.pageSize=pageSize;
+    await page.send('Page.removeScriptToEvaluateOnNewDocument',{identifier:setup.identifier});
+    await page.send('Emulation.setTimezoneOverride',{timezoneId:''});
+  }
+}
+
 export async function notifications(page, { args, check, checkBottomNavigation, checkSafeArea }) {
   const controlled = await fixture(page);
   const { state, calls, held } = controlled;
@@ -483,6 +517,19 @@ export async function notifications(page, { args, check, checkBottomNavigation, 
     scenario: 'notifications-r4', requestedScene: { width, height: 900, scale, theme },
     boundary: 'Chrome-CDP-dom-override-geometry', skipSceneValidation: true,
   });
+
+  if (args.phase === 'time-surfaces') {
+    controlled.rows.slice(0,3).forEach((row,index) => {
+      row.updated_at = ['2026-11-28T07:57:00Z','2026-11-27T18:30:00Z','2026-10-01T13:00:00Z'][index];
+    });
+    await page.goto(args.base+'/thong-bao');
+    await page.waitFor("document.querySelectorAll('main .vk-notif-row').length===3", 'same three notification groups');
+    await page.capture('time-inbox',{scenario:'#619',target:'main .vk-notif-row'});
+    await page.goto(`${args.base}/thong-bao/nhan-xet/${adverse.comment_id}/${adverse.moderation_version}`);
+    await page.waitFor("document.querySelector('.vk-notif-decision__panel')?.textContent.includes('Lý do riêng của nhận xét')", 'comment moderation decision');
+    await page.capture('time-decision',{scenario:'#619',target:'.vk-notif-decision__panel'});
+    return;
+  }
 
   if (args['notification-baseline'] === 'yes') {
     await page.goto(`${args.base}/`);
@@ -498,6 +545,9 @@ export async function notifications(page, { args, check, checkBottomNavigation, 
     return;
   }
 
+  await notificationTime(page, {args,check}, controlled);
+  if (args.phase === "notification-time") return;
+  state.seen = 0; calls.length = 0;
   await inboxSessionStates(page, { args, check }, controlled);
   // Keep the original popover assertions scoped to the fresh shell.
   calls.length = 0;
@@ -891,6 +941,7 @@ export async function notifications(page, { args, check, checkBottomNavigation, 
   await preferences(page, 1440, 'light', 100);
 
   const selectedWork = controlled.rows[0].target;
+  await page.send('Emulation.setTimezoneOverride',{timezoneId:'America/Los_Angeles'});
   await page.goto(`${args.base}/ban-viet?review=${selectedWork.work_id}&revision=${selectedWork.revision_id}&decision=3`);
   await page.waitFor(`document.body.textContent.includes('Lý do riêng của tác phẩm')`, 'exact work decision');
   check(await page.eval(`document.querySelector('h1').textContent.includes('${privateTitle}')
@@ -898,6 +949,10 @@ export async function notifications(page, { args, check, checkBottomNavigation, 
       && document.body.textContent.includes('Gửi phản đối')
       && document.querySelector('main a[href="/ban-viet/${work}"]').textContent.includes('Sửa trong Bàn viết')`),
     'AC-04 work decision uses the exact revision and eligible appeal action');
+  const workTimes = await page.eval(`Array.from(document.querySelectorAll('.vk-notif-decision__panel time'), t=>[t.dateTime,t.textContent])`);
+  check(workTimes.some(([s,l])=>s===review.state.revisions[0].created_at && l==='01:00, 30/10/2026') &&
+    workTimes.some(([s,l])=>s===review.decisions[0].decided_at && l==='02:15, 24/11/2026'),
+    'review preserves separate submission and decision instants, with DST at each event');
   await screenshot('notifications-work-decision', 1440, 100, 'light');
 
   const comment = examples.decisions.find(decision => decision.kind === 'comment_moderation_decision');
@@ -906,6 +961,8 @@ export async function notifications(page, { args, check, checkBottomNavigation, 
   check(await page.eval(`!document.body.textContent.includes('Không được xuất hiện')`), 'AC-04 removed comment body never renders');
   check(await page.eval(`parseFloat(getComputedStyle(document.querySelector('.vk-notif-decision__panel')).paddingInlineStart) >= 20`),
     'AC-05 decision panel preserves R4 inset');
+  check(await page.eval(`document.querySelector('.vk-notif-decision__panel time').dateTime===${JSON.stringify(comment.decided_at)} &&
+    !/GMT|UTC/.test(document.querySelector('.vk-notif-decision__panel time').textContent)`), 'comment decision uses decided_at in local absolute mode');
   const up = '.vk-notif-decision a.vk-ui-back-link';
   check(await page.eval(`(() => {
     const link = document.querySelector('${up}');

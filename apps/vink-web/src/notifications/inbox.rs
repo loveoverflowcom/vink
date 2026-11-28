@@ -115,28 +115,34 @@ fn InboxBody(owner: Notifications, #[prop(optional)] compact: bool) -> impl Into
     };
     #[cfg(feature = "browser")]
     let navigation = crate::navigation::use_navigation_guard();
-    let groups = Memo::new(move |_| {
+    let date_group = vink_patterns::inbox_day_group();
+    // A single keyed sequence keeps the focused link mounted when midnight moves it to
+    // another heading. A changed acknowledged version can still replace that row.
+    let entries = Memo::new(move |_| {
         owner.inbox.with(|inbox| {
-            let mut groups: Vec<(&'static str, Vec<Row>)> = Vec::new();
+            let mut entries = Vec::new();
+            let mut previous = None;
+            let mut headings = 0;
             for item in &inbox.items {
                 let Some(facts) = row_facts(item) else {
                     continue;
                 };
-                let label = date_group(&item.updated_at);
-                let row = Row {
+                let day = date_group(&item.updated_at);
+                if previous != Some(day) {
+                    entries.push(Entry::Heading(headings, day));
+                    headings += 1;
+                    previous = Some(day);
+                }
+                entries.push(Entry::Item(Box::new(Row {
                     facts,
                     group_id: item.group_id.clone(),
                     version: item.group_version,
-                };
-                if let Some((last, rows)) = groups.last_mut()
-                    && *last == label
-                {
-                    rows.push(row);
-                } else {
-                    groups.push((label, vec![row]));
-                }
+                })));
             }
-            groups
+            if headings == 1 {
+                entries.remove(0);
+            }
+            entries
         })
     });
     let offline = owner.offline;
@@ -203,20 +209,16 @@ fn InboxBody(owner: Notifications, #[prop(optional)] compact: bool) -> impl Into
                 })
             }}
             <Show when=move || owner.available()>
-                <For each=move || {
-                        let groups = groups.get();
-                        groups.into_iter().enumerate().map(|(index, (day, _))| (index, day))
-                    }
-                    key=|(index, day)| (*index, *day)
-                    children=move |(index, day)| {
-                        // The keyed group survives append and ACK; only changed row facts remount.
-                        let rows = Memo::new(move |_| groups.with(|groups| groups.get(index).map(|(_, rows)| rows.clone()).unwrap_or_default()));
-                        view! { <NotificationGroup label=day
-                            show_heading_when=Signal::derive(move || groups.with(|groups| groups.len() > 1))>
-                            <For each=move || rows.get() key=Clone::clone children=move |row: Row| {
+                <vink_patterns::TimeList show=Signal::derive(move || entries.with(|g| !g.is_empty()))>
+                    <NotificationGroup label="Thông báo">
+                        <For each=move || entries.get() key=Clone::clone children=move |entry| match entry {
+                            Entry::Heading(_, day) => view! { <li class="vk-notif-day" role="presentation"><h3 class="vk-notif-group__heading">{day}</h3></li> }.into_any(),
+                            Entry::Item(row) => {
+                                let row = *row;
                                 #[cfg(feature = "browser")]
                                 let href = row.facts.href.clone();
-                                view! { <NotificationRow facts=row.facts on_activate=Callback::new(move |event: leptos::ev::MouseEvent| {
+                                let description_id = format!("notice-time-{}-{}", if compact {"popover"} else {"page"}, row.group_id);
+                                view! { <NotificationRow facts=row.facts description_id on_activate=Callback::new(move |event: leptos::ev::MouseEvent| {
                                     #[cfg(feature = "browser")]
                                     if event.button() == 0 && !event.default_prevented() {
                                         owner.read(row.group_id.clone(), row.version);
@@ -227,10 +229,11 @@ fn InboxBody(owner: Notifications, #[prop(optional)] compact: bool) -> impl Into
                                     }
                                     #[cfg(not(feature = "browser"))]
                                     let _ = event;
-                                }) /> }
-                            } />
-                        </NotificationGroup> }
-                    } />
+                                }) /> }.into_any()
+                            }
+                        } />
+                    </NotificationGroup>
+                </vink_patterns::TimeList>
             </Show>
             <Show when=move || owner.available() && owner.inbox.with(|inbox| inbox.mark == Load::Failed)>
                 <ReadFailure message="Chưa đánh dấu được thông báo." inline=true retry=Callback::new(move |()| {
@@ -272,6 +275,12 @@ pub(super) fn Loading() -> impl IntoView {
             <span></span><span></span><span></span>
         </div>
     }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+enum Entry {
+    Heading(usize, &'static str),
+    Item(Box<Row>),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -318,7 +327,7 @@ fn row_facts(item: &Item) -> Option<NotificationRowFacts> {
         glyph,
     };
     let system = |shape, tone, icon| NotificationLeading::System { shape, tone, icon };
-    let (href, title, leading, action, excerpt, revision_label) = match &item.target {
+    let (href, title, leading, action, excerpt, revision_instant) = match &item.target {
         Target::WorkEndorsement {
             work_id,
             revision_id,
@@ -403,10 +412,7 @@ fn row_facts(item: &Item) -> Option<NotificationRowFacts> {
                 leading,
                 action,
                 false,
-                revision_created_at
-                    .as_deref()
-                    .and_then(vink_patterns::first_public_date_hcm)
-                    .map(|date| format!("Bản {date}")),
+                revision_created_at.clone(),
             )
         }
         Target::CommentModerationDecision {
@@ -444,42 +450,9 @@ fn row_facts(item: &Item) -> Option<NotificationRowFacts> {
             .as_ref()
             .filter(|_| excerpt)
             .map(|x| (x.text.clone(), x.truncated)),
-        revision_label,
-        time_label: time_label(&item.updated_at),
-        time_instant: Some(item.updated_at.clone()),
+        revision: revision_instant.map(vink_patterns::NotificationTime::Instant),
+        updated: vink_patterns::NotificationTime::Instant(item.updated_at.clone()),
         action_required: item.summary.action_required,
         unread: !item.is_read,
     })
-}
-
-fn time_label(timestamp: &str) -> String {
-    #[cfg(feature = "browser")]
-    {
-        let age = ((js_sys::Date::now() - js_sys::Date::parse(timestamp)) / 60_000.0) as i64;
-        match age {
-            0..=1 => return "Vừa xong".into(),
-            2..=59 => return format!("{age} phút trước"),
-            60..=1439 => return format!("{} giờ trước", age / 60),
-            _ => {}
-        }
-    }
-    vink_patterns::first_public_date_hcm(timestamp).unwrap_or_default()
-}
-
-fn date_group(timestamp: &str) -> &'static str {
-    #[cfg(feature = "browser")]
-    {
-        const DAY: f64 = 86_400_000.0;
-        const HCM: f64 = 7.0 * 3_600_000.0;
-        let event = ((js_sys::Date::parse(timestamp) + HCM) / DAY).floor();
-        let today = ((js_sys::Date::now() + HCM) / DAY).floor();
-        if event == today {
-            return "Hôm nay";
-        }
-        if event >= today - 6.0 {
-            return "7 ngày qua";
-        }
-    }
-    let _ = timestamp;
-    "Cũ hơn"
 }

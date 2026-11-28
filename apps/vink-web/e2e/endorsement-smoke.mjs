@@ -50,8 +50,9 @@ export async function endorsementAsAuthor(page, { args, check }) {
   check(at > html.indexOf(LAST_LINE) && at < html.indexOf('id="feedback-region"'), 'SSR renders “Thấm” after the published text and before the discussion');
   check(html.includes('data-icon="pen-flight"'), 'SSR contains the selected Pen Flight registry glyph');
   const workCount = ssrCount(html, 'endorse-work');
-  check(workCount?.known && workCount.text === '0' && !html.includes('aria-pressed'), `SSR carries the public count of the current revision (${workCount?.text}), no aria-pressed`);
-  check(html.includes('data-pressed="unknown"') && !html.includes('Cần đăng nhập để Thấm'), 'SSR never claims an own state before the browser reads it, and a fixture session is not a guest');
+  const action = html.slice(html.lastIndexOf('<', at), html.indexOf('>', at) + 1);
+  check(workCount?.known && workCount.text === '0' && !action.includes('aria-pressed'), `SSR carries the public count of the current revision (${workCount?.text}), no aria-pressed`);
+  check(action.includes('data-pressed="unknown"') && !html.includes('Cần đăng nhập để Thấm'), 'SSR never claims an own state before the browser reads it, and a fixture session is not a guest');
   await page.goto(reader);
   await page.waitFor(`document.documentElement.dataset.hydrated==='true' && ${note('endorse-work')}.includes('tự Thấm')`, 'own-state read after hydration');
   check(await page.eval(`(() => { const b = ${button('endorse-work')}; return b.getAttribute('aria-disabled')==='true' && b.dataset.state==='disabled' && b.getAttribute('aria-label')==='Thấm' && b.getAttribute('aria-describedby').includes('endorse-work-note'); })()`), 'the author reads a text reason (CHOICE-08 A); the action stays focusable and inert');

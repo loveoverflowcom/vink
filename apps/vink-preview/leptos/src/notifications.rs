@@ -3,7 +3,7 @@
 use leptos::prelude::*;
 use serde_json::Value;
 use vink_patterns::{
-    NotificationGroup, NotificationLeading, NotificationRow, NotificationRowFacts,
+    NotificationGroup, NotificationLeading, NotificationRow, NotificationRowFacts, NotificationTime,
 };
 use vink_ui::{
     BadgeState, Button, Dialog, ExpressiveShape, Heading, HeadingLevel, Icon, IconName, NavUtility,
@@ -137,8 +137,10 @@ fn inbox(examples: &Value) -> AnyView {
         actors: Some("Ngọc Mai".into()),
         action: "đã Ưng nhận xét của bạn".into(),
         excerpt: None,
-        time_label: "18 tháng 11".into(),
-        time_instant: None,
+        updated: NotificationTime::Caption {
+            label: "18 tháng 11".into(),
+            instant: None,
+        },
         unread: false,
         ..comment.clone()
     };
@@ -193,9 +195,11 @@ fn people_row(item: &Value, glyph: IconName, action: &str) -> NotificationRowFac
         title: string(&item["target"]["work_title"]).unwrap_or_default(),
         excerpt: string(&item["excerpt"]["text"])
             .map(|text| (text, item["excerpt"]["truncated"] == true)),
-        revision_label: None,
-        time_label: "2 giờ".into(),
-        time_instant: string(&item["updated_at"]),
+        revision: None,
+        updated: NotificationTime::Caption {
+            label: "2 giờ".into(),
+            instant: string(&item["updated_at"]),
+        },
         action_required: item["summary"]["action_required"] == true,
         unread: item["is_read"] == false,
     }
@@ -230,10 +234,14 @@ fn decision_row(item: &Value, unread: bool) -> NotificationRowFacts {
         action: action.into(),
         title: string(&item["work_title"]).unwrap_or_else(|| "Tác phẩm không còn hiển thị".into()),
         excerpt: None,
-        revision_label: (item["kind"] == "work_moderation_decision")
-            .then(|| "Bản 20 tháng 11".into()),
-        time_label: "2 giờ".into(),
-        time_instant: string(&item["decided_at"]),
+        revision: (item["kind"] == "work_moderation_decision").then(|| NotificationTime::Caption {
+            label: "20 tháng 11".into(),
+            instant: None,
+        }),
+        updated: NotificationTime::Caption {
+            label: "2 giờ".into(),
+            instant: string(&item["decided_at"]),
+        },
         action_required: item["action_required"] == true,
         unread,
     }

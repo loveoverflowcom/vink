@@ -479,12 +479,12 @@ pub(super) fn SavedList(owner: VerifiedOwner) -> impl IntoView {
                 <a class=ButtonVariant::Tonal.classes() href="/">"Khám phá tác phẩm"</a>
             </EmptyState>
         </Show>
-        <ul id="saved-list" class="vk-saved-list">
+        <vink_patterns::TimeList show=Signal::derive(move || state.with(|v| !v.rows.is_empty()))><ul id="saved-list" class="vk-saved-list">
             <For each=move || state.with(|list| list.rows.iter().map(|row| row.work_id().to_owned()).collect::<Vec<_>>())
                 key=Clone::clone
                 children=move |work| view! { <Row list work /> }
             />
-        </ul>
+        </ul></vink_patterns::TimeList>
         <div id="saved-tail" tabindex="-1">
             <Show when=move || state.with(|list| list.append_error)>
                 <p role="alert">"Chưa tải thêm được. Các bài đã tải vẫn ở nguyên."</p>
@@ -542,7 +542,6 @@ fn Row(list: ListOwner, work: String) -> impl IntoView {
                     {move || match row.get() {
                         Some(SavedWorkRow::Readable { title, form, saved_at, author, .. }) => {
                             let work = id.get_value();
-                            let date = vink_patterns::work_view_date_hcm(&saved_at);
                             let (byline, profile) = author_name("", Some(&author));
                             let handle = profile.map(|profile| format!("@{}", profile.handle));
                             let initials = (!crate::ui::adapters::neutral_label(Some(&author), false)).then(|| byline.clone());
@@ -560,7 +559,7 @@ fn Row(list: ListOwner, work: String) -> impl IntoView {
                                 </h3>
                                 <p class="vk-public-row__eyebrow -order-1 m-0">
                                     {form.map(|form| view! { <span class="vk-public-row__tag">{form}" · "</span> })}
-                                    {date.map(|day| view! { <time datetime=saved_at>"lưu "{day}</time> })}
+                                    "Đã lưu " <vink_patterns::Timestamp instant=saved_at />
                                 </p>
                                 <p class="vk-public-row__byline vk-saved-byline m-0">
                                     <vink_ui::Avatar name=initials.unwrap_or_default() size=vink_ui::AvatarSize::Small decorative=true />

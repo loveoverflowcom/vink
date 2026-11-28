@@ -61,7 +61,7 @@ Không thêm token màu mới vào `tokens.json`; chỉ thêm một icon chuẩn
 
 ## 5. Quyết định còn `OPEN` (không tự chốt trong PR này)
 
-- **`DQ-05` (định dạng giờ trên hàng — `OPEN`):** r3 đề xuất dạng ngắn `02/12 · 10:00` bỏ múi giờ khi trùng thiết bị. Do `DQ-05` vẫn `OPEN` theo #410 AC-04, runtime giữ nguyên `#213 CHOICE-01 A` (`<Timestamp>` hiển thị đủ ngày/giờ/múi giờ kèm `datetime`/`title`) cho tới khi chủ sản phẩm chốt `DQ-05`.
+- **`DQ-05` (định dạng giờ trên hàng, `OPEN` trong #410).** Bàn viết áp dụng [chính sách hiển thị Web #619](human-time.md) cho `updated_at`. Mốc báo cáo `counted_since` tiếp tục dùng ngày Hồ Chí Minh theo VIEW-09/12.
 - **`DQ-10` (màu tertiary cho “Chờ duyệt” — `OPEN`):** tuân thủ r3 dùng `secondary-container`/`on-secondary-container`, không dùng `tertiary`.
 - **`D-03..D-08` & `CHOICE-UI-01` (Sheet thay popover cho `UX-07`):** giữ trạng thái `DESIGN_PROPOSED`, chờ chủ sản phẩm xác nhận nếu muốn điều chỉnh.
 - **`VDR-WORK-VIEWS@r2`:** giữ trạng thái `PENDING` theo `VDR-DECISION-SIGNOFF@r1` cho tới khi có signoff trích đúng payload/SHA-256.

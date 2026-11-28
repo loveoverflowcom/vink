@@ -93,7 +93,7 @@ export async function authorWorks(page, {args,check,DraftGate,sleep}) {
       const row=document.querySelector('#draft-row-${works[1].work_id}');
       const title=row.querySelector('.vk-draft-row__title'), time=row.querySelector('time');
       return title.textContent==='Chưa đặt tên' && getComputedStyle(title).fontStyle==='italic' &&
-        time.dateTime==='2026-11-15T12:00:00Z' && time.title===time.dateTime && time.textContent.includes('15/11/2026');
+        time.dateTime==='2026-11-15T12:00:00Z' && time.title.includes(new Intl.DateTimeFormat('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(time.dateTime))) && !/GMT|UTC/.test(time.textContent);
     })()`), '#410 untitled works use an italic placeholder and retain the authoritative timestamp');
     check(await page.eval(`document.querySelector('#draft-row-${works[5].work_id} .vk-author-work__status').querySelector('[title="Chỉ mình tôi"]') && document.querySelector('#draft-row-${works[5].work_id}').textContent.includes('Không có bản nháp để sửa') && !document.querySelector('#draft-row-${works[5].work_id} a')`), 'a private work without a draft has truthful status and no fabricated editor target');
     check(await page.eval(`document.querySelector('#draft-row-${works[0].work_id}').textContent.includes('Đã đăng · Có bản sửa') && document.querySelector('#draft-row-${works[2].work_id}').textContent.includes('không được duyệt') && document.querySelector('#draft-row-${works[6].work_id}').textContent.includes('Đã ẩn')`), 'public pointer coexists with pending/rejected newer revisions and withdrawn status');

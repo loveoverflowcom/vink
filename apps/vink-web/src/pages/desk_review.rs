@@ -729,7 +729,7 @@ fn revision_review(
 
     let rejected = status == crate::contract::publication::Decision::Rejected;
     let action_required = !historical && decision.is_some_and(|decision| decision.action_required);
-    let submitted_date = vink_patterns::first_public_date_hcm(&revision.created_at);
+    let submitted = revision.created_at.clone();
     let edit_href = format!("/ban-viet/{}", data.state.work_id);
     view! {
         <article class=if exact { "vk-notif-decision__panel" } else { CONTENT_CLASS }>
@@ -746,9 +746,13 @@ fn revision_review(
                 view! { <h3 class="vk-ui-heading">{title}</h3> }.into_any()
             }}
             <p>
-                {if exact { submitted_date.map_or_else(String::new, |date| format!("Bản gửi ngày {date} · Quyết định lúc ")) }
-                else { format!("Bản {} · {}", index + 1, version.map(|version| format!("Quyết định {version} · ")).unwrap_or_default()) }}
-                <time datetime=date.clone()>{vink_patterns::updated_at_label(&date)}</time>
+                {if exact {
+                    view! { "Bản gửi lúc " <vink_patterns::Timestamp instant=submitted mode=vink_patterns::TimeMode::Absolute disclosure=true /> " · Quyết định lúc " }.into_any()
+                } else {
+                    let source = if decision.is_some() { "Quyết định lúc " } else { "Gửi lúc " };
+                    format!("Bản {} · {}{source}", index + 1, version.map(|v| format!("Quyết định {v} · ")).unwrap_or_default()).into_any()
+                }}
+                <vink_patterns::Timestamp instant=date mode=vink_patterns::TimeMode::Absolute disclosure=true />
             </p>
             {(!exact).then(|| view! { <p>{decision_label(status)}{historical.then_some(" · Quyết định trước đây")}</p> })}
             {public.then(|| view! {

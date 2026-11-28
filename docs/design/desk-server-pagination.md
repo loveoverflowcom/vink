@@ -81,10 +81,9 @@ Nguồn yêu cầu: [#213](https://github.com/loveoverflowcom/vink/issues/213), 
   Mặc định tối đa hai dòng; focus/hover mở đủ chữ ngay tại row, touch mở editor để đọc tên đầy đủ.
   Không nested target, không tooltip là đường đọc duy nhất. Metadata chỉ “Cập nhật” + thời gian;
   version vẫn nằm trong DTO, editor/recovery và CAS.
-- CHOICE-01 A: giờ/ngày tuyệt đối theo timezone thiết bị, locale `vi-VN`, gồm giờ và zone.
-  SSR và lần hydrate đầu dùng fallback UTC ghi rõ zone; effect sau hydration mới đổi sang local.
-  Không timer/clock tương đối, future vẫn là instant tuyệt đối; invalid hiện fallback rõ nghĩa.
-  `datetime` và title giữ instant nguồn. Cùng formatter dùng cho draft/byline/comment Web.
+- CHOICE-01 A ghi lại cách hiển thị tuyệt đối ở thời điểm #213. Từ #619, hàng dùng nhãn tương đối
+  theo lịch thiết bị và nút “Ngày giờ đầy đủ” của danh sách. SSR dùng UTC ghi rõ zone.
+  [Quy ước ngày giờ Product Web](human-time.md) quy định ngưỡng, fallback và nhịp cập nhật.
 - CHOICE-02 B: DraftRow compose metadata thời gian riêng, reuse formatter của DraftMetadata;
   DraftMetadata mặc định vẫn có version cho editor/specimen/resume pattern ngoài Desk.
 - First-use chỉ khi query đã áp dụng gập thành rỗng + head thành công rỗng, không dùng

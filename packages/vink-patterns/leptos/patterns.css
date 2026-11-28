@@ -75,7 +75,7 @@
   max-inline-size: 100%;
 }
 .vk-discussion-byline .vk-ui-byline__name:not([data-blank], [data-neutral]) { font-weight: var(--vk-type-section-weight); }
-.vk-discussion-byline > time {
+.vk-discussion-byline > .vk-time-disclosure {
   margin-inline-start: var(--vk-discussion-author-inset);
   max-inline-size: calc(100% - var(--vk-discussion-author-inset));
   color: var(--vk-on-surface-variant);
@@ -547,8 +547,9 @@
   --vk-notif-row-meta: var(--vk-on-primary-container);
 }
 
-.vk-notif-row:first-child { border-start-start-radius: var(--vk-radius-xl); border-start-end-radius: var(--vk-radius-xl); }
-.vk-notif-row:last-child { border-end-start-radius: var(--vk-radius-xl); border-end-end-radius: var(--vk-radius-xl); }
+.vk-notif-day:not(:first-child) { margin-block-start: var(--vk-space-3); }
+.vk-notif-day + .vk-notif-row, .vk-notif-row:first-child { border-start-start-radius: var(--vk-radius-xl); border-start-end-radius: var(--vk-radius-xl); }
+.vk-notif-row:has(+ .vk-notif-day), .vk-notif-row:last-child { border-end-start-radius: var(--vk-radius-xl); border-end-end-radius: var(--vk-radius-xl); }
 
 .vk-notif-row__link {
   box-sizing: border-box;
@@ -680,3 +681,27 @@
     forced-color-adjust: none;
   }
 }
+
+/* Timestamp disclosures keep their place in the byline; list controls sit outside links. */
+.vk-time-disclosure, .vk-time-list-toggle {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  min-block-size: 44px;
+  min-inline-size: 44px;
+  max-inline-size: 100%;
+  text-align: start;
+  overflow-wrap: anywhere;
+  padding: 0;
+  text-decoration: underline dotted;
+  text-underline-offset: .2em;
+}
+.vk-time-list-toggle { color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); }
+.vk-time-disclosure:focus-visible, .vk-time-list-toggle:focus-visible {
+  outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring);
+  outline-offset: var(--vk-size-focus-offset);
+}
+
+:where(ul, .vk-notif-group):not(:has(time[datetime])) + .vk-time-list-toggle { display: none; }

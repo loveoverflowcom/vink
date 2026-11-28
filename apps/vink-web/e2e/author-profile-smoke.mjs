@@ -324,13 +324,13 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
     const title = item.querySelector('h3'), r = excerpt?.getBoundingClientRect();
     const hit = r && document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
     const time = item.querySelector('time');
-    const label = time ? new Intl.DateTimeFormat('vi-VN', {timeZone:'Asia/Ho_Chi_Minh'}).format(new Date(time.dateTime)) : null;
+    const label = time ? new Intl.DateTimeFormat('vi-VN', {}).format(new Date(time.dateTime)) : null;
     return {
       row: item.classList.contains('vk-profile-work'), heading: title?.contains(link),
       name: link.textContent, href: link.getAttribute('href'), back: link.dataset.profileReturn,
       targets: item.querySelectorAll('a, button').length, meta: meta?.textContent ?? null, first, label,
       date: !!first && item.querySelectorAll('time').length === 1 && time.getAttribute('datetime') === first
-        && time.title === 'Công khai lần đầu' && !!meta?.contains(time) && !time.closest('a') && time.textContent === label,
+        && time.getAttribute('aria-description')?.startsWith('Công khai lần đầu: ') && !!meta?.contains(time) && !time.closest('a') && time.textContent === label,
       excerpt: excerpt?.textContent ?? null,
       above: !!meta && meta.getBoundingClientRect().bottom <= title.getBoundingClientRect().top + 1,
       whole: hit === link, chevron: !!document.querySelector('.vk-author-works .vk-ui-link'),
