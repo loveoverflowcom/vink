@@ -130,5 +130,4 @@ gửi thật qua Resend cần kiểm riêng
 (xem runbook). `verify postgres` chạy `tests/postgres.rs` và kiểm binary thật trên socket thật với
 role đã provision: cấu hình sai, migrate hai lần, sai database/schema, role migrator bị từ chối,
 mất kết nối, header gửi dở, SIGTERM/restart, socket cũ, log không lộ credential; và App thật gọi
-Identity thật (dừng/khởi động lại độc lập, đọc công khai không phụ thuộc). Bằng chứng:
-[identity-postgres-verification](../../docs/development/identity-postgres-verification.md).
+Identity thật (dừng/khởi động lại độc lập, đọc công khai không phụ thuộc).

@@ -1,3 +1,0 @@
-2026-11-17 11:25:11.002 +07 [52600] ERROR:  new row for relation "work_revision_moderation" violates check constraint "work_revision_moderation_pending_check"
-2026-11-17 11:25:11.002 +07 [52600] DETAIL:  Failing row contains (01a1e7c0-704a-7250-9412-8f7ff7a56c5f, 01a1e7c0-7050-7428-a5ac-ee70a26be298, 3, pending, null, null, null, null, null, null, 2026-11-17 04:25:11.001105+00, 2026-11-17 04:25:11.001105+00, 2, null).
-2026-11-17 11:25:11.002 +07 [52600] STATEMENT:  INSERT INTO work_revision_moderation (

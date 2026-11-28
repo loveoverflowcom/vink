@@ -1,9 +1,0 @@
-verification summary
-  PASS  selected prerequisites
-  PASS  visual evidence oracles: manifest, PNG, overflow, AX, modal unit tests
-  PASS  selected artifacts
-  PASS  browser bundle contains no credentials
-  PASS  SSR HTML, hydration, CodeMirror editor, save/reload/conflict, leave guard, preview, draft tags
-  PASS  discovery: SQL fixture corpus, real pagination/SSR/reader return and transport race
-  PASS  server stops gracefully on SIGTERM
-  PASS  review-withdrawn page (O-17@r2): paused queue, admin approve, intervention reject, SSR noindex/no-store, cache purge, comments

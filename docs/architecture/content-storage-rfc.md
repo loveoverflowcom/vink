@@ -5,8 +5,7 @@ khai. Đề xuất [VDR-CONTENT-STORAGE@r1](../../decisions/proposals/VDR-CONTEN
 ở trạng thái `PENDING`. Phạm vi PR gồm RFC và phép đo PostgreSQL scratch. Runtime
 `persistence-api`/`web` vẫn dùng representation hiện hành.
 
-**Đối soát 17/11/2026:** #253 đã merge vào `develop@607ef83`;
-[biên bản AC và source/raw audit](../development/long-document-reconciliation.md) xác nhận
+**Đối soát 17/11/2026:** #253 đã merge vào `develop@607ef83` với
 deliverable RFC/prototype giới hạn. `VDR-CONTENT-STORAGE@r1` vẫn `PENDING/current=null`,
 snapshot registry `8354df2cde868013df8324e1934351d094f93739728e485c4f59a1e1d46462b8`.
 Merge RFC hoặc đóng #231 không là signoff/adoption; các số sau giữ source đo lịch sử.
@@ -15,7 +14,6 @@ Merge RFC hoặc đóng #231 không là signoff/adoption; các số sau giữ so
 (proposal `VDR-DOCUMENT-SOURCE-FORMAT@r2` ACCEPTED). Raw A/B/C trong RFC này đo document v1 và là
 lịch sử; không qualification cho shape mới. Probe `content_storage_rfc.rs` đã port sang đoạn của
 source; phải đo lại gates B/C với workload mới trước adoption.
-
 
 Khi tác giả sửa bài đã đăng, người đọc tiếp tục thấy đúng bản đã công khai. Một transaction có
 thẩm quyền chuyển pointer sang bản phù hợp. Nếu bài chuyển riêng tư hoặc bị gỡ, lần đọc tiếp theo
@@ -49,7 +47,7 @@ dưới đây kiểm reuse theo loại edit và kiểu cấu trúc. Tỷ lệ 95
 TOAST và MVCC giữ tuple cũ cho snapshot còn đọc. `SET COMPRESSION` áp dụng cho lần ghi sau, còn
 rewrite dữ liệu đã lưu là thao tác riêng. #229 từng thấy LZ4 giảm median UPDATE của Việt NFC
 200k từ 14,29 xuống 8,44 ms, trong khi tổng relation scratch tăng khoảng 42% và WAL theo mẫu
-tăng khoảng 20%. Giữ default/pglz. [Ngân sách #229](../development/long-document-budget.md),
+tăng khoảng 20%. Giữ default/pglz. Tham khảo:
 [TOAST PostgreSQL 17](https://www.postgresql.org/docs/17/storage-toast.html),
 [ALTER TABLE PostgreSQL 17](https://www.postgresql.org/docs/17/sql-altertable.html).
 
@@ -70,8 +68,7 @@ thay đổi khỏi no-op. Case nhiều block 200k vẫn chạm giới hạn tran
 paragraph trong Reader. Đây là nút thắt ở adapter/rendering, còn thử nghiệm storage giữ nguyên
 full-body trên wire. Nếu command/worker trở thành điểm nóng, đo đường đọc target revision sau
 khi xác định kiểm tra toàn vẹn nào cần giữ, rồi so với chi phí thay representation.
-[Phép đo #230](../development/publication-state-read.md#đo-trướcsau-trên-postgresql-thật),
-[đối soát #229/#249](../development/long-document-budget.md#đối-soát-follow-up-229).
+[Phép đo #230](../development/publication-state-read.md#đo-trướcsau-trên-postgresql-thật).
 
 ## Ba phương án
 
@@ -83,7 +80,6 @@ khi xác định kiểm tra toàn vẹn nào cần giữ, rồi so với chi ph�
 
 ### Thử nghiệm phân biệt
 
-[Phương pháp, ngưỡng và raw samples](../development/evidence/content-storage-231/README.md).
 So A/B/C trên PostgreSQL 17 scratch, cùng JSONB/pglz. C dùng mốc theo nội dung block, min 32 KiB,
 cut theo fingerprint hoặc cap 64 KiB. Greedy 60 KiB là control. Các ngưỡng tính trên compact JSON
 chunk, gồm dấu phân cách. Block tự nó vượt cap đi riêng. Prototype dùng boundaries từ v1 hiện
@@ -114,15 +110,14 @@ Trên Việt nhiều đoạn 190k, greedy giữ khoảng 86% bytes ở prepend v
 thử nghiệm, biên theo nội dung giữ khoảng 92% và 75%. Đây là các phép thử boundary shift, với
 reuse tính theo bytes của snapshot sau từ mọi payload đã có trong cùng lịch sử. Trường hợp
 đối chứng chính xác kiểm reuse từ riêng snapshot trước đó.
-[Raw và giới hạn](../development/evidence/content-storage-231/README.md).
 
 Giữ A. #230 đã bỏ đọc body khỏi owner-state. B chưa có tín hiệu đủ lớn về exact repeats. C có
 tín hiệu dung lượng mạnh ở một số shape nhưng tốn prepare/assembly ngay cả với một writer và
 cache khóa dedup lý tưởng. Ưu tiên đo workload đại diện và xử lý transport/Reader theo
-[#229](../development/long-document-budget.md). Mở lại B khi exact repeat theo work đủ vượt
+#229. Mở lại B khi exact repeat theo work đủ vượt
 ngưỡng. Mở lại C khi chi phí sau nén, WAL/replica/backup của lịch sử thực sự vượt ngân sách
-và candidate dùng biên ổn định đạt ngưỡng cả storage lẫn latency. Giữ ngưỡng và cách đo tại
-[evidence](../development/evidence/content-storage-231/README.md).
+và candidate dùng biên ổn định đạt ngưỡng cả storage lẫn latency. Prototype đo nằm ở
+[content_storage_rfc.rs](../../services/vink-app/tests/postgres/content_storage_rfc.rs).
 
 ## Contract nếu mở lại B hoặc C
 

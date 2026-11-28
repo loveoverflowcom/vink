@@ -2,7 +2,7 @@
 
 Phạm vi UX-01 và thao tác đổi giao diện (WR-01/WR-02).
 [#209](https://github.com/loveoverflowcom/vink/issues/209) tiếp nối
-[dialog editor R1](dialog-anatomy-r1-208.md) trên nền `develop@ef7da9d1981ef9c0864af8d9c26a8c5b6d919aa3`.
+dialog editor R1 (#208) trên nền `develop@ef7da9d1981ef9c0864af8d9c26a8c5b6d919aa3`.
 [Concept](https://drive.google.com/file/d/12I8UnUh5dAVloglTfpavfIF5pOFn-Pof/view) và
 [LayoutSpec nguồn](https://drive.google.com/file/d/1T25IrfdL3pjWoQekdkXKB_OuIs7tslYO/view)
 là tham chiếu ứng viên lịch sử của `#209`. Fidelity `NO_APPROVED_REFERENCE`.
@@ -72,7 +72,5 @@ Các layout, selector và lượt kiểm dưới đây dùng cho hai bề mặt 
 Đo vùng trong sau padding với dung sai 1 CSS px. Kiểm panel 834/1440 px, rail
 thu gọn/mở rộng, chữ 100%/200%, sáng/tối/hệ thống và viewport cao 360 px.
 Kiểm focus lúc mở ở 834 × 320/280 px, tối 200%, rail thu gọn.
-Kiểm `/toi` ở 320/390/1440 px, chữ 100%/200%, sáng/tối. Đối chiếu qua
-[ma trận và bằng chứng Web](../development/ui-system-qualification-evidence.md#giao-diện-r1-cho-panel-và-trang-tôi).
+Kiểm `/toi` ở 320/390/1440 px, chữ 100%/200%, sáng/tối.
 
-Delta sau #219 và kiểm chứng local ở [review #220](../development/appearance-220-review.md).

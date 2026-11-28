@@ -39,7 +39,7 @@ g_tenths     = 24 × dI + 16 × dC         G = g_tenths / 10
 - Xếp hạng: `score_micros` giảm dần, hòa thì PrincipalId tăng dần. Top Growth: `g_tenths` giảm dần, hòa
   thì PrincipalId tăng dần.
 - Golden vectors: [SR-01D](../development/reputation-science.md#sr-01d--qualification-cho-formula_version-1)
-  và `docs/development/evidence/reputation-sr01/results.json`.
+  và `services/vink-app/bench/reputation-sr01/results.json`.
 
 | I | C | display | score_micros |
 | ---: | ---: | ---: | ---: |

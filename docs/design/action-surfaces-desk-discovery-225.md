@@ -114,10 +114,8 @@ desk 390/dark/200. `BUILD_SHA_UNVERIFIED`, fixture 15/11, chỉ là **historical
 
 Tests độc lập mở rộng `e2e/browser-smoke.mjs` (Desk) và `e2e/discovery-smoke.mjs` (public search,
 discovery corpus), không tạo phase/runner mới. Chúng bảo vệ semantics/guards/GET/Apply hiện có;
-không gắn test PASS cho presentation chưa viết. Kết quả và checklist AC→evidence nằm ở
-[bàn giao local](../development/evidence/action-surfaces-225/README.md).
+không gắn test PASS cho presentation chưa viết.
 
 Lượt r2 giữ nguyên logic Apply, thêm assertion container/icon, helper ở 0/1/4 thẻ và catalog lỗi,
 no-JS, một live owner và count của trang cuối. Dùng `cargo xtask verify quick`,
 `cargo xtask verify web`; `ui-preview leptos verify` kiểm shared glyph/rendering.
-Kết quả triển khai và gap được ghi tại [registry r2](../development/action-surfaces-225.md).

@@ -113,7 +113,7 @@ hiện hành. Phiên khác không thể dùng principal trong payload để ch�
 | Sản phẩm | SOC-ID-02/04/05/06, SOC-HDL-01 và SOC-OPEN-02 theo #288, #290. SOC-OPEN-03 chỉ còn quyền chính chủ tái dùng alias. |
 | Kiến trúc | CHOICE-01 trong phạm vi #290 dùng một registry tên bất biến và một con trỏ hiện hành cho mỗi PrincipalId. VDR-SOCIAL-CONTRACT@r1 vẫn PENDING. |
 | Triển khai | `core`, `persistence-api`, `web`. [Luật tên](../../services/vink-app/src/domain/handle.rs), [giao dịch và resolver](../../services/vink-app/src/persistence/handle.rs), [hợp đồng HTTP](../../services/vink-app/contracts/http/v1/social-graph.md#địa-chỉ-tác-giả-290), [controller Handle](../../apps/vink-web/src/pages/profile/browser/handle.rs), [public resolver Web](../../apps/vink-web/src/pages/handle.rs). |
-| Kiểm chứng | [PG và HTTP](../../services/vink-app/tests/postgres/handle.rs), [đua provision](../../services/vink-app/tests/postgres/principal.rs), [Chrome với phiên thật](../../apps/vink-web/e2e/author-handle-smoke.mjs). Lệnh tương ứng là `verify postgres` và `verify web --scenario password`. [Báo cáo #290](evidence/author-handle-290/README.md) ghi SHA, kịch bản, ảnh Chrome và số đo accessibility. |
+| Kiểm chứng | [PG và HTTP](../../services/vink-app/tests/postgres/handle.rs), [đua provision](../../services/vink-app/tests/postgres/principal.rs), [Chrome với phiên thật](../../apps/vink-web/e2e/author-handle-smoke.mjs). Lệnh tương ứng là `verify postgres` và `verify web --scenario password`. |
 
 **Cấp tên và nâng schema.** Chạy migration bổ sung, chuyển sang writer mới, rồi chạy
 `vink-app principal backfill-handles` bằng role runtime App. Mỗi batch khóa tối đa
@@ -159,8 +159,7 @@ hồ sơ tác giả.
   bổ sung phép kiểm bàn phím và Back trong query/tag trên WorkCard.
   [Focused browser test](../../apps/vink-web/e2e/author-profile-smoke.mjs) chạy trong
   `verify web --scenario password` và seed hai tác giả bằng phiên thật cùng corpus bài/bình luận
-  kiểm soát trong database tạm. [Bằng chứng #292/#293](evidence/author-profile-292-293/README.md)
-  ghi kết quả theo từng AC, ảnh và phiếu thử tay.
+  kiểm soát trong database tạm.
 - **Item tác phẩm trên hồ sơ #587.** CHOICE-02 (#587) = B (`DESIGN_PROPOSED`: agent chọn khi
   triển khai, chưa phải quyết định của owner): giữ endpoint hồ sơ, thêm field tùy chọn thay vì
   tái dùng renderer Khám phá. Mức `persistence-api`:
@@ -197,7 +196,7 @@ toàn dùng bản có cả migration lẫn redaction, ưu tiên tắt entry form
 - **Sản phẩm.** `SOC-FOL-*` / `SOC-REL-*` theo #288 và #294: chủ động Follow/Unfollow theo desired state (`expected_order` + `command_id`), tách riêng bốn quyền đọc `followers_list`, `followers_count`, `following_list`, `following_count`, Mutual chỉ lộ cho đúng hai chủ thể trong cặp, không self-follow/blind toggle. `SOC-DEP-02` (tách hạn chế đăng/bình luận khỏi full suspension) vẫn là phụ thuộc ngoài thuộc Account/Identity.
 - **Kiến trúc.** `CHOICE-02 = A`: lưu bảng cặp bền `author_follows` (trigger giữ hàng, parity `active == ((version % 2) = 1)`, tăng đơn điệu `accepted_order`) kèm ledger `author_follow_receipts` append-only. `CHOICE-03 = A`: tính live aggregate qua partial index `WHERE active` và join `author_profiles.current_handle IS NOT NULL` trong snapshot `REPEATABLE READ`. Thứ tự khóa chuẩn hóa theo cặp `PrincipalId` tăng dần giúp `set_follow` hai chiều và `persistence::handle::retire` (`retire_edges`) không deadlock. `VDR-SOCIAL-GRAPH@r1` và `VDR-SOCIAL-CONTRACT@r1` vẫn ở trạng thái `DESIGN_PROPOSED` / `PENDING`.
 - **Triển khai.** `core` ([domain/follow.rs](../../services/vink-app/src/domain/follow.rs)), `persistence-api` ([20261126000000_author_follows.sql](../../services/vink-app/migrations/20261126000000_author_follows.sql), [persistence/follow.rs](../../services/vink-app/src/persistence/follow.rs), [http/follow.rs](../../services/vink-app/src/http/follow.rs)), và `web` ([follow_state.rs](../../apps/vink-web/src/follow_state.rs), [pages/follow.rs](../../apps/vink-web/src/pages/follow.rs), route `/@{handle}/nguoi-theo-doi` và `/@{handle}/dang-theo-doi`, `/toi?next=…`). Bàn giao seam batch membership (`followed_in_tx`, `followed_principals_in`, `GET /api/v1/me/follows/membership`) cho #295/#296 và hook `retire_edges`/`retire_edges_batch` trong `handle::retire` cho #297.
-- **Kiểm chứng.** [Bằng chứng #294](evidence/author-follow-294/README.md) ghi lệnh và SHA, PostgreSQL thật, Web password với Follow/Profile/Handle/Auth, ma trận responsive và bốn ảnh đã xem. Cursor danh sách riêng bị ràng buộc theo phiên; response cũ không vượt rào A→B→A. Quyền hiện hành được kiểm trước cursor, HTTP validator và hiển thị danh sách/số đếm.
+- **Kiểm chứng.** PostgreSQL thật, Web password với Follow/Profile/Handle/Auth và ma trận responsive. Cursor danh sách riêng bị ràng buộc theo phiên; response cũ không vượt rào A→B→A. Quyền hiện hành được kiểm trước cursor, HTTP validator và hiển thị danh sách/số đếm.
 - **Header hồ sơ #588.** `ProfileIdentity` nhận social row qua slot: bút danh Literata đậm
   (`text.profile-name` 20px, `text.profile-name-wide` 22px), handle phụ, rồi số đếm/danh sách
   được phép trước nút Theo dõi theo cả thứ tự nhìn và tab. Hàng gọn khi cột chữ đủ chỗ, xuống
@@ -238,7 +237,6 @@ toàn dùng bản có cả migration lẫn redaction, ưu tiên tắt entry form
   lần đọc mới. Thay phiên loại dữ liệu và kết quả đang bay; dấu cũ mất hiệu lực.
   Khi Back nhanh đổi entry trước hydrate, Web đối chiếu mã băm tuyến SSR rồi tải
   đúng địa chỉ đang mở.
-  [Bằng chứng Web #355](evidence/following-feed-355/README.md) đi qua Feed, Reader và hồ sơ.
 - **Quay lui.** Đặt `VINK_FOLLOWING_FEED=disabled` rồi khởi động lại App. Link mode ẩn,
   đường dẫn đã lưu có trạng thái tạm tắt và lối về Khám phá. Route API trả 404.
   Giữ migration index, fact Publication và cả cạnh/receipt. Chuyển lại `enabled`
@@ -277,8 +275,7 @@ toàn dùng bản có cả migration lẫn redaction, ưu tiên tắt entry form
   trên đường Back và hàng đã mở đã mất, Web thông báo cập nhật danh sách rồi đặt
   focus ở tiêu đề vùng kết quả.
 - **Kiểm chứng.** Scenario `author-search` kiểm trình bày R5 cùng luồng hồ sơ và
-  Follow. [Ma trận Chrome trước/sau, số đo và AX tree của #354](evidence/author-search-354/README.md)
-  ghi lại giao diện trước R5.
+  Follow.
   Các khung 295-01..04 có trạng thái `DESIGN_PROPOSED / NO_APPROVED_REFERENCE`.
 
 ## Social adapter thu hồi tài khoản #297

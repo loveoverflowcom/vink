@@ -1,4 +1,0 @@
---------- beginning of main
-11-19 00:00:52.591  2266  2281 I VinkEmptyWebP: api=35 artwork=no-results output=192x160 transparent=22176 translucent=8544 opaque=0 max_alpha=0.99607843 allocation=122880
-11-19 00:00:52.625  2266  2281 I VinkEmptyWebP: api=35 artwork=no-public-works output=192x160 transparent=22740 translucent=7980 opaque=0 max_alpha=0.99607843 allocation=122880
-11-19 00:00:52.642  2266  2281 I VinkEmptyWebP: api=35 artwork=first-draft output=192x160 transparent=22348 translucent=8372 opaque=0 max_alpha=0.99607843 allocation=122880

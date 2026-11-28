@@ -65,7 +65,7 @@ Rust gọi `editor::bridge::EditorHandle::load().await` khi cần nhập. Owner 
 - `read_only` ở lúc mount áp dụng cho nội dung DOM và lệnh sửa. Khi owner bị thay, thả handle. Rust gọi destroy trước khi nhả closures. JS hủy frame khôi phục selection, frame cuộn caret, timer sau composition và frame mục lục.
 - Adapter Discussion sở hữu fallback TextArea, thời điểm nâng cấp, draft theo ComposerKey, quote/list actions, send/retry, format lưu trữ và render nhận xét. Khi dùng kết quả load trễ, caller phải kiểm lại quyền, selection, focus và IME của đúng composer trước khi nâng cấp.
 
-Chạy corpus bằng `node apps/vink-web/editor/scripts/build.mjs --check`. Với Chrome và PostgreSQL scratch, `cargo xtask verify web --scenario editor-format --release` đo trên route Product và fixture runtime. `desk-core-budget.json` giữ mẫu cold/warm, typing/caret, khoảng cách frame, long task và 40 vòng teardown. `editor-markdown-p95.json` giữ các cỡ corpus 10k–200k scalar. Xem [phiếu kiểm chứng #617](../../../docs/development/evidence/editor-core-617/README.md) để đối chiếu cùng profile và phương pháp.
+Chạy corpus bằng `node apps/vink-web/editor/scripts/build.mjs --check`. Với Chrome và PostgreSQL scratch, `cargo xtask verify web --scenario editor-format --release` đo trên route Product và fixture runtime. `desk-core-budget.json` giữ mẫu cold/warm, typing/caret, khoảng cách frame, long task và 40 vòng teardown. `editor-markdown-p95.json` giữ các cỡ corpus 10k–200k scalar.
 
 ## Build
 

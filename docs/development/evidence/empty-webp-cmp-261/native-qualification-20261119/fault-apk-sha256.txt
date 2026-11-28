@@ -1,2 +1,0 @@
-c47f892327647cb17c87b2ab0cd1b25dc685b9eac8da45c76a40e4d38444ca2a  <scratch>/canonical-debug.apk
-c0e6f38b115dd92ff6973eea1dcd7ffb81c9e0b6da0940a99ebffebb1baade6b  packages/ui-system/cmp/androidDiagnostic/build/outputs/apk/debug/androidDiagnostic-debug.apk

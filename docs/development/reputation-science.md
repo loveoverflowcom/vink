@@ -63,9 +63,9 @@ S05/S06 phải test differencing trên dữ liệu ẩn và concentration trên 
 
 ## SR-01D — Qualification cho `formula_version 1`
 
-Script: [`qualify.py`](evidence/reputation-sr01/qualify.py) (Python stdlib, Decimal 60 chữ số, seed cố định).
-Kết quả: [`results.json`](evidence/reputation-sr01/results.json). Chạy lại từ root:
-`python3 -I docs/development/evidence/reputation-sr01/qualify.py`. Hai lần chạy trên nhánh PR (base develop@b69f34bc) cho
+Script: [`qualify.py`](../../services/vink-app/bench/reputation-sr01/qualify.py) (Python stdlib, Decimal 60 chữ số, seed cố định).
+Kết quả: [`results.json`](../../services/vink-app/bench/reputation-sr01/results.json). Chạy lại từ root:
+`python3 -I services/vink-app/bench/reputation-sr01/qualify.py`. Hai lần chạy trên nhánh PR (base develop@b69f34bc) cho
 cùng SHA-256 `1481f4f7dfaa83c05ceddbd11412ceb3253386c0f02caea251bdcfc9168d24d8`.
 
 ### Hình dạng

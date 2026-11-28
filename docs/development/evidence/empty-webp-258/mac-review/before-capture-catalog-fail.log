@@ -1,9 +1,0 @@
-file:///Users/manhblue/Documents/Codex/2026-11-17/task/vink/review-266/capture.mjs:52
-  if(!tag)throw new Error('missing real Thơ catalog');
-                ^
-
-Error: missing real Thơ catalog
-    at file:///Users/manhblue/Documents/Codex/2026-11-17/task/vink/review-266/capture.mjs:52:17
-    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
-
-Node.js v22.15.0

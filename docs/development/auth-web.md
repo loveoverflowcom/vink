@@ -227,9 +227,7 @@ password; trình duyệt chưa có phase riêng cho mode đó.
 
 ## Email tài khoản (#607)
 
-[Đối chiếu AC, ảnh và lệnh xác minh](evidence/auth-verified-email-607/README.md).
-
-Khi mở cài đặt, Web đọc `GET /api/v1/auth/email` theo principal và epoch của phiên hiện tại. Hàng Email hiển thị địa chỉ đã xác minh, cũng áp dụng với tài khoản chỉ dùng mã. Xem [LayoutSpec](../design/auth-password-web.md) và [hợp đồng App](../../services/vink-app/contracts/http/v1/README.md#sign-in-d-05). Luồng thêm email sau đăng ký của [#329](evidence/auth-email-attachment-329/README.md) chỉ còn là bằng chứng lịch sử.
+Khi mở cài đặt, Web đọc `GET /api/v1/auth/email` theo principal và epoch của phiên hiện tại. Hàng Email hiển thị địa chỉ đã xác minh, cũng áp dụng với tài khoản chỉ dùng mã. Xem [LayoutSpec](../design/auth-password-web.md) và [hợp đồng App](../../services/vink-app/contracts/http/v1/README.md#sign-in-d-05). Luồng thêm email sau đăng ký của #329 chỉ còn là bằng chứng lịch sử.
 
 ## Đặt lại mật khẩu (#181, phần còn lại của #329)
 

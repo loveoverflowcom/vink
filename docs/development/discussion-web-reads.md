@@ -116,8 +116,7 @@ vẫn thuộc discussion. Xem [conformance và seam](public-read-freshness.md#li
 
 ## Layout danh sách nhận xét #238
 
-Giữ layout thường cho danh sách nhận xét. Containment trên `#root-list` tiết kiệm thời gian khi vùng này nằm dưới bài 200.000 đoạn, dịch mép danh sách 19 px và không đạt ngưỡng lợi ích ở bài ngắn. [Thử nghiệm A/B, native controls và kết quả từng AC](evidence/web-perf-238-canonical/README.md).
-
+Giữ layout thường cho danh sách nhận xét. Containment trên `#root-list` tiết kiệm thời gian khi vùng này nằm dưới bài 200.000 đoạn, dịch mép danh sách 19 px và không đạt ngưỡng lợi ích ở bài ngắn.
 
 ## Nút khôi phục trong Nhận xét (#557)
 

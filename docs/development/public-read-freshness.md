@@ -13,49 +13,14 @@ Mục tiêu: có snapshot được phép thì hiển thị ngay, làm mới phí
 để hiện loading toàn màn; kiểm tra lại khoảng 2 phút khi màn đang hiển thị. Không thêm cache phía
 server, realtime hay Service Worker. Adapter lưu bền #203 nằm dưới gate tắt; xem [IndexedDB](#indexeddb-203).
 
-
 Giao diện retry và danh sách route Product Web nằm ở
 [quy tắc làm mới và phục hồi](product-web-refresh.md).
 
 ## Intent-prefetch Reader #239
 
-Giữ GET Reader khi người đọc kích hoạt liên kết. Ở bài ngắn, thời gian GET dưới ngưỡng lợi ích 16 ms. Ở bài 200.000 đoạn, body vượt 32 KiB trước khi có cơ chế admission tin cậy. [Bằng chứng 20 lượt, ngưỡng dừng và phạm vi từng AC](evidence/web-perf-239-canonical/README.md).
+Giữ GET Reader khi người đọc kích hoạt liên kết. Ở bài ngắn, thời gian GET dưới ngưỡng lợi ích 16 ms. Ở bài 200.000 đoạn, body vượt 32 KiB trước khi có cơ chế admission tin cậy.
 
-## Đối soát owner và evidence #233
-
-Ngày 16/11/2026, nguồn `develop@69f71f0cb61228dbe5ceea775b3c34c237705922`, phục vụ
-[Epic #186](https://github.com/loveoverflowcom/vink/issues/186) và
-[#233](https://github.com/loveoverflowcom/vink/issues/233). Đây là **source/registry audit**;
-không gọi các kết quả browser cũ ở dưới là PASS của HEAD này. Epic giữ roadmap/dependencies;
-tài liệu này giữ hiện trạng READ-02, không thay PRD hoặc kho quyết định.
-
-Đối soát lại khi rebase lên `develop@a81333c71faf6033014a00ec26c9f7b90109d1d9` (PR #232) và merge
-`develop@6e07806` (PR #228, PR #240): `apps/vink-web/src/`, `services/vink-app/src/`, `decisions/`
-và `xtask/src/cli.rs` không đổi so với pin trên (#228 chỉ sửa UI system/previews; #240 thêm
-assertions E2E Desk/Discovery và tài liệu thiết kế/bằng chứng).
-Chạy lại `decision validate`/`refs`: cùng 118 revisions và snapshot digest; 79 declared
-references (thêm `USER-09@r1` trong report #229), không có problems.
-[#229 đã có corpus và report](long-document-budget.md); dùng lại source/fixtures đó cho #234,
-không dựng corpus cạnh tranh. Số đo ở report có SHA/profile riêng, không là benchmark tự chạy
-của #233 hoặc baseline release cho toàn hành trình.
-
-Review PR #241 trên `develop@313175370d29a03dd0096ece3e6a5933a74ddbea`:
-#244 đã đổi presentation Bàn viết/Khám phá, còn #245 thêm LayoutSpec và regression cho #226.
-Các owner `read_lifecycle.rs`, `public_reads.rs`, `freshness.rs`, `read_cache.rs`,
-`read_events.rs`, `public_persistence.rs`, `services/vink-app/src/`, `decisions/` và
-`xtask/src/cli.rs` không đổi từ `6e07806`; không mở rộng kết luận đó ra toàn bộ Web source
-hoặc test App. Hiện trạng và evidence UI #225 nằm ở [registry riêng](action-surfaces-225.md);
-#226 vẫn [chưa triển khai presentation mới](../design/action-surfaces-reader-discussion-226.md).
-Kiểm tra của lượt review docs-only này: `decision validate` và `decision refs` PASS với cùng snapshot
-118 revisions/79 refs ở dưới; `git diff --check` và relative file links của hai tài liệu
-thay đổi PASS. Không chạy lại model, PostgreSQL, browser hoặc CMP cho delta docs-only này.
-
-Follow-up tích hợp #244: [CI của `d31fa40`](https://github.com/loveoverflowcom/vink/actions/runs/43836039923)
-phát hiện test SSR vẫn chờ nhãn số tác phẩm trước #225. Đã tái hiện FAIL bằng PostgreSQL 17
-cục bộ rồi cập nhật assertion theo LayoutSpec “Trang này: N tác phẩm”, giữ nguyên các assertion
-không lộ nháp/snapshot riêng. `cargo test --locked -p vink-app --test postgres
-server_html_has_public_content_and_never_private_drafts -- --exact` PASS 1/1 sau sửa
-(197 filtered out); đây là kiểm PostgreSQL/SSR có phạm vi, không full lane hoặc browser.
+## Owner và luồng hiện hành
 
 ### Luồng và lifetime hiện hành
 
@@ -119,7 +84,7 @@ PostgreSQL/benchmark/model lanes, vì chỉ sửa tài liệu. Historical PASS b
 Canonical M1/M3/M4 ở `services/vink-app/behavior/publication` và D2T ở `behavior/discussion`
 giữ nguyên. Sau audit này, #243 bổ sung [model/replay primitive Web](../../apps/vink-web/behavior/README.md)
 cho `ReadOwner/PageChain`; model đó không phủ `freshness::Store/Coordinator`, save reducer hay
-I/O của Desk. Evidence #243 nằm ở [lượt đối soát riêng](verification-reconciliation-20261116.md);
+I/O của Desk.
 không dùng nó làm mới kết quả browser/PG của #233.
 
 ## HOW
@@ -258,73 +223,6 @@ Phân biệt rạch ròi bốn khái niệm dễ nhầm lẫn:
 
 ## Bằng chứng
 
-### Phiên triển khai `921ac1c` (lịch sử)
-
-Kết quả dưới đây do phiên triển khai trước review ghi nhận; kết quả bản sửa nằm ở mục kế tiếp.
-
-| Kiểm | Lane | Kết quả |
-| --- | --- | --- |
-| `freshness::tests` (20): 119/120/180 s; đọc không gia hạn; spread có trần; một wake cho mọi entry; bốn trigger đồng thời → một ticket; manual/invalidate không bị snapshot fresh nuốt; `mark_stale` giữ nguyên `failures`/`retry_at` còn `mutation_confirmed` cho 1 lần thử ngay rồi nối lại backoff + `Retry-After`; lỗi giữ last-success; phân loại `422` (`cursor` vs `q`/`tag`/`limit`/`query` vs lỗi/envelope hỏng) dừng retry; 404 xóa và response muộn bị loại; `clear_removal`/`record_fresh` của bản trước review; reset scope; mốc từ lúc bắt đầu request; `max_display_age` chỉ chặn lần mount mới; GC + trần mềm 16 entry; entry không quan sát không bị poll; raw 304 → một lần không điều kiện; chuỗi ngẫu nhiên 300 × 80 bước | `quick` / `unit web` | PASS cục bộ |
-| `contract` (`verify unit web --filter contract`, 20 bài, gồm `contract::tests::classifies_public_read_error_matrix_without_parsing_messages`) và `public_reads::tests` (3): ma trận `status + error.code + error.field` (không parse `error.message`, chặn >64 KiB); mutation ACK chỉ đánh thức owner đang hiển thị & gộp signal; rút bài xóa card ở mọi `Works` snapshot + rào nhân quả `begin_external_read` trên đồng hồ đóng băng và không chặn công khai lại; waiter khởi đầu luôn kết thúc khi invalidate/withdraw/remove/clear/cancel (ánh xạ SSR `422` kiểm end-to-end trong `verify web`) | `unit web` / `web` | PASS cục bộ |
-| `cacheFirstPublicReads` (Chrome headless + CDP, đồng hồ `performance.now`, `visibilityState` và Fetch qua CDP) + toàn bộ `cargo xtask verify web` (8 phase) | `web` | PASS cục bộ |
-
-`cacheFirstPublicReads` kiểm: hydration không gửi request list; lần ghé client đầu có loading và
-một request; quay lại trong 120 s render ngay, **không** request, **không** loading; 119 s + focus
-không request; 121 s + focus/online/visibilitychange/pageshow cùng lúc → **một** request có
-`If-None-Match`, wire 304, giữ nguyên phần tử row và focus; tab ẩn không request khi focus/online,
-hiện lại → đúng một request; `503` + `Retry-After` giữ danh sách và chặn `focus`/`online`/hiện lại
-trước `retry_at`, phục hồi sau hạn không remount row; raw `304` thử lại tối đa 1 lần không điều
-kiện và dừng ngay khi dính raw `304` kép; `422 cursor` dừng retry và phục hồi qua `#restart-public`;
-`422 q` báo lỗi nhập liệu + `#clear-invalid-filters` không rơi vào vòng lặp reset cursor; `422`
-hỏng dừng hữu hạn; reader nhận bản khác → thông báo, chữ cũ giữ nguyên, áp dụng khi bấm; `404` →
-xóa chữ và bỏ card khỏi snapshot danh sách ngay, sau khi công khai lại vẫn đọc được `200` mới mà
-không kẹt tombstone.
-
-Đồng hồ giả chỉ dịch `performance.now()`; timer thật 120 s không được chờ trong smoke — đường
-timer được kiểm ở unit (`next_wake`/`due`). Ẩn tab được giả lập bằng cách ghi đè
-`document.visibilityState`, không phải chuyển tab hay khóa máy thật.
-
-### Review và sửa tiếp trên `develop@36a7e47` (15/11/2026)
-
-Review `921ac1c` và bản rebase `46c7e24` tái hiện lỗi xóa fence quá sớm: request `/reader` trước
-lúc rút bài có thể ghi lại revision cũ sau invalidation của pointer riêng tư hoặc sau công khai lại.
-Bản sửa dùng ticket chung, chặn cả kết quả Resource bị supersede và ghi tuổi từ lúc bắt đầu đọc.
-Ba regression test tại `public_reads::tests` kiểm đảo thứ tự, clock đóng băng, invalidation,
-request bị hủy cùng waiter và phản hồi `404` cũ. Mã Rust đã chốt tại `b8ddc87`, fixture trình duyệt
-đã chốt tại `eab358f`; cập nhật sau đó trong tài liệu này không đổi source kiểm thử.
-
-- `cargo xtask verify web --scenario main --scenario review --scenario publication`: phần `main`
-  **PASS** (cache, SSR/hydration, `422`, raw `304`, focus/DOM, editor); toàn lệnh **FAIL** ở setup
-  grant của `review`, nên `publication` **NOT_RUN** trong lệnh này. Runner nền chỉ seed principal
-  reviewer trong `seed_discovery_fixture`, không phải khi chọn `review` riêng.
-- `cargo xtask verify web --scenario discovery --scenario review --scenario publication`:
-  **PASS** cả ba scenario. Fixture discovery bổ sung reviewer còn thiếu; không đổi runner hay
-  bỏ assertion. Đây là tổng hợp bốn scenario đã kiểm, **không phải full lane 8 scenario**.
-- Môi trường: macOS, Chrome headless, PostgreSQL tạm ở loopback `127.0.0.1:55439`, Identity thật
-  với local outbox trong scenario publication. Dùng `CARGO_PROFILE_DEV_DEBUG=0`,
-  `CARGO_PROFILE_TEST_DEBUG=0`, `CARGO_INCREMENTAL=0` để vừa dung lượng đĩa và cache npm tạm
-  riêng; hai lỗi môi trường trước đó (quyền cache npm, hết đĩa) đã được xử lý trước các kết quả này.
-- `CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_INCREMENTAL=0 cargo xtask verify quick`
-  tại `558f63f` (chỉ thêm assertion cho kết quả test so với `eab358f`): **PASS** fmt, ba clippy
-  server/browser/preview, 53 doctest và 747 unit/contract (gồm 210 Web, 80 xtask; 1 ignored).
-  Toàn lệnh **FAIL** tại repository checks: `docs/development/test-vps-deployment-guide.md`
-  có URL PostgreSQL mang password không thuộc danh sách placeholder. Blob tài liệu
-  `4d8c6428e5add34b0580b17b541bf25f4dfe0455` và scanner `xtask/src/checks.rs`
-  `35d9eb7e989710ccb0e0335a45282595223bd40e` giống hệt `origin/develop@36a7e47`;
-  không phải hồi quy do PR này. Các lần chỉnh sau chỉ sửa tài liệu và đã kiểm diff/liên kết.
-
-Review UI là **self-review**, không duyệt một visual baseline mới (`NO_APPROVED_REFERENCE`):
-
-| Chiều | Kết quả và giới hạn |
-| --- | --- |
-| Functional | **PASS** các scenario và hồi quy cache nêu trên |
-| Geometry | **PASS** assertion reflow của `main`, gồm recovery cursor ở 320px/chữ 200% |
-| Visual | **PASS** trong hai ảnh đã mở `explore-refresh-failed.png`, `reader-update-available.png` (1280px, sáng); các trạng thái `422` chưa mở ảnh riêng (**NOT_RUN**) |
-| Accessibility/Responsive | **PASS** kiểm keyboard/focus và ma trận responsive của `main`; screen reader và OS IME thật **NOT_RUN** |
-| Interaction | **PASS** giữ row/focus khi `304`, retry/backoff, ẩn bài và phục hồi; thiết bị native **NOT_RUN** |
-
-Bằng chứng PASS ở mục trước thuộc phiên triển khai `921ac1c`, không thay cho bản sửa này.
-
 ### Số đo
 
 **Môi trường tham chiếu READ-02 pilot trước đó:** Apple M4, macOS 26.5.2, Chrome headless, server
@@ -346,14 +244,14 @@ hoặc quan sát). Truy vấn phía server cho một 304 không đổi so với 
 
 ### Ngân sách byte RAM trong READ-02 (#237, WEB-PERF-07 / CHOICE-01)
 
-**Đối soát canonical, 18/11/2026.** Resource đang chờ mount và view đang quan sát có lifetime riêng. Hết cả hai owner, Store mới đưa snapshot vào admission. Rút bài chỉ sửa danh sách chứa card và giữ thứ tự eviction của các Reader khác. Gate thiết bị tắt bỏ qua bước dựng envelope. Với source hợp lệ 2 MiB, B giao đủ dữ liệu cho view, rồi refetch khi mở lại. [Review, số đo Chrome A/B/C và raw](evidence/web-perf-237/canonical-20261118/README.md).
+**Đối soát canonical, 18/11/2026.** Resource đang chờ mount và view đang quan sát có lifetime riêng. Hết cả hai owner, Store mới đưa snapshot vào admission. Rút bài chỉ sửa danh sách chứa card và giữ thứ tự eviction của các Reader khác. Gate thiết bị tắt bỏ qua bước dựng envelope. Với source hợp lệ 2 MiB, B giao đủ dữ liệu cho view, rồi refetch khi mở lại.
 
-Bản sửa từ base `origin/develop@afb4020` ([bằng chứng đầy đủ](evidence/web-perf-237/README.md)) đo và chọn **`WEB-PERF-07 CHOICE-01 = B`** trên 21 case corpus `#229` + baseline `#234` ở build `release`/`wasm-release`.
+Bản sửa từ base `origin/develop@afb4020` đo và chọn **`WEB-PERF-07 CHOICE-01 = B`** trên 21 case corpus `#229` + baseline `#234` ở build `release`/`wasm-release`.
 
 1. **Product decision:** giữ nguyên `OPEN` cho chính sách hiển thị cũ `max_display_age = 15 phút`, `24 giờ` offline và UX dọn cache; `O-17@r2` và `O-03@r2` giữ `PRODUCT_CONFIRMED`.
 2. **Architecture decision:** `READ-01/02`, `DISC-WEB` và `WEB-PERF-07 CHOICE-01 = B` ở trạng thái **`DESIGN_PROPOSED`** (bài test xanh và PR không tự nâng lên `Accepted`). Không signoff `VDR-*`, không bật `public_persistence::ENABLED = false`, không đổi 15 phút/24 giờ.
 3. **Implementation level:** **`web`** (`apps/vink-web/src/{read_cache,freshness,public_reads}.rs`): `InMemoryCache::with_budget(READ_CACHE_BUDGET, snapshot_weight_bytes)` với `max_total_bytes = 2 MiB` (`2_097_152 B`), `max_entry_bytes = 1 MiB` (`1_048_576 B`), eviction theo thứ tự `put` (entry được đưa vào cache sớm nhất rời trước); `Store::observe` rút bản sao khỏi cache khi đang quan sát, `Store::seed` bỏ clone thừa/xóa cache bị thay, `Store::edit`/`edit_all` trả bản sửa không quan sát về lại `SnapshotCache`, hủy waiter cuối fence ticket cũ trước khi nhận payload. `park_unobserved` là seam riêng; không suy test hủy waiter đã chạy nhánh `Applied::Fresh`. Rollback về `RetentionBudget::UNBOUNDED` ở đối số budget; `NoOpCache` cần đổi cả generic type của `Owner.coord` và initializer, rồi kiểm trên diff rollback.
-4. **Verification evidence lịch sử của tác giả:** xem [bằng chứng #237](evidence/web-perf-237/README.md) và [review độc lập/các đính chính](evidence/web-perf-237/review.md). Các kết quả tác giả khai báo trên cây trước commit: `verify quick` (`PASS`), `vink-web --lib --features ssr` (`240 passed; 0 failed; 1 ignored`), `verify unit web --filter public_reads` (`14 passed; 0 failed; 1 ignored`), đối chứng âm bỏ removal fence (`FAIL` có chủ đích ở [negative-control.log](evidence/web-perf-237/negative-control.log) rồi `PASS` `1/1`), `decision validate/refs` (`PASS`, `0` problems), và `verify web --scenario main --scenario discovery --scenario review --scenario perf-baseline --scenario return-position --release` (`PASS` cả 5 scenario trên Chrome/PG scratch, ngoài `local-budget` vì browser `UNSUPPORTED`). Corpus/probe A/B/C (`--release`) chạy trước bước inject/khôi phục đối chứng âm trên cùng logic Option B; `storage`, `restart`, `endorsement`, `auth`, `password`, `publication`, `verify discussion/kani/postgres/expressions` và CMP là `NOT_RUN`.
+4. **Verification evidence lịch sử của tác giả:** Các kết quả tác giả khai báo trên cây trước commit: `verify quick` (`PASS`), `vink-web --lib --features ssr` (`240 passed; 0 failed; 1 ignored`), `verify unit web --filter public_reads` (`14 passed; 0 failed; 1 ignored`), đối chứng âm bỏ removal fence (`FAIL` có chủ đích ở negative-control.log rồi `PASS` `1/1`), `decision validate/refs` (`PASS`, `0` problems), và `verify web --scenario main --scenario discovery --scenario review --scenario perf-baseline --scenario return-position --release` (`PASS` cả 5 scenario trên Chrome/PG scratch, ngoài `local-budget` vì browser `UNSUPPORTED`). Corpus/probe A/B/C (`--release`) chạy trước bước inject/khôi phục đối chứng âm trên cùng logic Option B; `storage`, `restart`, `endorsement`, `auth`, `password`, `publication`, `verify discussion/kani/postgres/expressions` và CMP là `NOT_RUN`.
    - **Tách biến & giới hạn:** `snapshot_weight_bytes` chỉ tính proxy UTF-8 + container cấu trúc của snapshot không quan sát; không phải trần RSS OS hay bộ nhớ GPU. `INV-01/07/08`: không đổi rule hay mô hình M1/M3/M4 hoặc D2T; `apps/vink-web/behavior/read-lifecycle.qnt` chỉ phủ `ReadOwner`/`PageChain` nên ranh giới `Store`/`Coordinator` được kiểm bằng production unit conformance, race matrix và đối chứng âm bỏ fence.
 
 ## CMP và native
@@ -477,73 +375,6 @@ Touch/pointer/Enter/Space dùng nút/link native; không gesture/ESC handler m�
 Reference là source regression baseline, `NO_APPROVED_REFERENCE` cho fidelity mới; kiểm riêng
 390/1440 × chữ100/200 (root font-size, không browser zoom), keyboard/composition mô phỏng.
 
-### Evidence local và nghiệm thu #202 — 15/11/2026
-
-Worktree `/private/tmp/vink-issue202`, base `ebbde221583360b3b059b00aca696ad68b0595f8`.
-Mã Rust/UI tại `1855526ab2d8448c20c3f61285586e4cd206e1a4`; các commit sau chỉ điều chỉnh
-fixture browser và ghi evidence. Browser discovery/review tại `e53d146`, auth/publication
-tại `63bc070`, main cuối tại `86eb145` + diff evidence docs. Không đọc, chờ hay gọi lại GitHub CI.
-
-Môi trường: macOS, Chrome headless/CDP, Rust 1.99.1, wasm-bindgen 0.2.129, Node 22.15.0;
-PostgreSQL loopback `127.0.0.1:55439`, App và Identity scratch do runner sở hữu. Các lệnh cargo
-dùng `CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_INCREMENTAL=0`. Browser còn
-dùng `VINK_CHROME` trỏ Chrome cục bộ, `VINK_TEST_DATABASE_URL` trỏ cluster trên và
-`npm_config_cache=/private/tmp/vink-issue202-npm-cache`. Không dừng cluster được chia sẻ.
-
-| Command / đầu vào | Kết quả và boundary |
-| --- | --- |
-| `cargo test -p vink-web --lib --features ssr` | **PASS**, 215 unit/contract; gồm cùng suite Memory/NoOp, freshness, page chain và private/session guards. Log `target/issue202/unit-web-final.log`; mã Rust trùng `1855526`. |
-| `cargo xtask verify unit app --filter review_withdrawn` | **PASS**, chọn đúng 2 test domain/application, không DB. Log `unit-app-final.log`. |
-| `rustc --edition=2024 --test apps/vink-web/src/read_lifecycle.rs` rồi chạy binary | **PASS**, 2 test. Mutant riêng trong `target/issue202` thay allocator bằng `RequestId(1)` **FAIL đúng dự kiến** (exit 101, ABA/remount); source thật không bị sửa. Logs `lifecycle-final.log`, `negative-control-final.log`. |
-| `cargo xtask verify web --scenario main --scenario discovery --scenario review --scenario publication --scenario auth` tại `e53d146` | **PASS các bước main, discovery, review**, gồm HTTP/SSR và PostgreSQL thật; toàn command **FAIL** ở auth vì assertion cũ đòi B chờ response A, publication **NOT_RUN** trong lần này. Log `web-final-5.log`, capture `target/verify-web/1794736668693159000-67229`. |
-| `cargo xtask verify web --scenario auth --scenario publication` tại `63bc070` | **PASS cả command** với Identity/App/PostgreSQL thật và local mail outbox. Auth giữ response A, chứng minh B hoàn tất trước khi nhả A; giữ riêng own/public intent để kiểm cả hai response muộn. Log `web-auth-publication-2.log`, capture `target/verify-web/1794737310681252000-80178`. |
-| `cargo xtask verify web --scenario main` tại `86eb145` + evidence docs | **PASS cả command**, thêm đo anchor đoạn văn ở scroll 265px/top 80,375px: giữ vị trí nhìn, article node và selection sau refresh. Log `web-main-repeat.log`, capture `target/verify-web/1794738228853075000-97295`. |
-| `cargo xtask verify quick` trên diff cuối (`63bc070` + evidence docs; trong lúc chạy chỉ thêm assertion browser ở `368a3ac`) | **PASS** tokens, manifest, fmt, cả 3 clippy, doctests, unit/contract; toàn command **FAIL** ở đúng 1 repository check có sẵn: password placeholder trong `test-vps-deployment-guide.md`. Log `quick-final.log`. |
-
-Tổng hợp trên bao phủ **5 scenario được chọn**, không phải full Web lane; `restart`, `endorsement`,
-`password` **NOT_SELECTED**. Không đổi SQL/transaction; kiểm provider PostgreSQL thuộc các scenario
-trên, không gọi đó là full `verify postgres`. Các log nằm trong `target/issue202/`.
-
-Baseline failure của quick được đối chiếu với `origin/develop@ebbde221`: blob tài liệu
-`4d8c6428e5add34b0580b17b541bf25f4dfe0455` và scanner `xtask/src/checks.rs`
-`35d9eb7e989710ccb0e0335a45282595223bd40e` giống hệt; không sửa file ngoài phạm vi để làm xanh lane.
-
-Các lần chạy sửa soạn còn lưu: scoped `verify unit web` không bật `ssr` vấp 4 test render SSR
-(đã dùng lệnh có feature và workspace quick); một lần Web bị resource lock khi unit lane còn
-giữ artifact; các lần browser trước vấp fixture cộng đồng hồ vượt retention và selector sai.
-Đã sửa bước chuẩn bị, không tăng retention hay bỏ assertion thu hồi. Auth cũ giả định đọc tuần
-tự và một nút khởi động đồng thời own/public; test mới giữ nguyên payload thật và kiểm response
-đảo thứ tự qua các intent thực tế. Không dùng những lần FAIL làm bằng chứng PASS toàn lane.
-Lần đầu chuẩn bị anchor chưa chờ layout đủ để cuộn; bản cuối chờ composer và đo vị trí nhìn
-thực tế. `web-anchor-final-2.log` đã qua anchor nhưng **FAIL** ở assertion caret editor khi thu
-viewport mobile; chạy lại **nguyên source và command**, không sửa/bỏ assertion, được **PASS**
-trong `web-main-repeat.log`. Đây là một failure không tái hiện, chưa xác định nguyên nhân;
-không claim đã sửa một lỗi editor.
-
-| Acceptance | Source / bằng chứng / kết luận |
-| --- | --- |
-| AC-01 | `ReadOwner`/`RequestId`, keyed `ReaderScope`, waiter cleanup; Memory/NoOp + negative control + main ABA + auth session/late response: **PASS**. |
-| AC-02 | `PageChain`, roots/own/replies; duplicate/cycle/cursor rejection trước commit, head thay tail; unit và main fail/retry cùng cursor + restart giữ draft: **PASS**. |
-| AC-03 | `read_events`, `WakePolicy`, coordinator; unit burst/timer/backoff, main public/Desk burst một GET, không mutation, hidden pause: **PASS** trên fake clock/CDP. |
-| AC-04 | Typed Reader cache entry; main held `/reader`, 503 và browser offline vẫn mở snapshot; unit empty/expired mount không dùng snapshot: **PASS** trong policy v1. Không offline sau restart. |
-| AC-05 | Một validator cho Published/control/404; unit late/seed + main Hidden/404/republish + review/publication thật kiểm replacement, metadata, no-store, comments và pointer: **PASS**. |
-| AC-06 | `memory_and_noop_share_authority_error_scope_and_single_flight_contract` chạy cùng contract, cache-hit khác biệt được kiểm riêng; **PASS**. |
-| AC-07 | Main/discovery SSR, GET search, link context, 304; review noindex/no-store; auth/publication không SSR private facts; seed/request fencing: **PASS**. |
-| AC-08 | Main giữ article node/selection/scroll, composer node/focus/chữ Việt khi reconnect; Desk search giữ focus; auth/publication giữ chữ cùng người và xóa dữ liệu khi đổi người: **PASS Chrome/CDP**. OS IME thật **NOT_RUN**. |
-| AC-09 | Conformance map và seam ở trên, ghi rõ #201/#205; **PASS** kiểm source/diff. IndexedDB/SW và CMP/native chưa triển khai trong lát này. |
-
-Self-review source/contract không còn finding cần sửa trong phạm vi #202; không phải review độc lập.
-Không đổi product signoff, `DESIGN_PROPOSED`, D-05 `Provisional` hoặc policy v1 còn `OPEN`.
-
-| Chiều UX | Kết quả và giới hạn |
-| --- | --- |
-| Functional | **PASS** 5 scenario được tổng hợp, gồm race, error, control và private isolation. |
-| Geometry | **PASS** assertion 390/1440 × chữ100/200 của Reader cache; chain restart 390/200 và các ma trận main hiện hữu. |
-| Visual | **PASS** self-review các ảnh đã mở ở capture main: `reader-cached-unverified`, đủ 4 `reader-cache-{390,1440}-{100,200}`, `discussion-chain-restarted` và `discussion-chain-restarted-390-200` (sáng). State mới ở theme tối chưa mở riêng: **NOT_RUN**; không claim approved fidelity. |
-| Accessibility/Responsive | **PASS** keyboard/focus và reflow trong main; screen reader, mobile thật và OS IME thật **NOT_RUN**. |
-| Interaction | **PASS** explicit apply bản mới, reconnect không đổi selection/composition, failed append không advance cursor, restart giữ bản nháp; CDP không chứng minh suspend/resume thiết bị thật. |
-
-
 ## IndexedDB #203
 
 Proposal kiến trúc [VDR-PUBLIC-SNAPSHOT-STORAGE@r1](../../decisions/proposals/VDR-PUBLIC-SNAPSHOT-STORAGE.r1.toml) **PENDING** ghi lại envelope/epoch/quota; độc lập với proposal sản phẩm 24 giờ và không bật gate.
@@ -658,85 +489,3 @@ Không chạy hai lần khi chọn cả `main` và `storage`. Fixture toàn bộ
 
 Không đổi visual/interaction UI; không thêm LayoutSpec hoặc CTA. Bằng chứng main là regression
 UI hiện hữu; không coi ảnh source baseline là approved reference. Không chạy GitHub CI.
-
-### Lần chạy cuối #203 — 15/11/2026
-
-Source triển khai chốt tại `4e68bd861b8b2a1bc090b3d6bf975597a1c227e7`, sau commit adapter
-`92d6dcbcb64e813d38ebc64c8e11ff3b1ffb6000`; cập nhật evidence sau đó chỉ sửa tài liệu.
-CWD `/Users/manhblue/projects/loveoverflow/vink`. Môi trường macOS, Rust 1.99.1,
-wasm-bindgen 0.2.129, Node 22.15.0, Chrome 157.0.8103.78, PostgreSQL 17.11 Homebrew.
-Mọi lệnh cargo dùng `CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_INCREMENTAL=0`.
-Lệnh Web còn dùng `VINK_CHROME='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'`
-và `VINK_TEST_DATABASE_URL='postgres://vink@127.0.0.1:55441/postgres'`, cluster local tạm của
-phiên này; runner sở hữu App scratch. Fixture IDB hoàn toàn tổng hợp.
-
-| Command / source | Kết quả và boundary |
-| --- | --- |
-| `cargo xtask verify quick` tại `4e68bd8` | **PASS toàn lane**: fmt, clippy server/browser/preview, doctest, unit/contract (223 Web tests), repository checks. Log `target/issue203/quick-final.log`. |
-| `cargo xtask verify web --scenario storage` tại `4e68bd8` | **PASS toàn command được chọn**, gồm bundle hydrate, app thật, transaction/quota/2-tab/migration/kill-reopen Chrome và gate tắt. Log `target/issue203/storage-final.log`; artifacts `target/verify-web/1794751985141800000-49566`. Không phải full Web lane. |
-| `cargo xtask verify web --scenario main` tại `92d6dcb` | **FAIL** assertion `reduced mobile viewport keeps the active caret visible without fixed controls`. Đã mở `failure.png`; chưa xác định nguyên nhân, không claim lỗi có sẵn hoặc đã sửa. Log `target/issue203/main-first.log`; artifacts `target/verify-web/1794751243577030000-35249`. |
-| `cargo xtask verify web --scenario main` tại `4e68bd8` | **FAIL** assertion `forced-colors retains selected check and keyboard focus; reduced-motion reduces transitions below 1ms`. Không console errors; chưa xác định nguyên nhân. Log `target/issue203/main-final.log`; artifacts `target/verify-web/1794751830918526000-45421`. Các bước sau **NOT_RUN**. |
-
-Cả hai lần `main` dừng trước bộ storage ở cuối; kết quả storage đến từ command chọn riêng ở trên.
-Không đổi/bỏ assertion UI để làm xanh. Không sửa SQL/API; full `postgres`, full Web, OS IME thật
-và trình duyệt khác **NOT_RUN**. GitHub CI không đọc/chờ/poll/rerun. Trước bật rollout cần
-exact-revision signoff, chốt POLICY-02 và UX expired, sau đó kiểm composition persistent offline
-UI thực tế; issue #204 còn sở hữu app shell/cold launch. Lỗi `main` cần điều tra ở các assertion
-được nêu, không coi PASS của adapter thay cho regression UI.
-
-| Chiều UX | Kết quả và giới hạn #203 |
-| --- | --- |
-| Functional | **PASS** quick + storage tại boundary adapter; toàn scenario `main` **FAIL**, persistent offline UI **NOT_RUN** vì gate tắt. |
-| Geometry | **FAIL** assertion caret khi giảm viewport ở lần `main` đầu; chưa xác định nguyên nhân. |
-| Visual | Không đổi visual; ảnh `failure.png` lần đầu đã mở để chẩn đoán, không phải approved reference; fidelity mới **NOT_RUN**. |
-| Accessibility/Responsive | **FAIL** assertion gộp forced-colors/focus/reduced-motion ở lần `main` cuối; chưa tách nguyên nhân thành phần. Screen reader/OS IME **NOT_RUN**. |
-| Interaction | **PASS** hai tab và restart Chrome ở adapter; composition offline UI và suspend/resume thiết bị thật **NOT_RUN**. |
-
-
-### Đồng bộ regression `main` — PR #215, 15/11/2026
-
-Bản `5b418c48c8586c4b622684b6b6799283e0e0f21f` chỉ sửa harness, không đổi CSS,
-CodeMirror runtime, Rust, proposal hoặc rollout. Hai assertion trước đọc computed style/caret
-ngay sau CDP media/keyboard hoặc resize, trong khi style/layout và selection scroll có thể còn
-được lên lịch. Nay chờ **đúng toàn bộ predicate cũ, tối đa 2 giây**, rồi kiểm lại sau fonts/layout
-và hai animation frame. Ca caret còn yêu cầu focus ở `.cm-content` và selection tồn tại.
-Không gọi scroll/focus để ép kết quả, không nới viewport bounds hoặc bỏ điều kiện accessibility.
-
-Lần chẩn đoán trên `19e68a5` + hai dòng đo bổ sung **PASS toàn command main**; log
-`target/issue203/main-diagnostic-215.log`, artifacts `target/verify-web/1794752834358309000-64033`.
-Số đo forced-colors: checked/focus-visible đúng, outline solid 2px, opacity 1,
-transition `1e-05s`; caret mobile top 295,203125/bottom 320,203125 trong viewport 420px.
-Hai lỗi cũ không tái hiện trong lần này; đây là bằng chứng lỗi nhạy thời điểm quan sát,
-không chứng minh một hồi quy CSS/runtime hoặc xác định chính xác thành phần sai ở lần cũ.
-Giữ nguyên hai kết quả FAIL lịch sử ở trên.
-
-Lần `main` tại `5b418c4` **FAIL** sau timeout 2 giây ở caret mobile, dù forced-colors đã
-**PASS**. Log `target/issue203/main-wait-only-215.log`; artifacts
-`target/verify-web/1794753195584782000-69461`. Đã mở ảnh failure: viewport nằm dưới editor,
-không console errors. Chờ predicate sau phím chưa đủ; không tăng timeout để làm xanh.
-Bản `5bf229f` bổ sung chờ fonts/layout của viewport mobile trước khi gửi phím document-end/line-start,
-tránh gửi input trong lúc resize/reflow còn đang cập nhật vị trí cuộn. Giữ kiểm sau phím.
-
-`cargo xtask verify web --scenario main` tại **`5bf229f5cdb8af59c701ecff3055a6c6b46d1fc5`**
-**PASS toàn command được chọn**, gồm forced-colors/focus/reduced-motion, caret mobile,
-SSR/hydration/editor/save/conflict/leave guard và bộ IndexedDB ở cuối; không console errors.
-Môi trường và biến cargo/Chrome/DB như lần #203 ở trên. Log
-`target/issue203/main-reflow-215.log`; artifacts `target/verify-web/1794753567501336000-80206`.
-Trong lúc chạy chỉ cập nhật tài liệu, không sửa source kiểm thử. `node --check` cho harness,
-`git diff --check` và kiểm liên kết local tài liệu **PASS**. Không chạy lại quick vì Rust/runtime
-không đổi; evidence quick tại `4e68bd8` vẫn áp dụng cho phần ứng dụng đó.
-
-Self-review đã mở hai ảnh cuối `appearance-forced-colors-reduced-motion.png` (1440×900)
-và `editor-short-mobile-390.png` (390×420, tối), không nâng thành approved visual reference.
-
-| Chiều UX | Kết quả bản sửa kiểm thử #215 |
-| --- | --- |
-| Functional | **PASS** command main, gồm IndexedDB; gate production vẫn tắt. |
-| Geometry | **PASS** caret trong viewport mobile và toolbar static sau reflow, cùng ma trận main. |
-| Visual | **PASS** kiểm tra hai ảnh đã mở ở trên, giữ giao diện hiện hữu; fidelity mới **NOT_RUN**. |
-| Accessibility/Responsive | **PASS** forced-colors, focus, reduced-motion và ma trận 100/200% của main; screen reader/OS IME **NOT_RUN**. |
-| Interaction | **PASS** keyboard, selection, leave guard, save/conflict và storage restart trong Chrome/CDP; thiết bị mobile thật **NOT_RUN**. |
-
-Đây là PASS của scenario main, không phải toàn Web lane hay bảo đảm không còn flake trên mọi
-browser. Giữ AC-08 OPEN, rollout tắt, POLICY-02/UX expired chưa chốt. Không kiểm GitHub CI,
-không merge PR.

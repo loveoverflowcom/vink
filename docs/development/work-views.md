@@ -106,31 +106,6 @@ Chỉ kiểm tài liệu; không chạy runtime. Kết quả ghi ở mục cuố
 | `wc -c AGENTS.md` | Dưới 24.000 byte. |
 | Đối chiếu P-01..P-11 của #323 | Mỗi câu có dòng VIEW-ID, dòng trong bảng quyết định và ví dụ. |
 
-### Kết quả ngày 21/11/2026
-
-Chạy trên cây làm việc của nhánh `docs/340-dac-ta-luot-xem` (base
-`develop@9f68c513b5dae224b6a9f896d04bc9d1d035e1b8`), Linux, trước commit.
-
-| Phép kiểm | Kết quả |
-| --- | --- |
-| `git diff --check` | Không lỗi. |
-| Kiểm link tương đối và anchor kiểu GitHub cho `prd/requirements.md`, hai file `work-views.md`, `docs/README.md`, `docs/development/README.md`, `decisions/README.md` | 0 link hỏng. Script tạm, có ca đối chứng âm (anchor sai, file thiếu) được bắt đúng. |
-| `cargo xtask decision validate` | 137 revision, snapshot `176154f6ec916e58eb3e4d5db8419e7e256d8c2dfcc8c3b8a643e67708fa8330`, 98 tham chiếu khai báo; review ngữ nghĩa là việc riêng. |
-| `cargo xtask decision query VDR-WORK-VIEWS` | `pending_only`, head r1, SHA-256 `cfb789cc2c5f7a99a2f8c8e24f0057815d736d7b02cdacde50d327c8a525e008`. |
-| `wc -c AGENTS.md` | 18.876 byte; không sửa AGENTS.md. |
-| Đối chiếu 11 câu của #323 | Đủ, bảng dưới. |
-
-Sau signoff (cùng ngày, trên cây làm việc sau commit `8c9cbf38830042e8b761cf709a80f9a4f36f33da`):
-
-| Phép kiểm | Kết quả |
-| --- | --- |
-| `cargo xtask decision signoff VDR-WORK-VIEWS@r1 cfb789cc… INPUT` | `current: true`, `PRODUCT_CONFIRMED`. |
-| `cargo xtask decision validate` | 137 revision, snapshot `8a322aed0446142317f78323e9bcb1748deae7e50e6cfbc892c360f2bc68aaaf`, 99 tham chiếu khai báo. |
-| `cargo xtask decision query VDR-WORK-VIEWS` | `current`, r1, `PRODUCT_CONFIRMED`, SHA-256 không đổi. |
-| `cargo xtask decision query VIEW-03` | `related_only` trả `VDR-WORK-VIEWS@r1`. |
-| `cargo xtask decision refs` | Marker `active VDR-WORK-VIEWS@r1` ở đặc tả được nhận. |
-| `git diff --check`, kiểm link, `wc -c AGENTS.md` | Không lỗi; 0 link hỏng; 18.876 byte. |
-
 ### Đối chiếu 11 câu của #323
 
 | #323 | PRD | Bảng quyết định | Ví dụ, vòng đời |
@@ -441,24 +416,6 @@ Merge code không làm các lựa chọn dưới đây thành `Accepted`.
 - **Speculative & Rate limit:** `is_speculative` (`Sec-Purpose`/`Purpose`/`X-Purpose`) trả `204` trước khi đụng DB hay cấp cookie; vượt `INGEST_LIMIT` (120 req / 600s / `Network` trong bộ nhớ tiến trình theo `abuse::client_address`) trả `204` lặng lẽ không đụng DB.
 - **Ẩn trạng thái riêng tư:** mọi `Ok(_)` (`Counted`, `Skipped(_)`, `Replayed(_)`, `Ignored(_)`, bao gồm `NotPublic` và `WorkNotFound`) đều trả cùng `204 No Content` + `no-store` (+ `Set-Cookie` đồng nhất nếu cần cấp cookie khách mới) để không tạo existence oracle.
 
-### 10.3 Bằng chứng và trạng thái nghiệm thu PR1
-
-Chạy trên nhánh `feat/343-work-views-intake` (base `origin/develop@922656c3`), macOS aarch64, PostgreSQL 17.11:
-
-| Phép kiểm | Ranh giới | Kết quả thực tế |
-| --- | --- | --- |
-| `cargo fmt --all -- --check` | formatting | PASS trên toàn bộ mã Rust hiện có |
-| `cargo test --locked -p vink-work-view-policy` | unit (`vink-work-view-policy`) | PASS, 3/3 test (hằng số 5s, override động, boundary) |
-| `cargo xtask verify check app --target api`, `web --target csr`, `web --target hydrate`, `preview` | compile/typecheck | PASS cả 4 target |
-| `cargo xtask verify unit app --filter work_view` | unit/contract (`vink-app`) | PASS, 26/26 test (domain, config, limiter eviction `MAX_LIMITER_ENTRIES`, `http::work_views`) |
-| `cargo xtask verify unit app --filter config` | unit (`vink-app`) | PASS, 12/12 test (8 lib + 4 bin, trên commit `742c5bc2`) |
-| `cargo xtask verify unit web --filter work_view` | unit/contract (`vink-web` SSR) | PASS, 8/8 test (`ViewVisitTracker`, `RetryPlan`, `format_uuid_v7`, policy override, fixtures `views`) |
-| `VINK_TEST_DATABASE_URL=… cargo xtask verify postgres app --filter work_view` | PostgreSQL + router Axum | PASS 22/22 tại `742c5bc2`; **NOT_RUN** trên commit sửa P2 (`Resolution::Suspended` giữ `Viewer::Member` ở `services/vink-app/src/http/work_views.rs` và `tests/postgres/work_view_intake.rs`), cần chạy lại trước khi merge |
-| `cargo xtask verify static tokens` & `cargo xtask verify static repo` | static/tokens/docs/decisions | PASS (`ui-tokens --check`, `decisions`, `skills`, `links`, `boundaries`, `fonts`, `editor packages`, Tailwind/CSS guard `ui_qualification.rs`) |
-| `cargo xtask verify web --scenario reader --capture checks` & `--scenario standalone --capture checks` | Google Chrome + App + Identity + PG thật | **NOT_RUN** trên commit ghép `#514` (lượt đang chạy bị dừng theo lệnh bàn giao của người dùng; `reader` từng timeout chờ hydration ở trang `/` trong lúc máy chịu tải swap cao). Lần đầy đủ trên nhánh trước P1/P3 đã PASS; phiên review cuối cần chạy lại trọn gói `desk`, `reader`, `standalone` |
-
-Bảng này giữ bằng chứng trước rebase. Kết quả sau sửa P2, review và các giới hạn hiện tại nằm ở §12.
-
 ## 11. Giao diện Bàn viết Design r3 (#514)
 
 Theo chỉ dẫn trực tiếp của chủ sản phẩm ngày 25/11/2026, phần giao diện Bàn viết (`#514`) được ghép thêm commit lên cùng PR `#519` trên nhánh `feat/343-work-views-intake` (không nâng `VDR-WORK-VIEWS@r2` khỏi `PENDING`, không nâng `CHOICE-*` khỏi `DESIGN_PROPOSED`, giữ `DQ-05` và `DQ-10` ở trạng thái `OPEN`).
@@ -688,13 +645,13 @@ Mac mini `Mac16,10` (arm64), Chrome `158.0.8127.89`, PostgreSQL `17.11`. App và
 | --- | --- |
 | Functional | **PASS** từ Reader đến số trên Bàn viết và sau khi rút công khai, kể cả retry sau commit. |
 | Geometry | **PASS** kiểm tràn của từng hàng và thứ tự ba số trong scenario Desk. Ma trận 30/30 và viewport xem §12. |
-| Visual | **PASS** khi mở hai ảnh CSR 1280 × 813 chụp trong run tích hợp. [Tác phẩm riêng tư còn 1 lượt](evidence/work-views-web-323/author-historical-one.png) · [Bàn viết của tài khoản kế tiếp](evidence/work-views-web-323/other-account-empty.png) |
+| Visual | **PASS** khi mở hai ảnh CSR 1280 × 813 (tác phẩm riêng tư còn 1 lượt; Bàn viết của tài khoản kế tiếp) chụp trong run tích hợp. |
 | Accessibility/Responsive | **PASS** các assertion tên control, hit target, focus và reflow tới 200% trong Desk. Đọc bằng trình đọc màn hình vật lý `NOT_RUN`. |
 | Interaction | **PASS** Enter/Escape, trả focus, chạm qua CDP, Back/Forward. Thiết bị cảm ứng vật lý `NOT_RUN`. |
 
 ### Độ trễ và tài nguyên
 
-So sánh bộ dev trên cùng host, cùng bài công khai và cấu hình. Chạy pha `reader-startup` của `browser-smoke.mjs` ba lần cho mỗi renderer/build. Mỗi lần đo mở lạnh, tải lại, mở tab mới ở CPU 1× và throttle 4×, tổng cộng 72 mẫu. Bảng ghi trung vị thời điểm frame đầu có văn bản, tính bằng mili giây từ khi bắt đầu điều hướng. [Mẫu gốc và request waterfall theo từng lần mở](evidence/work-views-web-323/timings.jsonl)
+So sánh bộ dev trên cùng host, cùng bài công khai và cấu hình. Chạy pha `reader-startup` của `browser-smoke.mjs` ba lần cho mỗi renderer/build. Mỗi lần đo mở lạnh, tải lại, mở tab mới ở CPU 1× và throttle 4×, tổng cộng 72 mẫu. Bảng ghi trung vị thời điểm frame đầu có văn bản, tính bằng mili giây từ khi bắt đầu điều hướng. Mẫu gốc và request waterfall theo từng lần mở
 
 | Renderer | CPU | Mở lạnh, trước → sau | Tải lại | Tab mới |
 | --- | --- | --- | --- | --- |

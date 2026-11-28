@@ -120,9 +120,6 @@ provisioning).
 | 2 `refactor(identity)` | `services/vink-identity` có binary, config, migrations, contract riêng; không auth giả (production auth NOT_IMPLEMENTED) | Executable thật trên socket thật với role đã provision, contract âm, review độc lập |
 | 3 `test(architecture)` | App tiêu thụ contract qua client riêng ở chế độ unavailable; `dev`/`db migrate`/`doctor` biết Identity; runbook backup/restore/rollback; kiểm bí mật; review toàn PR | `doctor`, `verify quick|postgres|web`, restore thử, review đối kháng |
 
-Bằng chứng từng commit nằm ở
-[identity-postgres-verification](../development/identity-postgres-verification.md).
-
 ## Trạng thái
 
 | Phần | Requested | Proposed | Implemented | Runtime-verified |
@@ -134,7 +131,7 @@ Bằng chứng từng commit nằm ở
 | Contract `vink.identity.v1` | Có | Tên path/field (draft) | Có | Unit + binary thật |
 | App ↔ Identity, carrier Bearer | Có | Carrier tạm thời | Có (chế độ unavailable) | `verify postgres` (hai binary thật), unit với Identity giả |
 | Mapping subject → principal | — | Thiết kế ở mục 8 | Có (spike S-03) | `verify postgres` (đồng thời, bất biến, hai binary thật) |
-| Auth authority, đăng nhập, session | — | D-05 đề xuất A (Provisional) | Spike: mã email + phiên opaque, outbox cục bộ; production NOT_IMPLEMENTED | `verify quick`/`postgres` ([bằng chứng](../development/auth-authority-s03-evidence.md)) |
+| Auth authority, đăng nhập, session | — | D-05 đề xuất A (Provisional) | Spike: mã email + phiên opaque, outbox cục bộ; production NOT_IMPLEMENTED | `verify quick`/`postgres` |
 | Backup/restore từng owner | Có | — | Runbook + bước lane | `verify postgres` (cùng cluster) |
 
 ## Giới hạn đã biết

@@ -1,9 +1,11 @@
 {
   "selection": "V-pen R1 — #117, 08/11/2026",
   "reference_issue": "https://github.com/loveoverflowcom/vink/issues/117",
-  "reference_path": "docs/design/brand/vpen-r1/Vink_Brand_LightDark_VPen_R1_2026-11-08.zip",
+  "reference_location": "Google Drive brand archive (#117); not a build input",
+  "reference_url": "https://drive.google.com/file/d/167pls4LRLgWXNIahTxrKvAmzSP7ambma/view",
   "reference_sha256": "3e490cb95171139ab23404fb0d01e7a8a7505ea25c5a0e07ab60df7cdcc01b9e",
-  "source_manifest_path": "docs/design/brand/vpen-r1/asset-manifest.json",
+  "source_manifest_path": "apps/vink-web/assets/brand/source-manifest.json",
+  "source_manifest_origin": "asset-manifest.json inside the reference ZIP, byte for byte",
   "source_manifest_sha256": "96d781333a71d1ce1c501c52c087c0962c2116313d949522f2a7e06ea5350cc2",
   "sizes": [
     24,
@@ -124,6 +126,6 @@
     "explore": "full lockup; CHOICE-01 A; 2.25rem high, ratio 1018/410",
     "small_icons": "same mark silhouette; CHOICE-02 B",
     "forced_colors": "mono lockup as currentColor mask",
-    "historical": "#34 ZIP retained under docs/design/brand/final-selected; never served"
+    "historical": "#34 and Enso #10 artwork live only in Git history; never served"
   }
 }

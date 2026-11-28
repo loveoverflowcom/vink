@@ -545,7 +545,6 @@ loại mới, migration `20261202000000` đã nới cả hai), `cargo test -p vi
 `RUST_TEST_THREADS=4 cargo xtask verify postgres` PASS 41/41 (App 292, Identity 55, Notifications 30).
 `verify discussion` không chạy: lõi `domain::endorsement` không đổi.
 
-
 ## 10. Nền tảng thiết kế R4 (#485)
 
 | Chiều | Trạng thái |
@@ -576,18 +575,6 @@ giữ `PENDING`. Mức triển khai của lát này là `web`. Mốc thị giác
   hiện có. Màn quyết định nhận xét lấy chi tiết riêng từ Gateway. Danh sách người Thấm đọc endpoint
   công khai theo revision và dọn các trang cũ khi mất quyền hoặc đổi phiên/revision.
 
-### Audit và tự review
-
-| Lớp | Kết quả đối chiếu |
-| --- | --- |
-| Domain và service | Producer/relay, rollup, mốc Seen và Read có owner riêng và giữ retry/idempotency. Lát Web dùng nguyên semantics của các lệnh. |
-| Gateway | Kiểm quyền theo lô và giới hạn continuation có sẵn. Bản Web bổ sung fence credential cho lượt đọc đầu và Read, bỏ work decision nếu revision không còn phép chiếu, dùng lại kiểm quyền Discussion khi mở đích chính xác. |
-| State Web | Thiếu adapter đếm và inbox trên base. Dùng store trong tab gắn generation và phiên bản lượt đọc. Mỗi lượt đếm đã thấy tương tác ghi sẽ tự đối soát lại. Đọc lại sau bulk tỷ lệ theo số trang người dùng đã mở, chỉ sau hành động rõ ràng. |
-| UI | Tái sử dụng primitive từ #485, dialog/focus shell và Bàn viết. Thứ tự rail giữ Bàn viết/Thông báo liền nhau. Avatar tài khoản tiếp tục thuộc Tôi, và nav dùng bộ icon outlined/filled. |
-| Kiểm chứng | Xem lệnh, ma trận, ảnh và ranh giới ở [evidence #486](evidence/notifications-486/README.md). |
-
-Chuông chỉ hiện badge cho số dương còn xác minh được, từ 1 đến `99+`. Số cũ giữ nguyên trong khi đồng bộ; panel trình bày lỗi count hoặc lỗi tải trang và cho thử lại ở đúng phạm vi. Xem [LayoutSpec](../design/notifications.md#9-tên-truy-cập-và-trạng-thái).
-
 ## 12. Đích Thông báo trên mobile (#608)
 
 `AdaptiveShell` ánh xạ /thong-bao và chèn `NavItem` giữa Bàn viết và Tài khoản khi
@@ -605,4 +592,3 @@ Cả hai ở 320 × 800 CSS px, chữ 200%, Dark và source 91191186c1ac5ec6f403
 [Ảnh Tài khoản c142](https://drive.google.com/file/d/1Tn18YgVIaAsWxt6hnCNHHyd77MZznXZN/view) ·
 [Ảnh Hộp thư c324](https://drive.google.com/file/d/1Qzp95q0kUVlFwZxJdb1CNiiSpt6yst6D/view).
 
-[Ảnh sau thay đổi và điều kiện chụp](evidence/mobile-navigation-608/README.md).

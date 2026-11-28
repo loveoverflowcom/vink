@@ -51,8 +51,7 @@ specimen, không phải CodeMirror hoặc sản phẩm native có backend.
 
 CSS composition ở [leptos/patterns.css](leptos/patterns.css), được build phục vụ cả app và preview;
 CSS app chỉ giữ bố cục màn, host CodeMirror và hành vi sticky. Lệnh do
-[development guide](../../docs/development/README.md) sở hữu; kết quả và giới hạn ở
-[bằng chứng UIS-05](../../docs/development/ui-system-adoption-evidence.md).
+[development guide](../../docs/development/README.md) sở hữu.
 
 Delta #213: Desk Web và recipe `screen.desk` không mount `DraftResume`; pattern và
 `DraftMetadata` mặc định còn được giữ tương thích, không còn là bố cục Desk hiện hành.

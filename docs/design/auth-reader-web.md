@@ -34,4 +34,3 @@ kiểm computed style trong cả hai theme, dialog/sheet ở 320/390/834/1440 CS
 100/150/200%, forced colors, trap focus, Escape/Back và giữ nháp. Xem
 [cách chạy Auth Web](../development/auth-web.md#kiểm-chứng).
 
-[Ảnh Chrome và kết quả Reader R2 theo AC](evidence/auth-r2-328/README.md).

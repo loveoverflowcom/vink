@@ -499,6 +499,16 @@ fn matrix() -> Vec<Case> {
             &["verify quick"],
             false,
         ),
+        // Hand-run benchmark scripts are owned; their README is still documentation.
+        c(
+            &[
+                "services/vink-app/bench/endorsement/queries.sql",
+                "services/vink-app/bench/endorsement/README.md",
+            ],
+            &["verify static docs"],
+            &["verify postgres", "verify quick", "verify unit app"],
+            false,
+        ),
         // Repository-wide or unknown inputs broaden to every CI lane plus the Web opt-ins.
         c(&["Cargo.lock"], &rules::BROAD, &[], true),
         c(

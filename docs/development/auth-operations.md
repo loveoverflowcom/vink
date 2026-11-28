@@ -1,8 +1,7 @@
 # Vận hành xác thực (D-05) — runbook
 
 **Trạng thái:** D-05 **Provisional** ([ADR](../architecture/auth-authority.md)). Đường gửi production
-là Resend HTTPS API. [Bằng chứng SMTP cũ](auth-production-evidence.md) không chứng minh
-API mới. Tài liệu mô tả cấu hình và rollback; không phải bằng chứng đã bật production.
+là Resend HTTPS API; kết quả SMTP cũ không chứng minh API mới. Tài liệu mô tả cấu hình và rollback; không phải bằng chứng đã bật production.
 
 ## 1. Luồng và owner
 

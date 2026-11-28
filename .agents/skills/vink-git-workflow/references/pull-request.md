@@ -38,7 +38,7 @@ Hai–bốn câu: vấn đề, hướng đã chọn, và phương án bị loạ
 ## Liên kết
 - Refs #328 · kế thừa #330
 - Quyết định: `O-17@r2` (`PRODUCT_CONFIRMED`) — [decisions/…](https://github.com/<owner>/<repo>/blob/<sha>/decisions/…)
-- Bằng chứng: [Ảnh và số đo Auth R2](https://github.com/<owner>/<repo>/blob/<sha>/docs/design/evidence/…)
+- Bằng chứng: [Ảnh Auth R2 trên Drive](https://drive.google.com/drive/folders/<id>) · [CI artifact](https://github.com/<owner>/<repo>/actions/runs/<run-id>)
 
 ## Kiểm chứng
 - PASS `cargo xtask verify quick` — source `<sha>`, unit/contract + repository checks

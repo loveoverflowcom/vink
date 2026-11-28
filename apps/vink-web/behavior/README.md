@@ -59,6 +59,5 @@ node services/vink-app/behavior/target/verify.mjs --write
 ```
 
 `--write` dựng lại cả nhóm model dùng runner này, không chỉ Web. Giữ các fixture khác nguyên
-nếu policy không đổi. Run evidence của lượt bổ sung nằm tại
-[đối soát 16/11](../../../docs/development/verification-reconciliation-20261116.md).
+nếu policy không đổi.
 Apalache/exhaustive checking, PostgreSQL và browser không được suy từ model/replay PASS.

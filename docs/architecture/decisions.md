@@ -1,6 +1,6 @@
 # Các quyết định và lộ trình kiến trúc Vink
 
-Lựa chọn kỹ thuật từ các PR 15–16/11/2026 được đối soát tại [registry bàn giao](../development/verification-reconciliation-20261116.md#quyết-định-toml-mới): 7 proposal TOML **PENDING**, không đổi trạng thái D-ID hoặc phê duyệt sản phẩm.
+Lựa chọn kỹ thuật từ các PR 15–16/11/2026 có 7 proposal TOML **PENDING**, không đổi trạng thái D-ID hoặc phê duyệt sản phẩm.
 
 **Phiên bản:** 0.5 · **Ngày:** 30/10/2026, cập nhật 03/11/2026, 10/11/2026 và 11/11/2026 · **Trạng thái:** Decision log đề xuất. Không mục nào tự chuyển thành Accepted chỉ vì được viết trong tài liệu này; mục được chủ sản phẩm chốt ghi rõ ngày và phạm vi.
 
@@ -217,7 +217,7 @@ lý khi quá hạn cần chủ sản phẩm chốt trước public beta.
 
 Ngày 02/11/2026, theo yêu cầu của người dùng, PostgreSQL được tách theo owner và Identity thành process riêng chưa có authority ([ranh giới PostgreSQL/Identity](identity-postgres-boundaries.md)). Đó là ranh giới kiến trúc, không phải lựa chọn auth authority.
 
-Ngày 07/11/2026 spike S-03 ([ADR D-05](auth-authority.md), [bằng chứng](../development/auth-authority-s03-evidence.md)) so ba hướng (native Rust, Keycloak, Supabase/Clerk) và hiện thực hướng native trên ranh giới đó: tài khoản/mã/phiên ở Identity, binding và đình chỉ ở App, kiểm bằng PostgreSQL thật và hai binary thật. Phần “thử signup/verified email, account đã có, đổi email/username, provisioning lỗi, logout/ban, request giả user” đã có bằng chứng cục bộ; authority cho suspension là App (đình chỉ principal) cộng Identity (disable tài khoản). S-03 **chưa hoàn tất ở mức production**: không có mail transport, rate limit biên, trình duyệt thật hay native.
+Ngày 07/11/2026 spike S-03 ([ADR D-05](auth-authority.md)) so ba hướng (native Rust, Keycloak, Supabase/Clerk) và hiện thực hướng native trên ranh giới đó: tài khoản/mã/phiên ở Identity, binding và đình chỉ ở App, kiểm bằng PostgreSQL thật và hai binary thật. Phần “thử signup/verified email, account đã có, đổi email/username, provisioning lỗi, logout/ban, request giả user” đã có bằng chứng cục bộ; authority cho suspension là App (đình chỉ principal) cộng Identity (disable tài khoản). S-03 **chưa hoàn tất ở mức production**: không có mail transport, rate limit biên, trình duyệt thật hay native.
 
 Skeleton ngày 30/10/2026 ([docs/development](../development/README.md)) dùng Hybrid B, một app Rust + worker và Leptos SSR làm giả định bootstrap. Nó cung cấp chỗ thử cho S-01, S-03 và S-04 (textarea, seam identity, CAS bản nháp trên PostgreSQL) nhưng không hoàn tất spike nào và không đổi trạng thái D-02–D-12.
 

@@ -152,7 +152,7 @@ Contract, LayoutSpec và owner: [shared/navigation.md](shared/navigation.md). Kh
 6. **UIS-06 (#24):** [API admission map](shared/api-coverage.json), scan style/dependency,
    specimens CMP chung và native diagnostic hosts; [hướng dẫn mở rộng](EXTENDING.md),
    [compatibility](shared/compatibility.md). Lệnh native và prerequisites ở
-   [development](../../docs/development/README.md#diagnostic-ui-native-uis-06).
+   [development](../../docs/development/README.md#host-chẩn-đoán-ui-native).
    Đổi `version` trong `tokens.json` theo semver khi đổi/xóa role (major), thêm role (minor), sửa
    giá trị không đổi nghĩa (patch); generator in phiên bản vào mọi file sinh ra.
 
@@ -161,12 +161,6 @@ Thêm hoặc đổi token: sửa `shared/tokens.json` → `cargo xtask ui-tokens
 
 ## Bằng chứng và giới hạn
 
-Kết quả chạy, môi trường, SHA và PASS/FAIL/NOT_RUN/UNSUPPORTED nằm ở
-[ui-system-foundation-evidence](../../docs/development/ui-system-foundation-evidence.md) (UIS-01) và
-[ui-system-primitives-evidence](../../docs/development/ui-system-primitives-evidence.md) (UIS-02),
-[ui-system-states-evidence](../../docs/development/ui-system-states-evidence.md) (UIS-03),
-[ui-system-navigation-evidence](../../docs/development/ui-system-navigation-evidence.md) (UIS-04),
-[ui-system-adoption-evidence](../../docs/development/ui-system-adoption-evidence.md) (UIS-05),
-[qualification/readiness](../../docs/development/ui-system-qualification-evidence.md) (UIS-06). Trạng thái
+Kết quả chạy theo lượt nằm trong PR và CI artifact. Trạng thái
 catalog của mọi entry vẫn là `implemented-unverified`: compile, test và ảnh của JVM/Chrome không
 thành nghiệm thu thiết kế, Android/iOS, IME hay screen reader.

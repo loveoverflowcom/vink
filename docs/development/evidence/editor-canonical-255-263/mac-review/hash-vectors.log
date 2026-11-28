@@ -1,3 +1,0 @@
-PASS default: byte lengths=[7, 11, 31]; sha256=f735c19566fdff2931d7a5944bb57882c4a915bd0fecb29f1d3c46119ed2c79b
-PASS markdown: byte lengths=[8, 12, 50]; sha256=8ba939c87570af370209535a832b9b86d550eaf5a5f59f3c1f135647c8061769
-2 independent literal-byte vectors PASS; this does not execute a Markdown parser.

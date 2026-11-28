@@ -78,7 +78,7 @@ tại. Tám lần gửi đồng thời cùng khóa idempotency chỉ tạo một
 
 **Chưa xử lý:** chưa có lệnh rút bài (test xóa con trỏ publication để mô phỏng); thông báo, outbox,
 cache/invalidation thời gian thực, ranking và sticker chưa tồn tại. Reaction mới có quyết định
-thuần (`domain/discussion/reaction.rs`), chưa có bảng, store, route, contract hay UI (#43/#45). D2T-03 thêm projection UI và acknowledgment có scope ở consumer; bằng chứng nằm riêng tại [UI thảo luận](discussion-ui-evidence.md).
+thuần (`domain/discussion/reaction.rs`), chưa có bảng, store, route, contract hay UI (#43/#45). D2T-03 thêm projection UI và acknowledgment có scope ở consumer ([LayoutSpec](../design/discussion-ui.md)).
 
 ## Lựa chọn trong lát này
 
@@ -188,7 +188,7 @@ Lệnh được sở hữu tại [development guide](README.md), runner ở `xta
    `the_http_api_keeps_every_discussion_outcome_distinct` qua router thật trên PostgreSQL: thứ tự
    xác thực → Origin → body, `no-store`, 201/200 replay, 422 theo field, 403/404/409 theo mã.
 
-7. **Consumer D2T-03:** [LayoutSpec](../design/discussion-ui.md), controller unit tests, Web/CMP projection scenarios và `discussionReadingAndWrites` trong browser smoke. [Bằng chứng riêng](discussion-ui-evidence.md) phân biệt local fixture/PostgreSQL, intercepted HTTP fixture, browser, model và native.
+7. **Consumer D2T-03:** [LayoutSpec](../design/discussion-ui.md), controller unit tests, Web/CMP projection scenarios và `discussionReadingAndWrites` trong browser smoke. Khi báo cáo, tách local fixture/PostgreSQL, intercepted HTTP fixture, browser, model và native.
 
 Pin Kani, lệnh và negative control: [development guide](README.md#kani).
 Kết quả lệnh thực tế được ghi trong PR; sự có mặt của test/CI không tự là PASS.

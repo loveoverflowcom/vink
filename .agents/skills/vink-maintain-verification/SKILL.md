@@ -24,7 +24,7 @@ When selectors or their callers change, update the diff mapping and its owner fi
 | Web CSS/WASM/SSR baseline & Tailwind rollout evidence | [Web perf baseline](../../../docs/development/web-perf-baseline.md), [Tailwind Web foundation](../../../docs/development/tailwind-web-foundation.md), [perf harness](../../../apps/vink-web/e2e/web-perf-baseline.mjs) |
 | Which evidence a claim requires; result vocabulary | [Verification guide](../vink-engineering/references/verification.md) |
 | UI review criteria, visual reference classes, fix-round budget, five-dimension result table | [UX quality](../vink-ui-design/references/ux-quality.md); approved references in the [visual anchor register](../../../docs/design/visual-anchors.md) |
-| UI capture bundle, optional anchor measurements | [Evidence contract](../vink-ui-capture/references/evidence-contract.md); recorded runs in [qualification evidence](../../../docs/development/ui-system-qualification-evidence.md) |
+| UI capture bundle, optional anchor measurements | [Evidence contract](../vink-ui-capture/references/evidence-contract.md); captures on Drive, raw outputs in CI artifacts |
 | Product acceptance, domain specs and decision registries | [Requirements](../../../prd/requirements.md), [decision log](../../../docs/architecture/decisions.md), [product-decisions-registry](../../../docs/development/product-decisions-registry.md) via [vink-specify](../vink-specify/SKILL.md) |
 
 Use the [TOML registry](../../../decisions/README.md) for migrated decision status.

@@ -24,9 +24,8 @@ Minh họa UI alpha của CMP #261 là closed bundled set riêng trong diagnosti
 
 Tại base `21b10a1`, hỗ trợ AVIF đang hoạt động là mục data URL trong allow-list
 Web/CMP. Mẫu dương là PNG, còn AVIF xuất hiện ở fixture âm, caller và các kiểm thử
-cú pháp. Sau thay đổi, test âm Rust/Kotlin giữ ca từ chối data URL AVIF. Tài liệu
-Logo Enso #10 và hồ sơ UIS-02 ghi lại các lần triển khai/kiểm chứng trước đây.
-Tree hiện hành không có asset AVIF. [Lịch sử logo](../../../docs/design/README.md#logo-enso-10) · [Hồ sơ UIS-02](../../../docs/development/ui-system-primitives-evidence.md)
+cú pháp. Sau thay đổi, test âm Rust/Kotlin giữ ca từ chối data URL AVIF.
+Tree hiện hành không có asset AVIF. Logo hiện hành: [brand](../../../apps/vink-web/assets/brand/README.md).
 
 `WorkCard`/`Publication` chưa có trường ảnh bìa và các pattern Web tương ứng hiển thị
 chữ/byline. Pipeline ảnh bìa production là `NOT_IMPLEMENTED`. Đường HTTP trong

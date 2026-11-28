@@ -29,12 +29,10 @@ Motion notification. UI giữ một call site specimen qua theme/utility; trư�
 local draft recovery hay backend. Bộ nhập thực dùng public `VinkTextField`/`VinkTextArea`.
 
 Lệnh native, replay, SDK/simulator prerequisites và output:
-[development](../../../docs/development/README.md#diagnostic-ui-native-uis-06).
-Readiness theo target: [UIS-06](../../../docs/development/ui-system-qualification-evidence.md).
+[development](../../../docs/development/README.md#host-chẩn-đoán-ui-native).
 
 Interaction foundation (motion chip/overlay, field IME/focus, dialog Back/lifetime):
 [contract và findings](../../../docs/design/ui-interaction-foundation.md),
-[bằng chứng theo target](../../../docs/development/ui-system-qualification-evidence.md#interaction-foundation-12112026).
 Recipe `composition.interaction` dùng component xuất ra thật; vẫn chỉ là diagnostic, không phải app native.
 
 `commonMain` không import `java.*`, `javax.*`, `android.*`, `platform.*` (kiểm trong `verify quick`);
@@ -66,7 +64,6 @@ cố định sáng): 30 ảnh nền tảng + 132 ảnh component UIS-02/03 (sán
 200% UIS-02 + 29 kịch bản state (sáng, hẹp) + 3 state chữ 200% = 209; cộng 7 ảnh playground sau khi
 thao tác (`*--driven--*`, ghi trong `driven-contexts.json`, có lớp dialog) = 216.
 
-
 EMO-01A: `NotoExpressions.kt` và `NotoExpressionTest.kt` được sinh từ
 [manifest biểu cảm](../../expressions/README.md), không phải catalog viết tay thứ hai.
 Module `:ui` chỉ hỗ trợ contract lookup và Unicode fallback; poster file là reference tương đối
@@ -79,5 +76,4 @@ dùng alpha WebP chung với Web. `:diagnostics:generateEmptyArtwork` kiểm siz
 canonical `apps/vink-web/assets/empty/asset-manifest.json`, rồi sinh dữ liệu build; không cần
 Drive/network lúc chạy. Closed enum `EmptyArtwork` đi qua adapter riêng, giữ nguyên opaque
 admission của `decodeContentImage` và hai content fixtures Android API24–27.
-[Spec/copy](../../../docs/design/empty-artwork-cmp-261.md) ·
-[evidence và lệnh tiếp tục native](../../../docs/development/evidence/empty-webp-cmp-261/README.md).
+[Spec/copy](../../../docs/design/empty-artwork-cmp-261.md).

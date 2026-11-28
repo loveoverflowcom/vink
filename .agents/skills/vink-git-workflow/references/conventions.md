@@ -117,7 +117,7 @@ Lặp key cho nhiều giá trị. Chỉ dùng các key sau:
 | `Decision` | ID quyết định kèm revision đã tra bằng `cargo xtask decision query` | `Decision: O-17@r2`, `Decision: VDR-SOCIAL-CONTRACT@r1` |
 | `Spec` | Requirement ID, tài liệu sở hữu trong repo, hoặc URL tài liệu người dùng đưa | `Spec: MOD-09`, `Spec: docs/architecture/social-graph.md` |
 | `Design` | LayoutSpec, mốc thị giác hoặc URL thiết kế người dùng đưa | `Design: docs/design/tag-selector.md` |
-| `Evidence` | Bundle bằng chứng đã commit hoặc thư mục Drive đã upload | `Evidence: docs/design/evidence/auth-r2-328/README.md` |
+| `Evidence` | Thư mục Drive đã upload hoặc run/artifact CI; không commit bundle bằng chứng vào Git | `Evidence: https://github.com/<owner>/<repo>/actions/runs/<run-id>` |
 | `BREAKING CHANGE` | Điều phá tương thích và cách chuyển | `BREAKING CHANGE: bỏ trường bio khỏi PUT /me/profile` |
 | `Co-Authored-By` | Chỉ khi host hoặc người dùng yêu cầu ghi đồng tác giả | |
 
@@ -142,7 +142,7 @@ còn mở lại modal sau khi người đọc đã đóng.
 - Bỏ qua ACK đến sau khi modal đã đóng
 
 Refs: #328
-Evidence: docs/design/evidence/auth-r2-328/README.md
+Design: docs/design/auth-reader-web.md
 ```
 
 Commit nhỏ:

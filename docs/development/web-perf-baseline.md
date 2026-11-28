@@ -2,8 +2,7 @@
 
 **Hiện trạng:** Scenario `perf-baseline` trong catalog `xtask` và harness CDP hiện hữu, chạy
 opt-in với App/PostgreSQL scratch thật. Baseline release của khách đã chạy 10 cold + 10 warm.
-Số liệu và cấu hình ban đầu ở [evidence #234–#236](evidence/web-perf-234-236/README.md). Lượt debug
-[`997d97d`](evidence/web-perf-234/README.md) là lịch sử, khác cả profile và phiên khách, không dùng
+Lượt debug `997d97d` là lịch sử, khác cả profile và phiên khách, không dùng
 làm mốc để tuyên bố tăng tốc. Đây là kiểm thử lab, không phải RUM hay SLA.
 
 ## Phương pháp
@@ -47,15 +46,14 @@ tiếp theo [local-resource-budget](local-resource-budget.md). Runtime cần `VI
 
 ## Kết quả release ngày 18/11/2026
 
-Năm AC đã được kiểm trên corpus ngắn và corpus 200.000 đoạn. Median click → article khi Reader chưa cache là 43,05 ms ở bài ngắn và 1.240,55 ms ở bài dài trong phép giữ discussion bằng CDP. Phần release hiện đo trực tiếp số owner và timer của READ-02. Chi phí thân hai observer trên lượt cold bài ngắn có median 0,85 ms. [Số đo, giới hạn, cách chạy và kết luận từng AC](evidence/web-perf-234-canonical/README.md).
+Năm AC đã được kiểm trên corpus ngắn và corpus 200.000 đoạn. Median click → article khi Reader chưa cache là 43,05 ms ở bài ngắn và 1.240,55 ms ở bài dài trong phép giữ discussion bằng CDP. Phần release hiện đo trực tiếp số owner và timer của READ-02. Chi phí thân hai observer trên lượt cold bài ngắn có median 0,85 ms.
 
 ## Tải lại và mở lại trên production (#473)
 
 “Warm” ở trên là điều hướng SPA trong cùng document, không phải reload hay mở lại. Ngày 24/11/2026
 đã đo normal reload, mở lại tab, mở lại trình duyệt, Back, hard reload và SPA trên release live
 `e9872556`, kèm so sánh với Cantos, phân rã TTFB theo chặng và đối chứng nén cục bộ.
-[Số đo, kết luận và đề xuất sửa](evidence/web-reload-473/README.md).
 
 ## Nhận xét Markdown (#618)
 
-Corpus Reader gồm 4.000 Unicode scalar tiếng Việt và emoji trong 200 dòng. Đo textarea SSR, thời gian từ nhấn Định dạng đến Comment view, input/caret trên trang tác phẩm và kích thước asset thực từ release. Xem [hồ sơ cùng máy trước và sau](evidence/discussion-markdown-618/README.md).
+Corpus Reader gồm 4.000 Unicode scalar tiếng Việt và emoji trong 200 dòng. Đo textarea SSR, thời gian từ nhấn Định dạng đến Comment view, input/caret trên trang tác phẩm và kích thước asset thực từ release. Xem hồ sơ cùng máy trước và sau.

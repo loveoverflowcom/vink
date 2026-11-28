@@ -1,107 +1,66 @@
-# Vink — Việt Ink
+# Vink — Việt Ink · bản đồ tài liệu
 
-## Bộ định hướng sản phẩm và công nghệ
+**Vink giúp người viết Việt duy trì việc viết, tìm được người đọc phù hợp và tiến bộ qua phản hồi
+tử tế.** Trải nghiệm ưu tiên văn bản, tiếng Việt và cộng đồng có chủ đích; thiết kế theo Material 3
+Expressive nhưng đủ yên tĩnh để đọc dài.
 
-**Phiên bản:** 0.3 · **Ngày:** 30/10/2026 (UTC+07), cập nhật 10/11/2026 · **Trạng thái:** Đề xuất để review, chưa phải ADR đã được phê duyệt hay hệ thống đã triển khai.
+Vink sở hữu tác phẩm, vòng đời xuất bản và thảo luận trong PostgreSQL. Bình luận hai tầng do Vink
+tự xây bằng Rust core ([ownership](architecture/discussion-ownership.md), chốt 03/11/2026);
+Discourse chỉ là nguồn tham khảo. Hiện trạng triển khai theo miền ở [AGENTS.md](../AGENTS.md) và
+các registry trong [development](development/README.md).
 
-**Cập nhật 10/11/2026:** chủ sản phẩm chốt 15 mục nghiệp vụ. Tra các mục đã nhập tại
-[kho quyết định TOML](../decisions/README.md), xem thay đổi theo thời điểm trong
-[DecisionDelta](architecture/product-decisions-20261110.md) và mức triển khai trong
-[registry phát triển](development/product-decisions-registry.md).
-
-**Vink giúp người viết Việt duy trì việc viết, tìm được người đọc phù hợp và tiến bộ qua phản hồi tử tế.** Trải nghiệm ưu tiên văn bản, tiếng Việt và cộng đồng có chủ đích; thiết kế trẻ trung theo Material 3 Expressive, đồng thời đủ yên tĩnh để đọc dài.
-
-Hướng kiến trúc: Vink sở hữu tác phẩm, vòng đời xuất bản **và thảo luận** trong PostgreSQL. Ngày 03/11/2026 chủ sản phẩm chốt bình luận hai tầng do Vink tự xây bằng Rust core ([ADR ownership](architecture/discussion-ownership.md)); Discourse chỉ là nguồn tham khảo. Leptos SSR và Axum phục vụ giao diện riêng; một worker xử lý kiểm duyệt nền. Các phần khác cần vượt qua thử nghiệm trong tài liệu quyết định trước khi chốt.
-
-**Điểm Vink (#600):** [PRD §19](../prd/requirements.md#19-điểm-vink-reputation-v1), [đặc tả](architecture/reputation.md), [registry](development/reputation.md). Backend-only; Q01..Q44 `PRODUCT_CONFIRMED` (signoff 28/11/2026); chưa triển khai runtime.
 
 ## Đọc theo thứ tự nào
 
-| File | Nội dung | Câu hỏi được giải quyết |
-| --- | --- | --- |
-| [vision.md](../prd/vision.md) | Định vị, người dùng, Bàn viết, Xưởng Viết, Tạp Chí, AI và phát triển cộng đồng | Vink tồn tại để làm gì và trải nghiệm nào đáng đầu tư? |
-| [tech-stack.md](architecture/tech-stack.md) | So sánh A/B/C, bài học Cantos, stack đề xuất, ownership, editor, identity, vận hành | Chọn công nghệ nào, vì sao và khi nào đổi hướng? |
-| [requirements.md](../prd/requirements.md) | Phạm vi MVP, yêu cầu có ID, nghiệm thu và yêu cầu chất lượng | Một bản đầu tiên đủ dùng phải làm được gì? |
-| [decisions.md](architecture/decisions.md) | Quyết định mở, vòng đời revision/publication, thử nghiệm kỹ thuật và lộ trình theo bằng chứng | Cần chốt gì trước khi triển khai lớn? |
-| [sources.md](references/sources.md) | Nguồn Cantos theo commit, tài liệu chính thức và các nhận định đã hiệu chỉnh | Đâu là bằng chứng, đâu là đề xuất? |
-
-## Cách hiểu trạng thái trong bộ tài liệu
-
-- **Ràng buộc đầu vào:** Vink độc lập với Cantos; PostgreSQL cho nghiệp vụ Vink, không dùng Turso hay database nghiệp vụ chung; sản phẩm văn học tiếng Việt, giao diện riêng theo định hướng M3 Expressive.
-- **Ưu tiên từ yêu cầu mới:** AI hỗ trợ kiểm duyệt ngay từ MVP. Mức tự động hóa tăng sau khi có kết quả đánh giá và khả năng vận hành phù hợp.
-- **Đã chốt 03/11/2026:** Vink sở hữu bình luận (module trong app, PostgreSQL); tác giả bật/tắt bình luận theo tác phẩm, không sửa/xóa bình luận người khác.
-- **Khuyến nghị:** Vink sở hữu nội dung văn học, Rust modular monolith, một nguồn định danh Vink ổn định.
-- **Hướng sản phẩm đã chốt 10/11/2026 (mới triển khai một phần lõi và API):** mạng xã hội bài ngắn với bộ sưu tập cá nhân; hai audience “Chỉ mình tôi”/“Công khai”; trợ lý AI là luồng duyệt mặc định cho bài và bình luận, quản trị viên ở trên và nhận phản đối; tác giả xóa bài để lại trang thay thế cùng bình luận hợp lệ; sửa bình luận có dấu “Đã sửa”; hashtag; Đề xuất và Top 100; username + mật khẩu là đăng nhập chính (xem [registry](development/product-decisions-registry.md)).
-- **Hoãn 10/11/2026:** nhóm tuổi phục vụ (không phải quyết định mở cho mọi độ tuổi), tác phẩm nhiều chương, Tạp Chí/tuyển chọn.
-- **Chưa chốt:** D-05 chưa Accepted (Web có mật khẩu và mã email ([Auth Web](development/auth-web.md)); CMP, khôi phục tài khoản và mở khóa production còn thiếu), công thức và tham số xếp hạng, retention/purge sau khi xóa, các điểm `OPEN` trong `O-01..O-19` (tra cứu theo TOML registry), ngân sách hiệu suất/AI.
-- **Đã đối chiếu nguồn:** Cantos `develop` tại commit `a8e2b6f40b58e0e72a2bdab2d4f44240cb6a0330`; tài liệu chính thức Discourse và các công nghệ tham chiếu ngày 30/10/2026. Đây là bằng chứng về nguồn được đọc, không xác nhận trạng thái production.
-
-## Những thay đổi chính so với vision ban đầu
-
-1. Bổ sung **Bàn viết riêng**; phân biệt thể loại nhật ký với quyền riêng tư.
-2. Tách **kiểm duyệt chính sách**, **xuất bản theo ý định tác giả** và **tuyển chọn biên tập**.
-3. Đưa AI hỗ trợ vào MVP, đồng thời giữ hàng đợi thủ công, giải thích và khiếu nại.
-4. Khuyến nghị Vink sở hữu Work/Chapter/Revision/Publication; thảo luận giữ định danh ổn định qua nhiều lần sửa.
-5. Ghi rõ chi phí của Hybrid: hai hệ sinh thái, tích hợp xác thực, đồng bộ và màn quản trị tác phẩm riêng (03/11/2026: thay bằng thảo luận do Vink sở hữu).
-6. Hiệu chỉnh các giả định: Horizon là theme; Cantos Web hiện dùng CSR; Quint có giới hạn phạm vi bằng chứng; webhook không tự bảo đảm tiền kiểm.
-
-## Bước triển khai đầu tiên được đề xuất
-
-Thử một luồng xuyên suốt **soạn bài ngắn bằng tiếng Việt → lưu nháp riêng → gửi trợ lý AI kiểm duyệt → công khai đúng phiên bản → bình luận hai tầng qua kiểm duyệt → sửa bản mới trong khi bản đã duyệt vẫn đọc được**. Kiểm các tình huống lỗi của luồng trước khi mở rộng tính năng. Chính sách nhóm tuổi được hoãn.
-
-Bộ đề xuất v0.2 đã được đưa vào repository Vink ngày 30/10/2026. Việc nhập tài liệu không phê duyệt các đề xuất và không xác nhận đã triển khai hay kiểm chứng runtime Vink.
-
-## Bản đồ tài liệu trong repository
-
-| Nhóm | Vị trí | Cách sử dụng |
-| --- | --- | --- |
-| Sản phẩm | [Vision](../prd/vision.md), [Requirements](../prd/requirements.md) | Định vị, phạm vi và acceptance có ID; các mục vẫn giữ trạng thái đề xuất |
-| Kiến trúc | [Tech stack](architecture/tech-stack.md), [Decision log](architecture/decisions.md), [Ranh giới PostgreSQL/Identity](architecture/identity-postgres-boundaries.md), [Auth authority D-05](architecture/auth-authority.md), [Frontend trên Cloudflare](architecture/edge-frontend.md) | So sánh phương án, quyết định mở, bất biến và S-01–S-05; ranh giới database/role theo owner do người dùng yêu cầu; D-05 đề xuất authority native mã email (Provisional, spike S-03); chưa phải ADR Accepted; #504 có build CSR độc lập, Pages và API cùng origin (r2 `PENDING`, chờ cutover) |
-| Quyết định sản phẩm 10/11/2026 | [DecisionDelta + kế hoạch](architecture/product-decisions-20261110.md), [xuất bản/kiểm duyệt/tombstone](architecture/publication-moderation.md), [pilot AI kiểm duyệt bài](architecture/moderation-ai-pilot.md), [sửa bình luận](architecture/comment-editing.md), [bộ sưu tập](architecture/collections.md), [Đề xuất và Top 100](architecture/discovery-ranking.md), [hashtag](architecture/hashtags.md), [registry](development/product-decisions-registry.md), [model đích](../services/vink-app/behavior/target/README.md) | Luật đã chốt, lựa chọn đề xuất, model đích (`collections`, `comment_edit`, `discovery` có negative control) và đặc tả `DESIGN_PROPOSED` (`NOT_IMPLEMENTED`) cho pilot AI đối chiếu song song trên môi trường cô lập ([VDR-WORK-AI-MODERATION-PILOT@r2](../decisions/proposals/VDR-WORK-AI-MODERATION-PILOT.r2.toml) `PENDING`); canonical M1/M3/M4 governance trong `behavior/publication/` và #150/#151/#157 có lõi thuần replay đầy đủ; #158 có [API tác giả + PostgreSQL](development/publication-runtime.md), #159 có [kiểm duyệt runtime](development/moderation-runtime.md) (worker, ca duyệt, phản đối, trang ẩn/sau kiểm duyệt và Web ca tác phẩm/phản đối; chưa AI provider); [vùng công khai của Bàn viết](development/publication-author-web.md) là consumer Web của API tác giả, không phải ADR Accepted |
-| Kho quyết định | [TOML và CLI](../decisions/README.md), [bảng kiểm kê và việc còn mở](development/decision-registry-rollout.md) | Tra USER/CHOICE/O/ADM từ DecisionDelta 10/11 và 11/11, lưu proposal, signoff của chủ sản phẩm và xem revision diff |
-| Bằng chứng nguồn | [Sources](references/sources.md) | Nguồn nghiên cứu của foundation, có commit và giới hạn bằng chứng |
-| Khôi phục mật khẩu #181 | [Spec Web/App/Identity](architecture/password-recovery.md), [LayoutSpec](design/password-recovery.md) | Đặc tả và O-11@r2 pending; runtime chưa triển khai, không signoff hoặc mở production |
-| Phát triển | [Development](development/README.md), [API v1](../services/vink-app/contracts/http/v1/README.md) | Setup, lệnh `cargo xtask`, cấu trúc code, bằng chứng và giới hạn skeleton; contract do server sở hữu |
-| Discussion hai tầng | [Core/registry](development/discussion-core.md), [ownership đã chốt](architecture/discussion-ownership.md), [admission #120](architecture/discussion-admission.md), [đọc public/overlay #120](architecture/discussion-reads.md), [outbox/worker #120](architecture/discussion-outbox.md), [LayoutSpec UI](design/discussion-ui.md) | Core/lifecycle + Quint replay, PostgreSQL/API và Web reader hai tầng; ghi cục bộ qua LocalFixture, production auth và Google assets còn thiếu |
-| Ghi nhận văn học (LVE) | [PRD §12](../prd/requirements.md#12-literary-endorsement-lve), [decision record](architecture/literary-endorsement.md), [registry](development/endorsement-core.md), [application/API/PostgreSQL/Web](development/literary-endorsement-runtime.md) | Lõi thuần + Quint replay + Kani; use case, HTTP API v1 và PostgreSQL đã hiện thực (ghi trả `401` ở production vì chưa có auth authority); reader Web hiện “Thấm”/“Hữu ích” qua adapter (khách: tổng số + lý do; ghi chỉ với LocalFixture); Pen Flight R2 A trong registry/patterns; chưa xếp hạng, native consumer |
-| Phân loại tác phẩm (TAG) | [PRD §13](../prd/requirements.md#13-phân-loại-tác-phẩm-tag), [decision record](architecture/work-taxonomy.md), [registry](development/taxonomy-core.md) | Lõi thuần (#95): nhãn/slug/khóa tìm tiếng Việt, catalog curated có alias/đổi tên/ngừng dùng, thẻ nháp có version, snapshot metadata riêng cạnh revision; PostgreSQL (#96, [storage](development/taxonomy-postgres.md)): schema, adapter, binding công khai; API (#97, [API](development/taxonomy-api.md)): đọc catalog công khai, thẻ nháp có version, lệnh operator `vink-app tag …` có audit; discovery (#98, [discovery](development/discovery-api.md)): `GET /api/v1/works` tìm toàn thư viện công khai theo chữ (gập dấu) và thẻ (AND, alias), trang hữu hạn có cursor, thẻ công khai trên card/publication; Bàn viết (#99, [editor](development/taxonomy-editor.md), [LayoutSpec](design/tag-selector.md)): mục Thông tin tác phẩm, bộ chọn thẻ dùng chung, lưu thẻ nháp thật qua LocalFixture; UI khám phá (#100, [discovery-ui](development/discovery-ui.md)) |
-| Thiết kế | [Baseline thiết kế](design/README.md) | Palette Lavender, font tự host, thứ tự điều hướng, trạng thái logo và tương phản đã đo; owner giá trị là `packages/ui-system/shared/tokens.json` ([UI system](../packages/ui-system/README.md)), Web biên dịch CSS qua [nền tảng Tailwind v4](development/tailwind-web-foundation.md) (`VDR-WEB-TAILWIND-FOUNDATION@r1` `PENDING`); [trạng thái và phản hồi](design/state-and-feedback.md) (UIS-03); [shell và điều hướng](../packages/ui-system/shared/navigation.md) (UIS-04); [interaction foundation CMP](design/ui-interaction-foundation.md) và [qualification](development/ui-system-qualification-evidence.md#interaction-foundation-12112026); [chất lượng UI/UX #174](design/ui-ux-quality-174.md) (rubric, vòng review có điểm dừng, pilot) và [sổ mốc thị giác](design/visual-anchors.md) |
-| Đối soát PR 15–16/11/2026 | [Docs/TOML/Quint](development/verification-reconciliation-20261116.md) | Phạm vi 20 PR, 7 proposal PENDING, model/replay read lifecycle và các gap chưa chốt |
-| Social Graph #288 | [PRD §15](../prd/requirements.md#15-hồ-sơ-tác-giả-và-theo-dõi-social-graph), [hợp đồng liên miền](architecture/social-graph.md), [bàn giao](development/social-graph.md) | Quyền của khách, chủ và người xem, vòng đời Handle/Follow và mốc công khai đầu tiên theo đặc tả r1 |
-| Thông báo (Notifications v1) #345 | [PRD §16](../prd/requirements.md#16-thông-báo-cộng-đồng-và-danh-sách-thấm-công-khai-notifications-v1), [đặc tả & UX](architecture/notifications.md), [hợp đồng v1](../services/vink-app/contracts/http/v1/notifications.md), [bàn giao](development/notifications.md) | SSOT `N1–N8`/`P-01..14`, Event Inventory 5 nhóm + type quản trị `P-05`, UX bằng chữ cho chuông/inbox/quyết định riêng & danh sách Thấm công khai (`P-08` R3); toàn bộ runtime & UI `NOT_IMPLEMENTED` |
-| Lưu bài #384 | [PRD §18](../prd/requirements.md#18-lưu-bài-để-đọc-lại-saved-works), [LayoutSpec](design/saved-works.md), [HTTP v1](../services/vink-app/contracts/http/v1/saved-works.md), [registry](development/saved-works.md) | Danh sách riêng theo WorkId, vòng đời và fence qua bỏ lưu. #387 triển khai PostgreSQL và HTTP v1. |
-| Lượt xem tác phẩm #323 / #340 / #343 / #514 | [PRD §17](../prd/requirements.md#17-lượt-xem-tác-phẩm-work-views), [đặc tả nghiệp vụ](architecture/work-views.md), [LayoutSpec r3](design/work-views.md), [registry](development/work-views.md) | P-01..P-11, VIEW-01..12 (`VDR-WORK-VIEWS@r1` đã signoff), cùng delta 25/11/2026 (`VDR-WORK-VIEWS@r2` `PENDING`): ngưỡng 5 giây foreground cấu hình tập trung, `OQ-1..4`, `UX-01..10`, thứ tự Bàn viết Thấm → Nhận xét → Lượt xem và bỏ nút “Đọc”; đường ghi (#341), đọc tác giả (#342), HTTP intake + Reader tracker (#343), giao diện Bàn viết Design r3 + đồng bộ design (#514) |
-| Bản đồ tính năng | [Feature map](development/feature-map.md) | Điểm vào, thao tác, trạng thái, source và assertion hiện có; tách coverage khỏi kết quả đã chạy |
-| Hướng dẫn agent | [AGENTS.md](../AGENTS.md), [Skills](../.agents/skills/README.md) | Cách làm việc với repo và chọn skill theo nhiệm vụ |
-| Nguồn skills | [Skill adaptation](references/skill-adaptation.md) | Nguồn Cantos được pin riêng, draft workflow coding agent và cách chọn lọc cho Vink |
-| Bản ban đầu | [README](archive/initial/README.md), [Vision](archive/initial/prd/vision.md) | Giữ nguyên nội dung có sẵn trước lần nhập foundation; chỉ là tư liệu lịch sử |
-
-Tiêu đề theo định dạng #263: [owner và corpus](architecture/editor-title-authority.md)
-ghi quyết định Default/Markdown, legacy guards và điểm nối source contract #255.
-Domain và Web dùng chung projection title theo format trong luồng lưu và đọc. Bằng chứng ban
-đầu tại [#263](development/evidence/editor-title-263/README.md) và lượt tích hợp ở
-[registry](development/document-source-format.md).
-
-Document canonical #255 (thay hoàn toàn document v1 theo quyết định sản phẩm 17/11/2026):
-[spec kiến trúc](architecture/document-source-format.md) và
-[registry phát triển](development/document-source-format.md) ghi shape `{format, source}`, title
-theo định dạng (#263), một content hash và cutover forward-only bị chặn khi còn revision bất biến
-cũ; kiến trúc [VDR-DOCUMENT-SOURCE-FORMAT@r2](../decisions/proposals/VDR-DOCUMENT-SOURCE-FORMAT.r2.toml)
-`ACCEPTED`. Reader, preview và snapshot dùng chung phép chiếu Mặc định/Markdown.
-
-## Ánh xạ bộ foundation
-
-Các file gốc từ thư mục `vink-foundation` được giữ nguyên nội dung sản phẩm, ID yêu cầu, trạng thái và nguồn tham chiếu; liên kết nội bộ được sửa theo vị trí mới. Trang chỉ mục này bổ sung bản đồ repository và ghi nhận việc nhập tài liệu. Không chạy lại nghiên cứu web, spike hay acceptance runtime trong lần sắp xếp.
-
-| Tên file đầu vào | Vị trí hiện tại |
+| Tài liệu | Câu hỏi được giải quyết |
 | --- | --- |
-| `Vink-00-README.md` | [docs/README.md](README.md) |
-| `Vink-01-Vision.md` | [prd/vision.md](../prd/vision.md) |
-| `Vink-02-Tech-Stack.md` | [docs/architecture/tech-stack.md](architecture/tech-stack.md) |
-| `Vink-03-Requirements.md` | [prd/requirements.md](../prd/requirements.md) |
-| `Vink-04-Architecture-Decisions.md` | [docs/architecture/decisions.md](architecture/decisions.md) |
-| `Vink-05-Sources.md` | [docs/references/sources.md](references/sources.md) |
+| [Vision](../prd/vision.md) | Vink tồn tại để làm gì và trải nghiệm nào đáng đầu tư? |
+| [Requirements](../prd/requirements.md) | Phạm vi, yêu cầu có ID và tiêu chí nghiệm thu |
+| [Kho quyết định TOML](../decisions/README.md) | Quyết định nào đang có hiệu lực, revision nào đang chờ signoff? |
+| [Tech stack](architecture/tech-stack.md) | Chọn công nghệ nào, vì sao và khi nào đổi hướng? |
+| [Decision log](architecture/decisions.md) | D-01, bất biến INV-01–INV-08, spike S-01–S-05 |
+| [Development](development/README.md) | Setup, lệnh, cấu trúc code, lane kiểm chứng |
+| [Feature map](development/feature-map.md) | Hành trình người dùng → route → owner → phép kiểm |
+| [Thiết kế](design/README.md) | LayoutSpec hiện hành và owner của token/asset |
 
-**Snapshot lịch sử 30/10/2026:** skeleton khi đó hiện thực một phần luồng trên: soạn và lưu nháp tiếng Việt có kiểm phiên bản, đọc snapshot công khai từ seed. Gửi duyệt, xuất bản và API bình luận chưa có; trạng thái từng phần nằm ở [docs/development](development/README.md).
+## Bốn chiều trạng thái
 
-Khi bổ sung implementation, cập nhật trạng thái ở tài liệu sở hữu và dẫn bằng chứng tương ứng. Không suy ra một module, API, command hay gate đã tồn tại từ ví dụ trong tài liệu; kiểm tra mã nguồn và manifest hiện hành. Bản archive không được dùng để ghi đè hướng hiện tại.
+Giữ tách bạch trong tài liệu, review và bàn giao: quyết định sản phẩm (`PRODUCT_CONFIRMED`,
+`DEFERRED`, `OPEN`), quyết định kiến trúc (`DESIGN_PROPOSED`, `Provisional`, `Accepted`), mức triển
+khai (`NOT_IMPLEMENTED`, `core`, `persistence-api`, `worker-provider`, `web`, `cmp`) và bằng chứng
+kiểm chứng (lệnh, SHA, ranh giới). Nhập tài liệu, qua check hay merge code không làm một đề xuất
+thành `Accepted`.
+
+## Bản đồ theo nhóm
+
+| Nhóm | Owner |
+| --- | --- |
+| Sản phẩm | [Vision](../prd/vision.md), [Requirements](../prd/requirements.md) |
+| Quyết định sản phẩm 10–11/11/2026 | [DecisionDelta](architecture/product-decisions-20261110.md), [xuất bản/kiểm duyệt/tombstone](architecture/publication-moderation.md), [pilot AI](architecture/moderation-ai-pilot.md), [sửa bình luận](architecture/comment-editing.md), [bộ sưu tập](architecture/collections.md), [Đề xuất và Top 100](architecture/discovery-ranking.md), [hashtag](architecture/hashtags.md), [registry](development/product-decisions-registry.md), [model đích](../services/vink-app/behavior/target/README.md) |
+| Kiến trúc nền | [Tech stack](architecture/tech-stack.md), [decision log](architecture/decisions.md), [PostgreSQL/Identity](architecture/identity-postgres-boundaries.md), [Auth D-05](architecture/auth-authority.md), [frontend Cloudflare](architecture/edge-frontend.md), [độ hạt lưu văn bản](architecture/content-storage-rfc.md), [document canonical](architecture/document-source-format.md), [tiêu đề theo định dạng](architecture/editor-title-authority.md) |
+| Thảo luận | [ownership](architecture/discussion-ownership.md), [admission](architecture/discussion-admission.md), [reads](architecture/discussion-reads.md), [outbox](architecture/discussion-outbox.md), [core](development/discussion-core.md), [LayoutSpec](design/discussion-ui.md) |
+| Ghi nhận văn học, phân loại | [LVE](architecture/literary-endorsement.md), [taxonomy](architecture/work-taxonomy.md) |
+| Điểm Vink (#600, backend-only, chưa triển khai runtime) | [PRD §19](../prd/requirements.md#19-điểm-vink-reputation-v1), [đặc tả](architecture/reputation.md), [registry](development/reputation.md), [SR-01](development/reputation-science.md) |
+| Social, thông báo, lượt xem, tài khoản | [Social Graph](architecture/social-graph.md), [notifications](architecture/notifications.md), [work views](architecture/work-views.md), [xóa tài khoản](architecture/account-deletion.md), [khôi phục mật khẩu](architecture/password-recovery.md) |
+| API | [App HTTP v1](../services/vink-app/contracts/http/v1/README.md), [Identity RPC v1](../services/vink-identity/contracts/rpc/v1/README.md) |
+| Vận hành | [production](../infra/production/README.md), [Cloudflare edge](../infra/production/cloudflare-edge.md), [auth operations](development/auth-operations.md) |
+| Hướng dẫn agent | [AGENTS.md](../AGENTS.md), [skills](../.agents/skills/README.md) |
+| Nguồn nghiên cứu nền | [sources](references/sources.md) |
+
+## Quy ước lưu trữ
+
+Mỗi thông tin có một owner. Repository giữ những gì cần để build, chạy, kiểm và hiểu quyết định
+hiện hành; lịch sử quá trình nằm ở nơi khác.
+
+| Nơi lưu | Nội dung |
+| --- | --- |
+| Git | Source, đặc tả và LayoutSpec hiện hành, quyết định (TOML, ADR), test, fixture, regression baseline, runtime asset kèm provenance, tóm tắt bằng chứng tối thiểu trong registry owner |
+| Google Drive | Concept, canvas, artwork gốc, ZIP thiết kế, ảnh preview, ảnh trước/sau, visual evidence ([vink-ui-evidence-drive](../.agents/skills/vink-ui-evidence-drive/SKILL.md)) |
+| GitHub Actions artifact | Output thô của lane kiểm chứng (log, trace, capture, manifest) |
+| GitHub Issue/PR | Lịch sử triển khai, review, handoff, nghiệm thu theo lượt |
+| Máy local (`target/`, ignored) | File tạm, capture, log, cache |
+
+Không thêm thư mục archive hay evidence vào Git; Git history đã giữ lịch sử. `cargo xtask verify
+static repo` từ chối file theo dõi quá cỡ, ảnh/archive/log ngoài allowlist có lý do và thư mục
+evidence/archive (xem [repository guards](development/scoped-workflows.md#guard-chống-phình-repository)).
+Khi đổi hành vi, cập nhật registry owner bằng trạng thái hiện hành thay vì nối thêm changelog.

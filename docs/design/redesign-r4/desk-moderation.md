@@ -2,7 +2,7 @@
 
 Trạng thái thiết kế `DESIGN_PROPOSED`, phạm vi [#477](https://github.com/loveoverflowcom/vink/issues/477).
 Kế thừa [R4.3 §5.3](layout-spec.md#53-thẻ-tác-phẩm), dựa trên mã tại `82dd51b` và
-[LayoutSpec kiểm duyệt R1](../moderation-workspace.md). Drive và Canvas của issue
+LayoutSpec kiểm duyệt R1. Drive và Canvas của issue
 chưa được xem. DQ-05 và DQ-10 vẫn `OPEN`.
 
 ## Ý định và cây vùng

@@ -140,7 +140,7 @@ thiếu về geometry/completeness của CMP thuộc
 [#24](https://github.com/loveoverflowcom/vink/issues/24): tham chiếu và bàn giao cho owner đó,
 không mở implementation song song.
 
-Delta của [vòng sửa #174](../../../../docs/design/ui-ux-quality-174.md#10-vòng-sửa-1-f-01-và-các-gap-bằng-chứng):
+Delta của vòng sửa #174 (pilot dialog/sheet):
 smoke Leptos hiện hữu có `overlay-contexts.json` cho dialog/sheet tại viewport thật (DOM rect,
 font, scroll/focus, clean PNG + overlay cùng lượt). `InteractionCaptureTest` CMP bổ sung
 `anchors` với `window-px`, bounds/visible bounds từ `LayoutCoordinates`, scroll range/viewport,

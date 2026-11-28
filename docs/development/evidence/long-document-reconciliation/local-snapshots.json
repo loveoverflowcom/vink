@@ -1,8 +1,0 @@
-{
-  "sha256": "ba467363ca492957a17b7d003b397dec8c363c9da9a34d879f384cf3ea522447",
-  "bytes": 108129,
-  "ref": "38a663db7f0d7f02710817b811b4ac3d42b97912 refs/heads/codex/long-document-recovered-bundle",
-  "requires_public_commit": "f6b88467c53a82c39e95ac79329cd22d7242212c",
-  "verification": "git bundle verify PASS",
-  "purpose": "Recover local 2fbcacf/afb8a09/38a663d source objects for historical failed runs; no old-PR push or rewrite"
-}

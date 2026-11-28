@@ -1,9 +1,0 @@
-{
-  "status": "NOT_RUN",
-  "standalone_probe_exit": 2,
-  "wrapped_probe_exit": 69,
-  "reason": "local-budget rejects standalone rustc and opaque RUSTC_WRAPPER. Plain tiny Cargo baseline passed; wrapped variant never executed. This is launcher UNSUPPORTED, not an approval-review denial.",
-  "counted_as_vink_evidence": false,
-  "selected_alternative": "Supported task-local App/Web opt-level z with explicit debug assertions and overflow checks; UI preview remains opt1; no wrapper used",
-  "scope": "No launcher/config guard bypass, no production code or Cargo manifest changes"
-}

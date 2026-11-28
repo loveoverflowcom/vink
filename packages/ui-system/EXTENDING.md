@@ -39,7 +39,7 @@ scope con không bật lại motion khi OS/cha đã giảm.
 Trong Web mở `#composition.nested/default`; CMP Desktop nhận
 `--entry=composition.nested --scenario=default --theme=dark --motion=reduce --scale=200`
 qua Gradle `:preview:run --args='...'`. Native nhận cùng entry/scenario và các tùy chọn
-qua [lệnh diagnostic](../../docs/development/README.md#diagnostic-ui-native-uis-06).
+qua [lệnh diagnostic](../../docs/development/README.md#host-chẩn-đoán-ui-native).
 Clock/seed/text đều từ `shared/fixtures/foundation.json`; ghi viewport/density/OS scale thực
 vào evidence. `scale=200` là multiplier của host, không thay OS Dynamic Type hay browser zoom.
 

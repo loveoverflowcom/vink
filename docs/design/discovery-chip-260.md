@@ -36,4 +36,3 @@ vị trí hàng đổi <=1 CSS px khi toggle trong cùng layout/scale. Đo tọa
 mark không đè chữ; target >=48 CSS px và không overlap. Chữ200 là root font-size,
 không browser zoom hay Dynamic Type. Không đổi domain/API/Quint semantics.
 
-[Kết quả thực thi, ảnh và giới hạn](../development/evidence/discovery-chip-260/README.md).

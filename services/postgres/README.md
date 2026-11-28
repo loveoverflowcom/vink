@@ -201,5 +201,4 @@ nhất quán giữa hai database thuộc commit 3 của PR này.
 `cargo xtask verify postgres` chạy provisioning thật với tên tạm trên server của
 `VINK_TEST_DATABASE_URL`: database App tạo theo cách cũ rồi được nhận quyền, App mới, Identity;
 chạy lại; migrate/seed bằng binary thật; thử DDL và kết nối chéo bằng chính các role; một ca âm
-chứng minh `--check` bắt được quyền thừa. Bằng chứng chạy và Compose thật:
-[identity-postgres-verification](../../docs/development/identity-postgres-verification.md).
+chứng minh `--check` bắt được quyền thừa.

@@ -1,8 +1,0 @@
-{
-  "raw_local": "/Users/manhblue/Documents/Codex/2026-11-17/task-2/vink/target/verify-web/browser-main-final-17fb74f/browser.log",
-  "display_copy": "docs/development/evidence/empty-webp-259/browser-main-r3/browser.log",
-  "operation": "Remove trailing ASCII spaces/tabs in display copy only; raw run remains untouched. Line count and verdicts unchanged.",
-  "raw_sha256": "575b071b6af65cae40886b8ef38bcc13d51cf0cdd170e749db3f4c46f23d8dee",
-  "display_sha256": "8ea0cf8c8984b1bdfdd6962d4d632d4d777c78ec5ff3e3df0155454c59542e01",
-  "changed_lines": 11
-}

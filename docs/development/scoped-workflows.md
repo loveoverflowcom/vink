@@ -75,6 +75,16 @@ của dịch vụ. Cấu hình gửi ra ngoài hoặc authority khác `native` b
 vẫn được giữ. Workflow local không mở khóa production. Khi cần thử riêng authority email-code
 hay Resend HTTPS API, dùng [runbook auth](auth-operations.md) và binary trực tiếp.
 
+### Guard chống phình repository
+
+`verify static repo` (cũng trong `quick`) từ chối file theo dõi lớn hơn 1 MiB, mọi thư mục tên
+`evidence`, `archive`, `screenshots` hoặc `captures`, và file ảnh/archive/log/font/media nằm ngoài
+owner runtime có provenance (`HEAVY_OWNERS` trong [checks.rs](../../xtask/src/checks.rs): brand,
+fonts, empty artwork, font Preview Desktop, Noto expressions). Thêm owner mới chỉ khi file là
+runtime asset, build input hoặc fixture thật, kèm bản ghi hash và lý do trong cùng thay đổi. Output
+thô thuộc GitHub Actions artifact, artwork và ảnh thuộc Drive
+([quy ước lưu trữ](../README.md#quy-ước-lưu-trữ)).
+
 ## Lập kế hoạch theo diff
 
 ```sh
@@ -336,8 +346,6 @@ ready, cancellation, locks; [verify.rs](../../xtask/src/verify.rs) compose regre
 [web.rs](../../xtask/src/web.rs) setup/assertions Web; [legacy.rs](../../xtask/src/legacy.rs)
 compatibility. Main chỉ dispatch. Không đổi state machine nghiệp vụ, vì vậy không tạo model
 Quint mới; lifecycle OS/SQL/browser cần kiểm đúng boundary thay cho model.
-
-Bằng chứng lượt triển khai và phần chưa chạy: [scoped-workflows-evidence](scoped-workflows-evidence.md).
 
 ### Fixture thử biểu cảm
 

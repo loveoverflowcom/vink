@@ -25,4 +25,3 @@ theo [UIS-02](../../packages/ui-system/shared/components.md), pending theo UIS-0
 Icon Logout đến từ đúng pin của [catalog](../../packages/ui-system/shared/icons.json) và được
 sinh cho cả Rust lẫn Kotlin.
 
-[Ảnh và kiểm chứng Chrome](evidence/auth-actions-625/README.md).

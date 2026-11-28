@@ -13,8 +13,6 @@ chỉ cập nhật text của status. `DiscoverySearch` giữ X trong khi q đan
 đã sửa thành trống. UI System chỉ nhận một tín hiệu clear tùy chọn từ caller. Bàn viết và Preview
 vẫn dùng hành vi mặc định.
 
-[Bằng chứng Product, ảnh trước/sau và số đo #621](evidence/discovery-search-r5-621/README.md).
-
 Oracle picker của #603 kiểm cả link GET đơn thẻ và các phần tử `input`/`button` không được render.
 `verify static repo` ở base nhận nhầm hai literal bên trong assertion là markup production.
 Assertion tạo tên tag từ danh sách hai phần tử, vẫn kiểm đủ hai loại. Guard dùng chung giữ phạm vi.
@@ -30,22 +28,17 @@ của thẻ hợp lệ rỗng và q rỗng, người đọc có một lối lên
 và xóa q giữ thẻ. Alias, thẻ không tồn tại, thẻ ngừng dùng và trang phân trang rỗng dùng
 recovery riêng của owner dữ liệu.
 
-[Bằng chứng Product và kiểm theo từng AC](evidence/web-state-603/README.md).
-
 ### Các phiên bản trước #603
 
 **Action surfaces #225 r2 (16/11/2026):** [LayoutSpec](../design/action-surfaces-desk-discovery-225.md)
-và [registry triển khai](action-surfaces-225.md) ghi baseline lịch sử của launcher Tonal + FilterList, helper
+ghi baseline lịch sử của launcher Tonal + FilterList, helper
 “Khớp tất cả thẻ · Tối đa 4”, status “Trang này: N tác phẩm”. Giữ native GET/no-JS,
 draft-vs-applied selection và Filled-khi-đổi/Tonal-khi-chưa-đổi của Apply đã có từ trước.
-[Evidence chuẩn bị #240](evidence/action-surfaces-225/README.md) là baseline lịch sử riêng.
 
 **Checkbox-chip #260:** recipe chỉ dành cho `.vk-discovery-option` dùng ba track đối xứng
 cho mark/nhãn/end-slot, giữ nhãn đúng tâm và hình học ổn định khi chọn. Hai cột và native
 Checkbox/GET được giữ; không đổi primitive Checkbox hay command FilterChip.
-[LayoutSpec và lựa chọn](../design/discovery-chip-260.md) giữ anatomy/CHOICE;
-[evidence](evidence/discovery-chip-260/README.md) ghi phép đo thực, đối chứng âm, matrix
-dock/dialog và giới hạn kiểm chứng.
+[LayoutSpec và lựa chọn](../design/discovery-chip-260.md) giữ anatomy/CHOICE.
 
 **Redesign r1 [#308](https://github.com/loveoverflowcom/vink/issues/308):** từ 760 CSS px, hàng công cụ ghim gồm Lọc thẻ, ô tìm và logo Vink. Trên điện thoại, kính lúp mở màn tìm toàn màn hình. Enter áp dụng từ khóa sau khi kết thúc composition. Xóa từ khóa giữ thẻ đang lọc. Khi quay về danh sách, focus trở về kính lúp và vị trí cuộn được phục hồi. Trước hydration, trang vẫn có form GET.
 Danh sách một cột hiển thị tác giả, thẻ đầu tiên nếu có, nhan đề và trích đoạn từ revision đang công khai. Chỉ nhan đề và tên tác giả có đánh dấu từ khóa khớp. Trích đoạn giữ ngắt dòng thơ. Dialog
@@ -55,15 +48,13 @@ scope URL, có thử lại khi lỗi. Danh mục rỗng ẩn nút và form lọc
 focus về vùng kết quả. Placeholder rỗng căn theo toàn vùng kết quả dưới hàng công cụ.
 
 **Empty artwork #258:** [LayoutSpec R1](../design/empty-artwork-258.md),
-[asset/pipeline owner](../../apps/vink-web/assets/empty/README.md) và
-[evidence của lượt này](evidence/empty-webp-258/README.md). Composition app-owned
+[asset/pipeline owner](../../apps/vink-web/assets/empty/README.md). Composition app-owned
 `ui::empty_state::EmptyState` dùng WebP đã pin; bỏ heading “Kết quả” và count 0 hiển thị,
 đổi thành đúng một câu result status ở empty. Count của nonempty vẫn là số trang.
 `community-stream` giữ tên vùng và focus-visible; unknown/retired tag và empty cursor page
 không bị gọi là corpus rỗng. Desk #259 dùng cùng API/CSS/asset; chưa adopt trong #258.
 
-**Quay lại từ Reader #236:** [LayoutSpec](../design/discovery-return-position-236.md) và
-[bằng chứng trước/sau](evidence/web-perf-234-236/README.md). Router ghi fragment vào đúng entry
+**Quay lại từ Reader #236:** [LayoutSpec](../design/discovery-return-position-236.md). Router ghi fragment vào đúng entry
 để Back, Forward và mở lại cùng tác phẩm đồng bộ URL. Kết quả đã settle phục hồi hàng hoặc
 landmark; list refresh không lấy lại focus. Chạy `verify web --scenario return-position --release`
 để kiểm keyboard và 50 vòng. Không dùng view giữ lại hoặc snapshot offset.
@@ -158,5 +149,3 @@ Trong Tất cả, `WorkResults` sở hữu Suspense của public list. Trong Đa
 | Kiểm duyệt đang chờ, autosave, công khai, privacy | Trạng thái nghiệp vụ và xác nhận ghi | EXCLUDED · giữ thông điệp bền vững, xử lý lỗi và quyền của caller. Auth icon theo #625. |
 
 Recovery 422 xóa q vẫn giữ tag và trang thẻ; xóa tag vẫn giữ q. Khi lỗi thuộc cursor, URL mới chỉ bỏ cursor. 404 và 503 có trạng thái riêng; retry do caller cấp. Kiểm các đường native với SSR, sau đó chạy browser `discovery` và hành trình member Following trong `password`. Motion cần đo computed style khi đang giữ đúng request.
-
-[Ảnh trước/sau và số đo Chrome cho #624](evidence/loading-recovery-624/README.md).

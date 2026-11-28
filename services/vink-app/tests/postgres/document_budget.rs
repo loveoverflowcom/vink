@@ -462,7 +462,7 @@ async fn long_document_http_boundaries_preserve_durable_text_and_conflicts(pool:
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
-#[ignore = "opt-in benchmark: VINK_DOCUMENT_BUDGET_OUTPUT; see long-document-budget.md"]
+#[ignore = "opt-in benchmark: set VINK_DOCUMENT_BUDGET_OUTPUT and run with --include-ignored"]
 async fn long_document_budget(pool: PgPool) {
     let out = PathBuf::from(
         std::env::var("VINK_DOCUMENT_BUDGET_OUTPUT").expect("output directory required"),

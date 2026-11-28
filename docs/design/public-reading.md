@@ -1,6 +1,6 @@
 # Khám phá và trình đọc công khai — #9, lớp đọc v3
 
-**Cập nhật thị giác hiện hành:** [UI-REPAIR-02, LayoutSpec r3 — Explore v4](ui-repair-02.md).
+**Thị giác hiện hành:** [LayoutSpec R4.3](redesign-r4/layout-spec.md).
 Các mục r1/r2 bên dưới giữ lịch sử và hợp đồng đọc/search/return còn hiệu lực.
 
 **Ngày:** 01/11/2026 · **Nền:** `develop@c6a8a29` · **Phạm vi:** ED-01/UX-01 một phần;

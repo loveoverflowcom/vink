@@ -8,3 +8,8 @@
 node_modules/
 # Local provisioning settings; services/postgres/provision.env.example is the template.
 services/postgres/provision.env
+# Captures, raw logs and traces stay local or in CI artifacts (docs/README.md#quy-ước-lưu-trữ).
+*.log
+*.har
+*.trace
+.DS_Store

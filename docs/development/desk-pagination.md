@@ -62,8 +62,7 @@ Delta #259: hai empty slots dùng `ui::empty_state::{EmptyArtwork, EmptyState}` 
 `FirstDraft` chỉ cho successful unfiltered empty head không continuation, `NoResults` cho tìm
 không khớp. Không fork asset/CSS/pipeline. Giữ result status, create owner/uncertainty, input,
 privacy và error/stale panels; PageChain vẫn từ chối empty page có continuation. Xem
-[LayoutSpec](../design/empty-artwork-desk-259.md) và
-[evidence local](evidence/empty-webp-259/README.md). Không đổi lifecycle/Quint/API/SQL.
+[LayoutSpec](../design/empty-artwork-desk-259.md). Không đổi lifecycle/Quint/API/SQL.
 
 [DraftPages](../../apps/vink-web/src/draft_list/paging.rs) là adapter DTO cho `accept_page`,
 không sở hữu transport hoặc coordinator khác. Tối đa 10 trang × 24 mục trong một phần;
@@ -103,8 +102,7 @@ query không khớp vẫn scan keys toàn bảng. Đây là tradeoff còn thật
 giới hạn bằng page size. Stored key tránh chi phí gập từng title khi đọc; generated column bảo
 đảm SQL writer khác không làm key cũ. Chưa có bằng chứng cần denormalize owner/order hoặc
 trigram index. Response/read buffer phía application tối đa 101 summaries, không manuscript.
-Plan đầy đủ: [query-plans.txt](evidence/desk-pagination/query-plans.txt); log runner ở
-`target/issue201/query-plans.log`. Nguồn backend ghim tại `832c8fbfb64bc68fe9b15e6d0c05d54e4455322a`;
+Plan đầy đủ tái tạo bằng `tests/postgres/drafts.rs` trên PostgreSQL scratch. Nguồn backend ghim tại `832c8fbfb64bc68fe9b15e6d0c05d54e4455322a`;
 SQL production đo ở đây giữ nguyên sau tích hợp #202.
 
 ## Bằng chứng local trên nguồn tích hợp

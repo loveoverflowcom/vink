@@ -288,10 +288,8 @@ const STATIC_FONTS_SPEC: WebArtifactSpec = WebArtifactSpec {
 const STATIC_BRAND_SPEC: WebArtifactSpec = WebArtifactSpec {
     id: WebArtifactId::StaticBrand,
     depends_on: &[],
-    input_files: &[
-        "docs/design/brand/vpen-r1/asset-manifest.json",
-        "docs/design/brand/vpen-r1/Vink_Brand_LightDark_VPen_R1_2026-11-08.zip",
-    ],
+    input_files: &[],
+    // Includes `source-manifest.json`, the pinned provenance input of the brand check.
     input_dirs: &["apps/vink-web/assets/brand/"],
     relevant_env: &[],
     tools: &[],

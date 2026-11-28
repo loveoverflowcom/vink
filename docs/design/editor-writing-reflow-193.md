@@ -1,6 +1,6 @@
 # Mặt viết mobile và tiêu đề dài — #193
 
-Phạm vi WR-01/WR-02 tại `/ban-viet/{id}`, kế thừa [R5](ui-editor-r5.md).
+Phạm vi WR-01/WR-02 tại `/ban-viet/{id}`, kế thừa R5.
 Owner: `apps/vink-web/src/pages/desk.rs` và `apps/vink-web/style/vink.css`.
 Không thay shared field, CodeMirror, schema, normalization, API hay save authority.
 Lựa chọn dưới đây là kỹ thuật cục bộ của #193; D-04@r1 vẫn `DESIGN_PROPOSED`,

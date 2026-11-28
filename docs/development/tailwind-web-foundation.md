@@ -236,7 +236,6 @@ Từ #413 app dùng 100%/150% và tách stress 200% qua DOM override. [Feature m
 
 ## 10. Kiểm kê tích hợp W07 (#423)
 
-[Kiểm kê Tailwind Web và Leptos preview](tailwind-web-rollout-audit.md) ghi owner,
 caller và các selector đã chuyển hoặc giữ trên candidate sau #468. Dùng bảng ở đó
 để gắn evidence của hai lượt tích hợp. Các số đo và lượt kiểm W01 bên trên giữ
 provenance theo SHA và môi trường ban đầu.

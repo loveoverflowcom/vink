@@ -4,7 +4,6 @@ Ngày 16/11/2026 · [Issue #226](https://github.com/loveoverflowcom/vink/issues/
 Base review đã fetch: `11c6a9c` (gồm #228 và #244).
 Baseline thực thi cũ: `a81333c71faf6033014a00ec26c9f7b90109d1d9`.
 Đây là LayoutSpec và bản đồ tích hợp, **chưa triển khai presentation mới**.
-Kết quả chạy, AC và điều kiện tiếp tục nằm ở [evidence](../development/evidence/action-surfaces-226/README.md).
 
 ## Ý định, trạng thái và nguồn
 
