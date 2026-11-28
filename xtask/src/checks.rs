@@ -499,16 +499,28 @@ const MAX_TRACKED_BYTES: u64 = 1024 * 1024;
 const FORBIDDEN_DIRS: [&str; 4] = ["evidence", "archive", "screenshots", "captures"];
 /// Binary, archive and raw-output kinds that need an owner with a provenance record.
 const HEAVY_EXTENSIONS: [&str; 33] = [
-    "png", "jpg", "jpeg", "gif", "webp", "avif", "bmp", "tif", "tiff", "ico", "heic", "psd",
-    "zip", "gz", "tgz", "tar", "xz", "bz2", "7z", "rar", "log", "har", "trace", "mp4", "mov",
-    "webm", "pdf", "ttf", "otf", "woff", "woff2", "lottie", "wasm",
+    "png", "jpg", "jpeg", "gif", "webp", "avif", "bmp", "tif", "tiff", "ico", "heic", "psd", "zip",
+    "gz", "tgz", "tar", "xz", "bz2", "7z", "rar", "log", "har", "trace", "mp4", "mov", "webm",
+    "pdf", "ttf", "otf", "woff", "woff2", "lottie", "wasm",
 ];
 /// Runtime and build inputs allowed to carry those kinds, each with the record that pins it.
 const HEAVY_OWNERS: [(&str, &str); 5] = [
-    ("apps/vink-web/assets/brand/", "served logo, provenance.json"),
-    ("apps/vink-web/assets/fonts/", "served fonts, provenance.json"),
-    ("apps/vink-web/assets/empty/", "served empty artwork, asset-manifest.json"),
-    ("apps/vink-preview/cmp/fonts/", "Desktop preview fonts, fonts provenance.json"),
+    (
+        "apps/vink-web/assets/brand/",
+        "served logo, provenance.json",
+    ),
+    (
+        "apps/vink-web/assets/fonts/",
+        "served fonts, provenance.json",
+    ),
+    (
+        "apps/vink-web/assets/empty/",
+        "served empty artwork, asset-manifest.json",
+    ),
+    (
+        "apps/vink-preview/cmp/fonts/",
+        "Desktop preview fonts, fonts provenance.json",
+    ),
     ("packages/expressions/assets/", "Noto expressions, manifest"),
 ];
 
@@ -1226,7 +1238,10 @@ mod tests {
         };
         let lawful = files(&[
             ("apps/vink-web/assets/brand/vpen-r1-mark-dark-24.png", 1_042),
-            ("apps/vink-web/assets/fonts/literata-variable.woff2", 256_620),
+            (
+                "apps/vink-web/assets/fonts/literata-variable.woff2",
+                256_620,
+            ),
             ("apps/vink-web/e2e/visual-evidence.mjs", 40_000),
             (".agents/skills/vink-ui-evidence-drive/SKILL.md", 4_000),
             ("docs/archive-policy.md", 100),

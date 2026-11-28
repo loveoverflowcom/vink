@@ -239,6 +239,8 @@ const DOC_DIRS: [&str; 6] = [
     ".codex/",
 ];
 const EDITOR_DIR: &str = "apps/vink-web/editor/";
+/// Reproducible measurement scripts of the App (`services/vink-app/bench/`), run by hand.
+const BENCH_DIR: &str = "services/vink-app/bench/";
 const EMPTY_ARTWORK_DIR: &str = "apps/vink-web/assets/empty/";
 /// Leptos host of the Preview app (`apps/vink-preview`, #552).
 const PREVIEW_DIR: &str = "apps/vink-preview/leptos/";
@@ -280,6 +282,7 @@ pub const BROWSER_MODULES: &[(&str, &[Scenario], &[&str])] = {
         ("apps/vink-web/e2e/editor-paper-first-smoke.mjs", &[S::EditorChrome, S::EditorFormat], &[]),
         ("apps/vink-web/e2e/editor-writing-smoke.mjs", &[S::EditorChrome], &[]),
         ("apps/vink-web/e2e/endorsement-smoke.mjs", &[S::Discussion, S::Endorsement], &[]),
+        ("apps/vink-web/e2e/evaluator-message.mjs", &[S::EvaluatorMessage], &[]),
         ("apps/vink-web/e2e/markdown-reader-smoke.mjs", &[S::Review], &[]),
         ("apps/vink-web/e2e/notifications-smoke.mjs", &[S::Notifications], &[]),
         ("apps/vink-web/e2e/public-storage-smoke.mjs", &[S::Storage], &[]),
@@ -910,6 +913,15 @@ fn sql(sel: &mut Selection, path: &str) -> bool {
 }
 
 fn other(sel: &mut Selection, path: &str) -> bool {
+    if path.starts_with(BENCH_DIR) {
+        sel.owner(path, "app benchmarks");
+        sel.manual(
+            "rerun the changed benchmark on a scratch PostgreSQL/host as its README describes",
+            "reproducible measurement scripts; no lane executes them",
+            path,
+        );
+        return true;
+    }
     if CMP_DIRS.iter().any(|d| path.starts_with(d)) {
         sel.owner(path, "cmp");
         sel.add(
