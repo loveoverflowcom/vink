@@ -291,28 +291,14 @@ async function inlineCommits(page, {check, holdAnswer, a, bio}) {
 
 }
 
-async function lateProfileWrites(page, staleTab, {check, holdAnswer, switchActor, b, bio}) {
-  // At Chrome's response boundary a newer account may still be waiting for
-  // its own read. The old private controls must disappear before release.
-  const transport = await holdAnswer(staleTab,'PUT',API);
-  await staleTab.key('Enter',2);
-  check(await transport.held()===200,'hold the real PUT response before Chrome completes the transaction');
-  await fill(staleTab,BIO,'Không chuyển nháp này sang B');
-  await staleTab.key('Enter',2);
-  await switchActor('b');
-  await staleTab.waitFor(`!${q(BIO)} || ${q(BIO)}.value===''`,'old private UI fenced while the transport ACK is paused');
-  check((await own(page)).principal_id===b.principal_id && (await own(page)).bio===null,
-    'independent B session and its persisted bio are unchanged');
-  await transport.finish(false,true);
-  await staleTab.waitFor(`${q(BIO)}?.value===''`,'B profile resolves after the old transport response');
-  await switchActor('a');
-  await staleTab.waitFor(`${q(BIO)}?.value==='Nháp của phiên mới'`,'new A scope reads the durable write and drops the previous queue');
+async function lateProfileWrites(page, staleTab, readTab, {base, check, holdAnswer, switchActor, b, bio}) {
+  // Keep both original A answers across the same real sign-out/sign-in cycle.
+  // One tab holds the initial GET. The editing tab holds its PUT first in the
+  // transport, then between receipt of its actual body and delivery to WASM.
+  const lateOwn=await holdAnswer(readTab,'GET',API);
+  await readTab.goto(base+EDIT);
+  check(await lateOwn.held()===200,'hold A’s real own profile');
   await fill(staleTab,BIO,'Chờ trả kết quả');
-
-  // A write has reached App, but its response and the next committed intent
-  // still belong to the old session generation.
-  // Hold delivery to WASM after the real response body has arrived. Pausing
-  // Chrome's Fetch domain covers the separate transport case above.
   await staleTab.eval(`(() => {
     const original=window.fetch;
     let release;
@@ -329,14 +315,27 @@ async function lateProfileWrites(page, staleTab, {check, holdAnswer, switchActor
       return response;
     };
   })()`);
+  const transport=await holdAnswer(staleTab,'PUT',API);
   await staleTab.key('Enter',2);
-  await staleTab.waitFor("window.profileAckGate.status===200",'real A write completed before application delivery');
-  check((await own(staleTab)).bio==='Chờ trả kết quả','A write reached durable commit before sign-out');
+  check(await transport.held()===200,'hold the real PUT response before Chrome completes the transaction');
+  check((await own(page)).bio==='Chờ trả kết quả','A write reached durable commit before sign-out');
   await fill(staleTab,BIO,'Lệnh xếp hàng của phiên cũ');
   await staleTab.key('Enter',2);
   await switchActor('b');
-  await staleTab.waitFor(`${q(BIO)}?.value===''`,'B never adopts A’s draft or pending status');
+  await staleTab.waitFor(`!${q(BIO)} || ${q(BIO)}.value===''`,'old private UI fenced while the transport ACK is paused');
+  await readTab.waitFor(`${q(BIO)}?.value===''`,'B has its own profile with the old GET outstanding');
+  const currentB=await own(page);
+  check(currentB.principal_id===b.principal_id && currentB.bio===null,'independent B session and its persisted bio are unchanged');
+  await transport.finish(false,true);
+  await staleTab.waitFor("window.profileAckGate.status===200",'real PUT body is still gated before application delivery');
+  await staleTab.waitFor(`${q(BIO)}?.value==='' && !${q(BIO+'-feedback')}`,'B never adopts A’s draft or pending status');
   await switchActor('a');
+  await readTab.waitFor(`${q(BIO)}?.value==='Chờ trả kết quả'`,'A returns with a new generation');
+  await fill(readTab,BIO,'Nháp của phiên mới');
+  const disposition=await lateOwn.finish(false,true);
+  check(await readTab.eval(`${q(BIO)}.value==='Nháp của phiên mới'`),
+    `old A response cannot overwrite the new A form (${disposition})`);
+  await readTab.key('Escape');
   await staleTab.waitFor(`${q(BIO)}?.value==='Chờ trả kết quả'`,'new A observes only the persisted value');
   await fill(staleTab,BIO,'Chữ mới chưa chốt');
   await staleTab.eval(`(async()=>{
@@ -608,20 +607,7 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   await staleTab.capture('author-profile-conflict',{scenario:'divergent bio', textScale:100});
   await staleTab.click(BIO+'-feedback button');
   await staleTab.waitFor(`document.activeElement===${q(BIO)} && ${q(BIO)}.value===${JSON.stringify(bio)}`, 'accept saved bio and return focus');
-  // A held private GET can arrive after logout, login as B, and a new login as A.
-  const lateOwn = await holdAnswer(staleTab, 'GET', API);
-  await staleTab.goto(base + EDIT);
-  check(await lateOwn.held() === 200, 'hold A’s real own profile');
-  await switchActor('b');
-  await staleTab.waitFor(`${q(BIO)} && ${q(BIO)}.value===''`, 'B has its own profile state');
-  await switchActor('a');
-  await staleTab.waitFor(`${q(BIO)}?.value===${JSON.stringify(bio)}`, 'A returns with a new generation');
-  await fill(staleTab, BIO, 'Nháp của phiên mới');
-  const ownDisposition = await lateOwn.finish(false, true);
-  check(await staleTab.eval(`${q(BIO)}.value==='Nháp của phiên mới'`),
-    `old A response cannot overwrite the new A form (${ownDisposition})`);
-
-  await lateProfileWrites(page, staleTab, {check, holdAnswer, switchActor, b, bio});
+  await lateProfileWrites(page, staleTab, viewing, {base, check, holdAnswer, switchActor, b, bio});
 
   const discovery = '/?q=rieng&tag=' + encodeURIComponent('tản-văn');
   await guest.goto(base + discovery);
