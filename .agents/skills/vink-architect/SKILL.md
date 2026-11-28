@@ -62,6 +62,12 @@ Repeated workarounds, duplicate business rules or casts that bypass domain types
 to revisit the owner or representation. Treat them as evidence to investigate, not automatic
 proof that the whole architecture must be replaced.
 
+When the choice is about module, crate or package boundaries, exports or dependency direction,
+judge it by the real dependency graph with [physical design](references/physical-design.md):
+levelization, escalation/demotion, insulation, minimal public API, hierarchical tests and
+measured physical cost. Prefer the smallest change that removes a named dependency over new
+layers, crates or traits.
+
 ## Make the recommendation executable
 
 Explain the preferred option through a concrete before/after flow, its principal tradeoff,
