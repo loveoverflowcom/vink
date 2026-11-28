@@ -316,10 +316,15 @@ impl Editor {
     }
     // Only observe a newer projection. An older GET from route re-entry cannot settle a PUT.
     pub fn observe(&mut self, stored: OwnProfile) {
-        if self.flight.is_none()
-            && stored.profile_version > self.acked.profile_version
-            && stored.principal_id == self.acked.principal_id
+        if stored.principal_id != self.acked.principal_id
+            || stored.profile_version <= self.acked.profile_version
         {
+            return;
+        }
+        if self.flight.is_some() {
+            // Re-entry can see a peer write made while no editor was listening for broadcasts.
+            self.refresh_due = true;
+        } else {
             self.merge(stored, None, false);
         }
     }
@@ -536,6 +541,27 @@ mod tests {
         assert_eq!(next.command.expected_version, 5);
         assert_eq!(next.command.pen_name, "Cuối");
         assert_eq!(next.command.bio, None);
+    }
+    #[test]
+    fn reentry_during_a_write_defers_a_newer_projection_until_after_settlement() {
+        let mut e = Editor::new(initial());
+        commit(&mut e, Name, "Đã chốt");
+        let command = e.start().unwrap().command;
+        let mut receipt = initial();
+        receipt.profile_version += 1;
+        receipt.pen_name = command.pen_name.clone();
+        let mut latest = receipt.clone();
+        latest.profile_version += 1;
+        latest.bio = None;
+        e.observe(latest.clone());
+        assert!(e.refresh_due);
+        assert!(e.flight.is_some());
+        assert_eq!(e.acked.profile_version, command.expected_version);
+        e.settle(receipt, true);
+        assert!(e.refresh_due);
+        e.observe(latest);
+        assert_eq!(e.acked.bio, None);
+        assert!(e.start().is_none());
     }
     #[test]
     fn bounds_normalization_empty_bio_and_validation_are_field_specific() {

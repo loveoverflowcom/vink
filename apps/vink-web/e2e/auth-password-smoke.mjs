@@ -1293,6 +1293,24 @@ export async function standalone(page, {args, check, openPage}) {
   await heldBio.finish();
   await page.waitFor(`${q('#profile-pen-name')}?.value==='Bút danh ở tab khác' && ${q('#profile-bio')}?.value==='Giữ phản hồi'`,
     'broadcast received before a late ACK still refreshes the untouched field');
+  const awayAck=await holdAnswer(page,'PUT','/api/v1/me/profile');
+  await fill(page,'#profile-bio','Bản ghi khi rời trang');
+  await page.key('Enter',2);
+  check(await awayAck.held()===200,'CSR holds the second ACK before leaving the route');
+  await page.click('#profile-back');
+  await page.waitFor(q('#profile-leave[open]'),'pending bio is protected on Back');
+  await page.click('#profile-leave-keep');
+  await page.waitFor(q('#edit-profile-link'),'same session keeps the pending editor off route');
+  await peer.eval("window.dispatchEvent(new FocusEvent('focus'))");
+  await fill(peer,'#profile-pen-name','Đổi khi rời trang');
+  await peer.key('Enter');
+  await peer.waitFor(`${q('#profile-pen-name-feedback')}?.textContent.includes('Đã lưu')`,'peer saved the name with no mounted editor on the first tab');
+  await page.click('#edit-profile-link');
+  await page.waitFor(`${q('#profile-bio-feedback')}?.textContent.includes('Đang lưu')`,
+    're-entry retains the pending command even after the peer committed');
+  await awayAck.finish();
+  await page.waitFor(`${q('#profile-pen-name')}?.value==='Đổi khi rời trang' && ${q('#profile-bio')}?.value==='Bản ghi khi rời trang'`,
+    're-entry sees the peer change made off route after the delayed ACK settles');
   await page.eval("document.querySelector('#profile-bio-policy').focus()");
   await page.key('Space');
   await page.waitFor("document.querySelector('#profile-bio-policy').matches(':open')",'CSR reopens privacy picker');
