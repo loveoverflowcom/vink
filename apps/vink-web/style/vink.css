@@ -745,8 +745,6 @@ a {
 .vk-desk-heading .vk-search-launcher, .vk-desk-heading .vk-search-close { display: inline-flex; }
 .vk-desk-heading [hidden], .vk-draft-controls [hidden] { display: none; }
 /* Creation belongs with list tools; the heading keeps its stable search launcher. */
-.vk-draft-controls > .vk-desk-create { flex-wrap: wrap; }
-.vk-draft-controls .vk-desk-create > .vk-ui-field { position: relative; }
 /* The loading and empty-state placement rules switch these wrappers to flex. */
 .vk-drafts-region, .vk-desk-works, .vk-draft-list { display: grid; }
 .vk-empty-state__actions > a {
@@ -772,13 +770,27 @@ a {
   color: var(--vk-on-error-container);
 }
 .vk-desk-loading__placeholder[hidden] { display: none; }
-.vk-desk-create {
-  display: flex;
-  --vk-ui-control-radius: var(--vk-radius-control-48);
+/* Desk R5 uses the shared native Select and Button with a local pill recipe. */
+.vk-desk-create { --vk-ui-control-radius: var(--vk-radius-full); }
+:is(.vk-desk-create, .vk-draft-tools) > .vk-ui-field { position: relative; margin: 0; }
+:is(.vk-desk-create, .vk-draft-tools) .vk-ui-select {
+  min-block-size: 48px;
+  border-radius: var(--vk-radius-full);
+  background-color: var(--vk-action-tonal-container);
+  color: var(--vk-action-tonal-content);
 }
-.vk-desk-create .vk-ui-select { border-radius: var(--vk-ui-control-radius); }
+:is(.vk-desk-create, .vk-draft-tools) .vk-ui-select:disabled {
+  background-color: var(--vk-disabled-container);
+  color: var(--vk-disabled-content);
+}
+.vk-desk-create .vk-ui-button { min-block-size: 48px; }
+@media not (forced-colors: active) {
+  .vk-desk-create .vk-ui-button { border-width: 0; }
+}
+.vk-draft-rows { margin: 0; }
+/* The grid supplies one space-3 gap before the first row; match it with a second. */
+.vk-draft-rows:not(:empty) { margin-block-start: var(--vk-space-3); }
 .vk-desk-create > .vk-ui-field {
-  margin: 0;
   flex: 0 1 auto;
   min-inline-size: 0;
   max-inline-size: 100%;
@@ -791,10 +803,8 @@ a {
 .vk-desk-create .vk-ui-field__required { display: none; }
 .vk-desk-create .vk-ui-button { padding-inline: min(var(--vk-space-6), 24px); }
 .vk-desk-create #create-draft-note { display: none; }
-.vk-draft-tools > .vk-ui-field { margin: 0; }
-.vk-draft-tools .vk-ui-select { border-radius: var(--vk-radius-control-48); }
-.vk-draft-controls .vk-desk-create .vk-ui-field__label,
-.vk-draft-tools label,
+.vk-desk-create .vk-ui-field__label,
+.vk-draft-tools .vk-ui-field__label,
 .vk-draft-search #draft-search-help {
   position: absolute; inline-size: 1px; block-size: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip-path: inset(50%); white-space: nowrap;
@@ -824,9 +834,6 @@ a {
   .vk-draft-search .vk-ui-search__query:focus-within { outline: 2px solid Highlight; outline-offset: -2px; }
 }
 #draft-scope, .vk-draft-sort-help { margin: 0; font-size: var(--vk-type-caption-size); line-height: var(--vk-type-caption-line-height); }
-.vk-desk-privacy { margin-top: var(--vk-space-8); font-size: var(--vk-type-label-size); }
-/* The first-use CTA drops its icon to keep the full label measure at 320px/text200. */
-.vk-empty-state__actions #create-draft > .vk-ui-icon { display: none; }
 .vk-empty-state__actions > .vk-desk-create { justify-content: center; text-align: start; }
 
 /* R4 editor (#475): the manuscript and article options share one workspace. */

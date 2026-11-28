@@ -32,11 +32,15 @@ họ vẫn xem được kết quả trước đó trong cùng phiên và có cá
    hàng số liệu theo thứ tự `Thấm → Nhận xét → Lượt xem` (`D-01`) kèm giải thích `#views-explainer`
    và [registry Lượt xem](../../development/work-views.md). [Registry tác giả](../../development/desk-author-feedback.md)
    sở hữu quy tắc Thấm/Nhận xét và quyền.
+5. [Desk R5](layout-spec.md#54-desk-r5-614) tái dùng Button và Select. Hai trạng thái dùng
+   chung nút “Viết” và chọn định dạng. Nút Viết, định dạng và sắp xếp dùng pill tại Desk.
+   Khi mất ACK, “Tải lại danh sách” và “Viết thêm” giữ thứ tự đối soát của luồng tạo.
 
 ## Mở chi tiết kiểm duyệt (#477)
 
-Từ hàng tác phẩm, “Xem kiểm duyệt” mở `/ban-viet?review={WorkId}`. Cùng một chi tiết nhận liên
-kết từ Editor, URL cũ và đích thông báo có thêm `revision` cùng `decision`. Component
+Từ hàng có ngữ cảnh, “Xem kiểm duyệt” mở `/ban-viet?review={WorkId}`. [Tín hiệu ngữ cảnh](../../development/desk-author-feedback.md#ngữ-cảnh-kiểm-duyệt-614)
+đi cùng trang tác phẩm và gồm lịch sử qua nhiều revision, kể cả khi revision mới nhất chưa được gửi.
+Cùng một chi tiết nhận liên kết từ Editor, URL cũ và đích thông báo có thêm `revision` cùng `decision`. Component
 [DeskReview](../../../apps/vink-web/src/pages/desk_review.rs) tải một tác phẩm theo phiên đã
 xác nhận, độc lập với phần danh sách đang hiển thị. Khi đóng, bộ lọc và vị trí trên Bàn viết
 vẫn thuộc owner danh sách. [LayoutSpec R4.4](desk-moderation.md) ghi trạng thái và cách điều hướng.

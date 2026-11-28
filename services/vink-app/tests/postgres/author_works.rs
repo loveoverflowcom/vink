@@ -162,6 +162,93 @@ async fn author_work_corpus_cursor_privacy_and_legacy_contract(pool: PgPool) {
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn author_work_review_context_survives_a_newer_unsent_snapshot(pool: PgPool) {
+    let vink = seeded(&pool).await;
+    let work = vink.create_draft(author()).await.unwrap().work_id;
+    vink.save_draft(
+        author(),
+        save(
+            work,
+            1,
+            "Bản chụp riêng",
+            doc(&[&["Bản thảo còn đang viết."]]),
+        ),
+    )
+    .await
+    .unwrap();
+    let unsent = vink
+        .capture_snapshot(author(), work, "author-desk-unsent", 2, 1)
+        .await
+        .unwrap()
+        .revision_id;
+    let work_id = work.to_string();
+
+    let app = app(&pool).await;
+    let path = "/api/v1/author/works";
+    let (status, _, body) =
+        call(&app, "GET", path, Some(dev_seed::SAMPLE_AUTHOR), None, None).await;
+    assert_eq!(status, StatusCode::OK);
+    let before: vink_web::contract::author_works::AuthorWorkList =
+        serde_json::from_str(&body).unwrap();
+    let private = before.works.iter().find(|w| w.work_id == work_id).unwrap();
+    let projection = private.publication.as_ref().unwrap();
+    assert_eq!(
+        projection.latest_revision_id.as_deref(),
+        Some(unsent.to_string().as_str())
+    );
+    assert_eq!(projection.has_review_context, Some(false));
+
+    vink.request_public(author(), work, "author-desk-submit", unsent, 1)
+        .await
+        .unwrap();
+    vink.set_private(author(), work, "author-desk-private", 2)
+        .await
+        .unwrap();
+    vink.save_draft(
+        author(),
+        save(work, 2, "Bản chụp mới", doc(&[&["Bản thảo đã viết lại."]])),
+    )
+    .await
+    .unwrap();
+    let newer = vink
+        .capture_snapshot(author(), work, "author-desk-newer", 3, 1)
+        .await
+        .unwrap()
+        .revision_id;
+
+    let (status, cache, body) =
+        call(&app, "GET", path, Some(dev_seed::SAMPLE_AUTHOR), None, None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(cache.as_deref(), Some("no-store"));
+    let list: vink_web::contract::author_works::AuthorWorkList =
+        serde_json::from_str(&body).unwrap();
+    let private = list.works.iter().find(|w| w.work_id == work_id).unwrap();
+    let projection = private.publication.as_ref().unwrap();
+    assert_eq!(
+        projection.latest_revision_id.as_deref(),
+        Some(newer.to_string().as_str())
+    );
+    assert!(projection.latest_moderation.is_none());
+    assert!(projection.intent_revision_id.is_none());
+    assert!(projection.current_public.is_none());
+    assert!(!projection.review_withdrawn);
+    assert_eq!(projection.has_review_context, Some(true));
+
+    let (status, cache, body) = call(
+        &app,
+        "GET",
+        path,
+        Some(dev_seed::OTHER_PRINCIPAL),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(cache.as_deref(), Some("no-store"));
+    assert!(!body.contains(&work_id));
+}
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
 async fn author_work_revision_counts_public_projection_and_content_metadata_changes(pool: PgPool) {
     let vink = seeded(&pool).await;
     let capture = vink

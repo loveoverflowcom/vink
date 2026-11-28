@@ -167,15 +167,15 @@ Nguồn là yêu cầu của chủ sản phẩm ghi tại #522 về căn hàng v
 ### 5.2. Khách, lần đầu, đang tải và lỗi
 
 Khách và các biến thể `DeskAccess` dùng EmptyState trên nền trang, CTA theo khả năng đăng nhập.
-Phiên chưa đủ quyền không đọc danh sách riêng. Lần đầu có minh họa và một CTA “Viết bản thảo đầu
-tiên”, kèm Select “Định dạng bản thảo” theo DQ-06. DQ-04 ẩn kính lúp/sắp xếp ở kho rỗng vẫn
+Phiên chưa đủ quyền không đọc danh sách riêng. Lần đầu giữ minh họa và dùng chung nút “Viết”
+có icon bút với danh sách có tác phẩm. Select giữ tên truy cập “Định dạng bản thảo” theo DQ-06. DQ-04 ẩn kính lúp/sắp xếp ở kho rỗng vẫn
 `OPEN`; đề xuất ẩn khi ô không có chữ phải giữ node và tái kiểm khi có query hoặc lỗi.
 Màn chờ hiện skeleton UIS-03 sau 300 ms. Lỗi ở vùng kết quả, có Thử lại khi thích hợp, giữ hàng
 đã đọc và query nếu vẫn cùng phiên. Lỗi quyền có trạng thái riêng và gỡ dữ kiện riêng tư.
 
 ### 5.3. Thẻ tác phẩm
 
-Thẻ rời (`bg-content`, bo 20 px, khe 8 px), nhan đề Literata, nhan đề trống dùng chữ nghiêng. Status
+Thẻ rời (`bg-content`, bo 20 px, khe 12 px), nhan đề Literata, nhan đề trống dùng chữ nghiêng. Status
 hiển thị số tác phẩm trong kết quả cùng nút chữ “Cách tính lượt xem” mở sheet giải thích (`#514`).
 Mỗi sự thật có một nhãn ngắn kèm icon (tối đa ba; r3 bổ sung tone tonal chọn lọc cho “Đã đăng”,
 nhóm chờ duyệt bằng `secondary-container` và nhóm không được duyệt/ẩn/gỡ bằng `error-container`),
@@ -188,7 +188,21 @@ Thấm/Nhận xét chỉ hiển thị khi có bản công khai. Theo delta `D-02
 thay thế); giữ liên kết mở bản thảo của hàng. DQ-05 (giờ) và DQ-10 (dùng tertiary cho “Chờ duyệt”)
 vẫn `OPEN`: giữ giờ theo #213 và dùng `secondary-container` (không dùng tertiary) cho nhóm chờ duyệt.
 Xem [LayoutSpec Lượt xem r3](../work-views.md) và [delta R4.4](desk-moderation.md) cho chi tiết
-kiểm duyệt mở từ thẻ.
+kiểm duyệt mở từ thẻ có ngữ cảnh.
+
+### 5.4. Desk R5 (#614)
+
+Hướng bố cục theo [preview đã duyệt](https://drive.google.com/file/d/1goBMHGwmSMHSNdEREN9ZcTv4B5VSnPrp/view).
+Các giá trị màu và kiểu chữ dùng token Vink. Hai Select native và nút Viết có chiều cao tối thiểu
+48 px, bán kính pill, với mặt tonal cho Select và filled cho Viết. Ở kho có tác phẩm, nhóm tạo nằm
+đầu hàng, sắp xếp căn cuối. Công cụ có thể xuống hàng khi hẹp hoặc tăng cỡ chữ. Chừa 24 px trước
+danh sách, dùng nền nhẹ và góc 20 px cho mỗi tác phẩm. Vùng tác phẩm có mô tả riêng tư để công nghệ
+hỗ trợ đọc. Lần đầu dùng cùng cặp control, canh giữa cùng minh họa.
+
+Nút kiểm duyệt riêng khỏi liên kết sửa bản thảo. [Hợp đồng ngữ cảnh](../../development/desk-author-feedback.md#ngữ-cảnh-kiểm-duyệt-614)
+chỉ ẩn trigger khi đã xác nhận không có ngữ cảnh. Liên kết trực tiếp và sheet theo §5.3.
+Kiểm ở 320/390/834/1440 px, Light/Dark, 100%/150% và stress 200%. Kiểm Tab, focus, bàn phím native,
+vượt ngang và giữ trạng thái khi Search Dock/sheet mở hoặc đóng.
 
 ## 6. Interaction và kiểm lại theo owner
 

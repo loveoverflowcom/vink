@@ -2127,7 +2127,7 @@ async function textContrast(page, theme, surface = 'shell', targets) {
     explore: ['#public-query', '#explore-heading h1', '#open-tag-filters', '.vk-public-row__eyebrow', '.vk-feed-date', '.vk-public-row__title', '.vk-public-row__byline .vk-ui-byline__name', '.vk-public-row__byline .vk-ui-avatar', '.vk-public-row__excerpt', '.vk-public-scope'],
     filter: ['#modal-tag-form legend', '#modal-tag-form a'],
     empty: ['.vk-empty-state__message', '.vk-empty-state__actions .vk-ui-button'],
-    'desk-empty': ['.vk-empty-state__message', '.vk-empty-state__actions .vk-ui-button', '.vk-desk-privacy'],
+    'desk-empty': ['.vk-empty-state__message', '.vk-empty-state__actions .vk-ui-button'],
     reader: ['#reader-return', '#reader-header h1', '#reader-header .vk-work-byline', '#reader-header .vk-ui-type-caption', '.vk-reader .vk-block'],
     me: ['#me-title', '#page-appearance-title', '#page-theme-title', '#page-text-title', '#page-rail-title', ...['light', 'dark', 'system'].map(value => `#page-theme label:has([value="${value}"])`)],
   }[surface] ?? ['#navigation-toggle', '#navigation-primary a', RAIL_ME]);
@@ -3438,12 +3438,13 @@ async function draftR6Hierarchy(page) {
       const rows=[...document.querySelectorAll('.vk-draft-row__link')], list=document.querySelector('#draft-results');
       return !document.querySelector('#resume, #resume-title-toggle') && document.documentElement.scrollWidth<=innerWidth &&
         getComputedStyle(list).backgroundColor==='rgba(0, 0, 0, 0)' && rows.every((row,i)=>
-          getComputedStyle(row.closest('.vk-author-work')).backgroundColor==='rgba(0, 0, 0, 0)' &&
+          getComputedStyle(row.closest('.vk-author-work')).backgroundColor!=='rgba(0, 0, 0, 0)' &&
+          getComputedStyle(row.closest('.vk-author-work')).borderRadius==='20px' &&
           row.getAttribute('href')==='/ban-viet/'+${JSON.stringify(cards)}[i].work_id &&
           row.querySelector('.vk-draft-row__title').textContent===${JSON.stringify(cards)}[i].title &&
           !row.textContent.includes('Phiên bản') && getComputedStyle(row).paddingLeft===getComputedStyle(row).paddingRight &&
           row.querySelectorAll('a,button,input').length===0);
-    })()`), `#213 ${width}/${scale}/${theme}: no resume, flat row surfaces, full Unicode titles and exact IDs (#593)`);
+    })()`), `#213 ${width}/${scale}/${theme}: quiet rounded row surfaces, no resume, full Unicode titles and exact IDs (#614)`);
     await page.eval(`document.querySelector('#drafts').scrollIntoView({block:'start'})`);
     await page.capture(`r6-list-${width}-${scale}-${theme}`);
     await textContrast(page, theme, 'desk');
@@ -3568,9 +3569,9 @@ async function draftDashboard(page) {
     await page.eval(`Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{})))`);
     await page.capture(`desk-long-${width}-${scale}-${theme}`);
     check(await page.eval(`(() => {
-      const ids = ['open-draft-search', 'create-draft-format', 'create-draft'];
-      const [search, format, create] = ids.map(id => document.getElementById(id));
-      const rects = [search, format, create].map(control => control.getBoundingClientRect());
+      const ids = ['open-draft-search', 'create-draft-format', 'create-draft', 'draft-sort'];
+      const [search, format, create, sort] = ids.map(id => document.getElementById(id));
+      const rects = [search, format, create, sort].map(control => control.getBoundingClientRect());
       const label = format.labels[0];
       const labelBox = label.getBoundingClientRect();
       const [searchBox, formatBox, createBox] = rects;
@@ -3588,12 +3589,19 @@ async function draftDashboard(page) {
         Array.from(format.options).filter(option => !option.disabled).map(option => option.value).join() === 'default,markdown' &&
         searchStyle.backgroundColor === 'rgba(0, 0, 0, 0)' && searchStyle.borderTopColor === 'rgba(0, 0, 0, 0)' &&
         searchStyle.boxShadow === 'none' && search.getAttribute('aria-expanded') === 'false' &&
+        create.textContent === 'Viết' && !!create.querySelector('[data-icon=edit]') && !create.querySelector('[data-icon=add]') &&
+        [format, create, sort].every(control => {
+          const style = getComputedStyle(control);
+          return parseFloat(style.borderTopLeftRadius) >= control.getBoundingClientRect().height / 2 &&
+            style.borderTopWidth === '0px' && style.boxShadow === 'none';
+        }) && getComputedStyle(format).backgroundColor === getComputedStyle(sort).backgroundColor &&
+        getComputedStyle(format).backgroundColor !== getComputedStyle(create).backgroundColor &&
         (!standard || searchBox.width === 48 && rects.every(box => Math.abs(box.height - 48) <= 1) &&
-          [search, format, create].every(control => getComputedStyle(control).borderTopLeftRadius === '14px') &&
+          searchStyle.borderTopLeftRadius === '14px' &&
           (${width} < 834 || createAligned && aligned(title) && aligned(lock)) &&
           formatBox.top >= heading.bottom - 1 && createBox.top >= heading.bottom - 1 &&
           (!createAligned || Math.abs(createBox.left - formatBox.right - 12) <= 1));
-    })()`), `#522 Desk ${theme} ${width}/${scale}: native format label, flat Search and 48px creation controls below the heading (#593)`);
+    })()`), `#522 Desk ${theme} ${width}/${scale}: native format label, flat Search and three 48px-minimum pills below the heading (#614)`);
     check(await page.eval(`(() => {
       const row=document.querySelector('.vk-draft-row__link'), work=row.closest('.vk-author-work'), title=row.querySelector('.vk-draft-row__title'), meta=work.querySelector('.vk-draft-meta');
       const t=title.getBoundingClientRect(), m=meta.getBoundingClientRect(), r=work.getBoundingClientRect(), h=document.querySelector('#heading').getBoundingClientRect();
@@ -3639,14 +3647,14 @@ async function draftDashboard(page) {
         document.querySelectorAll('#desk h1').length===1 && document.querySelector('#drafts h2#draft-list-title')?.textContent==='Tác phẩm của bạn' &&
         picks.every(p=>getComputedStyle(p).appearance==='none' && getComputedStyle(p).backgroundImage==='none' && p.parentElement.dataset.selectVariant==='inset-16' && p.parentElement.querySelectorAll('svg[data-icon=expand-more]').length===1) &&
         getComputedStyle(picks[0].closest('.vk-ui-field').querySelector('.vk-ui-field__required')).display==='none' &&
-        create.textContent==='Tạo bản thảo' && create.classList.contains('vk-ui-button--filled') &&
+        create.textContent==='Viết' && create.classList.contains('vk-ui-button--filled') &&
         getComputedStyle(create).backgroundColor!=='rgba(0, 0, 0, 0)' &&
-        create.querySelectorAll('svg[data-icon=add][aria-hidden=true]').length===1 &&
+        create.querySelectorAll('svg[data-icon=edit][aria-hidden=true]').length===1 && !create.querySelector('svg[data-icon=add]') &&
         r.width>=48 && r.height>=48 && r.left>=0 && r.right<=innerWidth &&
         [...range.getClientRects()].every(t=>t.left>=r.left-1 && t.right<=r.right+1 && t.top>=r.top-1 && t.bottom<=r.bottom+1) &&
         !create.querySelector('button,a,input') &&
         document.querySelector('#draft-sort').tagName==='SELECT';
-    })()`), `#225 ${width}/${scale}/${theme}: full create label + one Add target, native Select and no fake pressed`);
+    })()`), `#225 ${width}/${scale}/${theme}: one complete Viết CTA with an accessible label, a decorative pen, and native Selects`);
     if (width<=390 && scale===200) {
       await page.eval(`document.querySelector('.vk-draft-row__link').focus()`); await page.key('Tab'); await page.key('Tab',SHIFT);
       const expanded = await page.eval(`(() => {
@@ -3863,7 +3871,7 @@ async function draftDashboard(page) {
   await page.waitFor(`document.querySelector('[data-testid=draft-no-results]')`, 'empty filtered result is still a search miss');
   await page.click('#clear-draft-search');
   await page.waitFor(`document.querySelector('[data-testid=draft-empty]')`, 'unfiltered empty dashboard');
-  check(await page.eval(`document.querySelectorAll('#create-draft').length === 1 && document.querySelector('#create-draft').textContent === 'Viết bản thảo đầu tiên' && !document.querySelector('[data-testid=draft-resume]')`), 'empty has exactly one primary create action');
+  check(await page.eval(`document.querySelectorAll('#create-draft').length === 1 && document.querySelector('#create-draft').textContent === 'Viết' && !document.querySelector('[data-testid=draft-resume]')`), 'empty has exactly one primary create action');
   check(await page.eval(`!!document.querySelector('[data-testid=draft-empty] .vk-empty-state__actions #create-draft')`), 'first create belongs to the shared empty composition');
   await captureRecovery(page, 'desk-empty', '[data-testid=draft-empty]');
   for (const theme of ['light', 'dark']) {
@@ -3917,7 +3925,7 @@ async function draftDashboard(page) {
   check(await page.eval(`document.querySelector('[data-testid=create-notice]').textContent.includes('có thể đã được tạo')`), 'failed reconciliation preserves the unknown outcome');
   gate.list = null;
   await page.click('#reconcile-drafts');
-  await page.waitFor(`document.querySelector('#create-draft')?.textContent === 'Tạo thêm bản thảo'`, 'successful list reconciliation');
+  await page.waitFor(`document.querySelector('#create-draft')?.textContent === 'Viết thêm'`, 'successful list reconciliation');
   await page.waitFor(`document.activeElement?.id === 'open-draft-search'`, 'GET reconciliation restores focus to the search launcher');
   const after = await page.eval(`fetch('/api/v1/drafts').then(r => r.json()).then(list => list.drafts.map(d => d.work_id))`);
   const created = after.filter(id => !before.includes(id));
