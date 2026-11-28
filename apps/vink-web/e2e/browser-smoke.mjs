@@ -3461,6 +3461,17 @@ async function timestampPresentation(page) {
         await page.waitFor(`minuteTimers.size===1 && ${time(0)}.textContent===${JSON.stringify(resumed)}`, 'resume observes a new device zone');
       } finally { await gate.disable(); }
     }
+    // 10:30Z is already January 1 in Kiritimati. Tokyo and New York still show December 31.
+    for (const [zone, expected] of [['Pacific/Kiritimati','00:30, 01/01/2027'],['Asia/Tokyo','19:30, 31/12/2026'],['America/New_York','05:30, 31/12/2026']]) {
+      await page.send('Emulation.setTimezoneOverride',{timezoneId:zone});
+      const gate = new DraftGate(page);
+      gate.list = {body:{drafts:[{work_id:SAMPLE_WORK,title:'Cuối năm',version:1,updated_at:'2026-12-31T10:30:00Z'}]}};
+      await gate.enable();
+      try {
+        await page.goto(args.base+'/ban-viet');
+        await page.waitFor(`document.querySelector('.vk-draft-row time')?.textContent===${JSON.stringify(expected)}`, 'same future instant in '+zone);
+      } finally { await gate.disable(); }
+    }
     await page.send('Emulation.setTimezoneOverride',{timezoneId:'Europe/Paris'});
     const historical = new DraftGate(page);
     historical.list = {body:{drafts:[{work_id:'88888888-8888-4888-8888-000000000010',title:'Paris',version:1,updated_at:'1890-01-01T23:50:45Z'}]}};
