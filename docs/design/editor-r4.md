@@ -29,15 +29,16 @@ Trong `/ban-viet/{id}`, mặt giấy có hai vùng tương tác ở định dạ
 
 | Vùng | Khi đặt con trỏ bằng chuột hoặc bàn phím |
 | --- | --- |
-| Mặc định · Tiêu đề | Nhãn “Tiêu đề” luôn ở trên dòng Literata. Ô trống hiện “Chưa đặt tên”. Caret Lavender và một vạch ngắn ở lề đầu dòng xác định ô đang viết. |
+| Mặc định · Tiêu đề | Ô trống hiện “Chưa đặt tên” bằng Literata và nhãn native “Tiêu đề” nằm trong cây trợ năng. Caret gốc dùng màu primary theo theme và theo line box của tiêu đề. Khi có focus, gạch ngắn dưới đầu dòng dùng token focus. |
 | Mặc định / Markdown · Nội dung | Cùng một EditorView giữ selection và caret. Một vạch ngắn ở lề đầu vùng viết còn thấy khi cuộn văn bản dài. Markdown lấy tiêu đề từ H1 đầu tiên. |
 
-Vạch dùng token focus trên mặt giấy sáng/tối, nằm trong lề có sẵn cả ở màn hẹp.
-Chuyển focus giữ nguyên nền, vị trí nhãn và kích thước dòng chữ. Lỗi tiêu đề có thông báo
-gắn với input và viền lỗi. Forced-colors dùng viền focus hệ thống. Các control trong thanh
-lưu và Tùy chọn bài viết tiếp tục dùng hợp đồng focus chung.
+[#613](https://github.com/loveoverflowcom/vink/issues/613) giữ một cue focus trên mỗi vùng
+viết. Gạch chân tiêu đề dài 2rem, nằm trong input để nền và line box giữ nguyên lúc Tab hoặc
+click. Lỗi tiêu đề dùng thông báo liên kết và viền lỗi của TextField. Forced-colors dùng viền
+focus hệ thống. Vùng soạn trống giữ nhãn “Nội dung” để chỉ điểm bắt đầu. Vạch lề của CodeMirror
+và các control trong thanh lưu và Tùy chọn bài viết giữ hợp đồng focus hiện có.
 
-Đây là delta LayoutSpec của [#526](https://github.com/loveoverflowcom/vink/issues/526).
+Ảnh dưới đây ghi lại delta lịch sử của [#526](https://github.com/loveoverflowcom/vink/issues/526).
 [VDR-EDITOR-R4@r2](../../decisions/proposals/VDR-EDITOR-R4.r2.toml) là đề xuất `PENDING`.
 Ảnh concept có trạng thái `NO_APPROVED_REFERENCE`. [Ảnh Web trước/sau](../development/evidence/editor-focus-526/so-sanh.webp)
 ghép ba cặp crop cùng tọa độ từ Chrome 158, giao diện tối, viewport 1440 × 900, DPR 1, chữ 100%.

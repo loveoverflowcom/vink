@@ -209,12 +209,22 @@ async function submissionStructure(author, base, check) {
     check(await author.eval(`document.activeElement.matches(${JSON.stringify(field)})`), format + ' first field focused');
     check(await author.eval("document.querySelector('.cm-content').getAttribute('aria-describedby').includes('submission-body-errors')"), 'body description linked');
     check(await author.eval(`document.querySelector('#publication-live').getAttribute('role') === 'status' && document.querySelector('#publication-live').textContent.trim().length > 0`), 'one polite announcement for the failed attempt');
-    const focusBox = format === 'default' ? '#editor-paper .vk-ui-field__control:has(#draft-title)' : '.vk-editor-body';
-    check(await author.eval(`(() => { const box = document.querySelector(${JSON.stringify(focusBox)}); return getComputedStyle(box).outlineStyle === 'none' && getComputedStyle(box,'::before').width === '3px'; })()`), 'focused invalid field has a local margin mark');
     if (format === 'default') {
+      check(await author.eval(`(() => {
+        const title = document.querySelector('#draft-title'), style = getComputedStyle(title);
+        const marker = getComputedStyle(title.parentElement, '::before');
+        const errorIds = title.getAttribute('aria-describedby')?.split(' ') ?? [];
+        return title.getAttribute('aria-invalid') === 'true' && errorIds.some(id => document.getElementById(id)?.textContent) &&
+          style.outlineStyle === 'solid' && parseFloat(style.outlineWidth) >= 2 &&
+          style.backgroundImage === 'none' && marker.content === 'none';
+      })()`), 'invalid title has one native field outline and linked error');
       await matrix(author, 'missing-submission', check);
       await fill(author, '#draft-title', 'Chưa đặt tên');
     } else {
+      check(await author.eval(`(() => {
+        const body = document.querySelector('.vk-editor-body');
+        return getComputedStyle(body).outlineStyle === 'none' && getComputedStyle(body, '::before').width === '3px';
+      })()`), 'focused invalid Markdown body has a local margin mark');
       await author.typeInBody('# Mưa\n\n![ảnh](a.jpg)\n<!-- kín -->');
     }
     await author.waitFor(summary + " === 'Trước khi gửi duyệt, hãy bổ sung nội dung.'", 'only corrected title clears');
