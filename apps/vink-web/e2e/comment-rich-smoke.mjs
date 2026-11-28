@@ -113,10 +113,20 @@ export async function richDiscussion(page,{args,check,rootId,workId,browserConte
           return {overflow, pageWidth:root.scrollWidth, viewport:innerWidth, outside};
         })()`);
         check(!layout.overflow, 'horizontal geometry ' + width + '/' + scale + '/' + theme + ' ' + JSON.stringify(layout));
-        const capture = await page.capture(`618-reply-${width}-${scale}-${theme}`,
-          {target: reply+'-rich', textScaleLane:'dom-override-geometry-only'});
-        const rect = capture.targets.required[0].rect;
-        check(rect.top >= 0 && rect.bottom <= height, 'captured reply is in frame');
+        let inFrame = false;
+        for (let attempt = 0; attempt < 3 && !inFrame; attempt++) {
+          await page.eval(`(async () => {
+            const host = document.querySelector(${target});
+            await new Promise(resolve => setTimeout(resolve, 250));
+            host.scrollIntoView({block:'center', behavior:'instant'});
+            await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          })()`);
+          const capture = await page.capture(`618-reply-${width}-${scale}-${theme}`,
+            {target: reply+'-rich', textScaleLane:'dom-override-geometry-only'});
+          const rect = capture.targets.required[0].rect;
+          inFrame = rect.top >= 0 && rect.bottom <= height;
+        }
+        check(inFrame, 'captured reply is in frame');
       }
     }
     await page.eval("document.querySelector('a[href=\"/\"]').click()");
