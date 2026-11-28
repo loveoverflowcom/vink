@@ -14,7 +14,7 @@ thứ tự hành động, lỗi và đối soát phiên.
 | --- | --- |
 | Reader + composer | Giữ bài và ô soạn phía sau scrim. Khách và thành viên cùng dùng nút Gửi cho nhận xét gốc và phản hồi. Khi khách có nháp đủ điều kiện và bấm Gửi, Reader mở Auth theo ngữ cảnh. Phiên đã xác thực nhưng thiếu bút danh vào thẳng bước Chọn bút danh. |
 | Sheet/dialog | Logo Vink căn giữa, Đóng ở góc trên bên phải. Tiêu đề và lời dẫn theo mục đích, căn giữa trước form. Tên đăng nhập → Mật khẩu → Đăng nhập (Filled) → Dùng mã email (Tonal, thư) → Chưa có tài khoản? Tạo tài khoản (Text). Khi đăng ký, Đã có tài khoản? Đăng nhập dùng Text. Ở bước nhập email, Gửi mã đăng nhập (Filled) đứng trước Dùng mật khẩu (Tonal, khóa). Các bước chuyển phương thức, OTP và bút danh dùng form chung. |
-| Responsive | Sheet chạm đáy viewport dưới 760 CSS px. Từ 760 CSS px trở lên, dialog căn giữa, rộng tối đa 30rem. Vùng form cuộn dọc bên trong dialog, chừa lề 20–24 px và giữ tiêu đề nhìn thấy khi mở ở 320 CSS px/chữ gốc 200%. Tab tới được nút cuối. |
+| Responsive | Sheet chạm đáy viewport dưới 760 CSS px. Từ 760 CSS px trở lên, dialog căn giữa, rộng tối đa 30rem. Cột Auth căn giữa, tối đa 24rem như Tôi. Cả hai dùng cùng kiểu chữ và kích thước logo (2,25rem ở màn hẹp, 2,5rem từ 760 CSS px). Tiêu đề overlay dùng cỡ Reader 1,625rem. Vùng form cuộn dọc bên trong dialog, chừa lề 20–24 px và giữ tiêu đề nhìn thấy khi mở ở 320 CSS px/chữ gốc 200%. Tab tới được nút cuối. |
 
 **Interaction.** Native dialog làm nền inert. Kích hoạt Gửi bằng chuột, chạm hoặc bàn phím mới mở dialog, focus đầu tại Đóng. Focus ô soạn, nhập chữ, Enter xuống dòng và mở ô trả lời không mở Auth.
 Tab và Shift+Tab không rời modal. Escape, Đóng và Back qua điều hướng trong ứng dụng trả focus

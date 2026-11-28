@@ -979,9 +979,9 @@ fn discussion_comment(
     let author_label = comment.author.name.clone();
     // A reply sits in the tonal reply group: one step smaller than a root (#352).
     let size = if is_root {
-        AvatarSize::Medium
+        AvatarSize::Reader
     } else {
-        AvatarSize::Small
+        AvatarSize::Medium
     };
     let surface = if is_root {
         vink_ui::ActionSurface::Tonal
@@ -997,7 +997,7 @@ fn discussion_comment(
     view! {
         <article id=format!("comment-{}", comment.id) class="vk-discussion-comment grid gap-vk-2 min-w-0" tabindex="-1"
             data-reply-target=move || is_target.get().then_some("true")>
-            <div class="vk-discussion-byline flex flex-wrap items-center gap-y-vk-1 gap-x-vk-3 min-w-0">
+            <div class="vk-discussion-byline">
                 <AuthorIdentity author=comment.author id=Some(author_id) size />
                 // Outside the profile link.
                 <Timestamp instant=published_at relative=true />
@@ -1680,13 +1680,13 @@ mod tests {
             }
             .to_html()
         });
-        for id in ["root", "reply"] {
+        for (id, size) in [("root", "reader"), ("reply", "md")] {
             let start = html
                 .find(&format!(r#"id="comment-{id}-author""#))
                 .expect("linked author");
             let link = &html[start..start + html[start..].find("</a>").unwrap()];
             assert!(
-                link.contains("vk-ui-avatar") && link.contains("@an-nhien"),
+                link.contains(&format!("vk-ui-avatar--{size}")) && link.contains("@an-nhien"),
                 "{link}"
             );
             assert!(!link.contains("<time"), "time stays outside: {link}");
@@ -1695,10 +1695,6 @@ mod tests {
             html.contains(r#"id="comment-reply-context-author""#)
                 && html.contains(r##"href="#comment-root""##),
             "reply context keeps two distinct targets: {html}"
-        );
-        assert!(
-            html.contains("vk-ui-avatar--sm") && html.contains("vk-ui-avatar--md"),
-            "{html}"
         );
     }
 

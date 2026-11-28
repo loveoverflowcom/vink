@@ -151,6 +151,14 @@ export async function contextualReaderAuth(owner, { args, check, openPage, seen 
     await page.capture('reader-auth-save-1280-light-100', { boundary: 'real-reader-save-guest-r3', loginR3: saveR3 });
     await page.key('Escape');
     await page.waitFor(`!${isOpen} && ${active('save-work')}`, 'Escape returns focus to Lưu');
+    await page.viewport(390, 844);
+    await page.click('#save-work');
+    await page.waitFor(`${isOpen} && ${active('reader-auth-close')}`, 'Lưu opens the mobile Auth sheet');
+    const saveSheet = await checkAuthR31(page, check, 'Reader save 390/light/100');
+    await page.capture('reader-auth-save-390-light-100', { boundary: 'real-reader-save-guest-r5', loginR3: saveSheet });
+    await page.click('#reader-auth-close');
+    await page.waitFor(`!${isOpen} && ${active('save-work')}`, 'Close returns focus to Lưu');
+    await page.viewport(1280, 844);
     check(saveWrite.count() === 0, '#559 opening and dismissing Auth from Lưu does not save');
     saveWrite.close();
 

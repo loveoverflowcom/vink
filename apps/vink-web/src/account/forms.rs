@@ -214,12 +214,12 @@ enum Mode {
 #[component]
 pub(super) fn AuthHeading(title: &'static str) -> impl IntoView {
     if use_context::<ReaderPresentation>().is_some() {
-        view! { <h2 id="reader-auth-title" class="vk-reader-auth-title m-0 wrap-anywhere">{title}</h2> }.into_any()
+        view! { <h2 id="reader-auth-title" class="vk-auth-title">{title}</h2> }.into_any()
     } else {
         view! {
-            <header class="vk-auth-heading grid justify-items-center text-center">
-                <span class="vk-brand__lockup" role="img" aria-label="Vink"></span>
-                <h2>{title}</h2>
+            <header class="vk-auth-heading grid justify-items-center">
+                <span class="vk-brand__lockup vk-auth-brand" role="img" aria-label="Vink"></span>
+                <h2 class="vk-auth-title">{title}</h2>
             </header>
         }
         .into_any()
