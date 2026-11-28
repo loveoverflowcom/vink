@@ -30,6 +30,7 @@ mod principal;
 mod profile;
 pub(crate) mod publication;
 pub mod reputation;
+pub mod reputation_projection;
 mod saved_works;
 mod social_retirement;
 mod taxonomy;

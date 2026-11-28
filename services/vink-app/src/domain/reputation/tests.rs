@@ -728,3 +728,25 @@ fn only_a_changed_endorsement_owes_a_community_event() {
         })
     ));
 }
+
+#[test]
+fn credit_states_round_trip_through_storage() {
+    for state in [
+        CreditState::Unstarted,
+        CreditState::Unseen,
+        CreditState::Active,
+        CreditState::WithdrawnPending(PeriodIndex::new(7)),
+        CreditState::Burned,
+    ] {
+        assert_eq!(
+            CreditState::restore(state.code(), state.pending()),
+            Some(state)
+        );
+    }
+    assert_eq!(CreditState::restore("withdrawn", None), None);
+    assert_eq!(
+        CreditState::restore("active", Some(PeriodIndex::new(1))),
+        None
+    );
+    assert_eq!(CreditState::restore("gone", None), None);
+}

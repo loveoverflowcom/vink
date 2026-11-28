@@ -8,7 +8,9 @@
 //! evaluation consumer (`vink_app::evaluation_worker`) runs the scripted mock approve by default
 //! (#536); `VINK_EVALUATOR=manual` routes every job to people instead.
 //! Acknowledged Notifications v1 events (#346) are pruned after their replay horizon, and work
-//! view windows and receipts (#341) once older than 24 hours (VIEW-11). The
+//! view windows and receipts (#341) once older than 24 hours (VIEW-11). The Điểm Vink consumer
+//! (`vink_app::reputation_worker`, #646) applies `reputation_events` once a backfill set readiness
+//! (`VINK_WORKER_REPUTATION=disabled` stops it). The
 //! notification relay (`vink_app::notification_relay`, T-02 CHOICE-16 A) is a loop of this
 //! process; it starts when `VINK_NOTIFICATIONS_INGEST_SOCKET` and `VINK_NOTIFICATIONS_SERVER_UID`
 //! name the Notification Service's ingest socket (#347, T-07 CHOICE-21 A) and is supervised like
@@ -67,6 +69,15 @@ fn main() -> ExitCode {
                 return ExitCode::from(2);
             }
         };
+    let reputation = match vink_app::reputation_worker::ReputationSettings::from_lookup(|key| {
+        std::env::var(key).ok()
+    }) {
+        Ok(settings) => settings,
+        Err(error) => {
+            eprintln!("vink-worker: invalid configuration: {error}");
+            return ExitCode::from(2);
+        }
+    };
     let relay = match RelayTransport::from_lookup(|key| std::env::var(key).ok()) {
         Ok(transport) => transport,
         Err(error) => {
@@ -85,7 +96,7 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    tokio.block_on(run(config, outbox, evaluation, relay))
+    tokio.block_on(run(config, outbox, evaluation, reputation, relay))
 }
 
 /// What the startup probe found. `ready` is logged only when the queue tables answered.
@@ -116,6 +127,7 @@ async fn run(
     config: Config,
     settings: OutboxSettings,
     eval_settings: vink_app::evaluation_worker::EvaluationSettings,
+    reputation_settings: vink_app::reputation_worker::ReputationSettings,
     relay_transport: Option<RelayTransport>,
 ) -> ExitCode {
     // Listen for SIGINT/SIGTERM before any probe, so a signal during startup is a clean stop.
@@ -152,7 +164,12 @@ async fn run(
         consumers = vink_app::domain::discussion::outbox::Consumer::ALL
             .map(|consumer| consumer.code())
             .join(","),
-        jobs = "discussion_outbox,rate_limit_prune,outbox_retention,notification_retention,work_view_retention,work_evaluation",
+        jobs = "discussion_outbox,rate_limit_prune,outbox_retention,notification_retention,work_view_retention,work_evaluation,reputation",
+        reputation = if reputation_settings.enabled {
+            "enabled"
+        } else {
+            "disabled"
+        },
         // #346: producers write only while `vink-app notifications activate` is in force; the
         // relay sends to the Notification Service's ingest socket when one is configured (#347).
         notification_relay = if relay_transport.is_some() {
@@ -182,6 +199,11 @@ async fn run(
     let mut evaluation = eval_settings.enabled.then(|| {
         let worker =
             vink_app::evaluation_worker::EvaluationWorker::new(pool.clone(), eval_settings);
+        tokio::spawn(worker.run(stopped.clone()))
+    });
+    let mut reputation = reputation_settings.enabled.then(|| {
+        let worker =
+            vink_app::reputation_worker::ReputationWorker::new(pool.clone(), reputation_settings);
         tokio::spawn(worker.run(stopped.clone()))
     });
     let mut relay = match relay_transport {
@@ -225,6 +247,13 @@ async fn run(
                 }
                 code = ExitCode::FAILURE;
                 break;
+            }
+            joined = async { reputation.as_mut().expect("guarded").await }, if reputation.is_some() => {
+                match joined {
+                    Ok(()) => tracing::info!("reputation consumer loop finished"),
+                    Err(error) => tracing::error!(panicked = error.is_panic(), "reputation consumer loop failed"),
+                }
+                reputation = None;
             }
             joined = async { evaluation.as_mut().expect("guarded").await }, if evaluation.is_some() => {
                 match joined {
@@ -283,6 +312,15 @@ async fn run(
         tracing::error!(
             panicked = error.is_panic(),
             "evaluation loop failed during drain"
+        );
+        code = ExitCode::FAILURE;
+    }
+    if let Some(task) = reputation
+        && let Err(error) = task.await
+    {
+        tracing::error!(
+            panicked = error.is_panic(),
+            "reputation consumer failed during drain"
         );
         code = ExitCode::FAILURE;
     }
