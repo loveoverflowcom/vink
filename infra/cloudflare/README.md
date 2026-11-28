@@ -2,8 +2,7 @@
 
 **Lịch sử vận hành public test.** Quy trình hiện hành và điều kiện ngừng host nằm trong [release production](../production/cloudflare-edge.md). Compose, fixture và qualification Auth cô lập vẫn dùng được.
 
-Phạm vi là **test Vink**. [Bằng chứng triển khai](../../docs/development/cloudflare-test-evidence.md)
-ghi trạng thái provider, DNS, HTTP, browser và reader Google Cloud riêng biệt. `production` trong
+Phạm vi là **test Vink**. `production` trong
 Pages chỉ là nhánh `main` của project **test**, không mở production/auth của Vink.
 
 ## Kiến trúc và giới hạn

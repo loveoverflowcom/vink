@@ -52,9 +52,7 @@ CodeMirror host, Enso assets và provenance. Không đổi expected ảnh. `vk-f
 trong source/template/dynamic selector: ListEnd do UI renderer giữ, rule cũ được gỡ.
 
 Các snapshot thiết kế/bằng chứng UIS-01–05 vẫn là lịch sử theo SHA. UIS-06 cũng nới vùng nhãn compact rail trong padding để giữ từ tiếng Việt ở chữ 200%;
-không đổi rail 96px hay font scale. Chỉ mục current và
-[readiness UIS-06](../../../docs/development/ui-system-qualification-evidence.md) dẫn tới phần hiện hành;
-không sửa lịch sử để gắn PASS mới. Xem [extension recipe](../EXTENDING.md) trước thay contract.
+không đổi rail 96px hay font scale. Không sửa lịch sử để gắn PASS mới. Xem [extension recipe](../EXTENDING.md) trước thay contract.
 
 Pen Flight R2 (#73, 10/11/2026) thêm `IconName::PenFlight`/`IconName.PenFlight` từ
 `icons.json`, provenance Vink-owned tách khỏi Material Apache-2.0; generator kiểm hash SVG R2
@@ -72,7 +70,6 @@ thêm paired specimens, API map 0.5.0. `ActionSurface` là prop/parameter opt-in
 CMP và optional của Leptos, Standard mặc định. Tooltip wrapper chuyển tiếp prop. Caller cũ
 không cần migration; Button variants và toggle-contract-v1 không đổi. Chưa publish binary ABI.
 Không sửa app pages, Dialog/Appearance/editor; consumer #225/#226 chọn opt-in sau.
-Bằng chứng và giới hạn tại [báo cáo #224](../../../docs/development/evidence/action-surfaces-224/README.md).
 
 Consumer #225 thêm glyph `FilterList` từ Material Icons filled 24px tại commit pin hiện hành;
 hash SVG upstream nằm trong `icons.json`, generator sinh `IconName::FilterList`/`IconName.FilterList`.

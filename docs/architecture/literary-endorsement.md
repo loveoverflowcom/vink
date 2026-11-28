@@ -177,7 +177,7 @@ chữ ký, lock order và bằng chứng: [runtime](../development/literary-endo
 | --- | --- | --- |
 | CHOICE-03 (HTTP) | `PUT …/endorsement/me` mang trạng thái mong muốn, `command_key` (UUID của actor, trên mọi đích) và `expected_order`; `200 accepted` / `200 replayed` (lịch sử `committed` tách trạng thái hiện tại), `409` conflict, `422` key reuse | POST lệnh cũng mang cùng key/order nên không bớt gì; không expose hai API song song |
 | CHOICE-04 | A — `work_endorsements` (PK work, revision, actor; FK revision cùng tác phẩm), `comment_endorsements`, `endorsement_receipts` (đích typed nullable + CHECK đúng một đích); token `1 ≤ version ≤ order`, `order ≥ 2`; trigger cấm đổi danh tính, order không tăng, version giảm, DELETE/TRUNCATE; receipt append-only | Một bảng state chung thêm NULL/CHECK mà không bớt truy vấn; `(target_type, target_id)` không FK bị loại |
-| CHOICE-05 | A — đếm hàng `selected` khi đọc, partial index | Counter giao dịch tuần tự hóa người ghi trên đích nóng; outbox chưa có nhu cầu. Số đo: [bằng chứng](../development/evidence/lve-postgres/README.md) |
+| CHOICE-05 | A — đếm hàng `selected` khi đọc, partial index | Counter giao dịch tuần tự hóa người ghi trên đích nóng; outbox chưa có nhu cầu. Số đo: [benchmark](../../services/vink-app/bench/endorsement/README.md) |
 | CHOICE-12 | A — chỉ tổng số + trạng thái riêng; không endpoint/truy vấn nào trả danh sách người ghi nhận | B cần owner consent/retention/withdrawal, chưa có |
 | CHOICE-13 | A — `GET …/endorsements` (công khai, không resolve actor) tách `GET …/endorsements/me` (`401` cho khách), batch ≤ 100 bình luận của một tác phẩm, đều `no-store`; READ-01/02 không đổi | Gộp làm lỗi Identity che tổng số và buộc thêm trạng thái người xem vào biểu diễn công khai |
 
@@ -195,8 +195,7 @@ qua hydrate. Ma trận, quyết định và OPEN-R4 (replay Select khi đích kh
 ## UI System — phần tái sử dụng (WP-04, 06/11/2026)
 
 Lát này chỉ chuẩn hóa thư viện UI để lát adapter tiêu thụ; không nối endpoint, không chọn icon.
-Contract: [components](../../packages/ui-system/shared/components.md#toggleaction--hành-động-bậttắt-đã-xác-nhận-lve-73),
-bằng chứng: [UI evidence](../development/ui-system-endorsement-evidence.md).
+Contract: [components](../../packages/ui-system/shared/components.md#toggleaction--hành-động-bậttắt-đã-xác-nhận-lve-73).
 
 | Vấn đề | Chọn ở UI System | Lý do / còn OPEN |
 | --- | --- | --- |
@@ -215,8 +214,7 @@ traceability LVE; không gán proof lõi cho SQL, HTTP, UI hay toàn epic.
 ## Lát Web adapter (WP-04, 06/11/2026)
 
 Reader Web tiêu thụ `EndorsementAction` cho tác phẩm (sau văn bản) và cho từng bình luận gốc/phản
-hồi phẳng. Owner, luồng và bảng ánh xạ: [runtime](../development/literary-endorsement-runtime.md#web-adapter-wp-04);
-bằng chứng: [web evidence](../development/literary-endorsement-web-evidence.md).
+hồi phẳng. Owner, luồng và bảng ánh xạ: [runtime](../development/literary-endorsement-runtime.md#web-adapter-wp-04).
 
 | ID | Chọn | Lý do / phương án bị loại / còn OPEN |
 | --- | --- | --- |

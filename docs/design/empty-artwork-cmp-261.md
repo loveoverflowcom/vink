@@ -45,7 +45,7 @@ CTA click/Enter/Space dùng VinkButton hiện hữu; clear là hành động có
 Cuộn và safe drawing/IME inset do DiagnosticHost sở hữu, không thêm inset bên trong.
 Audit 17/11/2026: ảnh, câu (tông `OnSurfaceVariant`, căn giữa) và CTA cùng một trục giữa như Web
 `.vk-empty-state`. Host diagnostic là cột cuộn không giới hạn chiều cao nên căn giữa theo chiều
-dọc chỉ thuộc consumer native sau này; không suy ra từ capture Desktop. Xem [audit 17/11/2026](../development/evidence/empty-state-audit-261/README.md).
+dọc chỉ thuộc consumer native sau này; không suy ra từ capture Desktop.
 
 CHOICE-01 **A**: ba alpha WebP canonical → generated build data → closed enum → worker đơn,
 fit decode không upscale, tối đa 512×427 (874.496 byte pixel ARGB8888 theo phép tính).
@@ -58,4 +58,3 @@ Không sửa admission opaque hoặc allowlist hai content fixtures của #115/#
 CHOICE-02 **A**: composition riêng của diagnostics, dùng primitives có sẵn; không mở rộng API
 `:ui`/`:patterns`, không sửa source Web. Canonical asset/manifest chỉ có một owner ở
 `apps/vink-web/assets/empty`; Gradle sinh bytes vào build output, không check-in bộ ảnh thứ hai.
-Giới hạn native và kết quả thật: [evidence](../development/evidence/empty-webp-cmp-261/README.md).

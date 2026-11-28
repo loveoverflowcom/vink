@@ -9,9 +9,8 @@ Desktop preview. Đối chiếu tại `develop@eb7e65e`. Fidelity so với ảnh
 `NO_APPROVED_REFERENCE` cho tới khi ảnh chụp từ bản dựng được duyệt.
 
 - Canvas Claude Design (riêng tư, cần chủ sở hữu chia sẻ): <https://claude.ai/artifact/U2EGFmygrgoT4hq5dHH1SP>
-- Nguồn từng khung: [canvas/](canvas/) (`.dc.html` dùng runtime `support.js` của Claude Design,
-  không chạy độc lập trong repo; đọc như đặc tả markup và style).
-- Token đề xuất dạng máy đọc: [tokens-r3.json](tokens-r3.json). Chủ giá trị vẫn là
+- Canvas từng khung (`.dc.html`) và token đề xuất R3 nằm trong kho thiết kế trên Drive, không
+  trong Git. Chủ giá trị vẫn là
   [tokens.json](../../../packages/ui-system/shared/tokens.json); áp dụng bằng `cargo xtask ui-tokens`.
 
 ## Vì sao chữ đang dày (đọc từ develop)
@@ -82,13 +81,13 @@ focus `outline` 3px lệch 2px (không dùng box-shadow), và viền hệ thốn
 
 | Khung | File | Ghi chú |
 | --- | --- | --- |
-| Spec R3 | [Main](canvas/Main.dc.html) | Đối chiếu, thang chữ, tracking/weight, tương phản, quy tắc |
-| 05/06 Khám phá sáng/tối | [KhamPha](canvas/KhamPha.dc.html), [KhamPhaToi](canvas/KhamPhaToi.dc.html) | Search + Lọc thẻ như develop; hai “Hải Đường Nhỏ” phân biệt bằng Handle |
-| 01/02 Chỉnh hồ sơ sáng/tối | [ChinhHoSo](canvas/ChinhHoSo.dc.html), [ChinhHoSoToi](canvas/ChinhHoSoToi.dc.html) | Thứ tự trường của develop, quyền cạnh giá trị, quyền khóa dạng đọc, Địa chỉ tác giả là hàng điều hướng, “Về Tôi” |
-| 04 Hồ sơ mobile tên dài | [HoSo](canvas/HoSo.dc.html), [HoSoToi](canvas/HoSoToi.dc.html) | Người khác xem: Theo dõi; tác phẩm chỉ nhan đề |
-| 07 Reader và nhận xét | [Reader](canvas/Reader.dc.html), [ReaderToi](canvas/ReaderToi.dc.html) | Nhóm Phản hồi tonal, “Đang trả lời … · Đến bình luận” |
-| 03 Hồ sơ desktop | [HoSoDesktop](canvas/HoSoDesktop.dc.html) | Rail 220 px, chính chủ: Chỉnh hồ sơ; minh họa focus |
-| AC-04 320 px / chữ 200% | [Hep320](canvas/Hep320.dc.html) | Minh họa; thanh Lưu vào luồng khi chữ lớn |
+| Spec R3 | Main | Đối chiếu, thang chữ, tracking/weight, tương phản, quy tắc |
+| 05/06 Khám phá sáng/tối | KhamPha, KhamPhaToi | Search + Lọc thẻ như develop; hai “Hải Đường Nhỏ” phân biệt bằng Handle |
+| 01/02 Chỉnh hồ sơ sáng/tối | ChinhHoSo, ChinhHoSoToi | Thứ tự trường của develop, quyền cạnh giá trị, quyền khóa dạng đọc, Địa chỉ tác giả là hàng điều hướng, “Về Tôi” |
+| 04 Hồ sơ mobile tên dài | HoSo, HoSoToi | Người khác xem: Theo dõi; tác phẩm chỉ nhan đề |
+| 07 Reader và nhận xét | Reader, ReaderToi | Nhóm Phản hồi tonal, “Đang trả lời … · Đến bình luận” |
+| 03 Hồ sơ desktop | HoSoDesktop | Rail 220 px, chính chủ: Chỉnh hồ sơ; minh họa focus |
+| AC-04 320 px / chữ 200% | Hep320 | Minh họa; thanh Lưu vào luồng khi chữ lớn |
 
 ## Ngoài phạm vi hoặc cần chủ sản phẩm chốt
 

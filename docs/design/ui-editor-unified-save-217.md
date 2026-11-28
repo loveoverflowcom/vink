@@ -15,7 +15,7 @@ Proposal kỹ thuật [VDR-EDITOR-SAVE-PROJECTION@r1](../../decisions/proposals/
 
 ## Phạm vi, owner và base
 
-- Issue [#217](https://github.com/loveoverflowcom/vink/issues/217), kế thừa [UI R5 (#101)](ui-editor-r5.md), [R1.4](editor-r14.md) và [Reflow (#193)](editor-writing-reflow-193.md); base triển khai `6de515d`; review tích hợp trên `origin/develop@a3e6536`.
+- Issue [#217](https://github.com/loveoverflowcom/vink/issues/217), kế thừa UI R5 (#101), R1.4 và [Reflow (#193)](editor-writing-reflow-193.md); base triển khai `6de515d`; review tích hợp trên `origin/develop@a3e6536`.
 - Fidelity tham chiếu: `NO_APPROVED_REFERENCE` (kế thừa R5 Lavender tokens, tự kiểm theo rubric 5 chiều của `ux-quality`).
 - Owners:
   - State & guards: [`DraftSession` / `EditorSession`](../../apps/vink-web/src/desk_state.rs), [`TagSession`](../../apps/vink-web/src/tag_state.rs), [`TagLoad`](../../apps/vink-web/src/pages/work_info.rs)
@@ -64,7 +64,7 @@ PR 2/2 (#218) kế thừa trực tiếp seam sau mà không đổi logic save ha
 
 ### Delta trình bày #218 (thay seam anatomy, giữ protocol)
 
-[Paper First](ui-editor-paper-first-218.md) dùng `paper_first=true`:
+Paper First (#218) dùng `paper_first=true`:
 `#editor-save-details > summary` là chính trigger **Thêm** luôn hiển thị, ngoài
 bất kỳ disclosure đóng nào. Chi tiết máy chủ và export thường nằm bên trong;
 `#preview` trực tiếp, recovery/export lỗi vẫn trực tiếp. Selector handoff của

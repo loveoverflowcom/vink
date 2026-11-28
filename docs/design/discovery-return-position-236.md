@@ -37,4 +37,4 @@ trước/sau trên hai viewport khác nhau.
 
 ## Kiểm chứng ngày 18/11/2026
 
-Sau khi danh sách mount lại, đợi qua lần vẽ đầu rồi kiểm đúng URL, landmark và focus trước khi căn hàng. Điều này xử lý sai lệch 218,36 px ở chữ 200%. [Raw trước/sau, 50 vòng, đối chứng rollback và năm chiều UX](../development/evidence/web-perf-236-canonical/README.md).
+Sau khi danh sách mount lại, đợi qua lần vẽ đầu rồi kiểm đúng URL, landmark và focus trước khi căn hàng. Điều này xử lý sai lệch 218,36 px ở chữ 200%.

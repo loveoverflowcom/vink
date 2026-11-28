@@ -2,7 +2,6 @@
 
 Owner: `PUT /api/v1/drafts/{work_id}`, `http/api.rs`, `http/contract.rs` và Web
 `pages/desk.rs` → `api.rs`. Base: `develop@9640bdef4b570fe0fc76e90e538de947c2428614`.
-Đây là sửa F1 của [baseline #229](long-document-budget.md), không thay baseline lịch sử.
 
 ## Contract tích hợp #285
 
@@ -26,8 +25,7 @@ Source quá giới hạn trả 422 ở `document`. Cả hai giữ nguyên durabl
 ownership và CAS lần lượt có các regression riêng. Cap áp dụng cho declared length và chunked,
 không phải giới hạn RSS toàn process.
 
-Bản đo #273 dùng shape blocks cũ (cận 7.804.928 B) và hash cũ. Các log tại
-[evidence/draft-http-273](evidence/draft-http-273/README.md) giữ nguyên làm baseline lịch sử.
+Bản đo #273 dùng shape blocks cũ (cận 7.804.928 B) và hash cũ, chỉ còn là baseline lịch sử.
 Xem [kiến trúc canonical và signoff](../architecture/document-source-format.md).
 
 ## Kiểm chứng và tái lập

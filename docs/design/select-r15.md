@@ -28,7 +28,6 @@ Không đổi Rust, option, sort semantics, tokens chung hay CMP.
 Kiểm 320/390/1440 × sáng/tối × chữ100/200, native type-ahead, focus, disabled,
 invalid và forced-colors qua các runner hiện có. Trong forced-colors, chevron
 dùng ButtonText hoặc GrayText của hệ thống theo trạng thái native disabled.
-[Bằng chứng và giới hạn](../development/select-r15-evidence.md).
 
 Nguồn: [issue #135](https://github.com/loveoverflowcom/vink/issues/135),
 [LayoutSpec R1.5](https://drive.google.com/file/d/1LoY06vmY4RvVcNse0f2-siQiDT8pT1mm/view),

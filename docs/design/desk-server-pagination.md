@@ -3,7 +3,7 @@
 Target cho tác giả tìm/duyệt toàn bộ nháp riêng theo [UX-03 và WR-01/03](../../prd/requirements.md).
 Hướng kỹ thuật CHOICE-03 B trong [#201](https://github.com/loveoverflowcom/vink/issues/201):
 Tải thêm qua coordinator #202; không redesign shell/editor. Bản này được trình bày trước UI code.
-Source regression reference: `ebbde22`, [R6](desk-r6.md), SearchField/Select/Button hiện hữu,
+Source regression reference: `ebbde22`, R6, SearchField/Select/Button hiện hữu,
 Quiet Lavender và shared primitives. `fidelity: NO_APPROVED_REFERENCE`; không style anchor mới.
 
 ```text
@@ -17,7 +17,7 @@ Screen #desk — tìm lại và viết tiếp
   Region #privacy — nháp riêng, giữ copy hiện hữu
 ```
 
-Delta #213 ngày 15/11/2026 thay phần resume của [R6](desk-r6.md): bỏ toàn bộ card và disclosure,
+Delta #213 ngày 15/11/2026 thay phần resume của R6: bỏ toàn bộ card và disclosure,
 không dựng hàng resume thay thế; controls nằm ngay sau header. Không tải manuscript để làm card.
 Tìm vẫn gập dấu/case/NFC–NFD/Đ/whitespace, giữ dấu câu và “Chưa đặt tên”; nhãn phạm vi mới
 chỉ được bật khi consumer dùng API server. Input đang gõ khác query đã áp dụng: Enter hoặc

@@ -40,7 +40,7 @@ và các control trong thanh lưu và Tùy chọn bài viết giữ hợp đồn
 
 Ảnh dưới đây ghi lại delta lịch sử của [#526](https://github.com/loveoverflowcom/vink/issues/526).
 [VDR-EDITOR-R4@r2](../../decisions/proposals/VDR-EDITOR-R4.r2.toml) là đề xuất `PENDING`.
-Ảnh concept có trạng thái `NO_APPROVED_REFERENCE`. [Ảnh Web trước/sau](../development/evidence/editor-focus-526/so-sanh.webp)
+Ảnh concept có trạng thái `NO_APPROVED_REFERENCE`.
 ghép ba cặp crop cùng tọa độ từ Chrome 158, giao diện tối, viewport 1440 × 900, DPR 1, chữ 100%.
 Cột trái là focus bằng chuột tại `52e8dbd5`, cột phải là focus bằng Shift+Tab với bản sửa `1e90cbdf`.
 

@@ -6,8 +6,7 @@ chủ tác phẩm; **không phải bằng chứng toàn vẹn body hoặc quyề
 
 **Đối soát 17/11/2026:** #248 đã merge; tại `develop@607ef83` projection/command/worker/appeal owners và focused tests
 liên quan vẫn giống byte với HEAD tích hợp. Hash v1 chia sẻ helper hex từ #279; oracle corpus
-21 case hiện hành kiểm hash/bytes bất biến. [Biên bản AC/provenance](long-document-reconciliation.md)
-ghi regression PG mới, source fingerprints và giới hạn; timing bên dưới là số lịch sử, không đo
+21 case hiện hành kiểm hash/bytes bất biến. Timing bên dưới là số lịch sử, không đo
 lại ở HEAD. Tại lần đối soát này re-review còn lỗi. Bản sửa và giới hạn backout của [#275](https://github.com/loveoverflowcom/vink/issues/275) nằm trong [registry publication](publication-runtime.md#duyệt-lại-khi-policy-thay-đổi-275).
 
 - Sản phẩm: giữ `USER-02@r1`, `ADM-06@r1`, `USER-09@r1` `PRODUCT_CONFIRMED`; WR-04 vẫn
@@ -82,8 +81,7 @@ Hash là kiểm tra nhất quán, không phải chữ ký/authentication của n
 
 ## Đo trước/sau trên PostgreSQL thật
 
-Reuse [corpus #229/#232](long-document-budget.md) (merge `a81333c71faf6033014a00ec26c9f7b90109d1d9`) và
-[`tests/support/document_budget.rs`](../../services/vink-app/tests/support/document_budget.rs), seed 229.
+Corpus #229 qua [`tests/support/document_budget.rs`](../../services/vink-app/tests/support/document_budget.rs), seed 229.
 Harness opt-in cùng owner, không framework mới:
 [`publication_state_budget.rs`](../../services/vink-app/tests/postgres/publication_state_budget.rs).
 Mỗi dataset đi qua `create_draft`/`save_draft`/`capture_snapshot` thật; đổi title để có revision mới.
@@ -120,8 +118,6 @@ với size (30k/200k Việt NFC), và thêm stress nhiều block 200k. Lịch s�
 cap; response byte trước/sau chỉ lệch vài byte ở timestamp có độ dài phần thập phân khác nhau.
 Chi phí body giảm được xác nhận riêng bằng role thật không có quyền SELECT document, body schema hỏng vẫn đọc summary, SQL log runtime, và plans.
 
-Raw evidence/measurements và kết quả checks nằm ở
-[`evidence/publication-state-230/`](evidence/publication-state-230/README.md).
 `pg_column_size` là byte lưu của column; `octet_length(document::text)` là JSONB text logical sau
 output, **không phải tổng byte wire PostgreSQL**, RSS hay heap/TOAST toàn relation. EXPLAIN SELECT
 không buộc decode/output toàn JSONB; không dùng SQL execution time đó thay thời gian app.
@@ -153,69 +149,10 @@ không tính là SELECT. SQL log và phép kiểm privilege là evidence runtime
 Response 300 revision khoảng 105 KiB, còn tăng theo history. Không kết luận metadata history
 vô hạn đã được tối ưu hoặc chọn pagination mới từ ba mẫu.
 
+## Re-review dưới policy mới
 
-## Verification và acceptance
-
-- **PASS** `cargo xtask verify quick` tại `fd24a7f` trên base mới `ca936965`, gồm oracle Node mới
-  của #247, clippy native/wasm, doctest có lawful twin, unit/contract và repository checks.
-- **PASS** `cargo xtask verify postgres` trên source code của `66a0f03`: Store 6/6, App **200 PASS,
-  5 phép đo opt-in ignored**, Identity 48/48; build/config, provision split roles, worker/SIGTERM,
-  Identity restart/outage/authority, enrollment, backup/restore và cleanup scratch roles/databases.
-  `git diff 66a0f03..fd24a7f -- services packages Cargo.toml Cargo.lock apps/vink-web/src` rỗng:
-  evidence PostgreSQL dùng lại sau merge, không gán cho backend chưa kiểm.
-- **PASS** sáu regression `publication_state::` trên PG thật (cũng nằm trong 200 test): quyền SELECT
-  column/history/ties/legacy; metadata-only binding; corrupt body/schema/conditional `If-None-Match:*`
-  không trả 304 và command rollback; cross-work FK/job digest; snapshot race; stale-policy pending
-  job và private/late approval.
-- **PASS** benchmark opt-in trước/sau: 13 checkpoint mỗi source, first + 3 warm samples; source,
-  commands, raw arrays/byte/plans/SQL và giới hạn ở evidence. Benchmark khác không được coi đã chạy.
-- **FAIL còn giữ riêng** approved-old-policy re-review: xem finding bên dưới; không phải PASS
-  nhờ bỏ test hoặc nới constraint. Các lỗi fixture/clippy và lock trước đó cùng cách xử lý được ghi
-  ở [checks.json](evidence/publication-state-230/checks.json).
-
-Review độc lập PR #248 (không có finding P0–P2; quick + PostgreSQL chạy lại PASS):
-[review-248.md](evidence/publication-state-230/review-248.md).
-
-Raw output: [quick.log](evidence/publication-state-230/quick.log),
-[postgres.log](evidence/publication-state-230/postgres.log),
-[benchmark trước](evidence/publication-state-230/benchmark-before.log) /
-[sau](evidence/publication-state-230/benchmark-after.log).
-
-Boundary Web/browser/OS IME và production latency: **NOT_RUN**; không đổi UI/DTO, không có claim
-browser mới. Model/Kani riêng: **NOT_RUN**; không đổi transition/authority, domain/DB regressions
-là evidence ở đây. GitHub CI: **NOT_RUN theo yêu cầu**; không đọc/chờ/poll/rerun Actions/status/log.
-
-| AC | Evidence / giới hạn |
-| --- | --- |
-| 01 | Inventory và trust map ở trên, phân biệt batch dashboard; tất cả 8 call sites paired loader tại base được kiểm. |
-| 02 | Typed summary, SQL log; PostgreSQL role không SELECT document vẫn trả đủ 106 rows; corrupt schema không parse trên GET. |
-| 03 | Domain differential oracle + publication/work-moderation/appeal regressions; snapshot race trước/sau commit, public r1 + pending/rejected r2, hidden/withdrawn/private và metadata binding. |
-| 04 | Existing HTTP auth/no-store, conditional 404, standing, version/generation, receipts, concurrency/rollback regressions trong PostgreSQL lane. |
-| 05 | Full content guards giữ ở command/worker; public exact-body hash; corruption test rollback, FK cross-work, mismatched job digest và late evaluator regressions. |
-| 06 | 106 rows với ties/legacy NULL, benchmark 300, HTTP/consumer fixtures giữ nguyên; không schema migration mới, upgrade/backout cũ chạy lại. |
-| 07 | Raw before/after cùng corpus/flags; app samples, SQL runtime statements/counts, rows/logical byte và EXPLAIN BUFFERS. Không đo byte wire hoặc latency production. |
-| 08 | Source SHA/commands/ran checks ở evidence; các boundary chưa chạy được ghi rõ. Không chapter/CAS/offline/provider. |
-
-## Finding ngoài projection: re-review dưới policy mới
-
-**FAIL runtime, pre-existing theo source; chưa sửa trong #230.** Sau approve → set-private →
-policy tăng → request-public lại bản cũ, domain `decide_author_with` tạo decision version 3,
-`pending`/NULL provenance; constraint `work_revision_moderation_pending_check` vẫn bắt version 1.
-Request rollback và trả Internal, không tạo approval sai. Domain transition và migration chứa
-constraint đều byte-identical với `20ed13e` ([source proof](evidence/publication-state-230/known-policy-rereview.json));
-full-flow trên baseline chưa chạy (**NOT_RUN**), không gán phép tái hiện branch mới cho baseline.
-
-[Reproducer gốc](evidence/publication-state-230/known-policy-rereview.rs.txt) tái hiện trên
-`77f177e` và trên `a19afdc` trước khi sửa. #275 bổ sung migration cho đúng luồng này.
-[Bộ test PostgreSQL](../../services/vink-app/tests/postgres/publication_policy.rs) giữ luồng gốc,
-kiểm tra thêm history, policy, receipt và kết quả đến trễ. Sáu regression riêng của projection
-tiếp tục kiểm metadata, hash tại ranh giới đọc nội dung và snapshot nhất quán.
-
-## Bảo toàn và vận hành cục bộ
-
-Checkout riêng tại `2026-11-16/task-4/vink`. #204 ở `~/Projects/loveoverflow/vink-204` giữ
-HEAD/diff và hash của 30 file thay đổi; inventory trước/sau được đối chiếu, không stash/reset/pull
-checkout đó. Hai PostgreSQL cũ và Chrome #204 không nhận signal. Chỉ `cargo clean --profile dev`
-ở checkout #246 (`task-3/vink`) sau khi không có Cargo/rustc/rust-analyzer hoặc file mở dưới
-`target/debug`; xóa 3.8 GiB artifact tái tạo, giữ `target/site`, `target/ui-preview`, evidence và
-database. Cluster #230 riêng dừng sau verification, data/log/evidence giữ ngoài target.
+Luồng approve → set-private → policy tăng → request-public lại bản cũ từng bị constraint
+`work_revision_moderation_pending_check` chặn (rollback, trả Internal, không tạo approval sai).
+#275 bổ sung migration cho luồng này. [Bộ test PostgreSQL](../../services/vink-app/tests/postgres/publication_policy.rs)
+giữ luồng gốc cùng history, policy, receipt và kết quả đến trễ; sáu regression `publication_state::`
+kiểm metadata, hash tại ranh giới đọc nội dung và snapshot nhất quán.

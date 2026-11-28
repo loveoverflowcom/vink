@@ -22,9 +22,8 @@ Read [owners and evidence](references/owners-and-evidence.md) for source-set pat
 target-specific checks and interaction verification boundaries; read
 [dependency evaluation](references/dependency-evaluation.md) before considering any
 Compose library. Inspect the current manifests and call sites.
-The [development guide](../../../docs/development/README.md) owns commands;
-[target readiness](../../../docs/development/ui-system-qualification-evidence.md)
-owns recorded results and gaps.
+The [development guide](../../../docs/development/README.md) owns commands, prerequisites and
+the remaining native gaps; recorded runs belong to PRs and CI artifacts.
 
 Vink currently has a shared `:ui` library, a `:patterns` library, common diagnostic
 specimens, a JVM Desktop preview and opt-in Android/iOS diagnostic hosts. There

@@ -2,7 +2,7 @@
 
 **Lịch sử vận hành public test.** Quy trình hiện hành và điều kiện ngừng host nằm trong [release production](../production/cloudflare-edge.md). Compose, fixture và qualification Auth cô lập vẫn dùng được.
 
-**Phạm vi:** cấu hình và quy trình cho `test.vink.forum`. Xem [triển khai thử ngày 15/11/2026](../../docs/development/test-container-evidence.md#triển-khai-thực-trên-vps-ngày-15112026) để lấy digest, cấu hình VPS và kết quả DNS/HTTPS đã quan sát. Xác minh lại target trước mỗi lượt.
+**Phạm vi:** cấu hình và quy trình cho `test.vink.forum`. Lượt triển khai thử 15/11/2026 nằm trong lịch sử Git/PR. Xác minh lại target trước mỗi lượt.
 
 ## Ranh giới và lựa chọn
 
@@ -62,7 +62,7 @@ podman compose --env-file /etc/vink-test/compose.public.env \
 
 `config` có thể in secret từ `env_file`: chỉ chạy cục bộ, không upload output/log; đừng dùng để
 chứng minh redaction. Lượt VPS dùng đường dẫn tuyệt đối cho các file Compose và overlay
-riêng cho ingress. Xem [cấu hình đã chạy](../../docs/development/test-container-evidence.md).
+riêng cho ingress.
 
 ### Secrets và UID
 
@@ -191,8 +191,7 @@ khi compatibility đã kiểm, nếu chưa thì giữ hệ thống dừng và ph
 
 ## Acceptance và evidence
 
-Xem [báo cáo lượt chạy](../../docs/development/test-container-evidence.md). Code-ready,
-image-built, image-published, DNS-applied và test-online là năm mức khác nhau. Không có quyền
+Code-ready, image-built, image-published, DNS-applied và test-online là năm mức khác nhau. Không có quyền
 hạ tầng không cản PR code độc lập, nhưng tuyệt đối không đổi NOT_RUN thành PASS.
 
 ## Thử native Identity qua Resend

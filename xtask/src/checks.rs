@@ -15,6 +15,13 @@ use sha2::{Digest, Sha256};
 pub const FONTS_DIR: &str = "apps/vink-web/assets/fonts";
 const DESKTOP_FONTS_DIR: &str = "apps/vink-preview/cmp/fonts";
 pub const BRAND_DIR: &str = "apps/vink-web/assets/brand";
+/// `asset-manifest.json` of the approved V-pen R1 ZIP (#117), committed byte for byte.
+const BRAND_SOURCE_MANIFEST: &str = "apps/vink-web/assets/brand/source-manifest.json";
+const BRAND_SOURCE_MANIFEST_SHA256: &str =
+    "96d781333a71d1ce1c501c52c087c0962c2116313d949522f2a7e06ea5350cc2";
+/// The approved ZIP itself stays in the design archive; only its identity is pinned here.
+const BRAND_REFERENCE_SHA256: &str =
+    "3e490cb95171139ab23404fb0d01e7a8a7505ea25c5a0e07ab60df7cdcc01b9e";
 
 pub fn run(root: &Path) -> Result<(), String> {
     let mut problems = Vec::new();
@@ -29,6 +36,7 @@ pub fn run(root: &Path) -> Result<(), String> {
         problems.push(error);
     }
     secrets(root, &mut problems);
+    hygiene(root, &mut problems);
     safety(root, &mut problems);
     finish("repository", problems)
 }
@@ -120,32 +128,38 @@ pub(crate) fn brand(root: &Path, problems: &mut Vec<String>) {
         problems.push(format!("{BRAND_DIR}/provenance.json: missing files"));
         return;
     };
-    // Pin the approved ZIP and its original manifest independently of the runtime record.
-    // Editing a served checksum alone cannot bless altered or historical artwork.
-    for (path_key, hash_key, approved) in [
-        (
-            "reference_path",
-            "reference_sha256",
-            "3e490cb95171139ab23404fb0d01e7a8a7505ea25c5a0e07ab60df7cdcc01b9e",
-        ),
-        (
-            "source_manifest_path",
-            "source_manifest_sha256",
-            "96d781333a71d1ce1c501c52c087c0962c2116313d949522f2a7e06ea5350cc2",
-        ),
-    ] {
-        let path = record[path_key].as_str().unwrap_or_default();
-        if record[hash_key].as_str() != Some(approved)
-            || std::fs::read(root.join(path))
-                .map(|b| sha256_hex(&b))
-                .ok()
-                .as_deref()
-                != Some(approved)
+    // Pin the approved ZIP identity and its original manifest independently of the runtime
+    // record. Editing a served checksum alone cannot bless altered or historical artwork. The
+    // ZIP lives in the design archive, outside Git and outside the build; the manifest it
+    // contains is kept byte for byte next to the served files.
+    if record["reference_sha256"].as_str() != Some(BRAND_REFERENCE_SHA256) {
+        problems.push(format!(
+            "{BRAND_DIR}: reference_sha256 differs from approved V-pen R1"
+        ));
+    }
+    if let Some(zip) = std::env::var_os("VINK_BRAND_REFERENCE_ZIP") {
+        // Optional offline re-check of the archived ZIP; never required by build or CI.
+        if std::fs::read(&zip).map(|b| sha256_hex(&b)).ok().as_deref()
+            != Some(BRAND_REFERENCE_SHA256)
         {
             problems.push(format!(
-                "{BRAND_DIR}: {path_key} differs from approved V-pen R1"
+                "VINK_BRAND_REFERENCE_ZIP={}: differs from approved V-pen R1",
+                Path::new(&zip).display()
             ));
         }
+    }
+    let manifest_path = record["source_manifest_path"].as_str();
+    if manifest_path != Some(BRAND_SOURCE_MANIFEST)
+        || record["source_manifest_sha256"].as_str() != Some(BRAND_SOURCE_MANIFEST_SHA256)
+        || std::fs::read(root.join(BRAND_SOURCE_MANIFEST))
+            .map(|b| sha256_hex(&b))
+            .ok()
+            .as_deref()
+            != Some(BRAND_SOURCE_MANIFEST_SHA256)
+    {
+        problems.push(format!(
+            "{BRAND_DIR}: source_manifest_path differs from approved V-pen R1"
+        ));
     }
     let source = record["source_manifest_path"]
         .as_str()
@@ -476,6 +490,85 @@ fn secrets(root: &Path, problems: &mut Vec<String>) {
             }
         }
     }
+}
+
+/// Largest tracked file. Raw outputs belong in CI artifacts, artwork and captures on Drive.
+const MAX_TRACKED_BYTES: u64 = 1024 * 1024;
+/// Directory names that only ever held reproducible or historical material
+/// (docs/README.md#quy-ước-lưu-trữ). Git history keeps what was removed.
+const FORBIDDEN_DIRS: [&str; 4] = ["evidence", "archive", "screenshots", "captures"];
+/// Binary, archive and raw-output kinds that need an owner with a provenance record.
+const HEAVY_EXTENSIONS: [&str; 33] = [
+    "png", "jpg", "jpeg", "gif", "webp", "avif", "bmp", "tif", "tiff", "ico", "heic", "psd",
+    "zip", "gz", "tgz", "tar", "xz", "bz2", "7z", "rar", "log", "har", "trace", "mp4", "mov",
+    "webm", "pdf", "ttf", "otf", "woff", "woff2", "lottie", "wasm",
+];
+/// Runtime and build inputs allowed to carry those kinds, each with the record that pins it.
+const HEAVY_OWNERS: [(&str, &str); 5] = [
+    ("apps/vink-web/assets/brand/", "served logo, provenance.json"),
+    ("apps/vink-web/assets/fonts/", "served fonts, provenance.json"),
+    ("apps/vink-web/assets/empty/", "served empty artwork, asset-manifest.json"),
+    ("apps/vink-preview/cmp/fonts/", "Desktop preview fonts, fonts provenance.json"),
+    ("packages/expressions/assets/", "Noto expressions, manifest"),
+];
+
+/// Keep generated evidence, archives and oversized files out of Git.
+fn hygiene(root: &Path, problems: &mut Vec<String>) {
+    let listed = std::process::Command::new("git")
+        .args(["ls-files", "-z"])
+        .current_dir(root)
+        .output();
+    let Some(listed) = listed.ok().filter(|out| out.status.success()) else {
+        problems.push("hygiene: cannot list tracked files with git".into());
+        return;
+    };
+    let files: Vec<(String, u64)> = String::from_utf8_lossy(&listed.stdout)
+        .split('\0')
+        .filter(|name| !name.is_empty())
+        // A tracked path deleted in the working tree is about to leave the index.
+        .filter_map(|name| {
+            std::fs::symlink_metadata(root.join(name))
+                .ok()
+                .map(|meta| (name.to_string(), meta.len()))
+        })
+        .collect();
+    problems.extend(hygiene_problems(&files));
+}
+
+fn hygiene_problems(files: &[(String, u64)]) -> Vec<String> {
+    let mut problems = Vec::new();
+    for (name, bytes) in files {
+        let path = Path::new(name);
+        if *bytes > MAX_TRACKED_BYTES {
+            problems.push(format!(
+                "{name}: {bytes} bytes exceeds {MAX_TRACKED_BYTES}; keep raw output in CI artifacts and artwork on Drive"
+            ));
+        }
+        let dirs = path.parent().into_iter().flat_map(Path::components);
+        if let Some(dir) = dirs
+            .filter_map(|c| c.as_os_str().to_str())
+            .find(|c| FORBIDDEN_DIRS.contains(&c.to_ascii_lowercase().as_str()))
+        {
+            problems.push(format!(
+                "{name}: `{dir}/` directories are not kept in Git; summarise in the owner registry"
+            ));
+        }
+        let extension = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or_default()
+            .to_ascii_lowercase();
+        if HEAVY_EXTENSIONS.contains(&extension.as_str())
+            && !HEAVY_OWNERS
+                .iter()
+                .any(|(owner, _)| name.starts_with(owner))
+        {
+            problems.push(format!(
+                "{name}: `.{extension}` files need a runtime/build owner with provenance (xtask HEAVY_OWNERS)"
+            ));
+        }
+    }
+    problems
 }
 
 /// Layer rules from AGENTS.md, checked by imports.
@@ -1127,6 +1220,43 @@ mod tests {
     }
 
     #[test]
+    fn hygiene_rejects_evidence_archives_heavy_kinds_and_oversized_files() {
+        let files = |list: &[(&str, u64)]| -> Vec<(String, u64)> {
+            list.iter().map(|(n, b)| (n.to_string(), *b)).collect()
+        };
+        let lawful = files(&[
+            ("apps/vink-web/assets/brand/vpen-r1-mark-dark-24.png", 1_042),
+            ("apps/vink-web/assets/fonts/literata-variable.woff2", 256_620),
+            ("apps/vink-web/e2e/visual-evidence.mjs", 40_000),
+            (".agents/skills/vink-ui-evidence-drive/SKILL.md", 4_000),
+            ("docs/archive-policy.md", 100),
+        ]);
+        assert!(hygiene_problems(&lawful).is_empty());
+        let problems = hygiene_problems(&files(&[
+            ("docs/development/evidence/run-1/README.md", 10),
+            ("docs/Archive/old.md", 10),
+            ("docs/design/board.PNG", 10),
+            ("apps/vink-web/assets/brandx/logo.png", 10),
+            ("target-copy/run.log", 10),
+            ("apps/vink-web/e2e/huge.mjs", MAX_TRACKED_BYTES + 1),
+        ]));
+        for expected in [
+            "docs/development/evidence/run-1/README.md: `evidence/`",
+            "docs/Archive/old.md: `Archive/`",
+            "docs/design/board.PNG: `.png`",
+            "apps/vink-web/assets/brandx/logo.png: `.png`",
+            "target-copy/run.log: `.log`",
+            "apps/vink-web/e2e/huge.mjs: 1048577 bytes",
+        ] {
+            assert!(
+                problems.iter().any(|p| p.starts_with(expected)),
+                "{expected}: {problems:?}"
+            );
+        }
+        assert_eq!(problems.len(), 6, "{problems:?}");
+    }
+
+    #[test]
     fn brand_rejects_theme_swaps_legacy_urls_and_rehashed_favicon() {
         let root = std::env::temp_dir().join(format!("vink-brand-check-{}", std::process::id()));
         let dir = root.join(BRAND_DIR);
@@ -1136,11 +1266,11 @@ mod tests {
             &read(&source_root.join(BRAND_DIR).join("provenance.json")).unwrap(),
         )
         .unwrap();
-        for key in ["reference_path", "source_manifest_path"] {
-            let path = record[key].as_str().unwrap();
-            std::fs::create_dir_all(root.join(path).parent().unwrap()).unwrap();
-            std::fs::copy(source_root.join(path), root.join(path)).unwrap();
-        }
+        std::fs::copy(
+            source_root.join(BRAND_SOURCE_MANIFEST),
+            root.join(BRAND_SOURCE_MANIFEST),
+        )
+        .unwrap();
         for name in record["files"].as_object().unwrap().keys() {
             std::fs::copy(source_root.join(BRAND_DIR).join(name), dir.join(name)).unwrap();
         }
@@ -1164,10 +1294,16 @@ mod tests {
         std::fs::write(dir.join(favicon), replacement).unwrap();
         record["files"][favicon]["sha256"] = sha256_hex(replacement).into();
         record["files"][favicon]["bytes"] = replacement.len().into();
+        // Neither the archived ZIP identity nor the committed source manifest can be re-pinned.
+        record["reference_sha256"] = sha256_hex(b"other zip").into();
+        std::fs::write(root.join(BRAND_SOURCE_MANIFEST), b"{}").unwrap();
+        record["source_manifest_sha256"] = sha256_hex(b"{}").into();
         write_record(&record);
         brand(&root, &mut problems);
         std::fs::remove_dir_all(root).unwrap();
         for expected in [
+            "reference_sha256 differs from approved V-pen R1",
+            "source_manifest_path differs from approved V-pen R1",
             "vpen-r1-mark-light.svg: differs from approved source svg/vink-mark-light.svg",
             "vink-mark-light.svg: unexpected served brand asset",
             "vpen-r1-favicon.svg: differs from reviewed Web derivative",

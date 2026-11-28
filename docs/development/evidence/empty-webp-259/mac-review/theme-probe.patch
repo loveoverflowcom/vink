@@ -1,6 +1,0 @@
---- apps/vink-web/e2e/browser-smoke.mjs	2026-11-17 04:57:03
-+++ target/review-probe/e2e/browser-smoke.mjs	2026-11-17 05:04:37
-@@ -1602,0 +1603 @@
-+  console.log('REVIEW-THEME before', value, await page.eval(`({width:innerWidth,scale:document.documentElement.style.fontSize,theme:document.documentElement.dataset.theme,selection:document.querySelector('#${group} input:checked')?.value})`));
-@@ -1603,0 +1605 @@
-+  console.log('REVIEW-THEME after', value, await page.eval(`({theme:document.documentElement.dataset.theme,selection:document.querySelector('#${group} input:checked')?.value,active:document.activeElement?.value})`));

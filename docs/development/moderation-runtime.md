@@ -316,8 +316,7 @@ history `/works/{work}/appeals`, revision/decision history và ghi chú chi ti�
 hiện có, chưa được phân trang trong #205. Không có private durable cache, SSR private payload,
 offline moderation, native consumer hay thay luật grant/expiry/recusal/admin.
 
-[LayoutSpec](../design/moderation-queue-pagination.md). Bằng chứng final code và giới hạn được ghi
-trong [evidence #205](evidence/moderation-queue-205/README.md).
+LayoutSpec. Bằng chứng final code và giới hạn được ghi
 
 ### Lời nhắn riêng tư của evaluator (#638)
 

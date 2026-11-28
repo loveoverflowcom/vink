@@ -7,7 +7,7 @@ mở tại một thời điểm, Back đóng lớp phủ trước, trả focus) 
 [navigation.md](navigation.md).
 
 UIS-05: Web `Dialog.title` là signal để bước xác nhận của `LeaveGuard` đổi tiêu đề mà không
-remount; `focus_title` dùng cho preview dài. Delta [#208](../../../docs/design/dialog-anatomy-r1-208.md)
+remount; `focus_title` dùng cho preview dài. Delta #208
 chuyển quyền sở hữu gutter (`--vk-overlay-gutter`), scroll (`overflow-y: auto; overscroll-behavior: contain;
 scroll-padding-block: var(--vk-size-hit-target)`), `context: Signal<String>` và opt-in `secondary_actions`
 về `Dialog` (`vink-ui`), bỏ divider và page CSS override khỏi app. Trả focus dùng prevent-scroll. Sự kiện `close`
@@ -124,8 +124,7 @@ frame/dấu chấm tải, không lặp sau recomposition). Lỗi/retry không t�
   adapter `document_visibility()` (Page Visibility API); CMP `VinkMotionActivity(active) { … }`
   (`LocalMotionActive`), host map lifecycle: desktop preview khi cửa sổ thu nhỏ/ẩn; Android
   diagnostic `onResume`/`onPause`, iOS diagnostic `applicationDidBecomeActive`/`WillResignActive`
-  (UIS-06, chỉ diagnostic host; chưa có native product app, runtime theo
-  [qualification evidence](../../../docs/development/ui-system-qualification-evidence.md)).
+  (UIS-06, chỉ diagnostic host; chưa có native product app).
   Không hoạt động (tab ẩn, nền, offscreen) → không
   vòng lặp nào chạy. Unmount/dispose → animation mất cùng node. Component con không tự chạy timer:
   Web dùng CSS animation, CMP `rememberInfiniteTransition` chỉ khi `loopsRun && active`.
@@ -235,5 +234,4 @@ closeReason; Web navigation giữ owner cũ. [Contract và giới hạn](../../.
 controlled search và composition private của diagnostic host. Artwork chỉ thuộc hai scenario
 fresh-empty đó; loading/error/auth/forbidden/pending/retained không đổi thành empty. CTA chỉ
 clear query hoặc ghi sample editor intent. `state.empty` và state policy chung giữ nguyên.
-[LayoutSpec/copy/decode boundary](../../../docs/design/empty-artwork-cmp-261.md) ·
-[evidence theo target](../../../docs/development/evidence/empty-webp-cmp-261/README.md).
+[LayoutSpec/copy/decode boundary](../../../docs/design/empty-artwork-cmp-261.md).

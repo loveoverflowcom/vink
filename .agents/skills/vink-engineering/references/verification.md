@@ -118,11 +118,9 @@ Record the source SHA and relevant dirty content, target/feature/profile, toolch
 dependency locks, generator/validator inputs, fixture or corpus, command, original logs and claim.
 For cold/warm comparisons identify which cache began empty, which stayed warm and the measurement
 boundary (process RSS or cgroup peak). Compare like workloads, toolchains, fixtures and cache
-states. For example, the [verification baseline](../../../../docs/development/evidence/verification-budget-497/README.md)
-includes a two-worktree fixture. The [low-disk comparison](../../../../docs/development/evidence/cargo-low-disk-502.md)
-measured cold/warm dev/test artifacts in one checkout. Switching its warm target kept both
-artifact sets. A two-worktree low-disk benchmark is still `NOT_RUN`. Separate an artifact HIT
-from an executed assertion.
+states. A two-worktree low-disk benchmark is still `NOT_RUN`. Separate an artifact HIT from an
+executed assertion. Keep raw logs and captures in CI artifacts or local `target/`, and record only
+the summary and its inputs in the owner registry.
 When copying a source snapshot into a reused build directory, preserved mtimes can predate the
 previous binary. Verify the changed producer with a regression that the old binary fails.
 Keep the runner's result on the inputs it executed. Record a missing run on the new inputs

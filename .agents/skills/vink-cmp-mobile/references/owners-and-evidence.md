@@ -23,7 +23,7 @@ decoding use their existing target adapters.
 ## Select checks and artifacts
 
 Exact commands and prerequisites live in the
-[development guide](../../../../docs/development/README.md#diagnostic-ui-native-uis-06)
+[development guide](../../../../docs/development/README.md#host-chẩn-đoán-ui-native)
 and [CMP README](../../../../packages/ui-system/cmp/README.md). Do not infer tasks
 from another Kotlin project. Current pins are Kotlin 2.2.20, CMP 1.9.0, Material3
 1.8.2, Gradle 8.14.3/JDK 17+, native opt-in with Android SDK 36 and Xcode for iOS.

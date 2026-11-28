@@ -2,7 +2,7 @@
 
 > [Editor R4 và delta #475](editor-r4.md) bỏ nút con mắt và hộp thoại Xem trước bản nháp trong cây lịch sử bên dưới. Markdown Live Preview, Mục lục và xem trước chuyển định dạng tiếp tục có hiệu lực.
 
-Từ #617, Bàn viết dùng preset Document của CodeMirror. H1, mục lục và chuyển định dạng thuộc riêng Bàn viết. Xem [hợp đồng runtime và vòng đời](../../apps/vink-web/editor/README.md#preset-định-dạng-và-vòng-đời-617) và [số đo baseline/final](../development/evidence/editor-core-617/README.md).
+Từ #617, Bàn viết dùng preset Document của CodeMirror. H1, mục lục và chuyển định dạng thuộc riêng Bàn viết. Xem [hợp đồng runtime và vòng đời](../../apps/vink-web/editor/README.md#preset-định-dạng-và-vòng-đời-617) và số đo baseline/final.
 
 Ngày: 18/11/2026 · Base tích hợp: `origin/develop@fd4cb980` · Nhánh: `codex/editor-live-preview`
 

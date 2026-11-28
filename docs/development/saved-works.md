@@ -54,7 +54,7 @@ Dialog đăng nhập chuyển lên cấp trang Reader để composer và Lưu d�
 
 ### Kiểm chứng #388
 
-Base `f9c14d0b`, working tree của PR trước khi commit; code của commit giống hệt bản đã chạy. macOS, Chrome 158 headless, PostgreSQL 17.11 scratch. [Ảnh và cách đọc](../design/evidence/saved-works-388/README.md).
+Base `f9c14d0b`, working tree của PR trước khi commit; code của commit giống hệt bản đã chạy. macOS, Chrome 158 headless, PostgreSQL 17.11 scratch.
 
 | Lệnh / lane | Kết quả | Ranh giới |
 | --- | --- | --- |

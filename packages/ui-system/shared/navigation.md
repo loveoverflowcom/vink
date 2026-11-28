@@ -149,4 +149,3 @@ giữ precedence; input, route, vùng chọn và overlay không remount qua resi
 Web rail 220 reflow icon lên trên nhãn khi bề rộng theo rem không đủ cho chữ lớn;
 giữ token chiều rộng và cỡ chữ. CMP dùng spacing dp, không sao chép query CSS.
 Đây là qualification của preview, không phải triển khai điều hướng native product.
-Nguồn, negative control và giới hạn: [UI-REPAIR-09](../../../docs/design/ui-repair-09.md).

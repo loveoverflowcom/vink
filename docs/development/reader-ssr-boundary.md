@@ -2,9 +2,7 @@
 
 ## Kiểm chứng release ngày 18/11/2026
 
-Giữ Async. Thảo luận chậm 1 giây làm article SSR của Async chờ khoảng 1 giây. OutOfOrder trả shell sớm, nhưng khi critical chậm 30 ms thì commit nhầm 200 cho Missing/Error trên cả direct và Caddy. Sau rollback, Async đạt đủ 28 ca. [Ma trận, history, giới hạn và lệnh tái lập](evidence/web-perf-235-canonical/README.md).
-
-## Lịch sử trước đợt kiểm release
+Giữ Async. Thảo luận chậm 1 giây làm article SSR của Async chờ khoảng 1 giây. OutOfOrder trả shell sớm, nhưng khi critical chậm 30 ms thì commit nhầm 200 cho Missing/Error trên cả direct và Caddy. Sau rollback, Async đạt đủ 28 ca.
 
 ## Kết luận kỹ thuật trong phạm vi này
 
@@ -54,8 +52,7 @@ trình bày theo lifecycle, không thay semantic của các model publication/re
 | Own overlay/capability | Browser-only, account/session generation riêng. Các GET public, own, actor và endorsement theo target không được cộng thành duplicate typed `/reader`. |
 | Fresh/stale/history/race | READ-02 `public_reads`, `read_cache`, `freshness`, `read_lifecycle`; seed không gia hạn tuổi, ticket/scope fence vẫn là owner. Không thêm cache/coordinator mới. |
 
-[Decision snapshot](evidence/reader-ssr-235/decisions.json) được query tại base thực thi:
-READ-01/02 và DISC-WEB r1 giữ `DESIGN_PROPOSED`; O-03/O-17 r2 là `PRODUCT_CONFIRMED`;
+Tại base thực thi, READ-01/02 và DISC-WEB r1 giữ `DESIGN_PROPOSED`; O-03/O-17 r2 là `PRODUCT_CONFIRMED`;
 VDR-PUBLIC-OFFLINE-AGE r1 không có signoff, vẫn pending. Không bật persistence/offline gate hoặc
 chốt max-stale/expiry/clearing UX. PRD và các INV vẫn là oracle về authority/privacy.
 
@@ -99,26 +96,21 @@ cargo xtask verify web --scenario main --scenario discovery --scenario review
 cargo xtask verify quick
 ```
 
-Kết quả thực chạy, source identity, raw artifacts và các giới hạn ở
-[evidence #235](evidence/reader-ssr-235/README.md).
-[Review Mac](evidence/reader-ssr-235/mac-review/README.md) đã PASS Quick, Web main/discovery/review
-và ba PostgreSQL/API tests; giữ raw FAIL trước sửa, so sánh trace và source pins. #234/#235
-vẫn còn acceptance chưa đủ; không coi merge là release qualification. Không đọc/chờ/poll GitHub CI.
+Review Mac đã PASS Quick, Web main/discovery/review và ba PostgreSQL/API tests. #234/#235
+vẫn còn acceptance chưa đủ; không coi merge là release qualification.
 
 ## Kiểm bổ sung 17/11/2026 trên release
 
 Scenario `main` giữ blocked JS và 200/1.000 ms bootstrap hold, thêm **WASM-only** 200/1.000 ms
 và 503. Test chờ network JS đã tải xong và lời gọi fetch của loader thật trước khi tác động:
 file WASM được preload nên event request-paused đơn lẻ chưa đủ. Quan sát trong CDP dùng wrapper
-fetch chỉ ghi đã vào loader, không đổi Promise. Thành công/503 đều cụ thể trong
-[trace mới](evidence/web-perf-234-236/README.md#235--ranh-giới-reader-ssr); chỉ lỗi wasm-bindgen
+fetch chỉ ghi đã vào loader, không đổi Promise. Thành công/503 đều cụ thể trong trace; chỉ lỗi wasm-bindgen
 503 dự kiến được miễn trong ca lỗi. Nội dung SSR và đường quay về còn dùng được; click trước
 hydration không phát/request lại thao tác ghi; hydrate thành công không gửi GET typed Reader dư.
 
 `main`, `discovery`, `review` release đã chạy trên App/PostgreSQL thật. Lịch sử, retry manual,
 304 và ABA được phân biệt ở ledger bổ sung của #234. Giữ Async: chưa thực nghiệm mode B/C,
 rollback một mode khác hoặc so sánh chunk trên proxy; không tuyên bố gain/architecture Accepted.
-
 
 [#557](https://github.com/loveoverflowcom/vink/issues/557) bỏ `discussion-refresh` khỏi
 trạng thái bình thường. `discussion-load-retry` hiện với lỗi tạm thời và vẫn chờ hydration

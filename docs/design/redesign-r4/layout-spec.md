@@ -3,8 +3,7 @@
 **DESIGN_PROPOSED · `fidelity: NO_APPROVED_REFERENCE`**
 
 Source đối chiếu `develop@2712145b08a6a4c7a12c1d57033ecd2a5bd33b26`. Đặc tả này tổng hợp phần R4.3
-truy được từ repo và issue #414. [Bản audit R4](../redesign-r4-ban-viet-kham-pha.md) giữ lịch sử R4.1/R4.2
-và lời chốt từng DQ. [Review và bàn giao](review-414.md) ghi nguồn, owner và phần cần kiểm tiếp.
+truy được từ repo và issue #414; lời chốt từng DQ và lịch sử R4.1/R4.2 nằm trên issue và Git history.
 
 ## 1. Intent và References
 
@@ -37,8 +36,7 @@ Thứ tự Khám phá → Bàn viết, mục Tài khoản ở cuối. Dưới 76
 760–1099 px giữ rail 96 px, mở điều hướng đầy đủ bằng hộp thoại. Từ 1100 px theo chế độ rail và
 preference (mở rộng 220 px, thu gọn 96 px). Điều hướng không đổi route mặc định `/`.
 
-[DQ-11](../redesign-r4-ban-viet-kham-pha.md#8-sửa-theo-thiết-kế-hiện-hành-vs-cần-quyết-định)
-giữ hai lựa chọn: bác thẻ tài khoản ở chân rail và dùng nền trang cho mục Tài khoản khi mục này có chữ.
+DQ-11 giữ hai lựa chọn: bác thẻ tài khoản ở chân rail và dùng nền trang cho mục Tài khoản khi mục này có chữ.
 [#413](https://github.com/loveoverflowcom/vink/issues/413) gỡ nút Giao diện khỏi rail mở rộng,
 thu gọn và hộp thoại. Theo [#576](https://github.com/loveoverflowcom/vink/issues/576), chỉ thành viên
 Active đã xác nhận mới chỉnh Giao diện tại Tài khoản (`/toi`). Mặc định 100%, Lớn 150%. Trước khi
@@ -81,7 +79,7 @@ Tham chiếu là hướng bố cục đã chọn trong #521. LayoutSpec R4.3 gi�
 
 ## 4. Khám phá
 
-- [Delta DQ-03 của #530](../redesign-r4-ban-viet-kham-pha.md#dq-03-cập-nhật-ngày-25112026) dùng
+- Delta DQ-03 của #530 dùng
   chung H1 Khám phá, nút tìm và logo. Thanh Primary Tabs luôn có Tất cả và Tác giả, với
   `aria-current` và node ổn định qua các lần đổi chế độ. Theo [#621](https://github.com/loveoverflowcom/vink/issues/621),
   Đang theo dõi đứng giữa hai link công khai khi feed bật và Session đã xác nhận scope đủ quyền.

@@ -5,7 +5,7 @@ Delta của [#90](https://github.com/loveoverflowcom/vink/issues/90), trên
 [Ảnh R5.1](https://drive.google.com/file/d/1c27wRtdzE7VBk3_AlnMvZ8Nl9MYgwA7w/view)
 là concept; không dùng màu, gradient, pixel hoặc dữ liệu tạo sinh làm contract.
 R5.1 thay anatomy search R3/R4; giữ placement và hành vi trong
-[Search R3](search-r3.md). Không thay theme authority, backend, editor hay Tôi.
+Search R3. Không thay theme authority, backend, editor hay Tôi.
 
 ## DecisionMap
 
@@ -85,4 +85,3 @@ xử lý điều kiện lọc riêng. Trang kế rỗng, thẻ không khả dụ
 - Leptos preview dùng cùng primitives. CMP không đổi API/style, chưa có Bar/support parity;
   không coi Web runtime là nghiệm thu native. #101/#67 dùng shared API này, không tạo framework mới.
 
-Bằng chứng chạy và giới hạn ở [search-r5-evidence](../development/search-r5-evidence.md).

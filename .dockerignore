@@ -29,14 +29,3 @@ infra/test/**
 **/*.dump
 **/*.sql.gz
 **/*secret*
-# Brand copy checks require these provenance inputs; no other docs are sent.
-!docs/
-docs/**
-!docs/design/
-docs/design/**
-!docs/design/brand/
-docs/design/brand/**
-!docs/design/brand/vpen-r1/
-docs/design/brand/vpen-r1/**
-!docs/design/brand/vpen-r1/Vink_Brand_LightDark_VPen_R1_2026-11-08.zip
-!docs/design/brand/vpen-r1/asset-manifest.json

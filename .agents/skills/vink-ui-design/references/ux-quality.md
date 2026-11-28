@@ -15,7 +15,7 @@ dung của họ, không là thang điểm thẩm mỹ và không tự duyệt th
 | Ảnh, metadata, số đo anchor, overlay | [Contract evidence](../../vink-ui-capture/references/evidence-contract.md) |
 | Finding, severity, confidence, coverage | [Component audit](../../vink-ui-inspector/references/component-audit.md) |
 | Sửa đúng owner, check theo rủi ro, bàn giao | [Repair và handoff](../../vink-ui-fix/references/repair-and-handoff.md) |
-| Lệnh, lane, readiness theo target | [Development guide](../../../../docs/development/README.md), [qualification](../../../../docs/development/ui-system-qualification-evidence.md) |
+| Lệnh, lane, readiness theo target | [Development guide](../../../../docs/development/README.md) |
 | Mốc thị giác đã duyệt | [Sổ mốc thị giác](../../../../docs/design/visual-anchors.md) |
 
 Tài liệu này chỉ sở hữu bốn thứ: **rubric** (§1), **phân loại mốc thị giác** (§2), **ngân sách
@@ -160,8 +160,7 @@ hoặc skill sửa xong không đồng nghĩa giao diện đã được nghiệm
 Review theo tài liệu này đang ở mức **khuyến nghị có gap hiển thị** (pilot #174): thiếu
 bằng chứng thì ghi `NOT_RUN`/gap ngay trong bàn giao, không chặn merge tự động và không được ghi
 thành PASS. Mở rộng thành gate bắt buộc theo vùng UI là quyết định của chủ sản phẩm sau khi
-pilot có số liệu về lỗi bắt được, bỏ sót và chi phí; xem
-[báo cáo #174](../../../../docs/design/ui-ux-quality-174.md).
+pilot có số liệu về lỗi bắt được, bỏ sót và chi phí.
 
 Đối chiếu với [verification guide](../../vink-engineering/references/verification.md): bằng chứng bắt
 buộc của AC thuộc phạm vi nhiệm vụ và tiêu chí UX pilot rộng hơn là hai lớp khác nhau — không âm

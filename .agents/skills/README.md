@@ -145,5 +145,5 @@ prototype, test lane và release artifact. Dùng khi đổi route, dependency ho
 - Respect user authorization already granted in the active conversation; do not ask again merely
   because a skill has a conservative default, and do not infer permission to push, publish or post
   externally from a local edit.
-- Provenance for how these skills were adapted from Cantos and the coding-agent workflow draft
-  lives in [skill-adaptation.md](../../docs/references/skill-adaptation.md).
+- How these skills were adapted from Cantos lives in Git history; the skills themselves are
+  the current guidance.

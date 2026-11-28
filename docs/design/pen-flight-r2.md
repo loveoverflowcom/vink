@@ -43,7 +43,6 @@ Không thêm animation, backend, ranking, auth hoặc native product consumer.
 
 Đường kiểm: generator/hash negative, quick, Web SSR/hydration và real LocalFixture writes,
 preview Leptos sáng/tối, 320/390/1440 và chữ200; CMP common/desktop báo riêng.
-Kết quả và giới hạn: [evidence](../development/pen-flight-r2-evidence.md).
 
 ## Cặp Thấm · Lưu trên Reader
 

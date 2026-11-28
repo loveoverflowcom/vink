@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="vink.ui.preview.ActionSurfacesTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-11-16T03:36:29.176Z" hostname="Mac-mini-cua-Manh.local" time="1.744">
-  <properties/>
-  <testcase name="tonalIconAndToggleKeepFocusAndDispatchOnlyWhenAllowed[desktop]" classname="vink.ui.preview.ActionSurfacesTest" time="0.589"/>
-  <testcase name="capturePairedSurfacesAndLongVietnameseLabels[desktop]" classname="vink.ui.preview.ActionSurfacesTest" time="1.154"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

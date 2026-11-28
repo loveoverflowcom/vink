@@ -115,7 +115,6 @@ không full lane PASS hoặc production auth acceptance. Desk phase cuối PASS 
 | `decisions/*.toml`, DecisionDelta 10/11 và CHOICE lịch sử trong ADR LVE | Bản nhập/trích dẫn chủ sản phẩm được pin; delta thuật ngữ mới ở cuối ADR, không viết lại payload hoặc signoff |
 | `prd/vision.md`, mục RANK/TOP trong `prd/requirements.md`, `docs/architecture/discovery-ranking.md`, reference `vink-shape/domain-lenses.md` | Thuật ngữ của policy/OPEN O-07 và kế hoạch ranking 10/11, không active action copy hoặc ranking runtime mới |
 | `docs/architecture/work-taxonomy.md` | Diễn giải/tradeoff lịch sử về revision anchor và count; không nhãn control hiện hành |
-| `docs/development/*endorsement*evidence.md`, `pen-flight-r2-evidence.md`, `docs/design/brand/vpen-r1/evidence/*.log` | Evidence lịch sử giữ SHA, câu chữ và kết quả lần chạy gốc |
 
 Không đổi Hữu ích, enum/API/storage identifiers, version/CAS, icon SVG, policy vote hoặc ranking;
 không metrics API, SQL/counter, tracking, native product app. Không tick/close issue #213 hay issue khác.

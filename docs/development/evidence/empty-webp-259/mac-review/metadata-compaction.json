@@ -1,6 +1,0 @@
-{
-  "captures": 42,
-  "raw_pretty_sha256": "c963164e3d9bfeaa9ea12b7235957497fd29caf3fdd9f3d8cd1202cbc1405c67",
-  "stored_sha256": "64be381734c8bed85dfa4b5bc0df679fbe1e1da1adac50a77dd3aa2b21cbf0f8",
-  "semantics": "One capture per line; parsed keys/values/schema verified identical. Full original remains in target/mac-review-267/main-r2/screenshots/contexts.json."
-}

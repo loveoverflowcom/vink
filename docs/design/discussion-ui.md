@@ -42,7 +42,6 @@ Unicode gõ trực tiếp vẫn giữ nguyên. Context trong danh sách dùng
 anchor có quyền; context ngoài trang chỉ hiện nhãn API cùng giải thích chưa có
 endpoint tra cứu đúng scope, không quét toàn bộ hội thoại hoặc đoán nội dung.
 
-
 ## Nhận xét R3.1 / desktop R1.3 — #134, 10/11/2026
 
 Hướng C đã chọn từ [issue #134](https://github.com/loveoverflowcom/vink/issues/134),
@@ -85,7 +84,6 @@ Pen Flight chưa có trong registry ở base #138; tiếp tục do #73 sở hữ
 #134 dùng lại slot hiện có, không thêm glyph tạm hay thay policy. #128 tiếp tục
 sở hữu các delta visual khác; #129 giữ input/clipboard/recovery chưa triển khai;
 #130 CMP, #131/#132 nav nằm ngoài lát này.
-Bằng chứng, điều kiện render và phần chưa chạy ở [evidence](../development/discussion-ui-evidence.md).
 
 ## Ma trận tương tác và trạng thái
 
@@ -118,7 +116,7 @@ double-submit, closed policy và lost ACK. Pattern projection chia sẻ scenario
 Web/CMP; CMP không có service consumer/native app. Quint hiện tại chỉ sở hữu core;
 không gọi test Rust consumer là model-check/Kani. Browser, persistence, OS IME,
 screen reader, responsive/theme screenshots và native runtime cần evidence riêng.
-PR #56 đã merge tại `27927c4` để sửa editor selection/resize; base đã tích hợp. Kết quả quick/Web/hai preview và giới hạn ở [evidence](../development/discussion-ui-evidence.md).
+PR #56 đã merge tại `27927c4` để sửa editor selection/resize; base đã tích hợp.
 
 Trạng thái gửi/duyệt mở rộng cho thiết kế sau (Refused, Held, quy tắc thử lại, ma trận cho designer)
 nằm ở [brief #120](discussion-submission-brief.md); brief không đổi phần đã triển khai ở đây.
@@ -177,7 +175,7 @@ Delta [#328](https://github.com/loveoverflowcom/vink/issues/328) ngày 26/11/202
   - **`.vk-discussion-readonly-notice`** (chỉ hiện khi `ReplacementView` ẩn / gỡ sau kiểm duyệt): hộp tonal `"Trang này chỉ đọc"`, nêu rõ không gửi mới/bấm `Ưng`, vẫn xem bình luận và gỡ mục của chính mình nếu còn quyền.
   - **`#comments-mode.vk-discussion-mode`** giữ mode đọc được trong DOM và nút Mở/Tắt bình luận theo quyền tác giả. Khi mở, khách và người đọc không có quyền đổi thiết lập sẽ đi thẳng vào ô soạn. Hàng trạng thái chỉ chiếm chỗ khi có thao tác, thông báo quan trọng hoặc nhãn fixture. Lỗi đọc nền có một “Thử lại”. Xung đột hoặc lần đổi chưa xác nhận dùng “Kiểm tra trạng thái bình luận” để đọc lại trạng thái. Cả hai nằm cạnh thông báo của vùng nhận xét.
   - **`.vk-discussion-composer` (`Root` / `Reply`)**: thẻ `--vk-surface-container-low` (radius `28px`), khay `FloatingTonal` `--vk-surface-container-high` ở trạng thái nghỉ và `--vk-surface` + viền trong `2px solid var(--vk-primary)` khi focus; `FieldMode::ReadOnly` khi `Closed` để giữ node, giá trị và selection. Khi `Sending`, textarea vẫn nhận chữ mới. Lần gửi dùng snapshot cố định, nút Gửi khóa đến khi có kết quả.
-    - Hàng đích (chỉ ô trả lời): chip `"Trả lời bình luận gốc"` hoặc chip tonal `--vk-primary-container` `"Đang trả lời X"` + nút `×` (`>=44px` vùng chạm) + nút `"Thu ô · Giữ chữ"`; khi thu ô hiện pill `.vk-discussion-reply-kept` `"Bản trả lời được giữ lại"` + `"Mở lại"`. Ô nhập đã mở vẫn giữ cùng node và vùng chọn khi thu. Mở lại đưa focus về đúng ô đó. [Ảnh khi thu/mở giữa một POST trên `bb25af4`](evidence/discussion-r4-366/fold-bb25af4.jpg).
+    - Hàng đích (chỉ ô trả lời): chip `"Trả lời bình luận gốc"` hoặc chip tonal `--vk-primary-container` `"Đang trả lời X"` + nút `×` (`>=44px` vùng chạm) + nút `"Thu ô · Giữ chữ"`; khi thu ô hiện pill `.vk-discussion-reply-kept` `"Bản trả lời được giữ lại"` + `"Mở lại"`. Ô nhập đã mở vẫn giữ cùng node và vùng chọn khi thu. Mở lại đưa focus về đúng ô đó.
     - Đích không còn hiển thị: khối cảnh báo `--vk-warning-container` (`"Bình luận được trả lời không còn hiển thị"`, `"Sao chép nháp"` dùng `navigator.clipboard.writeText`, `"Chọn bình luận khác"` Filled), không suy `"đã xóa"`.
     - Vùng biên nhận / từ chối: `CommittedPending` (hổ phách `--vk-warning-container`), `Uncertain` (xanh `--vk-info-container` + `"Kiểm tra lần gửi"` Filled + lý do khóa `Gửi` qua `aria-describedby`), `Refused` (đỏ `--vk-error-container`), `SignInAvailable` (cùng nút Gửi, mở Auth sau khi người đọc kích hoạt với chữ đủ điều kiện), `SignInClosed` (`lock` + lý do khóa cạnh nút `Gửi` qua `aria-describedby`), `Closed` (khối khóa `lock` + chữ `"Bạn đã tắt bình luận cho bài viết này"` khi `viewer_is_author` + `ReadOnly` draft + `"Chỉ đọc lúc này"` + `"Sao chép nháp"`).
     - Chân ô soạn: ghi chú kiểm duyệt (`verified-user` + `"Duyệt trước khi hiện công khai"`) và đúng một nút `Gửi` (`SendEmphasis::Tonal` khi trống, `Filled` khi có chữ; chặn kích hoạt khi toàn khoảng trắng hoặc đang composition; khi `Sending`, `.vk-ui-button__status` `LoadingIndicator` thay chỗ icon `send` tại vị trí leading để không nhảy bề rộng).
@@ -207,11 +205,9 @@ Delta [#328](https://github.com/loveoverflowcom/vink/issues/328) ngày 26/11/202
 | `"Bạn đã gửi"` & Gỡ | Chip màu trung tính cho mọi `ApprovedOffPage`; confirm gỡ kiểu inline thô | Thẻ `20px`, chip `Success` xanh lá cho `ApprovedOffPage`, lý do riêng màu đỏ cho `Rejected`, xác nhận gỡ viền `2px solid var(--vk-error)` |
 | Đọc, lỗi, tác giả, trang ẩn | Fallback `"Đang tải…"`, 1 dòng mode, trang ẩn vẫn hiện nút `Ưng`/composer | Skeleton tĩnh sau `300 ms`; mode 5 trạng thái tác giả + xung đột; `ReplacementView` hiện chữ tĩnh `Ưng` không số |
 
-
-
 ### Đối chiếu R4 trên Reader Web Linux
 
-Đã đối chiếu ảnh R4 01–08 và 10 cùng các biến thể desktop với Reader. Ảnh 04 giữ textarea editable khi đang gửi. Riêng ảnh 10, Mạnh đã chốt nhãn tĩnh “Ưng” không số cho cả tác phẩm chuyển riêng tư và tác phẩm bị rút. Reader giữ quyền gỡ theo `can_remove`. Hợp đồng đọc và quyền truy cập được giữ nguyên. Phép đo tối kiểm màu chữ của receipt trên chính nền thông tin; nhãn field và hai pill phải đạt 4,5:1 cả trong khi đổi theme. [Ảnh trước/sau, SHA và lệnh kiểm](../development/discussion-ui-evidence.md).
+Đã đối chiếu ảnh R4 01–08 và 10 cùng các biến thể desktop với Reader. Ảnh 04 giữ textarea editable khi đang gửi. Riêng ảnh 10, Mạnh đã chốt nhãn tĩnh “Ưng” không số cho cả tác phẩm chuyển riêng tư và tác phẩm bị rút. Reader giữ quyền gỡ theo `can_remove`. Hợp đồng đọc và quyền truy cập được giữ nguyên. Phép đo tối kiểm màu chữ của receipt trên chính nền thông tin; nhãn field và hai pill phải đạt 4,5:1 cả trong khi đổi theme.
 
 ## Nhận xét R5 · #561
 
@@ -295,8 +291,7 @@ vùng riêng, xác nhận gỡ, biên nhận chờ duyệt và thông báo đón
   textarea được giữ. Mở lại đưa focus về đúng field. Đường nối dừng ở toàn bộ khối
   cuối đang hiển thị, kể cả khi khối đó là ô soạn hoặc “Bản trả lời được giữ lại”.
 
-[Ánh xạ DOM/AX](../development/web-semantics.md#từ-yêu-cầu-tới-bằng-chứng) ·
-[Lệnh và phạm vi evidence](../development/discussion-ui-evidence.md).
+[Ánh xạ DOM/AX](../development/web-semantics.md#từ-yêu-cầu-tới-bằng-chứng).
 
 ## Composer Markdown compact (#618)
 

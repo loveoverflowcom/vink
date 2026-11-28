@@ -100,8 +100,7 @@ SHA-256 bằng ETag. Khi nén, Cloudflare đổi ETag thành `W/"<sha256>"`. Wor
 theo phép so yếu nên vẫn trả 304. Font và ảnh đã nén sẵn giữ `no-transform` để byte không đổi.
 Đo ngày 24/11/2026 trên live `e9872556`, cùng nhánh Worker: `no-transform` là thứ duy nhất chặn
 nén, còn việc không gửi `Accept-Encoding` tới Pages không ảnh hưởng
-([#487](https://github.com/loveoverflowcom/vink/issues/487),
-[evidence](../../docs/development/evidence/web-compress-487/README.md)). Mức nén do zone quyết định
+([#487](https://github.com/loveoverflowcom/vink/issues/487)). Mức nén do zone quyết định
 (quan sát tương đương Brotli q4, cửa sổ 128 KiB). `smoke-edge.sh edge --release <sha>` kiểm ba biến
 thể `identity`, `gzip`, `br` của `vink.js`, `vink.css` và `vink_bg.wasm`: `Content-Encoding`,
 `Cache-Control`, `Vary`, ETag bằng SHA-256 của byte giải nén và 304 với ETag vừa nhận. Font phải giữ
@@ -121,7 +120,6 @@ tại domain thật. Chrome/workerd ở loopback chỉ kiểm hợp đồng cụ
 Khi origin trả `404` cho `/robots.txt`, Cloudflare Free có thể trả `200` với thông báo Content Signals chỉ chứa dòng chú thích. Smoke qua edge chấp nhận thông báo này nếu không có chỉ dẫn crawler. [Content Signals Policy](https://developers.cloudflare.com/bots/additional-configurations/managed-robots-txt/#content-signals-policy).
 
 Rule ở zone giữ redirect `308` cho HTTP apex, giữ đường dẫn và query. Phản hồi HTTPS apex giữ HSTS `max-age=31536000`, `X-Content-Type-Options: nosniff` và `Referrer-Policy: strict-origin-when-cross-origin` như cấu hình Caddy trực tiếp trước cutover.
-
 
 ## Chuyển Worker cũ sang alias ngắn
 
@@ -158,7 +156,6 @@ gồm `cf_ray`, `status`, `route`, `sha256`, `mime`, `revision`; chỉ nhận HT
 Receipt không thay bước controller tự tải đủ asset từ alias và apex. Khi catalog thật rỗng,
 `--empty-catalog` giữ smoke Chrome khách cho /, /ban-viet và /toi, ghi Reader tác phẩm công khai
 `NOT_RUN`. Controller kiểm Git index và binary bằng chính tài khoản smoke trước stage.
-
 
 ## Browser trên máy kiểm riêng
 

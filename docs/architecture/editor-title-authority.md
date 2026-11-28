@@ -73,5 +73,4 @@ trước), không vào source, metadata hay vượt `MissingTitle`.
 Corpus và quy tắc của lát độc lập (PR #271, #272) tại
 [`6287fbf`](https://github.com/loveoverflowcom/vink/blob/6287fbfa2817fd457f3b93e710463a7a9cc7e84f/docs/architecture/editor-title-authority.md)
 ghi `legacy-v1.json` và corpus Markdown `DESIGN_PROPOSED`; sau quyết định thay thế 17/11/2026 không
-còn document v1 nên corpus legacy được chuyển thành `default.json`. Bằng chứng lịch sử ở
-[evidence/editor-title-263](../development/evidence/editor-title-263/README.md).
+còn document v1 nên corpus legacy được chuyển thành `default.json`.

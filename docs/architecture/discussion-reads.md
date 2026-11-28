@@ -116,7 +116,7 @@ bị đình chỉ thành `None`, nên người bị đình chỉ nhận `401` �
 
 Môi trường: macOS/Apple Silicon, PostgreSQL 17.11 (Homebrew), cluster scratch `fsync=off`,
 `shared_buffers` mặc định, cache ấm, dữ liệu tổng hợp tái lập bằng `setseed`
-([dataset và script](../development/evidence/disc-02-03-reads/README.md)): 113 520 comment; hot thread
+([dataset và script](../../services/vink-app/bench/discussion-reads/README.md)): 113 520 comment; hot thread
 2 000 root (80% approved, 10% pending, 5% rejected, 5% gỡ) và ~21 500 reply (5% root có 200 reply,
 ~20% có 1–5), 300 thread nền; viewer P có 120 lời (108 pending, 12 rejected) rải khắp timeline.
 Câu lệnh là đúng SQL production, `PREPARE` có tham số như SQLx. Số buffer ổn định hơn thời gian

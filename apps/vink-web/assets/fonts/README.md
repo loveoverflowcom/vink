@@ -68,4 +68,4 @@ trục Literata `opsz` 7–72, `wght` 200–900 được giữ nguyên. OFL cho 
 byte, không ghi. Các phiên bản và lệnh cũng được pin trong provenance. `verify quick` kiểm
 format/length/hash TTF và file không có chủ; Desktop tests kiểm resource, metadata, 154 điểm mã
 tiếng Việt NFC/NFD, font được Compose dùng ở 400/500/600 và fallback missing/corrupt. Glyph có sẵn
-không tự chứng minh shaping/IME đúng; xem [báo cáo PR 08](../../../../docs/design/ui-repair-08.md).
+không tự chứng minh shaping/IME đúng.

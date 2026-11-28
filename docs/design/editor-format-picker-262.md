@@ -91,4 +91,3 @@ Menu OS, VoiceOver và OS IME phải có evidence riêng.
 
 Lát presentation không thêm state transition nên không thêm Quint model song song.
 Model/save/CAS hiện có không đổi. Kiểm PG và Web App cho conversion vẫn `NOT_RUN`;
-[bàn giao evidence](../development/evidence/editor-format-picker-262/README.md) ghi check thực chạy.

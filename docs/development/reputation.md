@@ -55,7 +55,7 @@ Phụ thuộc tuần tự S01 → S02 → S03 → S04 → S05 → S06. Design, L
 | `cargo xtask decision validate` | PASS (ghi SHA nguồn trong PR) | Registry |
 | `cargo xtask decision propose VDR-REPUTATION new …`, `… VDR-REPUTATION-CONTRACT new …` | SHA-256 `2c009b7c…`, `7d60f8ae…` | Registry |
 | `cargo xtask decision signoff VDR-REPUTATION@r1 …`, `… VDR-REPUTATION-CONTRACT@r1 …` | `PRODUCT_CONFIRMED`, `PROVISIONAL`; `current: true` | Registry |
-| `python3 -I docs/development/evidence/reputation-sr01/qualify.py` (hai lần) | Cùng output; 0 sai lệch f64 trên 10^6 cặp; khoảng cách micro nhỏ nhất 4,8 × 10^-7 | Tổng hợp, không phải code Rust |
+| `python3 -I services/vink-app/bench/reputation-sr01/qualify.py` (hai lần) | Cùng output; 0 sai lệch f64 trên 10^6 cặp; khoảng cách micro nhỏ nhất 4,8 × 10^-7 | Tổng hợp, không phải code Rust |
 
 Không chạy Quint, Kani, PostgreSQL, HTTP hay benchmark trong S01; chúng thuộc S02..S06.
 

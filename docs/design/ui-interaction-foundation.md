@@ -92,8 +92,3 @@ Apache-2.0), chỉ androidMain để nhận Back ở Dialog window. Không đưa
 không đổi APK runtime version đã resolve. Consumer: DialogBackHandler; phép kiểm: instrumentation
 Back/Explicit. Nếu thay adapter, phải giữ gate và test này; không fallback sang Key.Back để
 nhận là platform Back. Không đo binary size delta.
-
-## Evidence
-
-Kết quả thực tế và giới hạn được ghi trong
-[qualification registry](../development/ui-system-qualification-evidence.md#interaction-foundation-12112026).

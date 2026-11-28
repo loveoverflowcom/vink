@@ -3,7 +3,7 @@
 **NEW** · [#21](https://github.com/loveoverflowcom/vink/issues/21). Hướng dẫn cho người thiết kế màn
 và viết copy; contract kỹ thuật (kiểu, tổ hợp hợp lệ, props) nằm ở
 [states.md](../../packages/ui-system/shared/states.md), bằng chứng chạy ở
-[ui-system-states-evidence](../development/ui-system-states-evidence.md). Product Web dùng các primitive UIS-03 trong Bàn viết, Khám phá và các vùng đọc bên dưới. [Inventory theo caller](../development/discovery-ui.md#loading-v%C3%A0-ph%E1%BB%A5c-h%E1%BB%93i-624).
+Product Web dùng các primitive UIS-03 trong Bàn viết, Khám phá và các vùng đọc bên dưới. [Inventory theo caller](../development/discovery-ui.md#loading-v%C3%A0-ph%E1%BB%A5c-h%E1%BB%93i-624).
 
 Nguyên tắc: giữ dữ liệu và đường phục hồi đúng quan trọng hơn làm mọi lỗi trông giống nhau. Người
 đọc/viết phải biết điều gì đang xảy ra, chữ nào vẫn an toàn và có thể làm gì tiếp.
@@ -51,7 +51,7 @@ chính/phụ `--vk-space-4`, **không divider**):
   toàn `Ở lại` giữ vai trò `Filled`, còn lý do vô hiệu gắn vào `#leave-editor-context` qua `aria-describedby`.
 - Nút phá hủy bước đầu (mở hộp thoại xác nhận) dùng `ButtonVariant::DangerText`; chỉ nút xác nhận không hoàn
   tác cuối cùng mới dùng `ButtonVariant::Danger` đặc.
-- Lựa chọn an toàn luôn đứng đầu thứ tự DOM và giữ focus khởi đầu an toàn. Chi tiết: [R1 #208](dialog-anatomy-r1-208.md).
+- Lựa chọn an toàn luôn đứng đầu thứ tự DOM và giữ focus khởi đầu an toàn. Chi tiết: R1 #208.
 
 ## Copy
 

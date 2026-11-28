@@ -106,4 +106,3 @@ RecordingStore chỉ chứng minh application gọi port đúng; không thay b�
 **Giới hạn của lượt RUST-CORE-01 ngày 02/11/2026:** không đổi state/guard sản phẩm nên không tạo model Quint. Không sửa frontend/editor hoặc
 chạy browser để tuyên bố IME/thị giác. Chưa có auth authority, submit/moderation/publish thật;
 seed publication và test resolver không chứng minh các quy trình đó. Kết quả lần chạy và
-giới hạn môi trường nằm trong [bản ghi kiểm chứng](literary-domain-verification.md).

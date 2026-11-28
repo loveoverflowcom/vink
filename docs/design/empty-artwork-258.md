@@ -30,7 +30,7 @@ cuộn theo trang và giữ bottom inset của shell; không overlay/cuộn riê
 Vị trí (audit 17/11/2026): cụm ảnh → câu → actions nằm giữa vùng trống còn lại dưới search/bộ lọc
 và trên đáy vùng nội dung `.vk-main` (đã trừ rail, top bar, bottom nav), không căn theo `100vh`.
 Chỉ màn đang có `.vk-empty-state` mới thành chuỗi flex cột; nội dung cao hơn viewport thì về căn
-trên và cuộn theo trang. Nav phân trang rỗng không chiếm margin trong nhánh này. Đo theo [audit 17/11/2026](../development/evidence/empty-state-audit-261/README.md).
+trên và cuộn theo trang. Nav phân trang rỗng không chiếm margin trong nhánh này.
 Một transparent file/theme, explicit theme thắng OS như shell hiện hữu. Forced colors có thể
 ẩn decoration nhưng giữ đúng không gian để không nhảy layout; HTML nghĩa/actions luôn tồn tại.
 
@@ -60,7 +60,6 @@ fetchpriority. Network/decode được kiểm bằng scenario thật; không cô
 So sánh cùng q/tag/state, viewport 320/390/834/1440 × light/dark × text100/200. 100% là mục tiêu
 bố cục; 200% là reflow/accessibility. Cần mở ảnh trước/sau, đo art/overflow/type/order, contrast,
 kiểm focus/GET riêng. OS IME, named screen reader và thiết bị thật là boundary riêng.
-[Evidence và giới hạn](../development/evidence/empty-webp-258/README.md).
 
 ## Hồ sơ công khai (#587)
 

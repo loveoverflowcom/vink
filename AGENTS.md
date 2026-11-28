@@ -34,8 +34,7 @@ those registries rather than duplicating long status narratives across skills.
   Compose Multiplatform `:ui`, shared primitives/state/navigation vectors (UIS-02..05) and DTO-free
   patterns consumed by Web and the Preview app (`apps/vink-preview`: Leptos `vink-ui-preview` and
   CMP Desktop `:preview`, no services, never in Product). Opt-in Android/iOS/Desktop `:diagnostics` hosts
-  and Lossy WebP fixtures exist for qualification only; **no native product app exists**
-  ([qualification evidence](docs/development/ui-system-qualification-evidence.md)).
+  and Lossy WebP fixtures exist for qualification only; **no native product app exists**.
 - **Expressions (`packages/expressions`):** 16-asset Google Noto manifest, pure admission/generation
   policy and lazy dotLottie Software renderer in independent Leptos Preview, Quint (`verify
   expressions`) and Kani (`verify kani`) coverage; CMP is contract/Unicode fallback only
@@ -179,7 +178,6 @@ decisions; when recording decisions or reconciling drift between code and docs, 
 [Interaction UX](.agents/skills/vink-ui-design/references/interaction-ux.md); review and report
 UI changes with the rubric, reference classes, bounded fix rounds and five-dimension result table
 in [UX quality](.agents/skills/vink-ui-design/references/ux-quality.md).
-[Archived input](docs/archive/initial/README.md) is historical context only.
 
 ## Engineering boundaries
 
@@ -211,6 +209,13 @@ Production routes, normal dependencies and packaged assets need a real product c
 Showcases and spikes run in Preview; verification fixtures use their test lane. Use the
 [Web/Preview boundary and ownership inventory](docs/development/web-preview-boundary.md)
 before adding a route, moving a prototype or changing an artifact manifest.
+
+Git keeps source, current specs and LayoutSpecs, decisions, tests, fixtures, provenance-pinned
+runtime assets and a minimal evidence summary in the owner registry. Designs, artwork, previews
+and captures go to Google Drive; raw verification output to CI artifacts; implementation and
+acceptance history to issues/PRs; scratch files to ignored `target/`. Never add `evidence/` or
+`archive/` directories, and update a registry's current state instead of appending a changelog
+([storage convention](docs/README.md#quy-ước-lưu-trữ)); `verify static repo` enforces this.
 
 ## Work and verification
 

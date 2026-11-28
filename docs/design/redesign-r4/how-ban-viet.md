@@ -61,5 +61,5 @@ vẫn thuộc owner danh sách. [LayoutSpec R4.4](desk-moderation.md) ghi trạn
   khi refresh nền.
 
 [Smoke source](../../../apps/vink-web/e2e/browser-smoke.mjs#L3490) có mở/đóng dock, UI lỗi,
-đổi scope, query riêng, giữ node và simulated composition. [Bằng chứng #411](../../development/evidence/desk-states-411/README.md)
+đổi scope, query riêng, giữ node và simulated composition.
 có SHA và môi trường riêng. Không chạy lại browser hoặc IME hệ điều hành trong lượt tài liệu.

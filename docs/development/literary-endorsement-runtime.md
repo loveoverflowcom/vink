@@ -10,8 +10,7 @@ registry/patterns ([spec](../design/pen-flight-r2.md)); chưa xếp hạng hay c
 
 Ý nghĩa và lựa chọn lõi: [decision record](../architecture/literary-endorsement.md). Lõi, Quint,
 Kani và registry LVE-INV: [endorsement-core](endorsement-core.md). Hợp đồng HTTP chuẩn:
-[API v1](../../services/vink-app/contracts/http/v1/README.md#literary-endorsement-lve-73). Số đo:
-[bằng chứng PostgreSQL](evidence/lve-postgres/README.md).
+[API v1](../../services/vink-app/contracts/http/v1/README.md#literary-endorsement-lve-73). Số đo: [benchmark PostgreSQL](../../services/vink-app/bench/endorsement/README.md).
 
 ## Owner
 
@@ -128,7 +127,7 @@ gọi `public_count`: tác phẩm không công khai → `404`; bình luận thi�
 - **CHOICE-05 A:** đếm hàng `selected` khi đọc (partial index `work_endorsements_selected_idx`,
   `comment_endorsements_selected_idx`). Không counter, outbox hay cache. Hot-target 16 người ghi:
   6,2–6,4 k tps so với counter 5,6 k; 1 người ghi chậm hơn và giảm khi dead tuple tích lũy
-  ([bằng chứng](evidence/lve-postgres/README.md)).
+  ([benchmark](../../services/vink-app/bench/endorsement/README.md)).
 - **Truy vấn đối soát** (dùng trong `summaries_equal_an_independent_recount_of_canonical_rows`):
 
   ```sql
@@ -212,7 +211,6 @@ PostgreSQL; Kani không chứng minh HTTP/auth/SQL; LocalFixture/Identity giả 
 
 Nền: PR [#85](https://github.com/loveoverflowcom/vink/pull/85) (`ToggleAction`, `EndorsementAction`).
 Quyết định CHOICE-10 A và các lựa chọn của lát: [decision record](../architecture/literary-endorsement.md#lát-web-adapter-wp-04-06112026);
-bằng chứng: [web evidence](literary-endorsement-web-evidence.md).
 
 | Phần | File | Vai trò |
 | --- | --- | --- |
@@ -272,7 +270,7 @@ trên đích ẩn (R7, chỉ API), tổng số cho danh sách nhiều tác phẩ
 | Router | `cargo test -p vink-app --lib http::` | PASS | `401` khi không authority, `403` Origin, DB down → `503` không phải `0`, Identity giả |
 | PostgreSQL thật | `cargo xtask verify postgres` | PASS | 12 test LVE: SQL trực tiếp, order/receipt/ABA/mất ACK, 8 bản sao một lệnh, 8 lệnh đầu khác khóa, cùng khóa hai đích, hàng vắng + INSERT chờ theo hai thứ tự commit, chờ khóa hai chiều với kiểm duyệt và rút/tái bản, mỗi revision một đích, gỡ của chính mình khi đích ẩn, đóng bình luận độc lập, quyền riêng tư, đối soát, HTTP; role runtime và App + Identity thật |
 | Độ nhạy (tay) | Mutation trong adapter | Bỏ advisory lock theo khóa lệnh, bỏ đọc-lại sau INSERT thua: mỗi cái làm đúng test tương ứng FAIL | Không phải bước của runner |
-| Plan / hot-target | `psql -f queries.sql`, `pgbench` | Ở [bằng chứng](evidence/lve-postgres/README.md) | Dataset tổng hợp, một máy |
+| Plan / hot-target | `psql -f queries.sql`, `pgbench` | [benchmark](../../services/vink-app/bench/endorsement/README.md) | Dataset tổng hợp, một máy |
 
 Lõi, model và Kani của #80 không đổi; lane `discussion`/`kani` chạy lại sau merge để xác nhận.
 
@@ -288,5 +286,5 @@ Lõi, model và Kani của #80 không đổi; lane `discussion`/`kani` chạy l�
 | #73 AC-09 | Inventory, batch không N+1, plan, hot-target, dataset/môi trường | Đo trên hạ tầng thật |
 | #73 AC-10 | Tổng số theo revision hiện hành; visibility hiện hành thắng receipt | Xếp hạng/cursor (CHOICE-06) |
 | #73 AC-13 | Tách cache, own state theo actor, guest `401`, lý do vô hiệu; session/generation fence phía client Web ([adapter](#web-adapter-wp-04)) | Abuse/retention theo tài khoản, consent ghi danh |
-| #73 AC-11/12 | Reader Web: SSR + hydration, bàn phím, 320/200%, sáng/tối ([web evidence](literary-endorsement-web-evidence.md)) | [Pen Flight R2 evidence](pen-flight-r2-evidence.md); E2E production cần auth thật; native |
+| #73 AC-11/12 | Reader Web: SSR + hydration, bàn phím, 320/200%, sáng/tối | E2E production cần auth thật; native |
 | #73 AC-14 | Đối soát, backout, docs, feature map | Rollout thật; epic giữ mở |

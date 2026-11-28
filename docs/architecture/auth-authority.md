@@ -18,7 +18,6 @@ chưa có thư tới hộp thư thật từ domain Vink, UI đăng nhập Web m�
 thử ([Auth Web](../development/auth-web.md); chưa HTTPS/nhiều trình duyệt/mobile), chưa review bảo
 mật độc lập, chưa có người chịu trách nhiệm vận hành auth.
 
-Bằng chứng chạy và ma trận kịch bản: [auth-authority-s03-evidence](../development/auth-authority-s03-evidence.md).
 Ranh giới database/process có từ trước: [identity-postgres-boundaries](identity-postgres-boundaries.md).
 
 **Record (11/11/2026):** quyết định auth authority tra tại `D-05@r1` (`PROVISIONAL`). Phương thức
@@ -243,7 +242,7 @@ Trạng thái sau §11 (10/11/2026): **đã xử lý trong code** = có implemen
 ## 11. Đường production (10/11/2026)
 
 Mục tiêu: đưa authority A từ spike tới backend vận hành được, không thêm service, Redis hay hàng
-đợi ngoài. Bằng chứng: [auth-production-evidence](../development/auth-production-evidence.md);
+đợi ngoài.
 vận hành: [runbook](../development/auth-operations.md).
 
 ### C1. Đường gửi thư (quyết định 20/11/2026)
@@ -255,8 +254,8 @@ production. Giữ `MailSender`, outbox PostgreSQL, worker Identity và `local-ou
 Lần thử lại phải giữ payload và idempotency key theo delivery ID; lỗi provider chỉ lưu loại và
 mã số, không log nội dung phản hồi, người nhận hay mã.
 
-**Lịch sử:** `D-05-C1@r1` chọn SMTP submission. [Bằng chứng SMTP cũ](../development/auth-production-evidence.md)
-không dùng để xác nhận HTTPS API, domain hay inbox Vink. Xem [runbook](../development/auth-operations.md)
+**Lịch sử:** `D-05-C1@r1` chọn SMTP submission; kết quả SMTP cũ
+không xác nhận HTTPS API, domain hay inbox Vink. Xem [runbook](../development/auth-operations.md)
 cho cấu hình và các gate chưa đạt. Lựa chọn C1 không chuyển `D-05@r1` thành Accepted.
 
 ### C2. Outbox PostgreSQL hay worker hiện có — **outbox của Identity, worker trong `serve`**

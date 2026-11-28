@@ -1,7 +1,7 @@
 # NavigationBar R1 trên Web
 
 Phạm vi [Web #131](https://github.com/loveoverflowcom/vink/issues/131). Căn hàng kế thừa
-[Web #88 và PR #89](bottom-nav-88.md). Mốc thiết kế `NO_APPROVED_REFERENCE`. Tham chiếu
+#88 (PR #89). Mốc thiết kế `NO_APPROVED_REFERENCE`. Tham chiếu
 [Flutter NavigationBar](https://api.flutter.dev/flutter/material/NavigationBar-class.html)
 cho cấu trúc icon, indicator và nhãn.
 
@@ -26,25 +26,6 @@ mặt thanh với `on-surface`. Hover và pressed có lớp màu riêng trong v�
 focus bao toàn vùng thao tác. Forced colors vẽ viền hệ thống ở indicator và vòng focus.
 Padding dọc của liên kết được giới hạn để giữ nhãn lớn cùng nhịp và thanh dưới 18% chiều
 cao viewport trong ma trận cũ. ResizeObserver tiếp tục đo chiều cao thật.
-
-## Ảnh trước và sau
-
-Chrome 157.0.8103.79 headless trên macOS arm64, DPR 1, cùng SSR/hydration dev và fixture
-PostgreSQL riêng. Chữ 100/200% dùng root font-size 16/32 px, còn màu dùng lựa chọn Sáng/Tối
-của Vink. [Contexts và SHA-256](evidence/bottom-nav-r1-131/contexts.json) ghi các ảnh đã mở,
-viewport, CSS được serve và fingerprint của checkout. Bản Web baseline tuy được build từ
-`develop` sạch nhưng manifest ghi hai file kiểm thử đang thay đổi trong lúc chụp.
-
-| Đích và điều kiện | Trước | Sau |
-| --- | --- | --- |
-| Khám phá · 390×900 · sáng · 100% | [Ảnh](evidence/bottom-nav-r1-131/before-nav-explore-390-100-light.png) | [Ảnh](evidence/bottom-nav-r1-131/after-nav-explore-390-100-light.png) |
-| Bàn viết · 320×800 · tối · 200% | [Ảnh](evidence/bottom-nav-r1-131/before-nav-ban-viet-320x800-200-dark.png) | [Ảnh](evidence/bottom-nav-r1-131/after-nav-ban-viet-320x800-200-dark.png) |
-| Tôi · 320×900 · tối · 200% | [Ảnh](evidence/bottom-nav-r1-131/before-nav-toi-320-200-dark.png) | [Ảnh](evidence/bottom-nav-r1-131/after-nav-toi-320-200-dark.png) |
-
-Trong ảnh sáng 100%, pill đặt điểm nhấn lên icon và ba nhãn cân đối trong thanh 80 px.
-Ở 200%, hai nhãn dài xuống dòng với dòng đầu cùng trục. Avatar TT nằm giữa pill khi Tôi
-được chọn. [Ảnh 360×800 ở forced colors](evidence/bottom-nav-r1-131/after-nav-toi-360x800-200-forced-colors.png)
-cho thấy viền indicator và vòng focus cùng hiện, ở hai vùng riêng.
 
 ## Kiểm chứng
 

@@ -68,8 +68,6 @@ thông tin file/dòng của các crate build với `debug=0`. Bỏ cờ khi cầ
 Khi đổi chế độ, Cargo có thể giữ cả hai bộ artifact, làm đĩa tăng trong lần chuyển đầu.
 Giữ log cần bàn giao ngoài `target` trước khi dọn artifact do chính lượt đó tạo.
 
-[Số đo lạnh/ấm, chuyển chế độ trên cùng target và giới hạn](evidence/cargo-low-disk-502.md).
-
 Cờ chỉ đặt giá trị mặc định của hai profile trong môi trường child. Cargo vẫn áp dụng
 override riêng của package và rustflags tường minh. Nếu launcher báo xung đột với
 `build.incremental`, kiểm cả shell, Cargo config và giá trị mặc định trong `.env` mà
@@ -91,7 +89,7 @@ Dùng đúng lệnh con trong lane cần đo. Ví dụ sau đo bước định d
 thành viên sống. Khi mọi lần quan sát đều trống, peak cũng là `UNKNOWN`. Wall của launcher
 bao gồm spawn và drain. Wall từ `time` còn gồm cả Python và admission. Khi chạy cả lane,
 số liệu session thuộc toàn lệnh. Chỉ gán chi phí cho compile/link/test khi đo được ranh giới đó.
-Giữ log bên ngoài target trước khi bàn giao. [Baseline macOS và Rust trong VM, số thô và phần chưa đo](evidence/verification-budget-497/README.md).
+Giữ log bên ngoài target trước khi bàn giao.
 
 ## Phạm vi tiến trình
 

@@ -1,3 +1,0 @@
-default 2097152 source bytes; 4195996 compact JS JSON bytes; upper bound 4199232
-markdown 2097152 source bytes; 4194383 compact JS JSON bytes; upper bound 4199232
-PASS mixed CR/CRLF/LF projection
