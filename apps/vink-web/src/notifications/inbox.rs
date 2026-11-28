@@ -133,11 +133,11 @@ fn InboxBody(owner: Notifications, #[prop(optional)] compact: bool) -> impl Into
                     headings += 1;
                     previous = Some(day);
                 }
-                entries.push(Entry::Item(Row {
+                entries.push(Entry::Item(Box::new(Row {
                     facts,
                     group_id: item.group_id.clone(),
                     version: item.group_version,
-                }));
+                })));
             }
             if headings == 1 {
                 entries.remove(0);
@@ -214,6 +214,7 @@ fn InboxBody(owner: Notifications, #[prop(optional)] compact: bool) -> impl Into
                         <For each=move || entries.get() key=Clone::clone children=move |entry| match entry {
                             Entry::Heading(_, day) => view! { <li class="vk-notif-day" role="presentation"><h3 class="vk-notif-group__heading">{day}</h3></li> }.into_any(),
                             Entry::Item(row) => {
+                                let row = *row;
                                 #[cfg(feature = "browser")]
                                 let href = row.facts.href.clone();
                                 let description_id = format!("notice-time-{}-{}", if compact {"popover"} else {"page"}, row.group_id);
@@ -279,7 +280,7 @@ pub(super) fn Loading() -> impl IntoView {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 enum Entry {
     Heading(usize, &'static str),
-    Item(Row),
+    Item(Box<Row>),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
