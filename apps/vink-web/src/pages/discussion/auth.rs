@@ -121,8 +121,7 @@ impl ReaderAuth {
                 window().scroll_y().unwrap_or_default(),
             ));
             self.editor_top.set_value(
-                document()
-                    .get_element_by_id(&composer)
+                super::compact::focus_target(&document(), &composer)
                     .map(|editor| editor.get_bounding_client_rect().top()),
             );
             if dialog.show_modal().is_ok() {
@@ -178,7 +177,7 @@ impl ReaderAuth {
                 // out of view. Anchor the same editor to its original viewport position.
                 let position = if authenticated
                     && let Some(original_top) = editor_top
-                    && let Some(editor) = document().get_element_by_id(&composer)
+                    && let Some(editor) = super::compact::focus_target(&document(), &composer)
                 {
                     (
                         scroll.0,
@@ -282,8 +281,7 @@ pub(crate) fn ReaderAuthDialog(host: ReaderAuth) -> impl IntoView {
 #[cfg(feature = "browser")]
 fn focus(id: &str) -> bool {
     use wasm_bindgen::JsCast;
-    let Some(target) = document()
-        .get_element_by_id(id)
+    let Some(target) = super::compact::focus_target(&document(), id)
         .and_then(|node| node.dyn_into::<web_sys::HtmlElement>().ok())
         .filter(|node| node.is_connected() && node.get_bounding_client_rect().width() > 0.0)
     else {

@@ -139,6 +139,10 @@ export function createEditor(host: HTMLElement, options: EditorOptions): EditorH
         markdownCompartment.of(initialFormat === 'markdown' ? markdownExtension : []),
         // Enter breaks the line without copying indentation: alternating poem indents stay
         // the writer's choice, as in a plain text field. Tab is left to focus navigation.
+        preset === 'comment' ? keymap.of([
+          {key: 'Mod-b', run: () => applyInlineFormat(handle, 'bold')},
+          {key: 'Mod-i', run: () => applyInlineFormat(handle, 'italic')},
+        ]) : [],
         keymap.of([{ key: 'Enter', run: insertNewline }, ...defaultKeymap, ...historyKeymap]),
         EditorView.lineWrapping,
         // Native focus after a rail control or modal may place Chrome's DOM caret at the
@@ -332,6 +336,27 @@ export function applyHeading(handle: EditorHandle, level: number): boolean {
 
 export function applyInlineFormat(handle: EditorHandle, kind: string): boolean {
   if (handle.destroyed || handle.format !== 'markdown' || handle.view.state.readOnly || isComposing(handle)) return false;
+  if ((kind === 'quote' || kind === 'list') && handle.preset === 'comment') {
+    const { view } = handle;
+    const { from, to } = view.state.selection.main;
+    const first = view.state.doc.lineAt(from);
+    const last = view.state.doc.lineAt(to > from ? to - 1 : to);
+    const prefix = kind === 'quote' ? '> ' : '- ';
+    const changes = [];
+    for (let n = first.number; n <= last.number; n++) {
+      changes.push({from: view.state.doc.line(n).from, insert: prefix});
+    }
+    const changeSet = view.state.changes(changes);
+    const { anchor, head } = view.state.selection.main;
+    view.dispatch({
+      changes: changeSet,
+      selection: EditorSelection.single(changeSet.mapPos(anchor, 1), changeSet.mapPos(head, 1)),
+      userEvent: 'input.format',
+    });
+    handle.syncProgrammaticSelection();
+    view.focus();
+    return true;
+  }
   if (kind !== 'bold' && kind !== 'italic' && kind !== 'link') return false;
   handle.syncProgrammaticSelection();
   const ok = mdApplyInlineFormat(handle.view, kind);

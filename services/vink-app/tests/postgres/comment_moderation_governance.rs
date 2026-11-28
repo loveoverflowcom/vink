@@ -173,6 +173,7 @@ async fn post_on(
             SubmitComment {
                 work_id,
                 target,
+                body_format: Default::default(),
                 body: body.into(),
                 command_key: key(),
             },

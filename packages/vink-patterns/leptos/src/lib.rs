@@ -656,6 +656,7 @@ pub fn FeedbackThread(items: Vec<Feedback>) -> impl IntoView {
 /// The caller owns request identity and acknowledgment; no fake success lives here.
 #[component]
 pub fn FeedbackComposer(
+    #[prop(optional, into)] field: Option<ViewFn>,
     #[prop(into)] id: String,
     intent: FeedbackIntent,
     #[prop(into)] value: Signal<String>,
@@ -711,10 +712,10 @@ pub fn FeedbackComposer(
         <section class="vk-feedback-composer grid" class:vk-feedback-composer--tonal=tonal>
             {children.map(|header| header())}
             {intent.label().map(|label| view! { <Text role=TypeRole::Label>{label}</Text> })}
-            <TextArea id label described_by=field_description
+            {field.map(|field| field.run()).unwrap_or_else(|| view! { <TextArea id label described_by=field_description
                 value on_input mode=field_mode variant=if tonal { FieldVariant::FloatingTonal } else { FieldVariant::ExternalLabel }
                 rows=if tonal { 2 } else { 4 }
-                help=if tonal { "" } else { "Tối đa 4.000 ký tự, 200 dòng. Enter xuống dòng; chỉ gửi khi bấm nút." } />
+                help=if tonal { "" } else { "Tối đa 4.000 ký tự, 200 dòng. Enter xuống dòng; chỉ gửi khi bấm nút." } /> }.into_any())}
             <Show when=move || tonal && !value.get().is_empty() && !comments_closed.get()><p class="vk-feedback-draft-note m-0 [padding-inline:6px]">"Rời trang có thể mất nháp."</p></Show>
             <div class="vk-feedback-composer__footer flex flex-wrap items-center gap-vk-2 [padding-inline:4px] min-w-0">
                 <Show when=move || tonal && !value.get().is_empty() && !comments_closed.get() && !show_alternative.get()>
@@ -745,6 +746,7 @@ pub fn FeedbackComposer(
 pub struct DiscussionComment {
     pub id: String,
     pub author: Author,
+    pub markdown: bool,
     pub body: String,
     pub status: Option<String>,
     pub context: Option<DiscussionContext>,
@@ -833,6 +835,7 @@ pub fn OwnRemoveAction(
 /// Endorsements never reorder roots or replies: the provider's order is kept as given.
 #[component]
 pub fn DiscussionThread(
+    #[prop(optional, into)] markdown_body: Option<Callback<String, AnyView>>,
     #[prop(into)] facts: Signal<DiscussionThreadFacts>,
     #[prop(into)] on_reply: Callback<String>,
     #[prop(into)] on_remove: Callback<String>,
@@ -881,6 +884,7 @@ pub fn DiscussionThread(
         Signal::derive(move || shared_block.get().map(|_| reason_id.clone()))
     };
     let ctx = ThreadCommentCtx {
+        markdown_body,
         on_reply,
         on_remove,
         removal,
@@ -945,6 +949,7 @@ fn comment_endorsement(
 
 #[derive(Clone, Copy)]
 struct ThreadCommentCtx {
+    markdown_body: Option<Callback<String, AnyView>>,
     on_reply: Callback<String>,
     on_remove: Callback<String>,
     removal: Option<RemoveConfirmation>,
@@ -965,6 +970,7 @@ fn discussion_comment(
     ctx: ThreadCommentCtx,
 ) -> AnyView {
     let ThreadCommentCtx {
+        markdown_body,
         on_reply,
         on_remove,
         removal,
@@ -1020,7 +1026,10 @@ fn discussion_comment(
                 }.into_any(),
             })}
             {comment.status.map(|status| view! { <p class="vk-discussion-status">{status}</p> })}
-            <p class="vk-discussion-body">{comment.body}</p>
+            {match markdown_body.filter(|_| comment.markdown) {
+                Some(render) => render.run(comment.body),
+                None => view! { <p class="vk-discussion-body">{comment.body}</p> }.into_any(),
+            }}
             <div class="vk-discussion-actions flex flex-wrap items-center gap-vk-2 min-w-0">
                 <div class="vk-discussion-action-segment inline-flex flex-wrap items-center [max-inline-size:100%] min-w-0" data-root=is_root.then_some("true")
                     role=move || (!read_only.get()).then_some("group")
@@ -1658,6 +1667,7 @@ mod tests {
     #[test]
     fn comment_byline_keeps_time_outside_the_profile_link() {
         let comment = |id: &str, context| DiscussionComment {
+            markdown: false,
             id: id.into(),
             author: person("An Nhiên", Some("an-nhien"), false),
             body: "Nhận xét".into(),
@@ -1966,6 +1976,7 @@ mod tests {
     #[test]
     fn r4_removal_asks_in_place_and_only_confirm_reaches_the_adapter() {
         let comment = |id: &str, can_remove| DiscussionComment {
+            markdown: false,
             id: id.into(),
             author: Author {
                 name: "Người viết".into(),
@@ -2049,6 +2060,7 @@ mod tests {
     #[test]
     fn thread_endorsements_render_one_action_per_target_in_provider_order() {
         let comment = |id: &str| DiscussionComment {
+            markdown: false,
             id: id.into(),
             author: Author {
                 name: "Người đọc".into(),

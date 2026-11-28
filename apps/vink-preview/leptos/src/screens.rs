@@ -36,6 +36,7 @@ fn discussion_sample(anchor: bool) -> DiscussionThreadFacts {
         neutral: false,
     };
     let comment = |id: &str, context| DiscussionComment {
+        markdown: false,
         id: id.into(),
         author: author.clone(),
         body: fixture::READING.into(),

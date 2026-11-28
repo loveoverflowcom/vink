@@ -269,6 +269,7 @@ async fn backfill_and_old_writer_preserve_the_source_across_republication(pool: 
             COMMENT_UNG_NOTIFICATION_MIGRATION,
             SAVED_WORKS_MIGRATION,
             ACCOUNT_DELETION_MIGRATION,
+            COMMENT_FORMAT_MIGRATION,
         ]
     );
     // A binary embedding only the prior ledger is not ready after an additive migration.

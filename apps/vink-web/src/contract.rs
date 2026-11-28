@@ -289,6 +289,14 @@ pub struct PublicRootThread {
     pub preview: Vec<PublicComment>,
     pub preview_next_cursor: Option<String>,
 }
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CommentFormat {
+    #[default]
+    Plain,
+    Markdown,
+}
+
 // Wire DTO decoded once per page; the author projection makes the comment variant larger,
 // and boxing it would only add indirection at every match.
 #[allow(clippy::large_enum_variant)]
@@ -310,6 +318,8 @@ pub struct PublicComment {
     pub author_display_name: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub author: Option<AuthorProjection>,
+    #[serde(default)]
+    pub body_format: CommentFormat,
     pub body: String,
     pub created_at: String,
     pub reply_to: Option<ReplyTo>,
@@ -327,6 +337,7 @@ impl From<PublicComment> for CommentDto {
             visibility: "public".into(),
             author_display_name: c.author_display_name,
             author: c.author,
+            body_format: c.body_format,
             body: c.body,
             created_at: c.created_at,
             reply_to: c.reply_to,
@@ -395,6 +406,8 @@ pub struct OwnCommentList {
 pub struct OwnComment {
     pub comment_id: String,
     pub status: CommentStatus,
+    #[serde(default)]
+    pub body_format: CommentFormat,
     pub body: Option<String>,
     pub created_at: String,
     pub placement: OwnPlacement,
@@ -468,6 +481,8 @@ pub struct CommentDto {
     pub author_display_name: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub author: Option<AuthorProjection>,
+    #[serde(default)]
+    pub body_format: CommentFormat,
     pub body: String,
     pub created_at: String,
     pub reply_to: Option<ReplyTo>,
@@ -499,6 +514,8 @@ pub struct ReplyList {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SubmitCommentRequest {
     pub target_id: Option<String>,
+    #[serde(default)]
+    pub body_format: CommentFormat,
     pub body: String,
     /// Generated once per composed comment and reused on every retry of it.
     pub command_key: String,
@@ -540,6 +557,8 @@ pub struct QueueEntry {
     pub work_title: Option<String>,
     pub kind: String,
     pub author_display_name: String,
+    #[serde(default)]
+    pub body_format: CommentFormat,
     pub body: String,
     pub created_at: String,
     pub version: i64,

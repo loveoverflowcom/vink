@@ -947,6 +947,7 @@ async fn held_reply_disappears_from_counts_previews_context_and_endorsement_capa
                 SubmitComment {
                     work_id: sample_work(),
                     target: Some(target),
+                    body_format: Default::default(),
                     body: text.into(),
                     command_key: format!("key-{}", Uuid::now_v7().simple()),
                 },

@@ -1,6 +1,7 @@
 //! Canonical wire types of HTTP API v1, owned by this service. The contract text and fixtures
 //! live in `services/vink-app/contracts/http/v1/`; consumers keep their own representations.
 
+use crate::domain::discussion::body::CommentFormat;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
@@ -244,6 +245,7 @@ pub struct CommentView1 {
     pub visibility: &'static str,
     pub author_display_name: String,
     pub author: AuthorProjection,
+    pub body_format: CommentFormat,
     pub body: String,
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
@@ -321,6 +323,7 @@ pub struct PublicComment {
     pub comment_id: String,
     pub author_display_name: String,
     pub author: AuthorProjection,
+    pub body_format: CommentFormat,
     pub body: String,
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
@@ -369,6 +372,7 @@ pub struct OwnCommentView {
     /// `pending`, `approved`, `rejected` or `removed`, read from the current row at this request.
     pub status: &'static str,
     /// The writer's text; `null` once removed.
+    pub body_format: CommentFormat,
     pub body: Option<String>,
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
@@ -396,6 +400,8 @@ pub enum OwnPlacementView {
 #[serde(deny_unknown_fields)]
 pub struct SubmitCommentRequest {
     pub target_id: Option<String>,
+    #[serde(default)]
+    pub body_format: CommentFormat,
     pub body: String,
     pub command_key: String,
 }
@@ -436,6 +442,8 @@ pub struct QueueEntry {
     /// `root` or `reply`.
     pub kind: &'static str,
     pub author_display_name: String,
+    pub body_format: CommentFormat,
+    pub body_text: String,
     pub body: String,
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
@@ -1184,6 +1192,7 @@ impl CommentView1 {
             },
             author_display_name: item.author.attribution.label().to_owned(),
             author: (&item.author.attribution).into(),
+            body_format: item.body_format,
             body: item.body.clone(),
             created_at: item.created_at,
             reply_to,
@@ -1255,6 +1264,7 @@ impl PublicComment {
             comment_id: item.id.to_string(),
             author_display_name: item.author.attribution.label().to_owned(),
             author: (&item.author.attribution).into(),
+            body_format: item.body_format,
             body: item.body.clone(),
             created_at: item.created_at,
             reply_to: (!is_root).then(|| reply_to(item.context, item.context_author.as_ref())),
@@ -1316,6 +1326,7 @@ impl From<&OwnComment> for OwnCommentView {
         Self {
             comment_id: own.id.to_string(),
             status: own_status(own.status),
+            body_format: own.body_format,
             body: own.body.clone(),
             created_at: own.created_at,
             placement: match &own.placement {
@@ -1398,6 +1409,8 @@ impl From<&ModerationQueue> for ModerationQueueResponse {
                     work_title: item.work_title.clone(),
                     kind: if item.is_root { "root" } else { "reply" },
                     author_display_name: item.writer.attribution.label().to_owned(),
+                    body_text: item.body_format.visible_text(&item.body),
+                    body_format: item.body_format,
                     body: item.body.clone(),
                     created_at: item.created_at,
                     version: item.version.get(),
@@ -1953,6 +1966,7 @@ mod tests {
                 id: cid(n),
                 view,
                 author,
+                body_format: Default::default(),
                 body: body.into(),
                 created_at: AT,
                 context,
@@ -2188,6 +2202,7 @@ mod tests {
                     status,
                     created_at: AT,
                     placement,
+                    body_format: Default::default(),
                     body: body.map(Into::into),
                     rejection_reason: reason.map(Into::into),
                 };
@@ -2390,6 +2405,7 @@ mod tests {
                         work_title: title.clone(),
                         is_root: true,
                         writer: person(2, "Minh"),
+                        body_format: Default::default(),
                         body: "Đoạn hai hơi dài, nhưng khổ cuối rất đẹp.".into(),
                         created_at: AT,
                         version: ModerationVersion::FIRST,
@@ -2401,6 +2417,7 @@ mod tests {
                         work_title: title,
                         is_root: false,
                         writer: person(7, "Lan"),
+                        body_format: Default::default(),
                         body: "Mình cũng thấy vậy.".into(),
                         created_at: AT,
                         version: ModerationVersion::FIRST,

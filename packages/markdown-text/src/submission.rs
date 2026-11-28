@@ -32,6 +32,12 @@ pub enum SubmissionBody<'a> {
     Markdown(&'a str),
 }
 
+/// Comments may consist of emoji or punctuation. A sequence of invisible/combining marks alone
+/// has no independently visible content.
+pub fn has_visible_comment_text(text: &str) -> bool {
+    text.chars().any(|c| !invisible(c) && !is_combining_mark(c))
+}
+
 fn invisible(c: char) -> bool {
     c.is_whitespace()
         || c.is_control()

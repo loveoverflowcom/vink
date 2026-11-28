@@ -75,7 +75,12 @@ impl PayloadDigest {
     /// already NFC-normalized, so NFC and NFD spellings of the same text share a digest.
     pub fn of_submission(work_id: WorkId, target: Option<CommentId>, body: &CommentBody) -> Self {
         let mut hasher = Sha256::new();
-        hasher.update(b"vink.discussion.submit.v1\0");
+        match body.format() {
+            super::body::CommentFormat::Plain => hasher.update(b"vink.discussion.submit.v1\0"),
+            super::body::CommentFormat::Markdown => {
+                hasher.update(b"vink.discussion.submit.markdown.v1\0")
+            }
+        }
         hasher.update(work_id.as_uuid().as_bytes());
         match target {
             None => hasher.update([0]),

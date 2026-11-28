@@ -9,6 +9,7 @@ use unicode_normalization::UnicodeNormalization;
 use crate::contract::{DocumentDto, DocumentFormatDto};
 
 mod markdown;
+pub(crate) use markdown::render_comment;
 
 /// The desk's text as a default document, byte for byte.
 pub fn default_document(text: &str) -> DocumentDto {
@@ -232,6 +233,37 @@ impl<'a> ReadingDocument<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(feature = "ssr")]
+    #[test]
+    fn compact_comments_use_typed_nodes_and_keep_heading_text() {
+        use leptos::tachys::view::RenderHtml;
+        let source = "# **Mưa**\n\n> _dòng_ hai\ncuối 👩‍💻\n\n[nhãn](unsupported:example) ![ảnh](https://example.invalid/image) <sample>\n\n- thơ";
+        let html = Owner::new().with(|| super::render_comment(source.into()).to_html());
+        for expected in [
+            "<strong>",
+            "Mưa",
+            "<blockquote>",
+            "<em>",
+            "cuối 👩‍💻",
+            "nhãn",
+            "ảnh",
+            "&lt;sample&gt;",
+            "<li>",
+        ] {
+            assert!(html.contains(expected), "{expected}: {html}");
+        }
+        for excluded in [
+            "<h1",
+            "muc-",
+            "<img",
+            "<sample>",
+            "href=",
+            "example.invalid",
+        ] {
+            assert!(!html.contains(excluded), "{excluded}: {html}");
+        }
+    }
 
     #[cfg(feature = "ssr")]
     #[test]

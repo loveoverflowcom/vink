@@ -15,7 +15,7 @@ use time::OffsetDateTime;
 use super::Vink;
 use super::ports::{DiscussionStore, StoreError};
 use crate::domain::discussion::admission::{PolicySelection, Refusal};
-use crate::domain::discussion::body::{BodyError, CommentBody};
+use crate::domain::discussion::body::{BodyError, CommentBody, CommentFormat};
 use crate::domain::discussion::lifecycle::{
     CommentState, LifecycleError, ModerationVersion, Review, Transition,
 };
@@ -36,6 +36,7 @@ pub struct SubmitComment {
     pub work_id: WorkId,
     /// `None` starts a root; `Some` replies to that comment (root or reply) in the work's thread.
     pub target: Option<CommentId>,
+    pub body_format: CommentFormat,
     pub body: String,
     pub command_key: String,
 }
@@ -112,6 +113,7 @@ pub struct QueueItem {
     pub work_title: Option<String>,
     pub is_root: bool,
     pub writer: AuthorName,
+    pub body_format: CommentFormat,
     pub body: String,
     pub created_at: OffsetDateTime,
     pub version: ModerationVersion,
@@ -174,6 +176,7 @@ pub struct CommentItem {
     pub id: CommentId,
     pub view: CommentView,
     pub author: AuthorName,
+    pub body_format: CommentFormat,
     pub body: String,
     pub created_at: OffsetDateTime,
     pub context: ReplyContext,
@@ -374,6 +377,7 @@ pub struct OwnComment {
     pub created_at: OffsetDateTime,
     pub placement: OwnPlacement,
     /// The writer's text while the comment is present; never after a removal.
+    pub body_format: CommentFormat,
     pub body: Option<String>,
     /// The moderator's reason, only while the comment is rejected (MOD-04).
     pub rejection_reason: Option<String>,
@@ -582,7 +586,8 @@ where
     ) -> Result<SubmittedComment, DiscussionError> {
         let actor = actor.ok_or(DiscussionError::Unauthenticated)?;
         let key = CommandKey::parse(&command.command_key).map_err(DiscussionInput::from)?;
-        let body = CommentBody::parse(&command.body).map_err(DiscussionInput::from)?;
+        let body = CommentBody::parse_format(&command.body, command.body_format)
+            .map_err(DiscussionInput::from)?;
         let digest = PayloadDigest::of_submission(command.work_id, command.target, &body);
         let new = NewComment {
             comment_id: CommentId::generate(),

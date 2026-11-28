@@ -57,6 +57,7 @@ fn command(target: Option<CommentId>, body: &str, key: &str) -> SubmitComment {
     SubmitComment {
         work_id: sample_work(),
         target,
+        body_format: Default::default(),
         body: body.into(),
         command_key: key.into(),
     }
@@ -1090,6 +1091,14 @@ async fn the_http_api_keeps_every_discussion_outcome_distinct(pool: PgPool) {
     assert_eq!(status, StatusCode::OK);
     assert_eq!(json(&body)["comment_id"], root_id.as_str());
     assert_eq!(json(&body)["replayed"], true);
+    let altered_format = Some(
+        json!({"body":"Đọc xong muốn đọc lại 📖","body_format":"markdown","command_key":"http-key-0001"}),
+    );
+    let (status, _, answer) = call(&app, "POST", &comments, writer, origin, altered_format).await;
+    assert_eq!(
+        (status, code(&answer).as_str()),
+        (StatusCode::UNPROCESSABLE_ENTITY, "idempotency_key_reused")
+    );
     let changed = submit(None, "Nội dung khác", "http-key-0001");
     let (status, _, body) = call(&app, "POST", &comments, writer, origin, changed).await;
     assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
@@ -1151,7 +1160,9 @@ async fn the_http_api_keeps_every_discussion_outcome_distinct(pool: PgPool) {
     );
 
     // Replies: flat under the root, with context; an unknown target is a conflict, not a 404.
-    let reply = submit(Some(root_id.clone()), "Cảm ơn bạn đã đọc.", "http-key-0005");
+    let reply = Some(
+        json!({"target_id":root_id,"body":"**Cảm ơn** 👩‍💻\r\n\r\nMưa","body_format":"markdown","command_key":"http-key-0005"}),
+    );
     let (status, _, _) = call(&app, "POST", &comments, work_author, origin, reply).await;
     assert_eq!(status, StatusCode::CREATED);
     let ghost = submit(
@@ -1173,8 +1184,42 @@ async fn the_http_api_keeps_every_discussion_outcome_distinct(pool: PgPool) {
     let mine = &json(&body)["replies"][0];
     assert_eq!(mine["reply_to"], json!({"kind": "root"}));
     assert_eq!(mine["visibility"], "own_pending");
+    assert_eq!(mine["body_format"], "markdown");
+    assert_eq!(mine["body"], "**Cảm ơn** 👩‍💻\n\nMưa");
     let (_, _, body) = call(&app, "GET", &replies, None, None, None).await;
     assert_eq!(json(&body)["replies"], json!([]));
+
+    let (_, cache, body) = call(
+        &app,
+        "GET",
+        "/api/v1/moderation/comments",
+        Some(MODERATOR),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(cache.as_deref(), Some("no-store"));
+    let queue = json(&body);
+    let entry = &queue["items"][0];
+    assert_eq!(entry["body_format"], "markdown");
+    assert_eq!(entry["body"], mine["body"]);
+    assert_eq!(
+        entry["body_text"]
+            .as_str()
+            .unwrap()
+            .lines()
+            .filter(|line| !line.is_empty())
+            .collect::<Vec<_>>(),
+        ["Cảm ơn 👩‍💻", "Mưa"]
+    );
+    let reply_id = CommentId::parse(mine["comment_id"].as_str().unwrap()).unwrap();
+    moderate(&vink, reply_id, 1, ModerationAction::Approve)
+        .await
+        .unwrap();
+    let (_, _, body) = call(&app, "GET", &format!("{base}/public"), None, None, None).await;
+    let page = json(&body);
+    assert_eq!(page["roots"][0]["preview"][0]["body_format"], "markdown");
+    assert_eq!(page["roots"][0]["preview"][0]["body"], mine["body"]);
 
     // Settings: only the work's author; a stale tab conflicts; closed blocks new comments.
     let settings = format!("{base}/settings");
@@ -2119,6 +2164,56 @@ async fn a_moderation_decision_waits_for_a_pending_suspension_and_refuses(pool: 
     assert_eq!(review_of(&pool, pending).await, ("pending".to_string(), 1));
 }
 
+#[sqlx::test(migrations = false)]
+async fn comment_format_upgrade_replays_an_existing_literal_receipt(pool: PgPool) {
+    use vink_app::domain::discussion::body::CommentFormat;
+    let previous = Migrator::with_migrations(
+        MIGRATOR
+            .migrations
+            .iter()
+            .filter(|m| m.version < COMMENT_FORMAT_MIGRATION)
+            .cloned()
+            .collect(),
+    );
+    previous.run(&pool).await.unwrap();
+    let vink = seeded(&pool).await;
+    let thread = Uuid::now_v7();
+    sqlx::query("INSERT INTO discussion_threads (id,work_id) VALUES ($1,$2)")
+        .bind(thread)
+        .bind(dev_seed::SAMPLE_WORK)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let id = Uuid::now_v7();
+    let source = "**Cũ** 👩‍💻";
+    sqlx::query("INSERT INTO comments (id,thread_id,kind,replied_to_reply,author_id,body,review,moderation_version,admission_policy,admission_reason)
+        VALUES ($1,$2,'root',false,$3,$4,'pending',1,'premoderation.v1','policy_premoderation')")
+        .bind(id).bind(thread).bind(dev_seed::OTHER_PRINCIPAL).bind(source).execute(&pool).await.unwrap();
+    // Golden v1 SHA-256 from the pre-format canonical byte encoding at 3bbeefb1.
+    sqlx::query("INSERT INTO discussion_command_receipts (actor_id,operation,command_key,payload_digest,comment_id)
+        VALUES ($1,'submit_comment','existing-key',decode('47c209c2d8fd20d218ddc9a6d2bab0f04423cfa78ff7388bda3aa3af1c159c67','hex'),$2)")
+        .bind(dev_seed::OTHER_PRINCIPAL).bind(id).execute(&pool).await.unwrap();
+    MIGRATOR.run(&pool).await.unwrap();
+    let row: (String, String, String, i64) = sqlx::query_as(
+        "SELECT body,body_format,review,moderation_version FROM comments WHERE id=$1",
+    )
+    .bind(id)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(row, (source.into(), "plain".into(), "pending".into(), 1));
+    let legacy = command(None, source, "existing-key");
+    let replay = vink.submit_comment(other(), legacy.clone()).await.unwrap();
+    assert!(replay.replayed);
+    assert_eq!(replay.comment_id.as_uuid(), id);
+    let mut changed = legacy;
+    changed.body_format = CommentFormat::Markdown;
+    assert!(matches!(
+        vink.submit_comment(other(), changed).await,
+        Err(DiscussionError::KeyReused)
+    ));
+}
+
 const ADMISSION_MIGRATION: i64 = 20_261_111_000_000;
 
 /// Upgrade: comments written before #120 were all admitted under premoderation, and the migration
@@ -2191,7 +2286,13 @@ async fn upgrade_records_premoderation_for_existing_comments(pool: PgPool) {
             )
         );
     }
-    // The upgraded database admits new comments through the store as before.
+    // Exercise the current writer against the historical admission fixture.
+    sqlx::raw_sql(include_str!(
+        "../../migrations/20261206000000_comment_body_format.sql"
+    ))
+    .execute(&pool)
+    .await
+    .unwrap();
     legacy_standing_fixture(&pool).await;
     let id = post(&vink, other(), None, "Sau nâng cấp").await;
     assert_eq!(

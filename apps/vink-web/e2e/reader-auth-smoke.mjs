@@ -1,5 +1,7 @@
 // #328: real Chrome, App, email-code Identity and scratch PostgreSQL. The runner seeds a
 // public root and a closed publication; no application responses are fabricated here.
+import { richDiscussion, delayedCommentImport } from './comment-rich-smoke.mjs';
+import { commentBudget } from './comment-budget.mjs';
 import { account, fill, HYDRATED, mailedCode, q } from './auth-smoke.mjs';
 import { captureRequest, holdAnswer } from './auth-browser-network.mjs';
 import { checkAuthR31, checkModeSwitches, snapshotAuthAction } from './auth-r3-smoke.mjs';
@@ -42,6 +44,8 @@ function preserved(editor, key, text, includeScroll = true) {
 }
 
 export async function readerAuthClosed(page, { args, check }) {
+  await commentBudget(page, {args, check});
+  await delayedCommentImport(page,{args,check,workId:WORK});
   await page.goto(args.base + HERE);
   await page.waitFor(`${HYDRATED} && ${standing('anonymous')} && ${q(ROOT_EDITOR)}`, 'guest on disabled sign-in deployment');
   const comments = captureRequest(page, 'POST', DISCUSSION + '/comments');
@@ -450,6 +454,7 @@ export async function contextualReaderAuth(owner, { args, check, openPage, seen 
       const stored = JSON.stringify([Object.entries(localStorage), Object.entries(sessionStorage), history.state, location.href]);
       return !stored.includes(${JSON.stringify(ROOT_TEXT.split('\n')[0])}) && !stored.includes(${JSON.stringify(REPLY_TEXT.split('\n')[0])});
     })()`) && page.errors.length === 0, '#328 no draft in browser storage or history and no console exceptions');
+    await richDiscussion(page,{args,check,rootId:ROOT,workId:WORK});
     penRequests.close();
     confirmations.close();
     comments.close();

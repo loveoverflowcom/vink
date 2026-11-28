@@ -282,6 +282,7 @@ async fn comment(f: &Fixture, writer: Uuid, body: &str, action: Option<Moderatio
             SubmitComment {
                 work_id: sample_work(),
                 target: None,
+                body_format: Default::default(),
                 body: body.into(),
                 command_key: format!("k-{}", Uuid::now_v7().simple()),
             },
@@ -1266,6 +1267,7 @@ async fn exact_reader_target_reuses_current_public_discussion_visibility(pool: P
             SubmitComment {
                 work_id: sample_work(),
                 target: Some(CommentId::from_uuid(root)),
+                body_format: Default::default(),
                 body: "Phản hồi vẫn công khai".into(),
                 command_key: "notification-exact-reader-reply".into(),
             },

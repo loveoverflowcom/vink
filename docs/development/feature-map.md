@@ -843,3 +843,7 @@ focus/selection, semantics, fallback/CTA và reflow; `EmptyArtworkCaptureTest` g
 320/390/834dp × Light/Dark × text100/200. Android `exactDecorativeAlphaWebpDecodesAndKeepsRecovery`
 và iOS `testArtworkEmptyStatesKeepRecoveryAtLargeText` là checks riêng, không suy PASS từ JVM.
 [Spec](../design/empty-artwork-cmp-261.md) · [kết quả/gap](evidence/empty-webp-cmp-261/README.md).
+
+### Markdown trong Nhận xét (#618)
+
+Reader → Nhận xét hoặc Trả lời → Định dạng → nhập, đặt caret, dùng thanh công cụ → Gửi. Bề mặt dùng Comment preset. Ca nhập native, Auth và replay nằm trong các scenario auth, discussion. Product budget dùng guest đọc một tác phẩm có nhận xét, sau đó kích hoạt soạn. So sánh theo release, browser, cache và corpus.

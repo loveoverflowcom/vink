@@ -197,12 +197,16 @@ fn text_control(control: TextControl, p: TextProps, node: NodeRef<leptos::html::
                 aria-describedby=move || described.get()
                 placeholder=p.placeholder
                 autocomplete=p.autocomplete
-                on:compositionstart=move |_| composing.set_value(true)
+                on:compositionstart=move |ev| { composing.set_value(true); emit(&ev, true); }
                 on:compositionend=move |ev| {
                     composing.set_value(false);
                     emit(&ev, false);
                 }
-                on:input=move |ev| emit(&ev, composing.get_value())
+                on:input=move |ev: leptos::ev::Event| {
+                    use leptos::wasm_bindgen::JsCast;
+                    let active = composing.get_value() || ev.dyn_ref::<leptos::web_sys::InputEvent>().is_some_and(|input| input.is_composing());
+                    emit(&ev, active);
+                }
             >
                 {initial}
             </textarea>

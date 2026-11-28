@@ -65,6 +65,7 @@ fn submit(body: &str, key: &str) -> SubmitComment {
     SubmitComment {
         work_id: sample_work(),
         target: None,
+        body_format: Default::default(),
         body: body.into(),
         command_key: key.into(),
     }

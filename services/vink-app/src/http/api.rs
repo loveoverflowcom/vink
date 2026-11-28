@@ -930,6 +930,7 @@ async fn submit_comment(
             SubmitComment {
                 work_id,
                 target,
+                body_format: body.body_format,
                 body: body.body,
                 command_key: body.command_key,
             },
