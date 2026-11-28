@@ -532,6 +532,7 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
     (await own(staleTab)).policies.bio==='self', 'real stale PUT rebases once, retaining the remotely locked key');
   await remoteRefresh.finish(false,true);
   staleTab.cdp.listeners=staleTab.cdp.listeners.filter(l=>l!==watchPut);
+  await page.waitFor(`${q(BIO)}?.value==='Bản nháp còn ở tab kia'`,'peer refresh reached the new bio before the conflicting edit');
   await fill(staleTab,BIO,'Tranh chấp cục bộ');
   await fill(page,BIO,bio);
   await page.key('Enter',2);

@@ -132,6 +132,7 @@ struct Edit {
 pub(super) struct Flight {
     pub field: Field,
     generation: u64,
+    submitted: Value,
     pub command: SaveProfile,
 }
 
@@ -295,6 +296,7 @@ impl Editor {
         let f = Flight {
             field,
             generation: *generation,
+            submitted: value.clone(),
             command,
         };
         self.flight = Some(f.clone());
@@ -328,7 +330,10 @@ impl Editor {
             let old = field.stored(&self.acked);
             let new = field.stored(&stored);
             let sent = flight.as_ref().filter(|f| f.field == field);
-            let matched = exact && sent.is_some();
+            // The server may have advanced again after storing the submitted field.
+            // This permits rebasing newer intent without attributing a receipt to this tab.
+            let matched = stored.profile_version > self.acked.profile_version
+                && sent.is_some_and(|f| f.submitted == new);
             if matched {
                 e.baseline = Some(new.clone())
             }
@@ -346,9 +351,7 @@ impl Editor {
                 }
                 e.status = if !current {
                     Status::Idle
-                } else if acknowledged
-                    && matched
-                    && sent.is_some_and(|f| f.generation == *generation)
+                } else if acknowledged && exact && sent.is_some_and(|f| f.generation == *generation)
                 {
                     Status::Saved
                 } else {
@@ -502,6 +505,22 @@ mod tests {
         e.clear_notices(5);
         assert_eq!(e.status(Name), Status::Idle);
         assert!(e.start().is_none());
+    }
+    #[test]
+    fn lost_ack_then_another_field_advanced_preserves_the_newer_commit() {
+        let mut e = Editor::new(initial());
+        commit(&mut e, Name, "Đầu");
+        e.start().unwrap();
+        commit(&mut e, Name, "Cuối");
+        let mut latest = initial();
+        latest.pen_name = "Đầu".into();
+        latest.bio = None;
+        latest.profile_version += 2;
+        e.settle(latest, false);
+        let next = e.start().unwrap();
+        assert_eq!(next.command.expected_version, 5);
+        assert_eq!(next.command.pen_name, "Cuối");
+        assert_eq!(next.command.bio, None);
     }
     #[test]
     fn bounds_normalization_empty_bio_and_validation_are_field_specific() {
