@@ -626,3 +626,105 @@ fn calendar_names_round_trip() {
     }
     assert_eq!(Calendar::parse("day"), None);
 }
+
+#[test]
+fn activation_epochs_advance_only_on_activation() {
+    use super::outbox::{Activation, ActivationChange};
+    let off = Activation::restore(false, 0).unwrap();
+    assert_eq!(off.producing(), None);
+    let ActivationChange::Changed(on) = off.change(true) else {
+        panic!("activation changes");
+    };
+    assert_eq!(
+        (on.active(), on.epoch(), on.producing()),
+        (true, 1, Some(1))
+    );
+    assert_eq!(on.change(true), ActivationChange::Unchanged(on));
+    let ActivationChange::Changed(paused) = on.change(false) else {
+        panic!("deactivation changes");
+    };
+    assert_eq!((paused.active(), paused.epoch()), (false, 1));
+    assert_eq!(Activation::restore(true, 0), None, "active needs an epoch");
+    assert_eq!(
+        Activation::restore(false, i64::MAX).unwrap().change(true),
+        ActivationChange::Exhausted
+    );
+}
+
+#[test]
+fn only_a_changed_endorsement_owes_a_community_event() {
+    use super::outbox::{CommunityContext, CommunityEvent};
+    use crate::domain::endorsement::{EndorsementDelta, EndorsementState, EndorsementTarget};
+    use crate::domain::ids::{CommentId, RevisionId, WorkId};
+    let work = WorkId::from_uuid(Uuid::from_u128(10));
+    let revision = RevisionId::from_uuid(Uuid::from_u128(11));
+    let target = EndorsementTarget::Work { work, revision };
+    let on = EndorsementState::restore(true, 2, 2).unwrap();
+    let context = CommunityContext::Work {
+        work_public: true,
+        hidden_revision: None,
+    };
+    let event = CommunityEvent::of(
+        principal(1),
+        principal(2),
+        target,
+        EndorsementDelta::Add,
+        on,
+        context,
+    );
+    assert!(matches!(
+        event,
+        Some(CommunityEvent::Tham {
+            work_public: true,
+            ..
+        })
+    ));
+    assert_eq!(event.unwrap().kind(), "tham");
+    assert_eq!(
+        CommunityEvent::of(
+            principal(1),
+            principal(2),
+            target,
+            EndorsementDelta::None,
+            on,
+            context
+        ),
+        None,
+        "same-state intent: only the order advanced"
+    );
+    let comment = EndorsementTarget::Comment {
+        comment: CommentId::from_uuid(Uuid::from_u128(12)),
+        work,
+    };
+    assert_eq!(
+        CommunityEvent::of(
+            principal(1),
+            principal(2),
+            comment,
+            EndorsementDelta::Add,
+            on,
+            context
+        ),
+        None,
+        "a comment target needs a comment context"
+    );
+    let ung = CommunityEvent::of(
+        principal(1),
+        principal(2),
+        comment,
+        EndorsementDelta::Remove,
+        EndorsementState::restore(false, 3, 4).unwrap(),
+        CommunityContext::Comment {
+            work_public: false,
+            comment_public: true,
+        },
+    );
+    assert!(matches!(
+        ung,
+        Some(CommunityEvent::Ung {
+            work_public: false,
+            comment_public: true,
+            ..
+        })
+    ));
+}

@@ -10,7 +10,7 @@ REP-01..14. Đặc tả: [miền](../architecture/reputation.md), [SR-01](reputa
 | --- | --- |
 | Sản phẩm | [VDR-REPUTATION@r1](../../decisions/proposals/VDR-REPUTATION.r1.toml) Q01..Q44 `PRODUCT_CONFIRMED` — [signoff](../../decisions/signoffs/VDR-REPUTATION.r1.toml) ngày 28/11/2026, SHA-256 `2c009b7ca218269251edc6bf363914e5c1d4123cbfd49c18f4820231ba0cc3ee`. |
 | Kiến trúc | [VDR-REPUTATION-CONTRACT@r1](../../decisions/proposals/VDR-REPUTATION-CONTRACT.r1.toml) K1..K9 `Provisional` — [signoff](../../decisions/signoffs/VDR-REPUTATION-CONTRACT.r1.toml), SHA-256 `7d60f8ae7ed146e033ce8ed352feaf6ac1798fd041693692500a2277231b0963`. Mỗi lát chứng minh lựa chọn của mình; chưa `Accepted`. |
-| Triển khai | `core` từ #644: `services/vink-app/src/domain/reputation` (công thức fixed-point, entitlement/anchor, máy Q41, lịch, maturity, gate bảng). Migration, outbox, worker, route: `NOT_IMPLEMENTED`. |
+| Triển khai | `core` từ #644: `services/vink-app/src/domain/reputation` (công thức fixed-point, entitlement/anchor, máy Q41, lịch, maturity, gate bảng). Outbox nguồn (#645): migration `20261208000000_reputation_outbox`, producer Thấm/Ưng, trigger marker, `vink-app reputation status|activate|deactivate`. Consumer, projection, route: `NOT_IMPLEMENTED`. |
 | Bằng chứng | SR-01 tổng hợp; unit + golden + Quint replay + Kani cho pure core (mục 4). PostgreSQL, HTTP, benchmark: `NOT_RUN`. |
 
 <!-- vdr: active VDR-REPUTATION@r1 -->
@@ -41,7 +41,7 @@ Không công khai runtime trước bằng chứng privacy/performance của S06 
 | --- | --- | --- | --- |
 | REP-S01 | [PR #601](https://github.com/loveoverflowcom/vink/pull/601) | SSOT, SR-01, audit nguồn, hai proposal + signoff | Xong khi #601 merge |
 | REP-S02 | [#644](https://github.com/loveoverflowcom/vink/issues/644) | `domain::reputation`: công thức fixed-point, entitlement/anchor, eligibility, máy Q41, lịch, golden vectors, Quint + replay, Kani | `core`; không I/O |
-| REP-S03 | [#645](https://github.com/loveoverflowcom/vink/issues/645) | Migration, outbox Reputation ghi cùng transaction ở mọi nguồn trong mục 2, công tắc activation | S02 merged |
+| REP-S03 | [#645](https://github.com/loveoverflowcom/vink/issues/645) | Migration, outbox Reputation ghi cùng transaction ở mọi nguồn trong mục 2, công tắc activation | `persistence-api` (outbox) |
 | REP-S04 | [#646](https://github.com/loveoverflowcom/vink/issues/646) | Consumer `vink-worker`, projection hiện hành, maturity Q42, backfill Q33, correction CLI Q38, rebuild/reconcile | S03 merged |
 | REP-S05 | [#647](https://github.com/loveoverflowcom/vink/issues/647) | Credit tuần/tháng, Top Rating/Top Growth, snapshot/dự phòng/rebuild, retention/expiry | S04 merged |
 | REP-S06 | [#648](https://github.com/loveoverflowcom/vink/issues/648) | HTTP đọc, privacy/cache/cursor, qualification PG + HTTP, benchmark, runbook | S05 merged; không public trước gate |
@@ -79,6 +79,27 @@ Không chạy Quint, Kani, PostgreSQL, HTTP hay benchmark trong S01; chúng thu�
 
 Bộ sinh golden phải xử lý chính xác lũy thừa của 11: Decimal 60 chữ số cho f(1 610 500) = 4,999…9 và làm
 `floor` hụt một micro; đường Rust và `qualify.py` đều tính các điểm này bằng số nguyên.
+
+## 4b. Outbox nguồn S03 (#645)
+
+| Nguồn | Cách ghi | Nội dung |
+| --- | --- | --- |
+| Thấm/Ưng — `persistence/endorsement.rs` | Rust, cuối transaction, chỉ khi version đổi; khóa cuối là `reputation_activation` FOR KEY SHARE | `tham`/`ung`: actor, người nhận, anchor, selected/version/order, `accepted_at = now()` (trùng receipt), ngữ cảnh as-of: work public, hidden revision, comment public |
+| `publications` (INSERT/UPDATE/DELETE), `work_publications` (audience, lifecycle, pointer, hidden) | Trigger AFTER ROW | `work`: work public, hidden revision as-of |
+| `comments` (review/removal) | Trigger AFTER ROW | `comment`: approved và còn hiện diện |
+| `principal_suspensions`, `account_deletions` | Trigger AFTER ROW | `principal`: đình chỉ toàn bộ, đã xóa (DEL-05 terminal, purge người nhận) |
+
+Trigger chạy sau khi câu lệnh đã khóa dòng, nên marker được đánh số sau mọi giao dịch Thấm/Ưng đang giữ dòng
+đó FOR SHARE: với giao dịch xung đột, thứ tự `id` là thứ tự commit. Purge DEL-05 không phát event cho từng
+endorsement; marker `principal_deleted` đến sau các endorsement đang chạy của actor vì xóa tài khoản khóa dòng
+principal trước. Activation tắt → không ghi gì; bật/tắt có audit trong `reputation_activation_changes`.
+Rollback: `migrations-rollback/20261208000000_reputation_outbox.down.sql` từ chối khi đang bật hoặc còn event.
+
+| Lệnh | Kết quả | Boundary |
+| --- | --- | --- |
+| `cargo check -p vink-app --tests`, `cargo clippy -p vink-app --lib --bins --tests -- -D warnings` | PASS | compile/lint |
+| `cargo xtask verify postgres` (gồm `tests/postgres/reputation_outbox.rs`, 7 test), `verify quick` | NOT_RUN: dừng theo yêu cầu chủ sản phẩm, chờ verify lại | PostgreSQL |
+| Đo overhead ghi Thấm trước/sau (AC-07 #645) | NOT_RUN | scratch DB |
 
 ## 5. Acceptance của epic theo lát
 

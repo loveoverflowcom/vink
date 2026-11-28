@@ -39,7 +39,7 @@ use vink_app::http::{AppState, router};
 use vink_app::persistence::{self, PgStore, lazy_pool};
 use vink_app::{dev_seed, identity, runtime};
 
-const USAGE: &str = "usage: vink-app [serve|serve-api|migrate|dev-seed]\n       vink-app admin add <principal-uuid> [<reason>]\n       vink-app admin remove <principal-uuid> [<reason>]\n       vink-app admin list\n       vink-app moderator grant <principal-uuid> <note>\n       vink-app moderator revoke <principal-uuid>\n       vink-app moderator list\n       vink-app principal suspend <principal-uuid> <reason>\n       vink-app principal reinstate <principal-uuid>\n       vink-app principal list|backfill-handles\n       vink-app tag list\n       vink-app tag history [<limit>]\n       vink-app tag create <catalog-version> <form|theme> <label>\n       vink-app tag rename <catalog-version> <tag-uuid> <label>\n       vink-app tag describe <catalog-version> <tag-uuid> [<description>]\n       vink-app tag alias <catalog-version> <tag-uuid> <label>\n       vink-app tag retire <catalog-version> <tag-uuid> [<successor-uuid>]\n       vink-app outbox status\n       vink-app outbox dead [<limit>]\n       vink-app outbox requeue <event-uuid> <consumer> <note>\n       vink-app notifications status\n       vink-app notifications activate|deactivate <note>\n       vink-app notifications dead [<limit>]\n       vink-app notifications requeue <event-uuid> <note>\n       vink-app notifications replay <since-rfc3339> <note>\n       vink-app post-review request|result|status|pending\n       vink-app maintenance prune";
+const USAGE: &str = "usage: vink-app [serve|serve-api|migrate|dev-seed]\n       vink-app admin add <principal-uuid> [<reason>]\n       vink-app admin remove <principal-uuid> [<reason>]\n       vink-app admin list\n       vink-app moderator grant <principal-uuid> <note>\n       vink-app moderator revoke <principal-uuid>\n       vink-app moderator list\n       vink-app principal suspend <principal-uuid> <reason>\n       vink-app principal reinstate <principal-uuid>\n       vink-app principal list|backfill-handles\n       vink-app tag list\n       vink-app tag history [<limit>]\n       vink-app tag create <catalog-version> <form|theme> <label>\n       vink-app tag rename <catalog-version> <tag-uuid> <label>\n       vink-app tag describe <catalog-version> <tag-uuid> [<description>]\n       vink-app tag alias <catalog-version> <tag-uuid> <label>\n       vink-app tag retire <catalog-version> <tag-uuid> [<successor-uuid>]\n       vink-app outbox status\n       vink-app outbox dead [<limit>]\n       vink-app outbox requeue <event-uuid> <consumer> <note>\n       vink-app notifications status\n       vink-app notifications activate|deactivate <note>\n       vink-app notifications dead [<limit>]\n       vink-app notifications requeue <event-uuid> <note>\n       vink-app notifications replay <since-rfc3339> <note>\n       vink-app reputation status\n       vink-app reputation activate|deactivate <note>\n       vink-app post-review request|result|status|pending\n       vink-app maintenance prune";
 
 #[derive(Debug, PartialEq, Eq)]
 enum AdminCommand {
@@ -209,6 +209,23 @@ fn parse_notifications(args: &[String]) -> Result<NotificationsCommand, String> 
     }
 }
 
+/// Operator command on the Điểm Vink outbox (#645), parsed before any configuration.
+#[derive(Debug, PartialEq, Eq)]
+enum ReputationCommand {
+    Status,
+    Activate(bool, String),
+}
+
+fn parse_reputation(args: &[String]) -> Result<ReputationCommand, String> {
+    match args.first().map(String::as_str) {
+        Some("status") if args.len() == 1 => Ok(ReputationCommand::Status),
+        Some(verb @ ("activate" | "deactivate")) if args.len() >= 2 => Ok(
+            ReputationCommand::Activate(verb == "activate", operator_note(&args[1..])?),
+        ),
+        _ => Err("expected `status` or `activate|deactivate <note>`".into()),
+    }
+}
+
 /// Default number of audit rows `tag history` prints.
 const DEFAULT_HISTORY: i64 = 50;
 
@@ -347,6 +364,7 @@ fn main() -> ExitCode {
             | "tag"
             | "outbox"
             | "notifications"
+            | "reputation"
             | "post-review"
             | "maintenance"
     ) {
@@ -425,6 +443,18 @@ fn main() -> ExitCode {
     } else {
         None
     };
+    let reputation_command = if command == "reputation" {
+        let args: Vec<String> = std::env::args().skip(2).collect();
+        match parse_reputation(&args) {
+            Ok(parsed) => Some(parsed),
+            Err(error) => {
+                eprintln!("vink-app reputation: {error}\n{USAGE}");
+                return ExitCode::from(2);
+            }
+        }
+    } else {
+        None
+    };
     let post_review_command = if command == "post-review" {
         let args: Vec<String> = std::env::args().skip(2).collect();
         match parse_post_review(&args) {
@@ -488,6 +518,9 @@ fn main() -> ExitCode {
             }
             Loaded::App(config) if let Some(operation) = notifications_command => {
                 notifications(&config, operation).await
+            }
+            Loaded::App(config) if let Some(operation) = reputation_command => {
+                reputation(&config, operation).await
             }
             Loaded::App(config) if let Some(operation) = post_review_command => {
                 post_review(&config, operation).await
@@ -850,6 +883,57 @@ async fn maintenance(config: &Config) -> Result<(), Failure> {
 
 /// `vink-app notifications …` (#346): activation cutover, relay queue health, dead letters,
 /// requeue and replay after a receiver restore. Codes, counts and identifiers only.
+async fn reputation(config: &Config, command: ReputationCommand) -> Result<(), Failure> {
+    use persistence::reputation as outbox;
+    use vink_app::domain::reputation::outbox::ActivationChange;
+    let pool = connect(&config.database_url, "vink-app reputation").await?;
+    let failed = |error: vink_app::application::ports::StoreError| {
+        Failure::Runtime(format!("reputation command failed: {error}"))
+    };
+    let result = match command {
+        ReputationCommand::Status => {
+            let activation = outbox::activation(&pool).await.map_err(failed)?;
+            let backlog = outbox::backlog(&pool).await.map_err(failed)?;
+            println!("active\t{}", activation.active());
+            println!("epoch\t{}", activation.epoch());
+            for (kind, count) in &backlog.per_kind {
+                println!("owed_{kind}\t{count}");
+            }
+            println!(
+                "oldest\t{}",
+                backlog
+                    .oldest_seconds
+                    .map_or_else(|| "-".to_string(), |s| format!("{s}s"))
+            );
+            Ok(())
+        }
+        ReputationCommand::Activate(active, note) => {
+            match outbox::set_activation(&pool, active, &note)
+                .await
+                .map_err(failed)?
+            {
+                ActivationChange::Changed(next) => {
+                    println!("active={} epoch={}; audited", next.active(), next.epoch());
+                    Ok(())
+                }
+                ActivationChange::Unchanged(current) => {
+                    println!(
+                        "unchanged: active={} epoch={}; nothing was written",
+                        current.active(),
+                        current.epoch()
+                    );
+                    Ok(())
+                }
+                ActivationChange::Exhausted => Err(Failure::Runtime(
+                    "activation epoch exhausted; nothing was written".into(),
+                )),
+            }
+        }
+    };
+    pool.close().await;
+    result
+}
+
 async fn notifications(config: &Config, command: NotificationsCommand) -> Result<(), Failure> {
     use persistence::notification::{self as queue, RequeueOutcome};
     use vink_app::domain::notification::ActivationChange;
@@ -1208,6 +1292,33 @@ mod tests {
             &["delete", principal][..],
         ] {
             assert!(parse_principal(&args(bad)).is_err(), "{bad:?}");
+        }
+    }
+
+    #[test]
+    fn reputation_arguments_are_validated_before_any_configuration() {
+        assert_eq!(
+            parse_reputation(&args(&["status"])),
+            Ok(ReputationCommand::Status)
+        );
+        assert_eq!(
+            parse_reputation(&args(&["activate", "ops:", "bật", "Điểm", "Vink"])),
+            Ok(ReputationCommand::Activate(
+                true,
+                "ops: bật Điểm Vink".into()
+            ))
+        );
+        assert_eq!(
+            parse_reputation(&args(&["deactivate", "ops: tạm dừng"])),
+            Ok(ReputationCommand::Activate(false, "ops: tạm dừng".into()))
+        );
+        for bad in [
+            &["activate"][..],
+            &["status", "x"][..],
+            &["backfill"][..],
+            &[][..],
+        ] {
+            assert!(parse_reputation(&args(bad)).is_err(), "{bad:?}");
         }
     }
 

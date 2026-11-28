@@ -11,7 +11,7 @@
 //! SHARE) → comment (FOR SHARE) → the actor's principal row (FOR UPDATE, the standing fence) →
 //! the actor's command-key namespace (transaction advisory lock) → the actor's record (FOR
 //! UPDATE) → for an accepted Thấm or Ưng change, the notification activation row (FOR KEY SHARE,
-//! #346, #365).
+//! #346, #365) → the Điểm Vink activation row (FOR KEY SHARE, #645).
 //! A withdrawal or republish (pointer update) and a
 //! moderation decision (comment UPDATE) either commit before the decision reads its facts or wait
 //! until it commits; endorsement never takes their rows in the reverse order. The advisory lock
@@ -36,6 +36,7 @@ use super::discussion::{integrity, read_snapshot, state};
 use super::notification;
 use super::postgres::classify;
 use super::principal::require_active;
+use super::reputation;
 use crate::application::endorsement::CommentBatch;
 use crate::application::ports::{
     CommentSummaryFacts, EndorsementStore, EndorsementSummaryFacts, EndorsementWriteRecord,
@@ -43,13 +44,14 @@ use crate::application::ports::{
 };
 use crate::domain::discussion::{CommentPlacement, StoredPosition};
 use crate::domain::endorsement::{
-    AcceptedOrder, EndorsementCommand, EndorsementCommandKey, EndorsementCount, EndorsementFacts,
-    EndorsementIntent, EndorsementOutcome, EndorsementReceipt, EndorsementState, EndorsementTarget,
-    EndorsementTargetFacts, StoredEndorsement, decide_endorsement,
+    AcceptedOrder, EndorsementCommand, EndorsementCommandKey, EndorsementCount, EndorsementDelta,
+    EndorsementFacts, EndorsementIntent, EndorsementOutcome, EndorsementReceipt, EndorsementState,
+    EndorsementTarget, EndorsementTargetFacts, StoredEndorsement, decide_endorsement,
 };
 use crate::domain::ids::{CommentId, PrincipalId, RevisionId, ThreadId, WorkId};
 use crate::domain::notification::{ThamFacts, UngFacts, tham_changed, ung_changed};
 use crate::domain::publication::NotificationStamp;
+use crate::domain::reputation::outbox::{CommunityContext, CommunityEvent};
 
 /// A first command can lose the INSERT to a concurrent first command at most once: afterwards
 /// the winner's row exists (rows are never deleted) and every read locks it.
@@ -332,6 +334,21 @@ async fn write_record(
     Ok(affected == 1)
 }
 
+/// The revision moderation hid on this work, never an Impact anchor (Q19). The publication row is
+/// held FOR SHARE, so a hide that clears the pointer commits wholly before or after this read.
+async fn hidden_revision(
+    tx: &mut Transaction<'_, Postgres>,
+    work: WorkId,
+) -> Result<Option<RevisionId>, StoreError> {
+    let hidden: Option<Option<Uuid>> =
+        sqlx::query_scalar("SELECT hidden_revision_id FROM work_publications WHERE work_id = $1")
+            .bind(work.as_uuid())
+            .fetch_optional(&mut **tx)
+            .await
+            .map_err(classify)?;
+    Ok(hidden.flatten().map(RevisionId::from_uuid))
+}
+
 async fn write_receipt(
     tx: &mut Transaction<'_, Postgres>,
     receipt: EndorsementReceipt,
@@ -389,8 +406,10 @@ impl EndorsementStore for PgStore {
                 .fetch_optional(&mut *tx)
                 .await
                 .map_err(classify)?;
-        // The comment's writer, from the locked row: the recipient of an Ưng notification (#365).
+        // The comment's writer, from the locked row: the recipient of an Ưng notification (#365)
+        // and of the Điểm Vink contribution (#645), with whether the comment is public.
         let mut comment_writer: Option<PrincipalId> = None;
+        let mut comment_public = false;
         let target_facts = match target {
             EndorsementTarget::Work { .. } => owner.map(|(id, owner)| {
                 EndorsementTargetFacts::work(
@@ -429,6 +448,9 @@ impl EndorsementStore for PgStore {
                 comment_writer = row
                     .as_ref()
                     .map(|row| PrincipalId::from_uuid(row.author_id));
+                comment_public = row
+                    .as_ref()
+                    .is_some_and(|row| row.review == "approved" && row.removal.is_none());
                 row.map(|row| row.facts(published.is_some())).transpose()?
             }
         };
@@ -523,6 +545,37 @@ impl EndorsementStore for PgStore {
                     _ => None,
                 };
                 notification::emit(&mut tx, notice).await?;
+                // Điểm Vink (#645): a real change owes one outbox event with the context read
+                // under this transaction's locks; the activation row is the last lock taken.
+                if write.delta() != EndorsementDelta::None {
+                    let (recipient, context) = match target {
+                        EndorsementTarget::Work { .. } => (
+                            owner.map(|(_, owner)| PrincipalId::from_uuid(owner)),
+                            CommunityContext::Work {
+                                work_public: published.is_some(),
+                                hidden_revision: hidden_revision(&mut tx, work_id).await?,
+                            },
+                        ),
+                        EndorsementTarget::Comment { .. } => (
+                            comment_writer,
+                            CommunityContext::Comment {
+                                work_public: published.is_some(),
+                                comment_public,
+                            },
+                        ),
+                    };
+                    if let Some(recipient) = recipient {
+                        let event = CommunityEvent::of(
+                            actor,
+                            recipient,
+                            target,
+                            write.delta(),
+                            state,
+                            context,
+                        );
+                        reputation::emit_community(&mut tx, event).await?;
+                    }
+                }
             }
             let visible = target_facts.is_some_and(|facts| facts.visible(target));
             let count = if visible {

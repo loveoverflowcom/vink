@@ -1,7 +1,8 @@
 //! Điểm Vink (Reputation V1, epic #600) pure core: formula version 1 in exact integer fixed
 //! point, entitlement and anchor effects, maturity and calendar periods, the Q41 community
-//! credit machine per calendar and top-board admission/order. No I/O: persistence, worker and
-//! HTTP callers arrive in #645–#648 and apply exactly the effects returned here.
+//! credit machine per calendar and top-board admission/order, and what a source transaction owes
+//! the outbox (`outbox`, #645). No I/O: persistence, worker and HTTP callers apply exactly the
+//! effects returned here.
 //!
 //! Product rules: `VDR-REPUTATION@r1` (PRODUCT_CONFIRMED), architecture K1/K2 of
 //! `VDR-REPUTATION-CONTRACT@r1` (Provisional); spec `docs/architecture/reputation.md`.
@@ -27,6 +28,7 @@ pub mod calendar;
 pub mod credit;
 pub mod entitlement;
 pub mod formula;
+pub mod outbox;
 
 #[cfg(kani)]
 mod proofs;
