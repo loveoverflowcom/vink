@@ -33,7 +33,8 @@ import { editorAutosave, holdEditorDebounce } from './editor-autosave.mjs';
 import { editorWriting } from './editor-writing-smoke.mjs';
 import { editorPaperFirst, writingFocus } from './editor-paper-first-smoke.mjs';
 import { editorDeskRegressions, firstDraftFormat } from './editor-desk-regressions.mjs';
-import { markdownBudget } from './editor-markdown-budget.mjs';
+import { editorCoreContracts } from './editor-core-contracts.mjs';
+import { deskBudget, markdownBudget } from './editor-markdown-budget.mjs';
 import { documentBudget } from './document-budget.mjs';
 import { readerIntentCost } from './reader-intent-cost.mjs';
 import { webPerfBaseline } from './web-perf-baseline.mjs';
@@ -5348,10 +5349,12 @@ async function editorFormatPhase(page) {
     await page.goto(`${args.base}/ban-viet`);
     await page.waitFor("document.documentElement.dataset.hydrated === 'true'", 'hydrated Desk before opening format fixtures');
   }
+  await deskBudget(page, { args, check });
   await deskRefusesLossyOpen(page);
   await markdownLivePreviewAndFormatPicker(page);
   await editorDeskRegressions(page, { args, check });
   await markdownBudget(page, { args, check });
+  await editorCoreContracts(page, { args, check, sampleWork: SAMPLE_WORK });
 }
 
 async function writeRestartState(page, workId) {

@@ -1,4 +1,4 @@
-# Runtime CodeMirror của Bàn viết
+# Runtime CodeMirror dùng chung của Vink
 
 Gói TypeScript riêng cho vùng soạn nội dung trong `/ban-viet/{id}`. Đây không phải ứng dụng web
 thứ hai: Leptos vẫn sở hữu trang, trạng thái lưu và giao tiếp với máy chủ.
@@ -22,7 +22,7 @@ không remount view.
 Lưu, xem trước đổi định dạng và guard rời trang đều đọc `BodySource::snapshot()`, tức
 `view.state.doc.toString()` tại thời điểm đó. Ctrl/⌘+S chờ IME commit xong.
 
-## Build
+## Focus và selection
 
 Focus từ rail, overlay hoặc phím Tab dùng lại `EditorView.focus()` ngay trong focus handler
 của runtime để khôi phục selection từ state trước khi trình duyệt đọc lại caret tạm ở đầu
@@ -44,6 +44,31 @@ phục chọn lại cả dòng, rồi chữ gõ tiếp thay mất dòng ấy. Sm
 focus trở lại tới khi phím vào editor, nên kiểm được cửa sổ này trên mọi nền tảng.
 Chọn vị trí bằng chuột tiếp tục dùng hành vi CodeMirror hiện có.
 
+## Preset, định dạng và vòng đời (#617)
+
+Cả hai preset dùng cùng `createEditor(host, options)`, history, keymap, grammar CommonMark và cơ chế giữ vùng chọn qua focus. Mỗi host nhận một handle. `preset` chọn bề mặt. `format` chọn cách hiển thị chữ nguồn. Adapter Bàn viết ánh xạ DTO `default` sang `plain` ngay tại biên Rust. Discussion hiện vẫn dùng TextArea của #616.
+
+| Khả năng | `document` | `comment` |
+| --- | --- | --- |
+| Plain hoặc Markdown, Enter xuống dòng, Tab chuyển focus, undo/redo | Có | Có |
+| Live Preview B/I/link, quote và marker theo caret trong Markdown | Có | Có |
+| Heading trang giấy, projection H1, lịch mục lục và nhảy đến heading | Có, projection khi có subscriber | Giữ ký hiệu heading như chữ nguồn |
+| Lệnh toolbar B/I/link | Khi Markdown, có quyền sửa và IME đã commit | Cùng điều kiện |
+| Chuyển format sau khi máy chủ xác nhận | Trên cùng view | Lệnh bị chặn |
+| Hình học | Giấy Bàn viết, chiều cao nội dung tối thiểu 50vh | Chữ UI, tối thiểu hai dòng, padding riêng |
+
+Rust gọi `editor::bridge::EditorHandle::load().await` khi cần nhập. Owner kiểm tra lại chính host và trạng thái còn sống **sau await**, rồi gọi `mount(host, MountOptions { preset, format, text, labelled_by, described_by, read_only, on_change, on_composition, on_outline })`. Mount giữ nguyên focus. Các ID nhãn và mô tả do caller cấp. Lần load đồng thời dùng chung promise của bridge.
+
+- `on_change()` báo source đã đổi. Đọc `handle.text()` tại thời điểm cần snapshot. Gõ một ký tự trong Bàn viết không buộc Rust sao chép toàn bộ tài liệu qua WASM.
+- `on_composition(true|false)` báo cả khi source giữ nguyên. Bàn viết theo dõi cả form vì tiêu đề và thẻ cũng nhập bằng IME. Caller compact có thể dùng callback này để giữ trạng thái soạn của đúng composer.
+- `on_outline(json)` dành cho Document. Snapshot có generation để từ chối mục lục cũ. Comment không tạo owner mục lục. Preset chỉ điều khiển runtime, quyền submit và lưu vẫn thuộc caller.
+- `read_only` ở lúc mount áp dụng cho nội dung DOM và lệnh sửa. Khi owner bị thay, thả handle. Rust gọi destroy trước khi nhả closures. JS hủy frame khôi phục selection, frame cuộn caret, timer sau composition và frame mục lục.
+- PR #618 sở hữu fallback TextArea, thời điểm nâng cấp, draft theo ComposerKey, quote/list actions, send/retry, format lưu trữ và render nhận xét. Khi dùng kết quả load trễ, caller phải kiểm lại quyền, selection, focus và IME của đúng composer trước khi nâng cấp.
+
+Chạy corpus bằng `node apps/vink-web/editor/scripts/build.mjs --check`. Với Chrome và PostgreSQL scratch, `cargo xtask verify web --scenario editor-format --release` đo trên route Product và fixture runtime. `desk-core-budget.json` giữ mẫu cold/warm, typing/caret, khoảng cách frame, long task và 40 vòng teardown. `editor-markdown-p95.json` giữ các cỡ corpus 10k–200k scalar. Xem [phiếu kiểm chứng #617](../../../docs/development/evidence/editor-core-617/README.md) để đối chiếu cùng profile và phương pháp.
+
+## Build
+
 Các lệnh build, dev và verify Web kiểm manifest/lock, typecheck TypeScript và chạy corpus
 Markdown ở mỗi lượt. Khi cần tạo lại `vink-editor.js`, esbuild bundle vào staging. Xem
 [đầu vào và điều kiện tái dùng](../../../docs/development/scoped-workflows.md#build-package-web).
@@ -53,8 +78,7 @@ Dependency dùng phiên bản pin chính xác. Cập nhật dependency bằng l�
 npm install --prefix apps/vink-web/editor --ignore-scripts
 ```
 
-Runtime chỉ tải ở trang editor (trang đọc công khai không tải). Bundle hiện khoảng 270 KB, 88 KB
-gzip. Vink chưa phát Content-Security-Policy; runtime là file cùng origin, không có inline script
+Runtime chỉ tải ở trang editor (trang đọc công khai không tải). Vink chưa phát Content-Security-Policy; runtime là file cùng origin, không có inline script
 hay `eval`. CodeMirror chèn style bằng constructable stylesheet — khi chọn CSP, cần cho phép điều đó
 hoặc truyền nonce qua `EditorView.cspNonce`.
 

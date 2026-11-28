@@ -259,6 +259,8 @@ const SHARED_UI_DIR: &str = "packages/ui-system/shared/";
 pub const BROWSER_MODULES: &[(&str, &[Scenario], &[&str])] = {
     use Scenario as S;
     &[
+        // standaloneDiscussionReply calls captureRequest directly. Other uses map via importers.
+        ("apps/vink-web/e2e/auth-browser-network.mjs", &[S::Standalone], &[]),
         ("apps/vink-web/e2e/auth-password-smoke.mjs", &[S::Auth, S::Password, S::Standalone, S::AccountDeletion], &[]),
         ("apps/vink-web/e2e/auth-smoke.mjs", &[S::Auth], &[]),
         ("apps/vink-web/e2e/author-search-smoke.mjs", &[S::AuthorSearch], &[]),
@@ -272,6 +274,7 @@ pub const BROWSER_MODULES: &[(&str, &[Scenario], &[&str])] = {
         ("apps/vink-web/e2e/document.mjs", &[S::Reader, S::Editor, S::EditorChrome, S::EditorFormat], &[]),
         ("apps/vink-web/e2e/draft-pagination-smoke.mjs", &[S::Desk], &[]),
         ("apps/vink-web/e2e/editor-autosave.mjs", &[S::Editor, S::EditorChrome, S::Restart], &[]),
+        ("apps/vink-web/e2e/editor-core-contracts.mjs", &[S::EditorFormat], &[]),
         ("apps/vink-web/e2e/editor-desk-regressions.mjs", &[S::EditorFirstDraft, S::EditorFormat], &[]),
         ("apps/vink-web/e2e/editor-markdown-budget.mjs", &[S::EditorFormat], &[]),
         ("apps/vink-web/e2e/editor-paper-first-smoke.mjs", &[S::EditorChrome, S::EditorFormat], &[]),

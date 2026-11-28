@@ -1,7 +1,7 @@
 import { decodeHTMLStrict } from 'entities';
 import { commonmarkLanguage } from '@codemirror/lang-markdown';
 import { ensureSyntaxTree, syntaxTree } from '@codemirror/language';
-import { EditorSelection, EditorState, Range } from '@codemirror/state';
+import { EditorSelection, EditorState, Facet, Range } from '@codemirror/state';
 import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate } from '@codemirror/view';
 import type { SyntaxNode, Tree } from '@lezer/common';
 
@@ -188,6 +188,9 @@ export function extractFirstH1(source: string): string {
   return found;
 }
 
+// Compact editors keep heading source literal while sharing CommonMark inline decoration.
+export const compactMarkdown = Facet.define<boolean, boolean>({ combine: values => values.includes(true) });
+
 const markerDeco = Decoration.mark({ class: 'cm-markdown-marker' });
 const hideDeco = Decoration.replace({});
 const boldDeco = Decoration.mark({ class: 'cm-writing-bold' });
@@ -199,6 +202,7 @@ function buildLivePreviewDecorations(view: EditorView): DecorationSet {
   const decorations: Range<Decoration>[] = [];
   const { state } = view;
   const doc = state.doc;
+  const compact = state.facet(compactMarkdown);
   const tree = syntaxTree(state);
   const decoratedHeadingLines = new Set<number>();
   const visitedNodes = new Set<string>();
@@ -243,7 +247,7 @@ function buildLivePreviewDecorations(view: EditorView): DecorationSet {
         const key = `${name}:${nodeRef.from}:${nodeRef.to}`;
         if (visitedNodes.has(key)) return undefined;
         visitedNodes.add(key);
-        const level = headingLevel(name);
+        const level = compact ? 0 : headingLevel(name);
         if (level) {
           const isAtx = name.startsWith('ATX');
           const marks = nodeRef.node.getChildren('HeaderMark');

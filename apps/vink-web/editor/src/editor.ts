@@ -1,32 +1,26 @@
-// CodeMirror 6 body editor for the Vink desk.
-//
-// In `default` format, edits plain source text verbatim (prose paragraphs and poem lines).
-// In `markdown` format, enables CommonMark 0.31.2 Live Preview (#256) and AST outline (#257)
-// on the exact same `EditorView`. The Rust `EditorSession` owns dirty/saving/saved/conflict
-// state; this module reports edits and AST outline snapshots.
-//
-// One EditorView lives for one open draft. Styling uses `--vk-*` roles from vink.css, so a
-// theme change or format switch never recreates the view.
-
+// Shared CodeMirror 6 runtime. A mounted surface owns one view and its pending UI work.
 import { history, defaultKeymap, historyKeymap, insertNewline } from '@codemirror/commands';
 import { Compartment, EditorSelection, EditorState } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
 import {
-  activeHeadingFrom,
   applyHeading as mdApplyHeading,
   applyInlineFormat as mdApplyInlineFormat,
-  extractOutline,
   markdownExtension,
-  type OutlineSnapshot,
+  compactMarkdown,
 } from './markdown';
+import { DocumentOutline } from './outline';
 
-export type DocumentFormat = 'default' | 'markdown';
+export type BodyFormat = 'plain' | 'markdown';
+export type EditorPreset = 'document' | 'comment';
 
 export interface EditorOptions {
-  /** The draft's text as loaded from the server. */
+  preset?: EditorPreset;
+  readOnly?: boolean;
+  onComposition?: (active: boolean) => void;
+  /** Exact source owned by this surface. */
   text: string;
-  /** Document format controlling whether Markdown Live Preview & outline run. */
-  format?: DocumentFormat;
+  /** Plain source or CommonMark Live Preview. The surface controls outline capability. */
+  format?: BodyFormat;
   /** Element ids naming and describing the text box (the visible label and hint). */
   labelledBy: string;
   describedBy: string;
@@ -39,13 +33,14 @@ export interface EditorOptions {
 export interface EditorHandle {
   view: EditorView;
   destroyed: boolean;
-  format: DocumentFormat;
+  preset: EditorPreset;
+  format: BodyFormat;
+  outline?: DocumentOutline;
+  dispose: () => void;
   generation: number;
   markdownCompartment: Compartment;
   syncProgrammaticSelection: () => void;
-  scheduleOutline: (immediate?: boolean) => void;
-  setSuppressedChange: (suppressed: boolean) => void;
-  emitOutlineNow: () => void;
+  suppressChange: boolean;
 }
 
 const MOUNTED = 'vinkEditor';
@@ -54,12 +49,15 @@ export function createEditor(host: HTMLElement, options: EditorOptions): EditorH
   if (host.dataset[MOUNTED]) {
     throw new Error('A Vink editor is already mounted in this host');
   }
-  const initialFormat: DocumentFormat = options.format === 'markdown' ? 'markdown' : 'default';
+  const preset = options.preset ?? 'document';
+  const initialFormat: BodyFormat = options.format === 'markdown' ? 'markdown' : 'plain';
   const markdownCompartment = new Compartment();
   const handle = {
     destroyed: false,
+    preset,
     format: initialFormat,
     generation: 1,
+    suppressChange: false,
     markdownCompartment,
   } as EditorHandle;
 
@@ -70,13 +68,18 @@ export function createEditor(host: HTMLElement, options: EditorOptions): EditorH
   let skipNextFocusRestore = false;
   let pointerDown = false;
   let scrollEnsureLeft = 0;
-  let scrollEnsureScheduled = false;
-  let suppressChange = false;
-  let outlineRaf = 0;
-  let lastOutline: OutlineSnapshot | null = null;
-  let lastEmittedJson = '';
+  let scrollFrame = 0;
+  let focusFrame = 0;
+  let compositionTimer = 0;
+  let onChange: EditorOptions['onChange'] | undefined = options.onChange;
+  let onComposition = options.onComposition;
+  if (preset === 'document' && options.onOutline) {
+    handle.outline = new DocumentOutline(handle, options.onOutline);
+  }
 
   const cancelFocusRestore = () => {
+    if (focusFrame) cancelAnimationFrame(focusFrame);
+    focusFrame = 0;
     focusEpoch++;
     restoringFocus = false;
   };
@@ -87,72 +90,22 @@ export function createEditor(host: HTMLElement, options: EditorOptions): EditorH
     skipNextFocusRestore = true;
   };
 
-  handle.setSuppressedChange = (suppressed: boolean) => {
-    suppressChange = suppressed;
-  };
-
-  const emitSnapshot = (snapshot: OutlineSnapshot) => {
-    lastOutline = snapshot;
-    const json = JSON.stringify(snapshot);
-    if (json !== lastEmittedJson) {
-      lastEmittedJson = json;
-      if (!handle.destroyed && options.onOutline) {
-        options.onOutline(json);
-      }
-    }
-  };
-
-  handle.emitOutlineNow = () => {
-    if (handle.destroyed || !options.onOutline) return;
-    if (handle.format !== 'markdown') {
-      emitSnapshot({
-        status: 'ready',
-        generation: handle.generation,
-        items: [],
-        title: '',
-        activeFrom: null,
-      });
-      return;
-    }
-    const snapshot = extractOutline(handle.view.state, handle.generation, 8);
-    emitSnapshot(snapshot);
-    if (snapshot.status === 'partial') handle.scheduleOutline();
-  };
-
-  handle.scheduleOutline = (immediate = false) => {
-    if (handle.destroyed || !options.onOutline) return;
-    if (immediate) {
-      if (outlineRaf) {
-        cancelAnimationFrame(outlineRaf);
-        outlineRaf = 0;
-      }
-      handle.emitOutlineNow();
-      return;
-    }
-    if (outlineRaf) return;
-    outlineRaf = requestAnimationFrame(() => {
-      outlineRaf = 0;
-      handle.emitOutlineNow();
-    });
-  };
-
-  const emitActiveOnly = () => {
-    if (handle.destroyed || !options.onOutline || handle.format !== 'markdown') return;
-    if (!lastOutline || lastOutline.generation !== handle.generation) {
-      handle.scheduleOutline(true);
-      return;
-    }
-    const nextActive = activeHeadingFrom(lastOutline.items, handle.view.state.selection.main.head);
-    if (nextActive !== lastOutline.activeFrom) {
-      emitSnapshot({ ...lastOutline, activeFrom: nextActive });
-    }
+  handle.dispose = () => {
+    cancelFocusRestore();
+    cancelAnimationFrame(scrollFrame);
+    clearTimeout(compositionTimer);
+    handle.outline?.cancelFrame();
+    handle.outline = undefined;
+    onChange = undefined;
+    onComposition = undefined;
+    handle.view.destroy();
+    delete host.dataset[MOUNTED];
   };
 
   const ensureCaretVisible = () => {
-    if (scrollEnsureScheduled || scrollEnsureLeft <= 0 || handle.destroyed) return;
-    scrollEnsureScheduled = true;
-    requestAnimationFrame(() => {
-      scrollEnsureScheduled = false;
+    if (scrollFrame || scrollEnsureLeft <= 0 || handle.destroyed) return;
+    scrollFrame = requestAnimationFrame(() => {
+      scrollFrame = 0;
       if (handle.destroyed || !handle.view.hasFocus || restoringFocus) {
         scrollEnsureLeft = 0;
         return;
@@ -176,6 +129,13 @@ export function createEditor(host: HTMLElement, options: EditorOptions): EditorH
       doc: options.text,
       extensions: [
         history(),
+        options.readOnly ? [
+          EditorState.readOnly.of(true),
+          EditorView.editable.of(false),
+          // Commands such as insertNewline can dispatch even on a non-editable DOM node.
+          EditorState.changeFilter.of(() => false),
+        ] : [],
+        preset === 'comment' ? compactMarkdown.of(true) : [],
         markdownCompartment.of(initialFormat === 'markdown' ? markdownExtension : []),
         // Enter breaks the line without copying indentation: alternating poem indents stay
         // the writer's choice, as in a plain text field. Tab is left to focus navigation.
@@ -201,8 +161,10 @@ export function createEditor(host: HTMLElement, options: EditorOptions): EditorH
               dispatchingRestore = false;
             }
             view.focus();
-            requestAnimationFrame(() =>
-              requestAnimationFrame(() => {
+            if (focusFrame) cancelAnimationFrame(focusFrame);
+            focusFrame = requestAnimationFrame(() => {
+              focusFrame = requestAnimationFrame(() => {
+                focusFrame = 0;
                 if (handle.destroyed || epoch !== focusEpoch) return;
                 if (view.hasFocus) {
                   dispatchingRestore = true;
@@ -214,19 +176,8 @@ export function createEditor(host: HTMLElement, options: EditorOptions): EditorH
                   view.focus();
                 }
                 restoringFocus = false;
-              }),
-            );
-            return false;
-          },
-          compositionend(_event, view) {
-            if (handle.format === 'markdown') {
-              setTimeout(() => {
-                if (!handle.destroyed && !view.composing && !view.compositionStarted) {
-                  view.dispatch({ selection: view.state.selection });
-                  handle.scheduleOutline(true);
-                }
-              }, 30);
-            }
+              });
+            });
             return false;
           },
         }),
@@ -241,8 +192,22 @@ export function createEditor(host: HTMLElement, options: EditorOptions): EditorH
           pointercancel() {
             pointerDown = false;
           },
+          compositionend(_event, view) {
+            clearTimeout(compositionTimer);
+            if (handle.format === 'markdown') {
+              compositionTimer = window.setTimeout(() => {
+                if (!handle.destroyed && !isComposing(handle)) {
+                  view.dispatch({ selection: view.state.selection });
+                  handle.outline?.refresh();
+                }
+              }, 30);
+            }
+            onComposition?.(false);
+          },
           compositionstart() {
+            clearTimeout(compositionTimer);
             cancelFocusRestore();
+            onComposition?.(true);
           },
           blur() {
             cancelFocusRestore();
@@ -255,6 +220,7 @@ export function createEditor(host: HTMLElement, options: EditorOptions): EditorH
         EditorView.contentAttributes.of({
           'aria-labelledby': options.labelledBy,
           'aria-describedby': options.describedBy,
+          'aria-readonly': String(options.readOnly === true),
           lang: 'vi',
           spellcheck: 'false',
           autocorrect: 'off',
@@ -263,7 +229,7 @@ export function createEditor(host: HTMLElement, options: EditorOptions): EditorH
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             cancelFocusRestore();
-            handle.generation += 1;
+            if (handle.outline) handle.generation += 1;
           } else if (
             update.selectionSet &&
             !dispatchingRestore &&
@@ -284,22 +250,25 @@ export function createEditor(host: HTMLElement, options: EditorOptions): EditorH
             ensureCaretVisible();
           }
           if (update.docChanged) {
-            if (!suppressChange && !handle.destroyed) {
-              options.onChange();
+            if (!handle.suppressChange) {
+              onChange?.();
             }
             if (handle.format === 'markdown') {
-              handle.scheduleOutline();
+              handle.outline?.schedule();
             }
           } else if (update.selectionSet && handle.format === 'markdown') {
-            emitActiveOnly();
+            handle.outline?.selectionChanged();
           }
         }),
       ],
     }),
   });
-  host.dataset[MOUNTED] = 'true';
-  if (initialFormat === 'markdown') {
-    handle.emitOutlineNow();
+  host.dataset[MOUNTED] = preset;
+  try {
+    if (initialFormat === 'markdown') handle.outline?.refresh();
+  } catch (error) {
+    destroyEditor(handle);
+    throw error;
   }
   return handle;
 }
@@ -307,9 +276,7 @@ export function createEditor(host: HTMLElement, options: EditorOptions): EditorH
 export function destroyEditor(handle: EditorHandle): void {
   if (handle.destroyed) return;
   handle.destroyed = true;
-  const host = handle.view.dom.parentElement;
-  handle.view.destroy();
-  if (host) delete host.dataset[MOUNTED];
+  handle.dispose();
 }
 
 /** The text being written, exactly as held by the view (lines joined with `\n`). */
@@ -330,14 +297,14 @@ export function isComposing(handle: EditorHandle): boolean {
 /** Replaces the document and format after an explicit, server-acknowledged conversion. */
 export function applyConvertedDocument(
   handle: EditorHandle,
-  format: DocumentFormat,
+  format: BodyFormat,
   text: string,
 ): void {
-  if (handle.destroyed) return;
-  const next: DocumentFormat = format === 'markdown' ? 'markdown' : 'default';
+  if (handle.destroyed || handle.preset !== 'document' || handle.view.state.readOnly) return;
+  const next: BodyFormat = format === 'markdown' ? 'markdown' : 'plain';
   handle.format = next;
   handle.generation += 1;
-  handle.setSuppressedChange(true);
+  handle.suppressChange = true;
   try {
     handle.view.dispatch({
       changes: { from: 0, to: handle.view.state.doc.length, insert: text },
@@ -346,30 +313,31 @@ export function applyConvertedDocument(
     });
     handle.syncProgrammaticSelection();
   } finally {
-    handle.setSuppressedChange(false);
+    handle.suppressChange = false;
   }
-  handle.emitOutlineNow();
+  handle.outline?.refresh();
 }
 
 export function applyHeading(handle: EditorHandle, level: number): boolean {
-  if (handle.destroyed || handle.format !== 'markdown') return false;
+  if (handle.destroyed || handle.preset !== 'document' || handle.format !== 'markdown' ||
+      handle.view.state.readOnly || isComposing(handle)) return false;
   handle.syncProgrammaticSelection();
   const ok = mdApplyHeading(handle.view, level);
   if (ok) {
     handle.syncProgrammaticSelection();
-    handle.scheduleOutline(true);
+    handle.outline?.refresh();
   }
   return ok;
 }
 
 export function applyInlineFormat(handle: EditorHandle, kind: string): boolean {
-  if (handle.destroyed || handle.format !== 'markdown') return false;
+  if (handle.destroyed || handle.format !== 'markdown' || handle.view.state.readOnly || isComposing(handle)) return false;
   if (kind !== 'bold' && kind !== 'italic' && kind !== 'link') return false;
   handle.syncProgrammaticSelection();
   const ok = mdApplyInlineFormat(handle.view, kind);
   if (ok) {
     handle.syncProgrammaticSelection();
-    handle.scheduleOutline(true);
+    handle.outline?.refresh();
   }
   return ok;
 }
@@ -377,7 +345,7 @@ export function applyInlineFormat(handle: EditorHandle, kind: string): boolean {
 export function jumpToHeading(handle: EditorHandle, from: number, expectedGeneration: number): boolean {
   const { view } = handle;
   if (
-    handle.destroyed || handle.format !== 'markdown' || expectedGeneration !== handle.generation ||
+    handle.destroyed || !handle.outline || handle.format !== 'markdown' || expectedGeneration !== handle.generation ||
     isComposing(handle) || from < 0 || from > view.state.doc.length
   ) return false;
   view.dispatch({

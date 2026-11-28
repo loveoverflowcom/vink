@@ -1,0 +1,71 @@
+# verify-editor-format.log
+  ok  one lazy editor import per Desk document
+  ok  40 paired edits on the mounted Product desk preserve the source
+  ok  Product contenteditable accepted all 45 CDP committed characters
+  ok  40 runtime mount/destroy cycles release editor DOM and callback owners
+  ok  markdown: textbox named Nội dung
+  ok  #256 rearward selection survives revealing multiline syntax without changing the source
+  ok  #256 save waits for the active composition inside a link
+  ok  #256 reopen, reveal, paste and undo kept a single live EditorView for this activation
+  ok  #256 persisted bytes still contain the multiline URL and both line breaks
+  ok  #257 connected pre-edit outline command is refused across A→B→A even when the source matches again
+  ok  #257 separate write advances the scratch draft version
+  ok  #257 a version conflict preserves the local source and editor
+  ok  #257 reload restores full source and rebuilds the tail outline after explicit conflict recovery
+  ok  #257 Chrome Markdown budget 10000 scalars, p95 ms {"parse":1.5,"traversal":0.3,"typing":0.5,"caret":1}
+  ok  #257 Chrome Markdown budget 50000 scalars, p95 ms {"parse":3.7,"traversal":0.5,"typing":0.4,"caret":0.4}
+  ok  #257 Chrome Markdown budget 100000 scalars, p95 ms {"parse":5.3,"traversal":0.9,"typing":0.5,"caret":0.6}
+  ok  #257 Chrome Markdown budget 200000 scalars, p95 ms {"parse":10.2,"traversal":1.4,"typing":0.7,"caret":0.4}
+  ok  shared editor document/plain: decorations, composition-only notification and command fences
+  ok  shared editor document/markdown: decorations, composition-only notification and command fences
+  ok  shared editor comment/plain: decorations, composition-only notification and command fences
+  ok  shared editor comment/markdown: decorations, composition-only notification and command fences
+  ok  read-only and mount fences preserve one live owner and release a failed initial callback
+  ok  failed module never exposes an editable partial body
+  ok  late import after navigation creates no transient, detached or connected view: {"mounted":false,"initialChildren":["#comment"],"finalChildren":["#comment"],"detachedViews":0,"connectedViews":0,"marked":false}
+browser-smoke: PASS (editor-format)
+  PASS  selected prerequisites
+  PASS  visual evidence oracles: manifest, PNG, overflow, AX, modal unit tests
+  PASS  selected artifacts
+  PASS  browser bundle contains no credentials
+  PASS  scratch database: tag catalog through `vink-app tag`
+  PASS  scenario editor-format (editor-format)
+  PASS  server stops gracefully on SIGTERM
+# verify-reader-editor-chrome-editor.log
+  ok  the public reader does not load the editor runtime
+browser-smoke: PASS (reader)
+  ok  default: textbox named Tiêu đề
+  ok  default: textbox named Nội dung
+  ok  paper-dirty-320-100-light: root-scale override and resize retain raw NFD, stanzas, selection and EditorView
+  ok  paper-dirty-390-100-light: root-scale override and resize retain raw NFD, stanzas, selection and EditorView
+  ok  paper-dirty-1024-100-light: root-scale override and resize retain raw NFD, stanzas, selection and EditorView
+  ok  paper-dirty-1440-100-light: root-scale override and resize retain raw NFD, stanzas, selection and EditorView
+  ok  paper-dirty-320-100-dark: root-scale override and resize retain raw NFD, stanzas, selection and EditorView
+  ok  paper-dirty-390-100-dark: root-scale override and resize retain raw NFD, stanzas, selection and EditorView
+  ok  paper-dirty-1024-100-dark: root-scale override and resize retain raw NFD, stanzas, selection and EditorView
+  ok  paper-dirty-1440-100-dark: root-scale override and resize retain raw NFD, stanzas, selection and EditorView
+  ok  paper-dirty-320-150-light: root-scale override and resize retain raw NFD, stanzas, selection and EditorView
+  ok  paper-dirty-390-150-light: root-scale override and resize retain raw NFD, stanzas, selection and EditorView
+  ok  paper-dirty-1024-150-light: root-scale override and resize retain raw NFD, stanzas, selection and EditorView
+  ok  paper-dirty-1440-150-light: root-scale override and resize retain raw NFD, stanzas, selection and EditorView
+  ok  paper-dirty-320-150-dark: root-scale override and resize retain raw NFD, stanzas, selection and EditorView
+  ok  paper-dirty-390-150-dark: root-scale override and resize retain raw NFD, stanzas, selection and EditorView
+  ok  paper-dirty-1024-150-dark: root-scale override and resize retain raw NFD, stanzas, selection and EditorView
+  ok  paper-dirty-1440-150-dark: root-scale override and resize retain raw NFD, stanzas, selection and EditorView
+  ok  AX exposes the save disclosure and Back link without a standalone preview action
+  ok  Tab and Enter reach and open the disclosure for the clipped title
+  ok  body undo reverses Enter after title and layout interactions
+  ok  body undo restores the exact original raw buffer
+  ok  Chrome AX exposes Ở lại with the expected state
+  ok  Chrome AX exposes Lưu và rời trang with the expected state
+  ok  Chrome AX exposes Rời mà không lưu… with the expected state
+  ok  Chrome AX exposes no draft export button in leave dialog
+  ok  keyboard save dirty -> pending -> saved hands focus to visible closed tools
+browser-smoke: PASS (editor-chrome)
+  ok  undo and redo in the same EditorView
+browser-smoke: PASS (editor)
+browser-smoke: PASS (reader-views)
+  PASS  scenario reader (reader)
+  PASS  scenario editor-chrome (editor-chrome)
+  PASS  scenario editor (editor)
+  PASS  work views intake: threshold, pause/resume, retry, E-37 and author readback (#343)
