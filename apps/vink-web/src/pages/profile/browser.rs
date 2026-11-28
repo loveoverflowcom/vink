@@ -296,20 +296,28 @@ fn feedback(status: Status, field: Field) -> &'static str {
 fn Feedback(form: Form, field: Field) -> impl IntoView {
     let status = Memo::new(move |_| form.read(|e| e.status(field)));
     let refocus = move || super::super::focus_recovery(field.id());
+    let retry_text = move || {
+        if status.get() == Status::CheckFailed {
+            "Đối chiếu lại"
+        } else {
+            "Thử lại"
+        }
+    };
     view! {
         <Show when=move ||!matches!(status.get(),Status::Idle|Status::Invalid)>
             <div id=format!("{}-feedback",field.id()) class="grid min-w-0 gap-vk-1 text-vk-caption text-vk-on-surface-variant wrap-anywhere">
                 <span>{move ||feedback(status.get(),field)}</span>
                 <Show when=move ||matches!(status.get(),Status::Retry|Status::CheckFailed)>
-                    <Button variant=ButtonVariant::Text on_press=move |_|{form.retry(field);refocus();}>
-                        {move ||if status.get()==Status::CheckFailed {"Đối chiếu lại"}else{"Thử lại"}}
+                    <Button variant=ButtonVariant::Text accessible_label=Signal::derive(move ||format!("{}: {}",retry_text(),field.label()))
+                        on_press=move |_|{form.retry(field);refocus();}>
+                        {retry_text}
                     </Button>
                 </Show>
                 <Show when=move ||status.get()==Status::Conflict>
                     <div class="whitespace-pre-wrap">{move ||format!("Đang lưu trên Vink: {}",form.read(|e|e.stored_text(field)))}</div>
                     <div class="flex flex-wrap gap-vk-2">
-                        <Button variant=ButtonVariant::Text on_press=move |_|{form.change(|e|e.resolve(field,false));refocus();}>"Dùng bản trên Vink"</Button>
-                        <Button variant=ButtonVariant::Tonal on_press=move |_|{form.retry(field);refocus();}>"Giữ thay đổi của tôi"</Button>
+                        <Button variant=ButtonVariant::Text accessible_label=format!("Dùng bản trên Vink: {}",field.label()) on_press=move |_|{form.change(|e|e.resolve(field,false));refocus();}>"Dùng bản trên Vink"</Button>
+                        <Button variant=ButtonVariant::Tonal accessible_label=format!("Giữ thay đổi của tôi: {}",field.label()) on_press=move |_|{form.retry(field);refocus();}>"Giữ thay đổi của tôi"</Button>
                     </div>
                 </Show>
             </div>
@@ -357,10 +365,10 @@ fn PolicyField(form: Form, policy: Policy) -> impl IntoView {
                 } lock_description_id="profile-privacy-lock-note" />
             <Show when=move ||confirming.get() && !locked.get()>
                 <div class="grid min-w-0 gap-vk-2 rounded-vk-md bg-vk-warning-container p-vk-3 text-vk-on-warning-container">
-                    <p class="m-0 wrap-anywhere">{format!("Chuyển {} sang Chỉ mình tôi? Sau khi lưu, bạn chưa thể công khai lại trường này.",field.label())}</p>
+                    <p id=format!("{}-consequence",field.id()) class="m-0 wrap-anywhere">{format!("Chuyển {} sang Chỉ mình tôi? Sau khi lưu, bạn chưa thể công khai lại trường này.",field.label())}</p>
                     <div class="flex flex-wrap gap-vk-2">
-                        <Button id=cancel_id.clone() variant=ButtonVariant::Text on_press=move |_|cancel()>"Hủy"</Button>
-                        <Button id=format!("{}-confirm",field.id()) variant=ButtonVariant::Tonal on_press=move |_|{
+                        <Button id=cancel_id.clone() described_by=format!("{}-consequence",field.id()) variant=ButtonVariant::Text on_press=move |_|cancel()>"Hủy"</Button>
+                        <Button id=format!("{}-confirm",field.id()) described_by=format!("{}-consequence",field.id()) variant=ButtonVariant::Tonal on_press=move |_|{
                             confirming.set(false);form.change(|e|e.narrow(policy));form.pump();
                             super::super::focus_recovery("quyen-rieng-tu");
                         }>"Chuyển sang Chỉ mình tôi"</Button>

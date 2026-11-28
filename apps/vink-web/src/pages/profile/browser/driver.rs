@@ -64,25 +64,68 @@ impl Driver {
             })
     }
     pub fn refresh(&self) {
-        if !self.live() || self.state.with_untracked(|e| e.flight.is_some()) {
+        if !self.live() {
+            return;
+        }
+        self.state.update(|e| e.refresh_due = true);
+        self.refresh_if_due();
+    }
+
+    fn refresh_if_due(&self) {
+        let start = self.state.try_update(|e| {
+            if !e.refresh_due || e.refreshing || e.flight.is_some() {
+                return false;
+            }
+            e.refresh_due = false;
+            e.refreshing = true;
+            true
+        });
+        if start != Some(true) {
             return;
         }
         let d = self.clone();
         spawn_local(async move {
-            if let Ok(p) = api::load_own_profile().await
-                && d.live()
-            {
-                let version = p.profile_version;
-                d.state.update(|e| e.observe(p));
+            let result = api::load_own_profile().await;
+            if !d.live() {
+                return;
+            }
+            let observed = d
+                .state
+                .try_update(|e| {
+                    e.refreshing = false;
+                    let p = result.ok()?;
+                    if p.principal_id != e.acked.principal_id
+                        || p.profile_version <= e.acked.profile_version
+                    {
+                        return None;
+                    }
+                    if e.flight.is_some() {
+                        // A remote broadcast can arrive between a durable local write and its ACK.
+                        e.refresh_due = true;
+                        return None;
+                    }
+                    let changed_name = p.pen_name != e.acked.pen_name;
+                    let version = p.profile_version;
+                    e.observe(p);
+                    Some((version, changed_name))
+                })
+                .flatten();
+            if let Some((version, changed_name)) = observed {
+                if changed_name {
+                    d.session.refresh();
+                }
                 d.clear_later(version);
             }
+            d.refresh_if_due();
         });
     }
+
     pub fn pump(&self) {
         if !self.live() {
             return;
         }
         let Some(f) = self.state.try_update(Editor::start).flatten() else {
+            self.refresh_if_due();
             return;
         };
         let d = self.clone();

@@ -1258,6 +1258,41 @@ export async function standalone(page, {args, check, openPage}) {
   check(await page.eval("document.querySelector('#profile-back')?.getAttribute('href') === '/toi#edit-profile-link' && " +
     "Boolean(document.querySelector('.vk-profile-form select.vk-ui-select--icon-tonal'))"),
     'CSR mounts the profile and its actual icon-capable select');
+  await page.eval("document.querySelector('#profile-bio-policy').focus()");
+  await page.key('Space');
+  await page.waitFor("document.querySelector('#profile-bio-policy').matches(':open')", 'CSR privacy picker open');
+  await page.key('ArrowDown');
+  await page.key('Enter');
+  await page.waitFor("document.activeElement?.id==='profile-bio-policy-cancel'", 'CSR Cancel receives focus');
+  const ax=await page.send('Accessibility.getFullAXTree');
+  check(ax.nodes.some(node=>node.role?.value==='button' && node.name?.value==='Hủy' &&
+    node.description?.value?.includes('chưa thể công khai lại')), '#609 AX exposes the consequence at the focused button');
+  await page.key('Escape');
+  check((await read(page,'/api/v1/me/profile')).data.profile_version===author.data.profile_version,
+    '#609 Escape sends no privacy change in CSR');
+  await fill(page, '#profile-bio', 'Giới thiệu viết trên CSR');
+  check((await read(page,'/api/v1/me/profile')).data.bio===author.data.bio &&
+    !await page.eval("Boolean(document.querySelector('#profile-save'))"),
+    '#609 standalone keeps unfinished bio local');
+  await page.key('Enter', 2);
+  await page.waitFor("document.querySelector('#profile-bio-feedback')?.textContent.includes('Đã lưu')",
+    'CSR confirms the inline bio');
+  const savedProfile=(await read(page,'/api/v1/me/profile')).data;
+  check(savedProfile.bio==='Giới thiệu viết trên CSR' && savedProfile.profile_version===author.data.profile_version+1 &&
+    savedProfile.pen_name===author.data.pen_name, '#609 standalone commits only bio with the next version');
+  const heldBio=await holdAnswer(page,'PUT','/api/v1/me/profile');
+  await fill(page,'#profile-bio','Giữ phản hồi');
+  await page.key('Enter',2);
+  check(await heldBio.held()===200,'CSR holds the actual bio ACK');
+  const peer=await openPage();
+  await peer.goto(base+'/toi/chinh-ho-so');
+  await peer.waitFor(`${q('#profile-bio')}?.value==='Giữ phản hồi'`,'peer reads committed bio');
+  await fill(peer,'#profile-pen-name','Bút danh ở tab khác');
+  await peer.key('Enter');
+  await peer.waitFor(`${q('#profile-pen-name-feedback')}?.textContent.includes('Đã lưu')`,'peer committed its name while bio ACK was delayed');
+  await heldBio.finish();
+  await page.waitFor(`${q('#profile-pen-name')}?.value==='Bút danh ở tab khác' && ${q('#profile-bio')}?.value==='Giữ phản hồi'`,
+    'broadcast received before a late ACK still refreshes the untouched field');
   await page.click('#profile-back');
   await page.waitFor("document.activeElement?.id === 'edit-profile-link'", 'CSR Back restores the account entry');
   const authorPath = '/@' + author.data.handle;

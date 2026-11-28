@@ -144,6 +144,8 @@ pub(super) struct Editor {
     pub reading: bool,
     pub unknown: bool,
     retry_barrier: Option<Field>,
+    pub refreshing: bool,
+    pub refresh_due: bool,
 }
 impl Editor {
     pub fn new(acked: OwnProfile) -> Self {
@@ -154,6 +156,8 @@ impl Editor {
             reading: false,
             unknown: false,
             retry_barrier: None,
+            refreshing: false,
+            refresh_due: false,
         }
     }
     pub fn text(&self, field: Field) -> String {
