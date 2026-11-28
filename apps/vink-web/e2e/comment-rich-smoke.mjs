@@ -85,12 +85,27 @@ export async function richDiscussion(page,{args,check,rootId,workId,browserConte
     const ax=await page.send('Accessibility.getFullAXTree');
     const box=ax.nodes.find(n=>n.role.value==='textbox' && n.name?.value==='Viết phản hồi' && !n.ignored);
     check(box?.description?.value?.includes('Trả lời'),'active reply accessible name and description');
-    for(const [width,height] of [[320,700],[390,844],[834,1100],[1440,900]]) for(const scale of [100,200]) {
-      await page.viewport(width,height);
-      await page.eval('document.documentElement.style.fontSize='+JSON.stringify(scale+'%')+';document.documentElement.dataset.theme='+JSON.stringify(scale===100?'light':'dark'));
-      await page.eval("document.querySelector("+JSON.stringify(reply+'-rich')+").scrollIntoView({block:'center'})");
-      check(await page.eval('document.documentElement.scrollWidth<=innerWidth'),'no horizontal overflow '+width+'/'+scale);
-      await page.capture('618-reply-'+width+'-'+scale,{target:reply+'-rich',textScaleLane:'dom-override-geometry-only'});
+    for (const [width, height] of [[320, 700], [390, 844], [834, 1100], [1440, 900]]) {
+      await page.viewport(width, height);
+      for (const scale of [100, 200]) for (const theme of ['light', 'dark']) {
+        await page.eval(`document.documentElement.style.fontSize = '${scale}%';
+          document.documentElement.dataset.theme = '${theme}';
+          document.documentElement.getBoundingClientRect(); document.fonts.ready`);
+        const target = JSON.stringify(reply + '-rich');
+        await page.waitFor(`(() => {
+          const host = document.querySelector(${target});
+          host.scrollIntoView({block:'center', behavior:'instant'});
+          const field = host.getBoundingClientRect();
+          return field.top >= 0 && field.bottom < innerHeight &&
+            host.contains(document.elementFromPoint(field.x + field.width / 2, field.y + field.height / 2));
+        })()`, 'reply editor inside screenshot viewport');
+        check(await page.eval('document.documentElement.scrollWidth <= innerWidth'),
+          'no horizontal overflow ' + width + '/' + scale + '/' + theme);
+        const capture = await page.capture(`618-reply-${width}-${scale}-${theme}`,
+          {target: reply+'-rich', textScaleLane:'dom-override-geometry-only'});
+        const rect = capture.targets.required[0].rect;
+        check(rect.top >= 0 && rect.bottom <= height, 'captured reply is in frame');
+      }
     }
     await page.eval("document.querySelector('a[href=\"/\"]').click()");
     await page.waitFor("!document.querySelector('[data-vink-editor=comment]') && !document.querySelector('#root-composer')",'SPA unmount releases all editor hosts');

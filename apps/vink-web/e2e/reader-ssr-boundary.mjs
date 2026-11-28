@@ -91,11 +91,15 @@ export async function readerBeforeHydration(page, { args, check }) {
       await page.eval('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');
       await sleep(300);
       if (holdMs === 1000) {
-        check(await page.eval(`document.activeElement === coldDraft &&
-          coldDraft.value === 'Mưa đầu mùa 👩‍💻' &&
-          coldDraft.selectionStart === coldSelection[0] && coldDraft.selectionEnd === coldSelection[1] &&
-          document.querySelector('#root-composer-format').hidden`),
-        'hydration adopts native text and keeps the same node, focus and selection');
+        const kept = await page.eval(`({
+          node: document.querySelector('#root-composer') === coldDraft,
+          focus: document.activeElement === coldDraft,
+          text: coldDraft.value === 'Mưa đầu mùa 👩‍💻',
+          selection: coldDraft.selectionStart === coldSelection[0] && coldDraft.selectionEnd === coldSelection[1],
+          adopted: document.querySelector('#root-composer-format').hidden
+        })`);
+        check(Object.values(kept).every(Boolean),
+          'hydration adopts native text and keeps node, focus and selection ' + JSON.stringify(kept));
       }
       noMutation('hydration does not replay a pre-hydration click (' + holdMs + 'ms)');
       assertNoHydrationRead(raw.transport, phase, 'reader');

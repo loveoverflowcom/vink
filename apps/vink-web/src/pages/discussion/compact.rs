@@ -31,23 +31,39 @@ pub(super) fn CompactField(
     let activate_id = format!("{id}-format");
     let rich_id = format!("{id}-rich");
     let label_id = format!("{id}-rich-label");
+    // Keep the native field's current value during hydration. Publishing it to the
+    // controller before the SSR tree attaches would change its conditional children.
     #[cfg(feature = "hydrate")]
-    if document()
-        .document_element()
-        .is_some_and(|root| !root.has_attribute("data-hydrated"))
-        && let Some(field) = document().get_element_by_id(&id).and_then(|node| {
-            wasm_bindgen::JsCast::dyn_into::<web_sys::HtmlTextAreaElement>(node).ok()
-        })
-        && value.get_untracked().is_empty()
-        && !field.value().is_empty()
-    {
-        // SSR was already editable before WASM started. Adopt the DOM before binding value.
-        edited.set(true);
-        on_input.run(TextInput {
-            value: field.value(),
-            composing: false,
-        });
-    }
+    let native_value = {
+        let cold = document()
+            .document_element()
+            .filter(|root| !root.has_attribute("data-hydrated"))
+            .and_then(|_| document().get_element_by_id(&id))
+            .and_then(|node| {
+                wasm_bindgen::JsCast::dyn_into::<web_sys::HtmlTextAreaElement>(node).ok()
+            })
+            .filter(|field| value.get_untracked().is_empty() && !field.value().is_empty());
+        let pending = RwSignal::new(cold.as_ref().map(|field| field.value()));
+        if let Some(field) = cold {
+            let generation = controller.read_untracked().draft_owner;
+            Effect::new(move |_| {
+                if pending.get_untracked().is_some() {
+                    if field.is_connected() && controller.read_untracked().draft_owner == generation
+                    {
+                        edited.set(true);
+                        on_input.run(TextInput {
+                            value: field.value(),
+                            composing: false,
+                        });
+                    }
+                    pending.set(None);
+                }
+            });
+        }
+        Signal::derive(move || pending.get().unwrap_or_else(|| value.get()))
+    };
+    #[cfg(not(feature = "hydrate"))]
+    let native_value = value;
     let native_input = move |event: TextInput| {
         edited.set(true);
         on_input.run(event);
@@ -225,7 +241,7 @@ pub(super) fn CompactField(
     };
     view! {
         <div class="vk-compact-field">
-            <div hidden=move || active.get()><TextArea id label described_by=description value on_input=native_input
+            <div hidden=move || active.get()><TextArea id label described_by=description value=native_value on_input=native_input
                 mode variant=FieldVariant::FloatingTonal rows=2 help="" /></div>
             <span id=label_id class="vk-ui-visually-hidden">{label}</span>
             <div id=rich_id node_ref=host class="vk-comment-editor" hidden=move || !active.get()></div>
