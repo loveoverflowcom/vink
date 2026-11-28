@@ -1,6 +1,6 @@
 //! The structural D2T-01, lifecycle D2T-02 (with submission receipts), reaction D2T-INV-08,
-//! literary endorsement LVE (#73) and admission/post-review (#120) models and their real Rust
-//! seams share one local/CI command.
+//! literary endorsement LVE (#73), admission/post-review (#120) and Điểm Vink credit (#644)
+//! models and their real Rust seams share one local/CI command.
 //! npm installs locked tool dependencies, never Rust toolchains or a model-checker backend.
 //! The canonical publication model and remaining target specifications share the Quint pin.
 //! Publication, moderation and Web read-lifecycle models replay their production pure seams.
@@ -13,7 +13,7 @@ use crate::process::{self, Report, cargo};
 const MODEL_DIR: &str = "services/vink-app/behavior/discussion";
 const TARGET_DIR: &str = "services/vink-app/behavior/target";
 /// Production module filters of the replay step; the diff planner maps them to source paths.
-pub const FILTERS: [&str; 14] = [
+pub const FILTERS: [&str; 15] = [
     "domain::discussion::tests",
     "domain::discussion::admission::tests",
     "domain::discussion::admission_replay",
@@ -24,6 +24,7 @@ pub const FILTERS: [&str; 14] = [
     "domain::discussion::reaction::tests",
     "domain::discussion::reaction_replay",
     "domain::endorsement::",
+    "domain::reputation::",
     "domain::moderation::",
     "domain::publication::",
     "application::moderation::",
@@ -32,7 +33,7 @@ pub const FILTERS: [&str; 14] = [
 /// Web read-lifecycle replay filter (`apps/vink-web/src/read_lifecycle*`).
 pub const WEB_REPLAY_FILTER: &str = "read_lifecycle::";
 /// The tests that feed model inputs to production code. Their absence fails the lane.
-const REPLAYS: [&str; 21] = [
+const REPLAYS: [&str; 23] = [
     "domain::publication::replay::quint_publication_author_inputs_and_admitted_decision_effects_replay_through_production",
     "domain::publication::replay::the_moved_intent_counterexample_is_refused_by_the_production_publication_guard",
     "application::publication::replay::quint_tombstone_scenarios_replay_against_production_access_and_discussion",
@@ -49,6 +50,8 @@ const REPLAYS: [&str; 21] = [
     "domain::discussion::reaction_replay::quint_reaction_inputs_replay_against_the_production_decisions",
     "domain::discussion::reaction_replay::the_no_op_reaction_counterexample_is_refused_by_production",
     "domain::endorsement::replay::quint_endorsement_inputs_replay_against_production",
+    "domain::reputation::replay::quint_reputation_inputs_replay_through_production",
+    "domain::reputation::replay::quint_reputation_counterexamples_are_refused_by_production",
     "domain::discussion::admission_replay::quint_admission_inputs_replay_against_the_production_decisions",
     "domain::discussion::admission_replay::the_admission_counterexamples_are_refused_by_production",
     "domain::discussion::outbox_replay::quint_outbox_inputs_replay_against_the_production_decisions",

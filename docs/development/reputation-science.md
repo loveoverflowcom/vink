@@ -84,9 +84,12 @@ cùng SHA-256 `1481f4f7dfaa83c05ceddbd11412ceb3253386c0f02caea251bdcfc9168d24d8`
 | Khoảng cách nhỏ nhất khác 0 của R × 10^6 tới số nguyên | 4,837 × 10^-7 tại (314, 885) |
 
 f64 qua được lưới với biên chỉ khoảng 2 ulp, và kết quả `ln` của libm có thể khác 1 ulp giữa nền tảng. Vì vậy
-K2 chọn số học nguyên fixed-point xác định cho đường canonical; f64 chỉ dùng chẩn đoán. S02 phải tái tạo
+K2 chọn số học nguyên fixed-point xác định cho đường canonical; f64 chỉ dùng chẩn đoán. S02 tái tạo
 đúng 32 golden vectors trong `results.json`, gồm 6 cặp có phần lẻ gần 0,5 nhất trên lưới 0..399
-(ví dụ (153, 141) → `1460500004`, hiển thị 1461; (283, 65) → `1472499987`, hiển thị 1472).
+(ví dụ (153, 141) → `1460500004`, hiển thị 1461; (283, 65) → `1472499987`, hiển thị 1472), và corpus mở rộng
+2 063 vector (`qualify.py --vectors` → `services/vink-app/behavior/reputation/formula-vectors.json`). Khi R
+nguyên (I + 10 và C + 10 dạng 10 × 11^k), cả script lẫn Rust tính chính xác vì `ln` hữu hạn chữ số có thể cho
+f(1 610 500) = 4,999…9.
 
 ### Phân phối tổng hợp
 

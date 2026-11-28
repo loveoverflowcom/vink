@@ -243,7 +243,8 @@ pure decisions (the lane fails if a named replay test is not selected); locking,
 I/O stay in `postgres`; `expressions` verifies its isolated playback model and Rust replay; `kani`
 runs the owner-local manifests and requires every declared harness to verify. The `discussion` lane
 also runs the target specifications of `behavior/target` (typecheck, simulation, scenarios, vector
-drift, negative controls) and canonical M1/M3/M4 governance in `behavior/publication`. The remaining target actions have no Rust replay. The same lane checks the owner-local Web
+drift, negative controls), canonical M1/M3/M4 governance in `behavior/publication` and the
+Reputation credit model in `behavior/reputation`. The remaining target actions have no Rust replay. The same lane checks the owner-local Web
 `ReadOwner/PageChain` [model and production replay](apps/vink-web/behavior/README.md);
 this does not verify browser, storage or authority adapters. Every crate inherits
 `unsafe_code = "forbid"`, and a `compile_fail` doctest needs a compiling lawful twin because stable

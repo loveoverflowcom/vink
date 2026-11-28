@@ -69,7 +69,7 @@ Thứ tự scenario, các alias (`main` gồm `editor-first-draft`, `reader`, `d
 | Thẻ catalog (operator) | `vink-app tag …` | [taxonomy API](taxonomy-api.md) | PG `taxonomy_api` |
 | Worker: outbox, đánh giá, retention | `vink-worker` | [outbox ADR](../architecture/discussion-outbox.md), [moderation runtime](moderation-runtime.md) | PG `outbox`, `work_moderation` |
 | Notification service | `services/vink-notifications` | [registry](notifications.md) | `postgres` |
-| Điểm Vink (Reputation #600) | Backend-only, `NOT_IMPLEMENTED`; sáu lát S01..S06 (#601, #644–#648) | [PRD §19](../../prd/requirements.md#19-điểm-vink-reputation-v1), [đặc tả](../architecture/reputation.md), [registry](reputation.md), [SR-01](reputation-science.md), [API dự thảo](../../services/vink-app/contracts/http/v1/reputation.md) | `decision validate`, [script SR-01](../../services/vink-app/bench/reputation-sr01/qualify.py) |
+| Điểm Vink (Reputation #600) | Backend-only; pure core `domain::reputation` (#644), persistence/worker/HTTP `NOT_IMPLEMENTED` (#645–#648) | [PRD §19](../../prd/requirements.md#19-điểm-vink-reputation-v1), [đặc tả](../architecture/reputation.md), [registry](reputation.md), [SR-01](reputation-science.md), [API dự thảo](../../services/vink-app/contracts/http/v1/reputation.md) | `decision validate`, [script SR-01](../../services/vink-app/bench/reputation-sr01/qualify.py), unit `domain::reputation`, model [`behavior/reputation`](../../services/vink-app/behavior/reputation/README.md) qua `verify discussion`, harness `verify kani` |
 | Biểu cảm (Preview) | `/expressions.html` trên Preview host | [expressions](expressions.md) | `expressions`, `kani` |
 
 ## Phần việc còn lại của quyết định sản phẩm 10/11/2026

@@ -38,8 +38,9 @@ g_tenths     = 24 × dI + 16 × dC         G = g_tenths / 10
   dùng cho chẩn đoán.
 - Xếp hạng: `score_micros` giảm dần, hòa thì PrincipalId tăng dần. Top Growth: `g_tenths` giảm dần, hòa
   thì PrincipalId tăng dần.
-- Golden vectors: [SR-01D](../development/reputation-science.md#sr-01d--qualification-cho-formula_version-1)
-  và `services/vink-app/bench/reputation-sr01/results.json`.
+- Golden vectors: [SR-01D](../development/reputation-science.md#sr-01d--qualification-cho-formula_version-1),
+  `services/vink-app/bench/reputation-sr01/results.json` và corpus
+  `services/vink-app/behavior/reputation/formula-vectors.json`; owner Rust `domain::reputation::formula`.
 
 | I | C | display | score_micros |
 | ---: | ---: | ---: | ---: |

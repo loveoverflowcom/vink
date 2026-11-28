@@ -1,5 +1,5 @@
-// Shared Quint runner for the remaining target specifications and the canonical M1, M3 and M4
-// in ../publication. It exports real ITF states without recomputing transitions. The canonical
+// Shared Quint runner for the remaining target specifications, the canonical M1, M3 and M4
+// in ../publication and the Điểm Vink credit model in ../reputation. It exports real ITF states without recomputing transitions. The canonical
 // models have scoped Rust replay; see ../publication/README.md for their exact coverage.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -98,6 +98,7 @@ function fixture(name, header, lists) {
   JSON.parse(content);
   const canonical = ['publication-', 'tombstone-', 'governance-'].some(prefix => name.startsWith(prefix));
   const owner = name.startsWith('read-lifecycle-') ? '../../../../apps/vink-web/behavior'
+    : name.startsWith('reputation-') ? '../reputation'
     : canonical ? '../publication' : '.';
   const path = join(directory, owner, name);
   if (write) {
@@ -122,6 +123,56 @@ const at = (steps, outcome, nth = 0) => {
 const pair = (list, ...key) => list.find(entry => JSON.stringify(entry.key) === JSON.stringify(key)).value;
 
 const models = [
+  {
+    // Điểm Vink (#644): Q41 credit machines, current count and anchors; replayed through
+    // domain::reputation::replay.
+    file: '../reputation/reputation.qnt', safe: 'reputationSafe',
+    bounds: 'anchors=1..2, periods 0..5 per calendar (0 = partial), one actor/recipient',
+    fields: ['selected', 'hidden', 'public', 'mature', 'deleted', 'week', 'month', 'effective', 'terminal',
+      'weekCredit', 'monthCredit', 'currentDelta', 'weekDelta', 'monthDelta', 'weekNet', 'monthNet'],
+    scenarios: [
+      ['oracle_weeks_months', 'oracleStep', 19],
+      ['lifecycle_park_retire', 'lifecycleStep', 16],
+      ['maturity_held', 'maturityStep', 10],
+      ['held_off_then_on', 'heldStep', 8],
+      ['activation_baseline', 'baselineStep', 6],
+    ],
+    check(all) {
+      const [oracle, lifecycle, maturity, held, baseline] = all;
+      reached(all.flat(), ['on', 'off', 'off_parked', 'retire', 'burn', 'neutral', 'ignored', 'time'], 'reputation');
+      // Q41 oracle: week 1 +1, week 2 -1, week 3 relike 0, week 4 unlike 0; month compensates.
+      assert.deepEqual(oracle.at(-1).state.weekNet, { 1: 1, 2: -1 });
+      assert.deepEqual(oracle.at(-1).state.monthNet, { 1: 1, 2: -1 });
+      assert.equal(oracle[7].state.weekDelta, 0, 'relike in a later week earns nothing');
+      assert.equal(oracle[7].state.monthDelta, 1, 'relike in the withdrawal month compensates');
+      assert.equal(oracle.at(-1).state.monthCredit.state, 'burned');
+      // Parking keeps credit, OFF while parked retires without a debit, deletion is final.
+      assert.deepEqual([lifecycle[4].state.currentDelta, lifecycle[4].state.weekDelta], [-1, 0]);
+      assert.deepEqual([lifecycle[7].outcome, lifecycle[7].state.weekDelta, lifecycle[7].state.weekCredit.state],
+        ['off_parked', 0, 'burned']);
+      assert.deepEqual(lifecycle.slice(-2).map(step => step.outcome), ['ignored', 'ignored']);
+      // Held maturity is current-only; an OFF before the threshold leaves a later ON creditable.
+      assert.deepEqual([maturity[3].outcome, maturity[3].state.currentDelta, maturity[3].state.weekCredit.state],
+        ['burn', 1, 'burned']);
+      assert.deepEqual([held[5].outcome, held[5].state.weekDelta, held[5].state.monthDelta], ['on', 1, 1]);
+      // Activation: nothing before the first full period; the boundary burns what is effective.
+      assert.deepEqual([baseline[1].state.currentDelta, baseline[1].state.weekDelta], [1, 0]);
+      assert.deepEqual([baseline[3].state.weekCredit.state, baseline[3].state.weekDelta], ['burned', 0]);
+      assert.deepEqual([baseline[5].state.monthDelta, baseline[5].state.monthCredit.state], [1, 'active']);
+    },
+    mutants: [
+      ['reputation-relike-counterexample.json', 'mutatedRelikeStep', 8, 'onlyFirstCreditIsGrowth', steps => {
+        // Withdrawn in week 2, liked again in week 3: the mutant credits week 3 again.
+        assert.equal(steps.at(-1).state.weekDelta, 1);
+        assert.deepEqual(steps.at(-1).state.weekNet, { 1: 1, 2: -1, 3: 1 });
+      }],
+      ['reputation-anchor-counterexample.json', 'mutatedAnchorStep', 4, 'currentMatchesEffective', steps => {
+        // A second anchor of the same work counted as a second Impact unit.
+        assert.equal(steps.at(-1).state.currentDelta, 1);
+        assert.deepEqual(steps.at(-1).state.selected, [1, 2]);
+      }],
+    ],
+  },
   {
     file: '../../../../apps/vink-web/behavior/read-lifecycle.qnt', safe: 'readSafe',
     bounds: 'one owner, scopes=1..2, requests<=12, row/cursor IDs=1..3',
@@ -488,7 +539,7 @@ try {
     simulation(model.file, 'step', maxSteps, samples, model.safe);
     console.log(`PASS ${model.file}: typecheck; simulation ${model.safe} seed=${seed}, samples=${samples}, max_steps=${maxSteps}, ${model.bounds}`);
     const name = basename(model.file, '.qnt');
-    const modelStatus = name === 'read-lifecycle' ? 'PURE_CORE_CONFORMANCE'
+    const modelStatus = ['read-lifecycle', 'reputation'].includes(name) ? 'PURE_CORE_CONFORMANCE'
       : ['publication', 'tombstone', 'governance'].includes(name) ? 'PARTIAL_PURE_CORE_CONFORMANCE' : status;
     const scenarios = model.scenarios.map(([scenario, step, length]) => {
       const out = join(temporary, `${name}-${scenario}.itf.json`);
@@ -516,7 +567,7 @@ try {
     { scripts: [{ name: 'publication_and_comment_edit', steps: vectors }] });
   console.log(`PASS evaluator script: ${vectors.length} scripted results cover all nine mock outcome classes`);
   console.log('NOT_RUN Apalache/model checking');
-  console.log('PARTIAL publication (M1), tombstone/hidden access (M3) and moderation governance (M4) replay through the Rust pure core; all other target models remain NOT_IMPLEMENTED');
+  console.log('PARTIAL publication (M1), tombstone/hidden access (M3) and moderation governance (M4) replay through the Rust pure core; reputation (#644) and Web read lifecycle replay in full; all other target models remain NOT_IMPLEMENTED');
   rmSync(temporary, { recursive: true });
 } catch (error) {
   console.error(`FAIL ${error.message}\nIntermediate ITF traces, if any: ${temporary}`);
