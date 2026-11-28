@@ -46,7 +46,7 @@ Chọn vị trí bằng chuột tiếp tục dùng hành vi CodeMirror hiện c�
 
 ## Preset, định dạng và vòng đời (#617)
 
-Cả hai preset dùng cùng `createEditor(host, options)`, history, keymap, grammar CommonMark và cơ chế giữ vùng chọn qua focus. Mỗi host nhận một handle. `preset` chọn bề mặt. `format` chọn cách hiển thị chữ nguồn. Adapter Bàn viết ánh xạ DTO `default` sang `plain` ngay tại biên Rust. Discussion hiện vẫn dùng TextArea của #616.
+Cả hai preset dùng cùng `createEditor(host, options)`, history, keymap, grammar CommonMark và cơ chế giữ vùng chọn qua focus. Mỗi host nhận một handle. `preset` chọn bề mặt. `format` chọn cách hiển thị chữ nguồn. Adapter Bàn viết ánh xạ DTO `default` sang `plain` ngay tại biên Rust. Reader dùng TextArea của #616 ngay khi mở. Nút Định dạng kích hoạt preset Comment cho nháp mới.
 
 | Khả năng | `document` | `comment` |
 | --- | --- | --- |
@@ -63,7 +63,7 @@ Rust gọi `editor::bridge::EditorHandle::load().await` khi cần nhập. Owner 
 - `on_composition(true|false)` báo cả khi source giữ nguyên. Bàn viết theo dõi cả form vì tiêu đề và thẻ cũng nhập bằng IME. Caller compact có thể dùng callback này để giữ trạng thái soạn của đúng composer.
 - `on_outline(json)` dành cho Document. Snapshot có generation để từ chối mục lục cũ. Comment không tạo owner mục lục. Preset chỉ điều khiển runtime, quyền submit và lưu vẫn thuộc caller.
 - `read_only` ở lúc mount áp dụng cho nội dung DOM và lệnh sửa. Khi owner bị thay, thả handle. Rust gọi destroy trước khi nhả closures. JS hủy frame khôi phục selection, frame cuộn caret, timer sau composition và frame mục lục.
-- PR #618 sở hữu fallback TextArea, thời điểm nâng cấp, draft theo ComposerKey, quote/list actions, send/retry, format lưu trữ và render nhận xét. Khi dùng kết quả load trễ, caller phải kiểm lại quyền, selection, focus và IME của đúng composer trước khi nâng cấp.
+- Adapter Discussion sở hữu fallback TextArea, thời điểm nâng cấp, draft theo ComposerKey, quote/list actions, send/retry, format lưu trữ và render nhận xét. Khi dùng kết quả load trễ, caller phải kiểm lại quyền, selection, focus và IME của đúng composer trước khi nâng cấp.
 
 Chạy corpus bằng `node apps/vink-web/editor/scripts/build.mjs --check`. Với Chrome và PostgreSQL scratch, `cargo xtask verify web --scenario editor-format --release` đo trên route Product và fixture runtime. `desk-core-budget.json` giữ mẫu cold/warm, typing/caret, khoảng cách frame, long task và 40 vòng teardown. `editor-markdown-p95.json` giữ các cỡ corpus 10k–200k scalar. Xem [phiếu kiểm chứng #617](../../../docs/development/evidence/editor-core-617/README.md) để đối chiếu cùng profile và phương pháp.
 
@@ -78,7 +78,7 @@ Dependency dùng phiên bản pin chính xác. Cập nhật dependency bằng l�
 npm install --prefix apps/vink-web/editor --ignore-scripts
 ```
 
-Runtime chỉ tải ở trang editor (trang đọc công khai không tải). Vink chưa phát Content-Security-Policy; runtime là file cùng origin, không có inline script
+Bàn viết tải runtime khi mount. Reader chỉ tải theo hành động soạn có định dạng. Vink chưa phát Content-Security-Policy; runtime là file cùng origin, không có inline script
 hay `eval`. CodeMirror chèn style bằng constructable stylesheet — khi chọn CSP, cần cho phép điều đó
 hoặc truyền nonce qua `EditorView.cspNonce`.
 

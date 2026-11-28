@@ -1,0 +1,7 @@
+{
+  "artifact": "target/site/pkg/vink-editor.js",
+  "sha256": "cc6e96aca03f717d8e50fee41dec301ad8af5ac2ab91c7c0f0b79a39b80bfba7",
+  "raw": 370762,
+  "gzip": 126042,
+  "brotli": 107677
+}

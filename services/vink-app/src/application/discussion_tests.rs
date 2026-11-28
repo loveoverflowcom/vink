@@ -173,6 +173,7 @@ fn submission() -> SubmitComment {
     SubmitComment {
         work_id: work(),
         target: Some(comment()),
+        body_format: Default::default(),
         body: "  Ca\u{0300} phê  ".into(),
         command_key: "01J9-retry_key".into(),
     }
@@ -231,6 +232,7 @@ async fn a_submission_reaches_the_store_validated_with_server_chosen_identities(
 async fn authentication_precedes_validation_and_no_raw_input_reaches_storage() {
     let vink = app(Script::default());
     let invalid = SubmitComment {
+        body_format: Default::default(),
         body: String::new(),
         command_key: "x".into(),
         ..submission()
@@ -525,6 +527,7 @@ fn page_with(view: CommentView, viewer_is_work_author: bool) -> RootPage {
                     id: actor(),
                     attribution: "Bạn đọc".into(),
                 },
+                body_format: Default::default(),
                 body: "Câu thơ".into(),
                 created_at: datetime!(2026-11-03 10:00 UTC),
                 context: ReplyContext::Root,

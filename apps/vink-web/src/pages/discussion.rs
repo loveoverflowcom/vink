@@ -1,6 +1,7 @@
 //! Reader feature adapter. Patterns receive view facts/intents only; HTTP and request scope
 //! stay here. SSR always reads anonymously, even when the diagnostic identity fixture runs.
 mod auth;
+mod compact;
 
 use crate::account::Session;
 use crate::contract::{CommentStatus, OwnPlacement};
@@ -536,7 +537,7 @@ fn LinkedComment(work_id: String, comment: String) -> impl IntoView {
                             #[cfg(not(feature = "browser"))]
                             let _ = anchor;
                             view! {
-                                <DiscussionThread facts=Signal::stored(facts) read_only=Signal::stored(true)
+                                <DiscussionThread markdown_body=crate::document::render_comment facts=Signal::stored(facts) read_only=Signal::stored(true)
                                     on_reply=Callback::new(|_: String| {}) on_remove=Callback::new(|_: String| {}) />
                             }.into_any()
                         }
@@ -1035,7 +1036,12 @@ fn OwnComments(
                                         OwnPlacement::Reply { .. } => "Phản hồi của bạn",
                                     }).unwrap_or_default()}</p>
                                 </div>
-                                <p class="vk-discussion-own-body">{move || state.read().own.comments.get(&id.get_value()).and_then(|c| (c.status != CommentStatus::Removed).then(|| c.body.clone()).flatten()).unwrap_or_default()}</p>
+                                <div class="vk-discussion-own-body">{move || state.read().own.comments.get(&id.get_value())
+                                    .filter(|c| c.status != CommentStatus::Removed)
+                                    .and_then(|c| c.body.clone().map(|source| match c.body_format {
+                                        crate::contract::CommentFormat::Markdown => crate::document::render_comment(source),
+                                        crate::contract::CommentFormat::Plain => source.into_any(),
+                                    }))}</div>
                                 {move || state.read().own.comments.get(&id.get_value())
                                     .and_then(|c| (c.status == CommentStatus::Rejected).then(|| c.rejection_reason.clone()).flatten())
                                     .map(|reason| view! {
@@ -1314,7 +1320,7 @@ fn RootThreadView(
     });
     view! {
         <section id=format!("thread-{}", root.get_value()) class="vk-discussion-root" aria-label="Nhánh nhận xét" tabindex="-1">
-            <DiscussionThread facts on_reply on_remove removal action_state=write_state endorsements=lve.map(Endorsements::comments)
+            <DiscussionThread markdown_body=crate::document::render_comment facts on_reply on_remove removal action_state=write_state endorsements=lve.map(Endorsements::comments)
                 read_only
                 reply_expanded
                 reply_target_id
@@ -1465,18 +1471,31 @@ fn DiscussionComposer(
     });
     let close_id = format!("{id}-close");
     let context_id = format!("{id}-target");
+    let description = is_reply.then_some(context_id.clone());
+    let field_label = if is_reply {
+        "Viết phản hồi"
+    } else {
+        "Viết nhận xét"
+    };
+    let edit = Callback::new(move |input: TextInput| {
+        copy_status.set(None);
+        controller.update(|c| c.edit(&key.get_value(), input.value, input.composing));
+    });
+    let field = ViewFn::from(move || {
+        view! {
+        <compact::CompactField id=editor_id.get_value() label=field_label description=description.clone()
+            controller composer=key value on_input=edit mode=field_mode />
+    }.into_any()
+    });
     view! {
         // The closed reason comes from the controller, which words it for the work's author.
         <div class="vk-discussion-composer" data-status=move || controller.read().status(&key.get_value()).id()>
-            <FeedbackComposer id intent=FeedbackIntent::Unspecified value state=action tonal=true
+            <FeedbackComposer id field intent=FeedbackIntent::Unspecified value state=action tonal=true
                 field_label=if is_reply { "Viết phản hồi" } else { "Viết nhận xét" }
                 field_description=is_reply.then_some(context_id.clone())
                 comments_closed=is_closed field_mode
                 show_alternative=is_closed alternative=closed_actions send_variant send_icon
-                on_input=move |input: TextInput| {
-                    copy_status.set(None);
-                    controller.update(|c| c.edit(&key.get_value(), input.value, input.composing));
-                }
+                on_input=edit
                 on_submit=move |_| match untrack(send_intent) {
                     SendIntent::Authenticate => host.open_for_comment(editor_id.get_value(), controller, state),
                     SendIntent::Submit => submit(controller, state, key.get_value(), refresh, false),
@@ -1605,7 +1624,7 @@ fn focus_discussion_control(id: String) {
     request_animation_frame(move || {
         if let Some(control) = web_sys::window()
             .and_then(|w| w.document())
-            .and_then(|d| d.get_element_by_id(&id))
+            .and_then(|d| compact::focus_target(&d, &id))
             .and_then(|e| e.dyn_into::<web_sys::HtmlElement>().ok())
         {
             let _ = control.focus();

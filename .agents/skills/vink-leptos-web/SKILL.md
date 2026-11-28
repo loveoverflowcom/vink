@@ -77,6 +77,8 @@ real consumer and no private data crosses into the browser build.
 
 ## Editor and async state
 
+For Discussion, check the public and own Markdown projections through the Reader route. The compact editor loads on explicit formatting intent. Preserve the native typing session across delayed imports and verify the immutable source/format/key on retry. Use the auth scenario for real Identity and the discussion scenario for late replies and closed-mode recovery.
+
 The desk edits the canonical `{format, source}` document (`default` or `markdown`) in one
 CodeMirror 6 `EditorView`. Preserve buffer and selection when reconfiguring the Markdown
 extension. A server-confirmed format conversion applies the converted source and moves the

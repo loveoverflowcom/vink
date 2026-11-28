@@ -27,6 +27,7 @@ enum Node {
 enum Element {
     Paragraph,
     Title(usize),
+    CompactHeading,
     Heading(HeadingLevel, usize),
     Quote,
     CodeBlock,
@@ -44,7 +45,13 @@ impl Markdown {
     pub(super) fn parse(source: &str) -> Self {
         let mut heading_count = 0;
         let mut has_h1 = false;
-        match parse_nodes(&mut commonmark(source), 0, &mut heading_count, &mut has_h1) {
+        match parse_nodes(
+            &mut commonmark(source),
+            0,
+            false,
+            &mut heading_count,
+            &mut has_h1,
+        ) {
             Some(nodes) => Self { nodes, has_h1 },
             None => Self::literal_fallback(source),
         }
@@ -86,9 +93,17 @@ impl Markdown {
     }
 }
 
+pub(crate) fn render_comment(source: String) -> AnyView {
+    let nodes = parse_nodes(&mut commonmark(&source), 0, true, &mut 0, &mut false)
+        .unwrap_or_else(|| vec![Node::Group(Element::HtmlBlock, vec![Node::Text(source)])]);
+    let children = render_nodes(nodes, "");
+    view! { <div class="vk-discussion-body vk-comment-markdown">{children}</div> }.into_any()
+}
+
 fn parse_nodes<'a>(
     events: &mut impl Iterator<Item = Event<'a>>,
     depth: usize,
+    compact: bool,
     heading_count: &mut usize,
     has_h1: &mut bool,
 ) -> Option<Vec<Node>> {
@@ -101,6 +116,7 @@ fn parse_nodes<'a>(
                 }
                 let element = match tag {
                     Tag::Paragraph => Element::Paragraph,
+                    Tag::Heading { .. } if compact => Element::CompactHeading,
                     Tag::Heading { level, .. } => {
                         *heading_count += 1;
                         if level == HeadingLevel::H1 && !*has_h1 {
@@ -126,7 +142,7 @@ fn parse_nodes<'a>(
                 };
                 Node::Group(
                     element,
-                    parse_nodes(events, depth + 1, heading_count, has_h1)?,
+                    parse_nodes(events, depth + 1, compact, heading_count, has_h1)?,
                 )
             }
             Event::End(_) => break,
@@ -243,6 +259,7 @@ impl Element {
             element => {
                 let children = render_nodes(nodes, title);
                 match element {
+                    Self::CompactHeading => view! { <p><strong>{children}</strong></p> }.into_any(),
                     Self::Paragraph => view! { <p>{children}</p> }.into_any(),
                     Self::Heading(level, index) => heading(level, index, children),
                     Self::Quote => view! { <blockquote>{children}</blockquote> }.into_any(),

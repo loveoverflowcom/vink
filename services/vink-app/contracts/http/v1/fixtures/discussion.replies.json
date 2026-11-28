@@ -8,6 +8,7 @@
         "kind": "unavailable",
         "label": "Lan Anh"
       },
+      "body_format": "plain",
       "body": "Đọc lại vẫn thấy hay.",
       "created_at": "2026-11-03T08:00:00Z",
       "reply_to": {
@@ -24,6 +25,7 @@
         "kind": "unavailable",
         "label": "Bạn đọc"
       },
+      "body_format": "plain",
       "body": "Tác giả thật là anh X ở phố Y.",
       "created_at": "2026-11-03T08:00:00Z",
       "reply_to": {

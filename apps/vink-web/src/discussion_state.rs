@@ -210,6 +210,8 @@ pub struct Submission {
 #[derive(Clone, Debug)]
 pub struct DiscussionController {
     pub scope: Scope,
+    /// Changes only when drafts must not survive the identity/work transition.
+    pub draft_owner: u64,
     pub settings: CommentsSettings,
     pub drafts: BTreeMap<ComposerKey, Draft>,
     /// Whether this deployment offers sign-in; only chooses the guest's reason text.
@@ -226,6 +228,7 @@ impl DiscussionController {
     pub fn new(scope: Scope, settings: CommentsSettings) -> Self {
         Self {
             scope,
+            draft_owner: 0,
             settings,
             drafts: BTreeMap::new(),
             sign_in_open: false,
@@ -240,6 +243,7 @@ impl DiscussionController {
     pub fn change_scope(&mut self, scope: Scope) {
         if self.scope != scope {
             self.scope = scope;
+            self.draft_owner += 1;
             self.drafts.clear();
             self.edits.clear();
             self.session_invalid = false;
@@ -490,6 +494,7 @@ impl DiscussionController {
             edit_generation: *self.edits.get(key).unwrap_or(&0),
             request: SubmitCommentRequest {
                 body: draft.body.clone(),
+                body_format: crate::contract::CommentFormat::Markdown,
                 command_key,
                 target_id: draft.target.as_ref().map(|target| target.id.clone()),
             },
@@ -720,12 +725,35 @@ mod tests {
         assert!(c.begin(&key, "another-key".into()).is_none());
         let replay = c.reconcile(&key).unwrap();
         assert_eq!(replay.request, sent.request);
+        assert_eq!(
+            replay.request.body_format,
+            crate::contract::CommentFormat::Markdown
+        );
         assert!(!c.complete(&sent, Err(ApiError::CommentsClosed)));
         assert!(matches!(c.draft(&key).delivery, Delivery::Sending(_)));
         assert!(c.begin(&key, "new-during-replay".into()).is_none());
         c.complete(&replay, ack());
         assert_eq!(c.draft(&key).body, "Gõ tiếp sau mất mạng");
         assert!(!c.settings.comments_open);
+    }
+    #[test]
+    fn lost_ack_preserves_captured_plain_format_when_new_submissions_use_markdown() {
+        use crate::contract::CommentFormat;
+        let mut c = controller();
+        let key = ComposerKey::Root;
+        c.edit(&key, "**Chữ cũ**".into(), false);
+        let mut captured = c.begin(&key, "previous-command".into()).unwrap();
+        assert_eq!(captured.request.body_format, CommentFormat::Markdown);
+        // Model an outstanding plain command from the earlier API contract.
+        captured.request.body_format = CommentFormat::Plain;
+        c.drafts.get_mut(&key).unwrap().delivery = Delivery::Sending(captured.clone());
+        assert!(c.complete(&captured, Err(ApiError::Network)));
+        c.edit(&key, "**Nháp mới**".into(), false);
+        let replay = c.reconcile(&key).unwrap();
+        assert_eq!(replay.request, captured.request);
+        assert_ne!(replay.sequence, captured.sequence);
+        assert!(c.complete(&replay, ack()));
+        assert_eq!(c.draft(&key).body, "**Nháp mới**");
     }
     #[test]
     fn d2t_03_original_late_ack_cannot_finish_a_new_physical_attempt() {

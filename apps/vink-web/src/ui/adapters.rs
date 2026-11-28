@@ -132,6 +132,7 @@ fn discussion_comment(
             &comment.created_at,
             false,
         ),
+        markdown: comment.body_format == crate::contract::CommentFormat::Markdown,
         body: comment.body.clone(),
         status,
         can_reply: comment.visibility == "public",

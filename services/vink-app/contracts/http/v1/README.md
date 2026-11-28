@@ -778,3 +778,9 @@ không đưa `views` hay `Set-Cookie` sang đường `GET` công khai (`READ-01`
 - **Tác giả đã xóa tài khoản (`OQ-2`, #550):** giao dịch xóa tài khoản đã xóa mọi số liệu của các
   tác phẩm đó; sự kiện đến sau, kể cả gửi lại `event_id` cũ, được quyết định như
   `work_not_found`, trả cùng `204` và không ghi hàng nào.
+
+### Định dạng nhận xét
+
+POST nhận body_format là plain hoặc markdown. Client bỏ field dùng plain. Cả hai giữ giới hạn 4.000 scalar, 200 dòng sau NFC và chuẩn hóa newline. Projection comment trả source và body_format. Queue đã kiểm quyền còn trả body_text từ chữ hiển thị, gồm nhãn link/ảnh, code, HTML dưới dạng chữ và xuống dòng. Premoderation quyết định quyền hiển thị như trước.
+
+Receipt plain giữ encoding submit.v1, Markdown dùng submit.markdown.v1. Phát lại cùng key, nguồn chuẩn hóa và đích giữ nguyên kết quả. Đổi format với cùng key trả idempotency_key_reused. Migration 20261206000000 gán plain cho dữ liệu có trước, kể cả hàng đã gỡ có body NULL.

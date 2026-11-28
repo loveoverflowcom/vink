@@ -246,6 +246,7 @@ giữ phạm vi Thấm tác phẩm (`P-08a`); không có danh sách người Ưn
 - Luôn trả `outcome`, `action_required`, mã/lý do được phép hiển thị (`reason`), `decided_at`, và
   phiên bản (`revision_id`/`decision_version` hoặc `moderation_version`) của chính quyết định đó — kể
   cả khi tác phẩm đang riêng tư/bị bác hoặc bình luận đã bị gỡ.
+- Với nhận xét còn được phép trả source, trường body_format là plain hoặc markdown. Khi phần thân bị ẩn, body_format là null. Trích đoạn dùng chữ hiển thị sau khi đã kiểm quyền.
 - Khi bình luận đã bị gỡ, `comment_body` luôn là `null`; không trả trích đoạn hoặc phục hồi thân chữ đã xóa/gỡ. Không bao giờ trả tên/ID người duyệt hay ghi
   chú nội bộ.
 - Runtime (`#348`): `reason = {code, message}`, cả hai có thể `null`. Tác phẩm: `code` là mã chính

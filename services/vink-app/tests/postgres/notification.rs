@@ -136,6 +136,7 @@ async fn submit(
         SubmitComment {
             work_id: sample_work(),
             target,
+            body_format: Default::default(),
             body: body.into(),
             command_key: format!("k-{}", Uuid::now_v7().simple()),
         },

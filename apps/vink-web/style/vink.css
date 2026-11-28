@@ -564,6 +564,9 @@ a {
 .vk-discussion [data-tone="adverse"] { background: var(--vk-error-container); color: var(--vk-on-error-container); }
 .vk-discussion [data-tone="success"] { background: var(--vk-success-container); color: var(--vk-on-success-container); }
 .vk-discussion [data-tone="neutral"] { background: var(--vk-surface-container-highest); color: var(--vk-on-surface-variant); }
+/* Let private Markdown bodies and their moderation actions reflow at narrow Reader widths. */
+.vk-discussion-recovered, .vk-discussion-own-card { grid-template-columns: minmax(0, 1fr); }
+.vk-discussion-own-card > *, .vk-discussion-own-chip { min-inline-size: 0; max-inline-size: 100%; }
 .vk-discussion-own-card { background: var(--vk-surface-container-low); color: var(--vk-on-surface); }
 .vk-discussion-own-head .vk-ui-heading,
 .vk-discussion-own-head p { margin: 0; }
@@ -2076,7 +2079,7 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index, .vk-me) { scrol
 }
 
 /* Own comment bodies preserve authored lines at every text size. */
-.vk-discussion-own-body { white-space: pre-wrap; overflow-wrap: anywhere; }
+.vk-discussion-own-body { justify-self: stretch; white-space: pre-wrap; overflow-wrap: anywhere; }
 
 .vk-discovery #community-stream:focus-visible {
   outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring);
@@ -2785,3 +2788,22 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
 .vk-notif-endorsers li:last-child > :is(a, div) { border-end-start-radius: var(--vk-radius-xl); border-end-end-radius: var(--vk-radius-xl); }
 .vk-notif-endorsers small { display: block; color: var(--vk-on-surface-variant); }
 .vk-reader-endorsement { flex-wrap: wrap; gap: var(--vk-space-2); }
+
+.vk-comment-markdown { white-space: normal; overflow-wrap: anywhere; }
+.vk-comment-markdown p, .vk-comment-markdown li, .vk-comment-markdown .vk-markdown__literal { white-space: pre-line; }
+.vk-comment-markdown p { margin-block: 0 .5em; }
+.vk-comment-markdown :last-child { margin-block-end: 0; }
+.vk-comment-markdown ul, .vk-comment-markdown ol { padding-inline-start: 1.4em; }
+.vk-comment-markdown ul { list-style-type: disc; }
+.vk-comment-markdown ol { list-style-type: decimal; }
+.vk-comment-markdown pre { white-space: pre-wrap; }
+
+.vk-comment-editor { border-radius: var(--vk-radius-md); background: var(--vk-surface-container-highest); }
+.vk-comment-editor .cm-scroller { max-block-size: 12lh; }
+.vk-compact-field [hidden] { display: none; }
+.vk-compact-field, .vk-comment-editor, .vk-comment-format { min-inline-size: 0; max-inline-size: 100%; }
+.vk-comment-format { display: flex; align-items: center; }
+.vk-comment-format [role=group]:not([hidden]) { display: flex; flex-wrap: wrap; min-inline-size: 0; max-inline-size: 100%; }
+.vk-comment-format button { min-inline-size: 44px; padding-inline: .5em; }
+.vk-comment-format [data-format-action=bold] button { font-weight: bold; }
+.vk-comment-format [data-format-action=italic] button { font-style: italic; }

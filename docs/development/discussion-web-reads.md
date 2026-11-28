@@ -127,3 +127,7 @@ vẫn dựa vào own lookup và ID thực sự có trong trang công khai. Wake 
 hoãn đọc lại head khi đã mở trang tiếp theo của luồng công khai. Lần vào Reader tiếp theo
 đọc head mới. Đổi phiên, invalidation theo hồ sơ, biên nhận thao tác và phục hồi cursor
 vẫn đi qua các owner hiện tại.
+
+### Đọc và soạn Markdown
+
+API vẫn chia public và own theo scope. Nhận xét plain hiển thị nguyên văn. Markdown dùng AST của Reader với heading thu gọn, alt ảnh, URL allowlist và fallback literal cho lồng quá sâu. Chuỗi HTML là text node. Ô soạn gốc và phản hồi sở hữu native fallback và nâng cấp qua nút Định dạng khi nháp còn mới. DiscussionController giữ snapshot, key và format qua retry. Đổi người dùng hủy view cùng lịch sử undo.

@@ -75,6 +75,12 @@ export async function readerBeforeHydration(page, { args, check }) {
       check(held.size > 0 && await page.eval(`!(${READY})`), 'bootstrap is actually paused before the click (' + holdMs + 'ms)');
       check(await page.eval("!document.querySelector('#discussion-refresh')"), 'healthy discussion has no refresh control while bootstrap is held (' + holdMs + 'ms)');
       await page.click('#root-composer-send');
+      if (holdMs === 1000) {
+        await page.typeAtEnd('#root-composer', 'Mưa đầu mùa 👩‍💻');
+        await page.key('ArrowLeft', 8); // Shift-select one grapheme through Chrome.
+        await page.eval(`window.coldDraft = document.activeElement;
+          window.coldSelection = [coldDraft.selectionStart, coldDraft.selectionEnd]`);
+      }
       await sleep(holdMs);
       noMutation('no mutation while bootstrap is held (' + holdMs + 'ms)');
       // Disable interception before continuing: modules/WASM requested afterwards flow normally.
@@ -84,6 +90,17 @@ export async function readerBeforeHydration(page, { args, check }) {
       await page.waitFor("document.querySelector('#comments-mode')?.getAttribute('aria-busy')==='false' && !document.querySelector('#discussion-refresh')", 'discussion stays free of generic refresh after hydration');
       await page.eval('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');
       await sleep(300);
+      if (holdMs === 1000) {
+        const kept = await page.eval(`({
+          node: document.querySelector('#root-composer') === coldDraft,
+          focus: document.activeElement === coldDraft,
+          text: coldDraft.value === 'Mưa đầu mùa 👩‍💻',
+          selection: coldDraft.selectionStart === coldSelection[0] && coldDraft.selectionEnd === coldSelection[1],
+          adopted: !document.querySelector('#root-composer-format').checkVisibility()
+        })`);
+        check(Object.values(kept).every(Boolean),
+          'hydration adopts native text and keeps node, focus and selection ' + JSON.stringify(kept));
+      }
       noMutation('hydration does not replay a pre-hydration click (' + holdMs + 'ms)');
       assertNoHydrationRead(raw.transport, phase, 'reader');
       raw.phases.push({ phase, injected_hold_ms: holdMs, hydrated: 'PASS', mutation_replay: 'none', fresh_reader_gets: 0,

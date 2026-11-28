@@ -177,6 +177,7 @@ fn reader_actions_render_only_the_supplied_reply_and_removal_capabilities() {
     for (can_reply, can_remove) in [(false, false), (true, false), (false, true), (true, true)] {
         let html = Owner::new().with(|| {
             let comment = |id: &str| DiscussionComment {
+                markdown: false,
                 id: id.into(),
                 author: Author {
                     name: "Người đọc".into(),
@@ -241,6 +242,7 @@ fn r4_orders_endorsement_before_reply_and_keeps_read_only_static() {
         neutral: false,
     };
     let comment = |id: &str| DiscussionComment {
+        markdown: false,
         id: id.into(),
         author: author.clone(),
         body: "Giữ nguyên chữ Việt.".into(),

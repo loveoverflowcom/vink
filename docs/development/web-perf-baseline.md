@@ -55,3 +55,7 @@ Năm AC đã được kiểm trên corpus ngắn và corpus 200.000 đoạn. Med
 đã đo normal reload, mở lại tab, mở lại trình duyệt, Back, hard reload và SPA trên release live
 `e9872556`, kèm so sánh với Cantos, phân rã TTFB theo chặng và đối chứng nén cục bộ.
 [Số đo, kết luận và đề xuất sửa](evidence/web-reload-473/README.md).
+
+## Nhận xét Markdown (#618)
+
+Corpus Reader gồm 4.000 Unicode scalar tiếng Việt và emoji trong 200 dòng. Đo textarea SSR, thời gian từ nhấn Định dạng đến Comment view, input/caret trên trang tác phẩm và kích thước asset thực từ release. Xem [hồ sơ cùng máy trước và sau](evidence/discussion-markdown-618/README.md).

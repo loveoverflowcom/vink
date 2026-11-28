@@ -136,6 +136,17 @@ impl ModeratedRow {
     }
 }
 
+pub(super) fn stored_format(
+    raw: &str,
+) -> Result<crate::domain::discussion::body::CommentFormat, StoreError> {
+    use crate::domain::discussion::body::CommentFormat;
+    match raw {
+        "plain" => Ok(CommentFormat::Plain),
+        "markdown" => Ok(CommentFormat::Markdown),
+        _ => Err(integrity("stored comment format", raw)),
+    }
+}
+
 #[derive(sqlx::FromRow)]
 struct QueueRow {
     id: Uuid,
@@ -144,6 +155,7 @@ struct QueueRow {
     is_root: bool,
     author_id: Uuid,
     display_name: String,
+    body_format: String,
     body: Option<String>,
     created_at: OffsetDateTime,
     moderation_version: i64,
@@ -176,6 +188,7 @@ impl QueueRow {
                 id: writer,
                 attribution: self.display_name.into(),
             },
+            body_format: stored_format(&self.body_format)?,
             body: self
                 .body
                 .ok_or_else(|| integrity("pending comment without text", self.id))?,
@@ -395,6 +408,7 @@ struct ItemRow {
     display_name: String,
     handle: Option<String>,
     retired: bool,
+    body_format: String,
     body: Option<String>,
     review: String,
     removal: Option<String>,
@@ -465,6 +479,7 @@ impl ItemRow {
                     self.retired,
                 ),
             },
+            body_format: stored_format(&self.body_format)?,
             body: self
                 .body
                 .clone()
@@ -491,7 +506,7 @@ impl ItemRow {
 }
 
 /// Columns shared by root and reply reads. `$viewer` is the reading principal or NULL.
-const ITEM_COLUMNS: &str = "c.root_id, c.id, c.author_id, a.display_name, a.handle, a.retired, c.body, c.review, \
+const ITEM_COLUMNS: &str = "c.root_id, c.id, c.author_id, a.display_name, a.handle, a.retired, c.body, c.body_format, c.review, \
      c.removal, c.moderation_version, c.created_at, c.reply_to_id, c.replied_to_reply, \
      (SELECT d.reason FROM comment_moderation_decisions d WHERE d.comment_id = c.id \
        ORDER BY d.version DESC LIMIT 1) AS last_reason";
@@ -509,6 +524,7 @@ const VISIBLE_TO_VIEWER: &str = "c.removal IS NULL AND (c.review = 'approved' OR
 struct OwnRow {
     id: Uuid,
     author_id: Uuid,
+    body_format: String,
     body: Option<String>,
     review: String,
     removal: Option<String>,
@@ -598,6 +614,7 @@ impl OwnRow {
             status: OwnStatus::from(current),
             created_at: self.created_at,
             placement,
+            body_format: stored_format(&self.body_format)?,
             body: if own.text {
                 Some(
                     self.body
@@ -612,7 +629,7 @@ impl OwnRow {
 }
 
 /// Columns of [`OwnRow`]. `c` is the viewer's comment, `r` its root, `x` its context.
-const OWN_COLUMNS: &str = "c.id, c.author_id, c.body, c.review, c.removal, c.moderation_version, \
+const OWN_COLUMNS: &str = "c.id, c.author_id, c.body, c.body_format, c.review, c.removal, c.moderation_version, \
      c.created_at, c.root_id, r.author_id AS root_author_id, r.review AS root_review, \
      r.removal AS root_removal, r.moderation_version AS root_version, \
      CASE WHEN c.root_id IS NULL THEN 0 ELSE (SELECT count(*) FROM comments pr \
@@ -964,8 +981,8 @@ impl DiscussionStore for PgStore {
         let created_at: OffsetDateTime = sqlx::query_scalar(
             "INSERT INTO comments (id, thread_id, kind, root_id, root_kind, reply_to_id,
                                    replied_to_reply, author_id, body, review, removal,
-                                   moderation_version, admission_policy, admission_reason)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+                                   moderation_version, admission_policy, admission_reason, body_format)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
              RETURNING created_at",
         )
         .bind(placement.id().as_uuid())
@@ -982,6 +999,7 @@ impl DiscussionStore for PgStore {
         .bind(submitted.version().get())
         .bind(admission.policy().code())
         .bind(admission.reason().code())
+        .bind(comment.body.format().as_str())
         .fetch_one(&mut *tx)
         .await
         .map_err(classify)?;
@@ -1314,7 +1332,7 @@ impl DiscussionStore for PgStore {
         let (after_at, after_id) = page_bounds(after);
         let rows: Vec<QueueRow> = sqlx::query_as(
             "SELECT c.id, t.work_id, rv.title AS work_title, c.kind = 'root' AS is_root,
-                    c.author_id, a.display_name, c.body, c.created_at, c.moderation_version,
+                    c.author_id, a.display_name, c.body, c.body_format, c.created_at, c.moderation_version,
                     w.owner_id
                FROM comments c
                JOIN discussion_threads t ON t.id = c.thread_id

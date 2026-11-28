@@ -25,7 +25,54 @@ pub const MAX_BODY_CHARS: usize = 4_000;
 pub const MAX_BODY_LINES: usize = 200;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CommentBody(String);
+pub struct CommentBody {
+    source: String,
+    format: CommentFormat,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CommentFormat {
+    #[default]
+    Plain,
+    Markdown,
+}
+
+impl CommentFormat {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Plain => "plain",
+            Self::Markdown => "markdown",
+        }
+    }
+
+    pub fn visible_text(self, source: &str) -> String {
+        use vink_markdown_text::{Event, TagEnd, commonmark};
+        if self == Self::Plain {
+            return source.to_owned();
+        }
+        let mut text = String::new();
+        for event in commonmark(source) {
+            match event {
+                Event::Text(part)
+                | Event::Code(part)
+                | Event::Html(part)
+                | Event::InlineHtml(part) => text.push_str(&part),
+                Event::SoftBreak
+                | Event::HardBreak
+                | Event::End(
+                    TagEnd::Paragraph
+                    | TagEnd::Heading(_)
+                    | TagEnd::Item
+                    | TagEnd::CodeBlock
+                    | TagEnd::BlockQuote(_),
+                ) => text.push('\n'),
+                _ => {}
+            }
+        }
+        text.trim().to_owned()
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum BodyError {
@@ -44,6 +91,10 @@ pub enum BodyError {
 
 impl CommentBody {
     pub fn parse(raw: &str) -> Result<Self, BodyError> {
+        Self::parse_format(raw, CommentFormat::Plain)
+    }
+
+    pub fn parse_format(raw: &str, format: CommentFormat) -> Result<Self, BodyError> {
         let unified = raw.replace("\r\n", "\n").replace('\r', "\n");
         let text: String = unified.trim().nfc().collect();
         if text.is_empty() {
@@ -63,11 +114,25 @@ impl CommentBody {
                 return Err(BodyError::BidiControl);
             }
         }
-        Ok(Self(text))
+        if format == CommentFormat::Markdown
+            && !vink_markdown_text::submission::has_visible_comment_text(
+                &format.visible_text(&text),
+            )
+        {
+            return Err(BodyError::Empty);
+        }
+        Ok(Self {
+            source: text,
+            format,
+        })
+    }
+
+    pub const fn format(&self) -> CommentFormat {
+        self.format
     }
 
     pub fn as_str(&self) -> &str {
-        &self.0
+        &self.source
     }
 }
 
@@ -81,6 +146,31 @@ mod tests {
         let body = CommentBody::parse(nfd).unwrap();
         assert_eq!(body.as_str(), "Cà phế\nsớm");
         assert_eq!(body, CommentBody::parse("Cà phế\nsớm").unwrap());
+    }
+
+    #[test]
+    fn markdown_validates_visible_text_and_preserves_source() {
+        let raw = "# **Tôi** 👩‍💻\r\n\r\n> [mưa](https://example.org/)";
+        let body = CommentBody::parse_format(raw, CommentFormat::Markdown).unwrap();
+        assert_eq!(
+            body.as_str(),
+            "# **Tôi** 👩‍💻\n\n> [mưa](https://example.org/)"
+        );
+        assert_eq!(
+            body.format()
+                .visible_text(body.as_str())
+                .lines()
+                .filter(|line| !line.is_empty())
+                .collect::<Vec<_>>(),
+            ["Tôi 👩‍💻", "mưa"]
+        );
+        for empty in ["---", "> ", "[](/)", "**\u{200b}**"] {
+            assert_eq!(
+                CommentBody::parse_format(empty, CommentFormat::Markdown),
+                Err(BodyError::Empty)
+            );
+            assert!(CommentBody::parse(empty).is_ok());
+        }
     }
 
     #[test]

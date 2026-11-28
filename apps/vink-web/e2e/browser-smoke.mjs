@@ -110,6 +110,8 @@ const KEYS = {
   ArrowDown: { code: 'ArrowDown', keyCode: 40 },
   ArrowLeft: { code: 'ArrowLeft', keyCode: 37 },
   ArrowRight: { code: 'ArrowRight', keyCode: 39 },
+  b: { code: 'KeyB', keyCode: 66 },
+  i: { code: 'KeyI', keyCode: 73 },
   s: { code: 'KeyS', keyCode: 83 },
   z: { code: 'KeyZ', keyCode: 90 },
   Z: { code: 'KeyZ', keyCode: 90 },
@@ -6611,7 +6613,10 @@ async function discussionReadingAndWrites(page) {
     currentFixture = { ...fixture, roots: [], next_cursor: null };
     await page.goto(`${args.base}/tac-pham/${SAMPLE_WORK}`);
     await page.waitFor(`document.querySelector('.vk-discussion-empty') && document.querySelector('#comments-mode')?.getAttribute('aria-busy') === 'false'`, 'authoritative empty discussion state');
-    check(await page.eval(`document.querySelector('.vk-discussion-empty')?.textContent.includes('Chưa có nhận xét nào được hiển thị.') && !document.querySelector('#discussion-load-retry') && document.querySelector('#root-list')?.dataset.hasMore === 'false' && !document.querySelector('#feedback-region .vk-ui-list-end')`), 'R4 empty state renders cleanly without error button or list end');
+    await page.waitFor(`document.documentElement.dataset.hydrated === 'true' &&
+      document.querySelector('.vk-discussion-empty')?.textContent.includes('Chưa có nhận xét nào được hiển thị.') &&
+      !document.querySelector('#discussion-load-retry') && document.querySelector('#root-list')?.dataset.hasMore === 'false' &&
+      !document.querySelector('#feedback-region .vk-ui-list-end')`, 'R4 hydrated empty state without retry or list end');
     check(await page.eval(`(() => {
       const empty = document.querySelector('.vk-discussion-empty');
       const region = empty.closest('#feedback-region').getBoundingClientRect();
@@ -6643,6 +6648,10 @@ async function standaloneDiscussionReply(cdp) {
     fixture.work_id = SAMPLE_WORK;
     const rootId = fixture.roots[0].root.comment.comment_id;
     const reads = `/api/v1/works/${SAMPLE_WORK}/discussion`;
+    fixture.roots[0].root.comment.body_format = 'markdown';
+    fixture.roots[0].root.comment.body = '# **Khổ đầu**';
+    fixture.roots[0].preview[0].body_format = 'markdown';
+    fixture.roots[0].preview[0].body = '_Khổ sau_';
     // Only the discussion projection is supplied by the contract fixture. The
     // Reader, guest Session and Auth dialog run through the real standalone host.
     const release = await fabricate(page, 'GET', reads + '/public', 200, fixture);
@@ -6650,6 +6659,8 @@ async function standaloneDiscussionReply(cdp) {
     await page.waitFor(`document.querySelector('#reply-to-${rootId}') &&
       document.querySelector('#reader-auth')?.dataset.standing === 'anonymous'`, '#616 CSR loaded a guest reply target');
     await release();
+    check(await page.eval("document.querySelector('.vk-comment-markdown strong')?.textContent === 'Khổ đầu' && document.querySelector('.vk-comment-markdown em')?.textContent === 'Khổ sau' && !document.querySelector('.vk-comment-markdown h1')"),
+      'standalone CSR renders the compact public root and reply from the format-aware contract');
     const posts = captureRequest(page, 'POST', reads + '/comments');
     try {
       const editor = '#reply-composer-' + rootId;
@@ -6889,7 +6900,7 @@ async function discussionR5Geometry(page, width, scale, scenario) {
       time:!Number.isNaN(Date.parse(time.dateTime)) && absolute?.textContent===time.title
         && !!relative?.textContent.trim() && relative.textContent!==time.title,
       rootSeg48:[rootEndorse, rootReply].every(b=>{const r=b.getBoundingClientRect();return r.width>=48 && r.height>=48;}),
-      buttons:[...thread.querySelectorAll('button')].every(b=>{const r=b.getBoundingClientRect();return r.width>=44 && r.height>=44 && r.left>=0 && r.right<=innerWidth+1;})};
+      buttons:[...thread.querySelectorAll('button')].filter(b=>b.checkVisibility()).every(b=>{const r=b.getBoundingClientRect();return r.width>=44 && r.height>=44 && r.left>=0 && r.right<=innerWidth+1;})};
   })()`);
   const close = (a,b)=>Math.abs(a-b)<=1.5;
   const isDesktop = width >= 1024;

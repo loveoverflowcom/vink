@@ -297,3 +297,9 @@ vùng riêng, xác nhận gỡ, biên nhận chờ duyệt và thông báo đón
 
 [Ánh xạ DOM/AX](../development/web-semantics.md#từ-yêu-cầu-tới-bằng-chứng) ·
 [Lệnh và phạm vi evidence](../development/discussion-ui-evidence.md).
+
+## Composer Markdown compact (#618)
+
+Nhận xét gốc và từng nhánh trả lời giữ một ô tonal hai dòng. Trường HTML hoạt động ngay khi Reader xuất hiện. Khi người viết chọn Định dạng, tải runtime Bàn viết. Nếu người viết đã quay lại gõ, đổi vùng chọn hoặc đang dùng IME trong khi chờ, giữ nguyên trường và chờ lần kích hoạt kế tiếp. Chỉ nâng cấp tại hành động chủ động. Giữ phiên nhập native có lịch sử chỉnh sửa cho đến khi gửi hoặc bắt đầu nháp mới.
+
+Thanh định dạng có năm nút đậm, nghiêng, liên kết, trích dẫn, danh sách. Enter xuống dòng. Gửi vẫn ở footer, xác thực trả về nháp. Khi đóng nhận xét, giữ nội dung để chọn và sao chép. Khi đổi chủ sở hữu, giải phóng view và đọc lại nháp của controller. Nội dung đã gửi dùng renderer của Reader, heading hiển thị cỡ chữ nhận xét và ảnh chỉ hiện nhãn. Giữ inset tác giả, đường nối và vị trí phản hồi theo #616.

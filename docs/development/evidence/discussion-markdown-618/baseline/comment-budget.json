@@ -1,0 +1,2761 @@
+{
+  "browser": {
+    "protocolVersion": "1.3",
+    "product": "Chrome/158.0.8127.89",
+    "revision": "@1de57fa19722fa6d6841d4f596c394d015580656",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/158.0.0.0 Safari/537.36",
+    "jsVersion": "15.8.62.31"
+  },
+  "corpus_sha256": "464698cf884a875d91d64bafe7faf7d9ee18b09ffa1688d44837d3866eaa3478",
+  "scalars": 4000,
+  "lines": 200,
+  "ready": [
+    {
+      "cache": "cold",
+      "native": 13.299999982118607,
+      "rich": null,
+      "activationMs": null,
+      "resources": [],
+      "shifts": [],
+      "long": [],
+      "readRequests": [
+        {
+          "method": "GET",
+          "path": "/tac-pham/33333333-3333-4333-8333-333333333333"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-lockup-light.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-lockup-dark.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/be-vietnam-pro-400.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/literata-variable.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/vink.css"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/vink.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/vink_bg.wasm"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/be-vietnam-pro-500.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/be-vietnam-pro-600.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-manifest-light.webmanifest"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-web-556eaa3108f24a40/profile/navigation.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/auth/session"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-mark-light.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-mark-light.svg"
+        }
+      ]
+    },
+    {
+      "cache": "warm",
+      "native": 10.5,
+      "rich": null,
+      "activationMs": null,
+      "resources": [],
+      "shifts": [],
+      "long": [],
+      "readRequests": [
+        {
+          "method": "GET",
+          "path": "/tac-pham/33333333-3333-4333-8333-333333333333"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-lockup-light.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-lockup-dark.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/be-vietnam-pro-400.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/literata-variable.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/vink.css"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/vink.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/vink_bg.wasm"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/be-vietnam-pro-500.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/be-vietnam-pro-600.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-web-556eaa3108f24a40/profile/navigation.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-manifest-light.webmanifest"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/auth/session"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-mark-light.svg"
+        }
+      ]
+    },
+    {
+      "cache": "cold",
+      "native": 11.599999994039536,
+      "rich": null,
+      "activationMs": null,
+      "resources": [],
+      "shifts": [],
+      "long": [],
+      "readRequests": [
+        {
+          "method": "GET",
+          "path": "/tac-pham/33333333-3333-4333-8333-333333333333"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-lockup-light.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-lockup-dark.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/be-vietnam-pro-400.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/literata-variable.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/vink.css"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/vink.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/vink_bg.wasm"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/be-vietnam-pro-500.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/be-vietnam-pro-600.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-web-556eaa3108f24a40/profile/navigation.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-manifest-light.webmanifest"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/auth/session"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-mark-light.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-mark-light.svg"
+        }
+      ]
+    },
+    {
+      "cache": "warm",
+      "native": 9.300000011920929,
+      "rich": null,
+      "activationMs": null,
+      "resources": [],
+      "shifts": [],
+      "long": [],
+      "readRequests": [
+        {
+          "method": "GET",
+          "path": "/tac-pham/33333333-3333-4333-8333-333333333333"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-lockup-light.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-lockup-dark.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/be-vietnam-pro-400.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/literata-variable.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/vink.css"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/vink.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/vink_bg.wasm"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/be-vietnam-pro-500.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/be-vietnam-pro-600.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-web-556eaa3108f24a40/profile/navigation.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-manifest-light.webmanifest"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/auth/session"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-mark-light.svg"
+        }
+      ]
+    },
+    {
+      "cache": "cold",
+      "native": 13.899999976158142,
+      "rich": null,
+      "activationMs": null,
+      "resources": [],
+      "shifts": [],
+      "long": [],
+      "readRequests": [
+        {
+          "method": "GET",
+          "path": "/tac-pham/33333333-3333-4333-8333-333333333333"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-lockup-light.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-lockup-dark.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/be-vietnam-pro-400.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/literata-variable.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/vink.css"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/vink.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/vink_bg.wasm"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-manifest-light.webmanifest"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/be-vietnam-pro-500.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/be-vietnam-pro-600.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-web-556eaa3108f24a40/profile/navigation.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/auth/session"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-mark-light.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-mark-light.svg"
+        }
+      ]
+    },
+    {
+      "cache": "warm",
+      "native": 9.599999994039536,
+      "rich": null,
+      "activationMs": null,
+      "resources": [],
+      "shifts": [],
+      "long": [],
+      "readRequests": [
+        {
+          "method": "GET",
+          "path": "/tac-pham/33333333-3333-4333-8333-333333333333"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-lockup-light.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-lockup-dark.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/be-vietnam-pro-400.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/literata-variable.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/vink.css"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/vink.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/vink_bg.wasm"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/be-vietnam-pro-500.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/be-vietnam-pro-600.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-web-556eaa3108f24a40/profile/navigation.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-manifest-light.webmanifest"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/auth/session"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-mark-light.svg"
+        }
+      ]
+    },
+    {
+      "cache": "cold",
+      "native": 11.900000005960464,
+      "rich": null,
+      "activationMs": null,
+      "resources": [],
+      "shifts": [],
+      "long": [],
+      "readRequests": [
+        {
+          "method": "GET",
+          "path": "/tac-pham/33333333-3333-4333-8333-333333333333"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-lockup-light.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-lockup-dark.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/be-vietnam-pro-400.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/literata-variable.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/vink.css"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/vink.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/vink_bg.wasm"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/be-vietnam-pro-500.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/be-vietnam-pro-600.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-web-556eaa3108f24a40/profile/navigation.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-manifest-light.webmanifest"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/auth/session"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-mark-light.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-mark-light.svg"
+        }
+      ]
+    },
+    {
+      "cache": "warm",
+      "native": 9.199999988079071,
+      "rich": null,
+      "activationMs": null,
+      "resources": [],
+      "shifts": [],
+      "long": [],
+      "readRequests": [
+        {
+          "method": "GET",
+          "path": "/tac-pham/33333333-3333-4333-8333-333333333333"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-lockup-light.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-lockup-dark.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/be-vietnam-pro-400.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/literata-variable.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/vink.css"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/vink.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/vink_bg.wasm"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/be-vietnam-pro-500.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/be-vietnam-pro-600.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-web-556eaa3108f24a40/profile/navigation.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-manifest-light.webmanifest"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/auth/session"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-mark-light.svg"
+        }
+      ]
+    },
+    {
+      "cache": "cold",
+      "native": 11.5,
+      "rich": null,
+      "activationMs": null,
+      "resources": [],
+      "shifts": [],
+      "long": [],
+      "readRequests": [
+        {
+          "method": "GET",
+          "path": "/tac-pham/33333333-3333-4333-8333-333333333333"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-lockup-light.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-lockup-dark.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/be-vietnam-pro-400.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/literata-variable.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/vink.css"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/vink.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/vink_bg.wasm"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/be-vietnam-pro-500.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/be-vietnam-pro-600.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-web-556eaa3108f24a40/profile/navigation.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-manifest-light.webmanifest"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-mark-light.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/auth/session"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-mark-light.svg"
+        }
+      ]
+    },
+    {
+      "cache": "warm",
+      "native": 9.800000011920929,
+      "rich": null,
+      "activationMs": null,
+      "resources": [],
+      "shifts": [],
+      "long": [],
+      "readRequests": [
+        {
+          "method": "GET",
+          "path": "/tac-pham/33333333-3333-4333-8333-333333333333"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-lockup-light.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-lockup-dark.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/be-vietnam-pro-400.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/literata-variable.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/vink.css"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/vink.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/vink_bg.wasm"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/be-vietnam-pro-500.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/fonts/be-vietnam-pro-600.woff2"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-web-556eaa3108f24a40/profile/navigation.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-manifest-light.webmanifest"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/auth/session"
+        },
+        {
+          "method": "GET",
+          "path": "/pkg/brand/vpen-r1-mark-light.svg"
+        }
+      ]
+    }
+  ],
+  "input": [
+    {
+      "inputMs": 2.600000023841858,
+      "raf": 14.700000017881393,
+      "post": 16.400000005960464
+    },
+    {
+      "inputMs": 3,
+      "raf": 13.700000017881393,
+      "post": 15
+    },
+    {
+      "inputMs": 1.2000000178813934,
+      "raf": 14.400000005960464,
+      "post": 15
+    },
+    {
+      "inputMs": 2.7999999821186066,
+      "raf": 14.799999982118607,
+      "post": 16.69999998807907
+    },
+    {
+      "inputMs": 2.9000000059604645,
+      "raf": 15,
+      "post": 16.30000001192093
+    },
+    {
+      "inputMs": 2.9000000059604645,
+      "raf": 13.599999994039536,
+      "post": 15.400000005960464
+    },
+    {
+      "inputMs": 3,
+      "raf": 14.900000005960464,
+      "post": 16.799999982118607
+    },
+    {
+      "inputMs": 2.7000000178813934,
+      "raf": 16.599999994039536,
+      "post": 18.30000001192093
+    },
+    {
+      "inputMs": 3,
+      "raf": 13.400000005960464,
+      "post": 15.400000005960464
+    },
+    {
+      "inputMs": 1.5,
+      "raf": 16.400000005960464,
+      "post": 17.80000001192093
+    },
+    {
+      "inputMs": 2.9000000059604645,
+      "raf": 15.700000017881393,
+      "post": 17.700000017881393
+    },
+    {
+      "inputMs": 0.800000011920929,
+      "raf": 15.199999988079071,
+      "post": 15.699999988079071
+    },
+    {
+      "inputMs": 1,
+      "raf": 17.200000017881393,
+      "post": 17.700000017881393
+    },
+    {
+      "inputMs": 1,
+      "raf": 17,
+      "post": 17.5
+    },
+    {
+      "inputMs": 3.2999999821186066,
+      "raf": 13.799999982118607,
+      "post": 15.5
+    },
+    {
+      "inputMs": 0.9000000059604645,
+      "raf": 17.599999994039536,
+      "post": 18
+    },
+    {
+      "inputMs": 1,
+      "raf": 17.69999998807907,
+      "post": 18.19999998807907
+    },
+    {
+      "inputMs": 1.4000000059604645,
+      "raf": 16.599999994039536,
+      "post": 17.19999998807907
+    },
+    {
+      "inputMs": 1.800000011920929,
+      "raf": 14.300000011920929,
+      "post": 15.100000023841858
+    },
+    {
+      "inputMs": 3.300000011920929,
+      "raf": 14.5,
+      "post": 16.400000005960464
+    },
+    {
+      "inputMs": 3.199999988079071,
+      "raf": 15.5,
+      "post": 17.599999994039536
+    },
+    {
+      "inputMs": 3.0999999940395355,
+      "raf": 14.200000017881393,
+      "post": 16.5
+    },
+    {
+      "inputMs": 3.0999999940395355,
+      "raf": 15.599999994039536,
+      "post": 17.5
+    },
+    {
+      "inputMs": 2.800000011920929,
+      "raf": 15.400000005960464,
+      "post": 17.700000017881393
+    },
+    {
+      "inputMs": 3.0999999940395355,
+      "raf": 15.199999988079071,
+      "post": 16.099999994039536
+    },
+    {
+      "inputMs": 3.0999999940395355,
+      "raf": 13.300000011920929,
+      "post": 15.400000005960464
+    },
+    {
+      "inputMs": 2.7999999821186066,
+      "raf": 13.399999976158142,
+      "post": 15
+    },
+    {
+      "inputMs": 2.699999988079071,
+      "raf": 14.299999982118607,
+      "post": 16
+    },
+    {
+      "inputMs": 2.9000000059604645,
+      "raf": 15.800000011920929,
+      "post": 18
+    },
+    {
+      "inputMs": 2.7000000178813934,
+      "raf": 15.700000017881393,
+      "post": 17.5
+    },
+    {
+      "inputMs": 2.9000000059604645,
+      "raf": 14.799999982118607,
+      "post": 16.599999994039536
+    },
+    {
+      "inputMs": 2.699999988079071,
+      "raf": 12.799999982118607,
+      "post": 14.5
+    },
+    {
+      "inputMs": 2.699999988079071,
+      "raf": 14.5,
+      "post": 15.199999988079071
+    },
+    {
+      "inputMs": 0.7000000178813934,
+      "raf": 16.200000017881393,
+      "post": 16.600000023841858
+    },
+    {
+      "inputMs": 2.800000011920929,
+      "raf": 16.099999994039536,
+      "post": 17.80000001192093
+    },
+    {
+      "inputMs": 3,
+      "raf": 14.699999988079071,
+      "post": 16.19999998807907
+    },
+    {
+      "inputMs": 3.5,
+      "raf": 14.699999988079071,
+      "post": 16.599999994039536
+    },
+    {
+      "inputMs": 3,
+      "raf": 14.599999994039536,
+      "post": 16.19999998807907
+    },
+    {
+      "inputMs": 3.199999988079071,
+      "raf": 14.5,
+      "post": 16.19999998807907
+    },
+    {
+      "inputMs": 2.5999999940395355,
+      "raf": 14.400000005960464,
+      "post": 15.900000005960464
+    }
+  ],
+  "caret": [
+    15.5,
+    16.100000023841858,
+    14.900000005960464,
+    15.400000005960464,
+    14.599999994039536,
+    14.5,
+    14.5,
+    15.300000011920929,
+    15.5,
+    14,
+    16,
+    13.899999976158142,
+    15.100000023841858,
+    14.199999988079071,
+    15.900000005960464,
+    13.699999988079071,
+    15.400000005960464,
+    14.099999994039536,
+    14.299999982118607,
+    15,
+    13.199999988079071,
+    14.600000023841858,
+    13.899999976158142,
+    15.599999994039536,
+    14.700000017881393,
+    12.599999994039536,
+    14.900000005960464,
+    14.599999994039536,
+    16.099999994039536,
+    15.400000005960464,
+    12.900000005960464,
+    16.599999994039536,
+    17.099999994039536,
+    17.099999994039536,
+    15,
+    14.900000005960464,
+    14.900000005960464,
+    14.599999994039536,
+    13.900000005960464,
+    13.700000017881393
+  ],
+  "network": [
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-mark-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-manifest-light.webmanifest"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-mark-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/tac-pham/33333333-3333-4333-8333-333333333333"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-lockup-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-lockup-dark.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-400.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/literata-variable.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink.css"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink_bg.wasm"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-500.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-600.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/profile/navigation.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-manifest-light.webmanifest"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-mark-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/tac-pham/33333333-3333-4333-8333-333333333333"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-lockup-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-lockup-dark.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-400.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/literata-variable.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink.css"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink_bg.wasm"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-500.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-600.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/profile/navigation.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-manifest-light.webmanifest"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-mark-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/tac-pham/33333333-3333-4333-8333-333333333333"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-lockup-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-lockup-dark.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-400.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/literata-variable.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink.css"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink_bg.wasm"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-500.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-600.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/profile/navigation.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-manifest-light.webmanifest"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-mark-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-mark-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/tac-pham/33333333-3333-4333-8333-333333333333"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-lockup-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-lockup-dark.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-400.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/literata-variable.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink.css"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink_bg.wasm"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-500.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-600.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/profile/navigation.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-manifest-light.webmanifest"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-mark-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/tac-pham/33333333-3333-4333-8333-333333333333"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-lockup-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-lockup-dark.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-400.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/literata-variable.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink.css"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink_bg.wasm"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-500.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-600.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-manifest-light.webmanifest"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/profile/navigation.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-mark-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-mark-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/tac-pham/33333333-3333-4333-8333-333333333333"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-lockup-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-lockup-dark.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-400.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/literata-variable.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink.css"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink_bg.wasm"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-500.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-600.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/profile/navigation.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-manifest-light.webmanifest"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-mark-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/tac-pham/33333333-3333-4333-8333-333333333333"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-lockup-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-lockup-dark.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-400.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/literata-variable.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink.css"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink_bg.wasm"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-500.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-600.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/profile/navigation.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-manifest-light.webmanifest"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-mark-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-mark-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/tac-pham/33333333-3333-4333-8333-333333333333"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-lockup-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-lockup-dark.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-400.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/literata-variable.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink.css"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink_bg.wasm"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-500.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-600.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/profile/navigation.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-manifest-light.webmanifest"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-mark-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/tac-pham/33333333-3333-4333-8333-333333333333"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-lockup-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-lockup-dark.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-400.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/literata-variable.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink.css"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink_bg.wasm"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-manifest-light.webmanifest"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-500.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-600.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/profile/navigation.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-mark-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-mark-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/tac-pham/33333333-3333-4333-8333-333333333333"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-lockup-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-lockup-dark.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-400.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/literata-variable.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink.css"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink_bg.wasm"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-500.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-600.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/profile/navigation.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-manifest-light.webmanifest"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-mark-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/tac-pham/33333333-3333-4333-8333-333333333333"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-lockup-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-lockup-dark.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-400.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/literata-variable.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink.css"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink_bg.wasm"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-500.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-600.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/profile/navigation.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-manifest-light.webmanifest"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-mark-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-mark-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/tac-pham/33333333-3333-4333-8333-333333333333"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-lockup-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-lockup-dark.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-400.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/literata-variable.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink.css"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink_bg.wasm"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-500.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-600.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/profile/navigation.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-manifest-light.webmanifest"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-mark-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/tac-pham/33333333-3333-4333-8333-333333333333"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-lockup-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-lockup-dark.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-400.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/literata-variable.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink.css"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink_bg.wasm"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-500.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-600.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/profile/navigation.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-manifest-light.webmanifest"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-mark-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-mark-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/tac-pham/33333333-3333-4333-8333-333333333333"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-lockup-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-lockup-dark.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-400.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/literata-variable.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink.css"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink_bg.wasm"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-500.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-600.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/profile/navigation.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-manifest-light.webmanifest"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-mark-light.svg"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/works/33333333-3333-4333-8333-333333333333/views"
+    },
+    {
+      "method": "GET",
+      "path": "/tac-pham/33333333-3333-4333-8333-333333333333"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-lockup-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-lockup-dark.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-400.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/literata-variable.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink.css"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/vink_bg.wasm"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-500.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/fonts/be-vietnam-pro-600.woff2"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/profile/navigation.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-manifest-light.webmanifest"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/pkg/brand/vpen-r1-mark-light.svg"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tags"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/works"
+    }
+  ],
+  "frames": {
+    "period": 16.600000000000364,
+    "intervals": [
+      16.599999999999454,
+      16.699999999999818,
+      16.600000000000364,
+      16.699999999999818,
+      16.699999999999818,
+      16.600000000000364,
+      16.699999999999818,
+      16.699999999999818,
+      16.600000000000364,
+      16.699999999999818,
+      16.699999999999818,
+      16.700000000000728,
+      16.599999999999454,
+      16.600000000000364,
+      16.699999999999818,
+      16.699999999999818,
+      16.699999999999818,
+      16.600000000000364,
+      16.699999999999818,
+      16.699999999999818,
+      16.700000000000728,
+      16.599999999999454,
+      16.699999999999818,
+      16.600000000000364,
+      16.699999999999818,
+      16.699999999999818,
+      16.600000000000364,
+      16.699999999999818,
+      16.600000000000364,
+      16.800000000000182,
+      16.599999999999454,
+      16.699999999999818,
+      16.600000000000364,
+      16.699999999999818,
+      16.600000000000364,
+      16.699999999999818,
+      16.699999999999818,
+      16.600000000000364,
+      16.699999999999818,
+      16.699999999999818,
+      16.600000000000364,
+      16.800000000000182,
+      16.599999999999454,
+      16.600000000000364,
+      16.800000000000182,
+      16.5,
+      16.799999999999272,
+      16.700000000000728,
+      16.599999999999454,
+      16.699999999999818,
+      16.600000000000364,
+      16.600000000000364,
+      16.699999999999818,
+      16.699999999999818,
+      16.699999999999818,
+      16.699999999999818,
+      16.700000000000728,
+      16.599999999999454,
+      16.699999999999818,
+      16.700000000000728,
+      16.5,
+      16.699999999999818,
+      16.699999999999818,
+      16.600000000000364,
+      16.799999999999272,
+      16.600000000000364,
+      16.699999999999818,
+      16.600000000000364,
+      16.699999999999818,
+      16.699999999999818,
+      16.600000000000364,
+      16.699999999999818,
+      16.699999999999818,
+      16.600000000000364,
+      16.699999999999818,
+      16.699999999999818,
+      16.600000000000364,
+      16.699999999999818,
+      16.699999999999818,
+      16.600000000000364,
+      16.699999999999818,
+      16.600000000000364,
+      16.699999999999818,
+      16.699999999999818,
+      16.699999999999818,
+      16.600000000000364,
+      16.699999999999818,
+      16.699999999999818,
+      16.600000000000364,
+      16.699999999999818,
+      16.699999999999818,
+      16.600000000000364,
+      16.699999999999818,
+      16.699999999999818,
+      16.600000000000364,
+      16.699999999999818,
+      16.699999999999818,
+      16.600000000000364,
+      16.699999999999818,
+      16.699999999999818,
+      16.600000000000364,
+      16.699999999999818,
+      16.699999999999818,
+      16.600000000000364,
+      16.599999999999454,
+      16.800000000000182,
+      16.600000000000364,
+      16.699999999999818,
+      16.699999999999818,
+      16.600000000000364,
+      16.699999999999818,
+      16.699999999999818,
+      16.600000000000364,
+      16.699999999999818,
+      16.699999999999818,
+      16.600000000000364,
+      16.699999999999818,
+      16.600000000000364,
+      16.699999999999818,
+      16.699999999999818,
+      16.699999999999818,
+      16.600000000000364,
+      16.599999999999454,
+      16.800000000000182,
+      16.600000000000364,
+      16.599999999999454,
+      16.700000000000728,
+      16.699999999999818,
+      16.699999999999818,
+      16.699999999999818,
+      16.600000000000364,
+      16.599999999999454,
+      16.700000000000728,
+      16.699999999999818,
+      16.699999999999818,
+      16.600000000000364,
+      16.699999999999818,
+      16.599999999999454,
+      16.700000000000728,
+      16.699999999999818,
+      16.599999999999454,
+      16.800000000000182,
+      16.600000000000364,
+      16.699999999999818,
+      16.600000000000364,
+      16.699999999999818,
+      16.699999999999818,
+      16.600000000000364,
+      16.699999999999818,
+      16.699999999999818,
+      16.600000000000364,
+      16.699999999999818,
+      16.699999999999818,
+      16.600000000000364,
+      16.699999999999818,
+      16.599999999999454,
+      16.700000000000728,
+      16.699999999999818,
+      16.599999999999454,
+      16.700000000000728,
+      16.699999999999818,
+      16.599999999999454,
+      16.700000000000728,
+      16.699999999999818,
+      16.699999999999818,
+      16.600000000000364,
+      16.599999999999454,
+      16.800000000000182,
+      16.600000000000364,
+      16.699999999999818,
+      16.699999999999818,
+      16.600000000000364,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.600000000000364,
+      16.799999999999272,
+      16.600000000000364,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.600000000000364,
+      16.69999999999891,
+      16.700000000000728,
+      16.600000000000364,
+      16.69999999999891,
+      16.700000000000728,
+      16.69999999999891,
+      16.700000000000728,
+      16.600000000000364,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.600000000000364,
+      16.799999999999272,
+      16.600000000000364,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.600000000000364,
+      16.69999999999891,
+      16.700000000000728,
+      16.69999999999891,
+      16.700000000000728,
+      16.600000000000364,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.600000000000364,
+      16.69999999999891,
+      16.700000000000728,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.600000000000364,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.700000000000728,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.600000000000364,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.700000000000728,
+      16.69999999999891,
+      16.600000000000364,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.700000000000728,
+      16.600000000000364,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.700000000000728,
+      16.600000000000364,
+      16.69999999999891,
+      16.700000000000728,
+      16.600000000000364,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.599999999998545,
+      16.700000000000728,
+      16.700000000000728,
+      16.69999999999891,
+      16.700000000000728,
+      16.600000000000364,
+      16.599999999998545,
+      16.80000000000109,
+      16.600000000000364,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.599999999998545,
+      16.80000000000109,
+      16.600000000000364,
+      16.599999999998545,
+      16.80000000000109,
+      16.600000000000364,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.700000000000728,
+      16.600000000000364,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.599999999998545,
+      16.80000000000109,
+      16.600000000000364,
+      16.69999999999891,
+      16.700000000000728,
+      16.600000000000364,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.599999999998545,
+      16.700000000000728,
+      16.700000000000728,
+      16.599999999998545,
+      16.700000000000728,
+      16.700000000000728,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.599999999998545,
+      16.700000000000728,
+      16.700000000000728,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.599999999998545,
+      16.700000000000728,
+      16.700000000000728,
+      16.599999999998545,
+      16.700000000000728,
+      16.700000000000728,
+      16.599999999998545,
+      16.700000000000728,
+      16.600000000000364,
+      16.69999999999891,
+      16.700000000000728,
+      16.700000000000728,
+      16.599999999998545,
+      16.700000000000728,
+      16.600000000000364,
+      16.69999999999891,
+      16.700000000000728,
+      16.700000000000728,
+      16.599999999998545,
+      16.700000000000728,
+      16.700000000000728,
+      16.599999999998545,
+      16.700000000000728,
+      16.600000000000364,
+      16.69999999999891,
+      16.700000000000728,
+      16.700000000000728,
+      16.599999999998545,
+      16.700000000000728,
+      16.600000000000364,
+      16.69999999999891,
+      16.700000000000728,
+      16.600000000000364,
+      16.69999999999891,
+      16.700000000000728,
+      16.700000000000728,
+      16.599999999998545,
+      16.700000000000728,
+      16.600000000000364,
+      16.69999999999891,
+      16.700000000000728,
+      16.700000000000728,
+      16.599999999998545,
+      16.700000000000728,
+      16.600000000000364,
+      16.799999999999272,
+      16.600000000000364,
+      16.600000000000364,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.700000000000728,
+      16.600000000000364,
+      16.69999999999891,
+      16.700000000000728,
+      16.700000000000728,
+      16.599999999998545,
+      16.700000000000728,
+      16.700000000000728,
+      16.599999999998545,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.700000000000728,
+      16.600000000000364,
+      16.69999999999891,
+      16.700000000000728,
+      16.600000000000364,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.700000000000728,
+      16.600000000000364,
+      16.69999999999891,
+      16.700000000000728,
+      16.600000000000364,
+      16.600000000000364,
+      16.799999999999272,
+      16.700000000000728,
+      16.599999999998545,
+      16.700000000000728,
+      16.700000000000728,
+      16.599999999998545,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.600000000000364,
+      16.69999999999891,
+      16.700000000000728,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.600000000000364,
+      16.69999999999891,
+      16.700000000000728,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.700000000000728,
+      16.600000000000364,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.600000000000364,
+      16.600000000000364,
+      16.799999999999272,
+      16.600000000000364,
+      16.600000000000364,
+      16.799999999999272,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.600000000000364,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.700000000000728,
+      16.600000000000364,
+      16.799999999999272,
+      16.600000000000364,
+      16.600000000000364,
+      16.69999999999891,
+      16.700000000000728,
+      16.69999999999891,
+      16.600000000000364,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.700000000000728,
+      16.69999999999891,
+      16.600000000000364,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.700000000000728,
+      16.600000000000364,
+      16.69999999999891,
+      16.700000000000728,
+      16.600000000000364,
+      16.69999999999891,
+      16.700000000000728,
+      16.600000000000364,
+      16.69999999999891,
+      16.700000000000728,
+      16.600000000000364,
+      16.69999999999891,
+      16.700000000000728,
+      16.600000000000364,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.600000000000364,
+      16.799999999999272,
+      16.600000000000364,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.599999999998545,
+      16.80000000000109,
+      16.600000000000364,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.69999999999891,
+      16.700000000000728,
+      16.600000000000364,
+      16.599999999998545,
+      16.80000000000109,
+      16.600000000000364,
+      16.69999999999891,
+      16.600000000000364,
+      16.700000000000728,
+      16.599999999998545,
+      16.80000000000109,
+      16.600000000000364,
+      16.599999999998545,
+      16.700000000000728,
+      16.700000000000728,
+      16.599999999998545,
+      16.80000000000109,
+      16.600000000000364
+    ],
+    "estimatedMissedFrames": 0
+  },
+  "requestsDuringTyping": [],
+  "after": {
+    "native": 9.800000011920929,
+    "rich": null,
+    "shifts": [
+      {
+        "at": 231.59999999403954,
+        "value": 0.013644250571359583,
+        "recent": false
+      }
+    ],
+    "long": [
+      {
+        "at": 140.30000001192093,
+        "value": 90
+      }
+    ]
+  },
+  "dom": {
+    "documents": 13,
+    "nodes": 2974,
+    "jsEventListeners": 231
+  },
+  "lifecycle": {
+    "cycles": 40,
+    "before": {
+      "dom": {
+        "documents": 3,
+        "nodes": 593,
+        "jsEventListeners": 81
+      },
+      "heap": {
+        "usedSize": 2352944,
+        "totalSize": 2850816,
+        "embedderHeapUsedSize": 2003128,
+        "backingStorageSize": 131027
+      },
+      "owners": 0,
+      "editors": 0
+    },
+    "reopened": {
+      "dom": {
+        "documents": 4,
+        "nodes": 705,
+        "jsEventListeners": 86
+      },
+      "heap": {
+        "usedSize": 2438504,
+        "totalSize": 3375104,
+        "embedderHeapUsedSize": 3022160,
+        "backingStorageSize": 131110
+      },
+      "owners": 1,
+      "editors": 0
+    },
+    "after": {
+      "dom": {
+        "documents": 4,
+        "nodes": 511,
+        "jsEventListeners": 82
+      },
+      "heap": {
+        "usedSize": 2640984,
+        "totalSize": 3375104,
+        "embedderHeapUsedSize": 2524000,
+        "backingStorageSize": 133975
+      },
+      "owners": 0,
+      "editors": 0
+    }
+  }
+}
