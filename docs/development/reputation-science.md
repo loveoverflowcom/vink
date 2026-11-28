@@ -1,136 +1,130 @@
-# SR-01 — Reputation V1: scientific review và synthetic comparison
+# SR-01 — Điểm Vink V1: review khoa học và qualification tổng hợp
 
-Ngày 27/11/2026 · [#600](https://github.com/loveoverflowcom/vink/issues/600) /
-[PR #601](https://github.com/loveoverflowcom/vink/pull/601). Phần đầu REP-S01, không phải công thức
-đã chốt, calibration thực nghiệm, Rust test, DB benchmark hay phê duyệt triển khai. Quy tắc sản phẩm
-sở hữu ở [PRD §19](../../prd/requirements.md#19-điểm-vink-reputation-v1) và
-[proposal](../../decisions/proposals/VDR-REPUTATION.r1.toml). Q16=B, Q17=A, Q18=A đã có lời chọn.
+[#600](https://github.com/loveoverflowcom/vink/issues/600) · [PR #601](https://github.com/loveoverflowcom/vink/pull/601) ·
+REP-S01. Quy tắc sản phẩm sở hữu ở [PRD §19](../../prd/requirements.md#19-điểm-vink-reputation-v1) và
+[VDR-REPUTATION@r1](../../decisions/proposals/VDR-REPUTATION.r1.toml). Trang này ghi căn cứ phương pháp, các
+so sánh dẫn tới lựa chọn Q25..Q28 và bằng chứng định lượng cho `formula_version 1`. Mọi dữ liệu ở đây là tổng
+hợp (Q24); không có calibration trên người dùng thật, không đo PostgreSQL.
 
 ## Căn cứ phương pháp
 
 - [JRC 10-step guide](https://knowledge-for-policy.ec.europa.eu/composite-indicators/toolkit_en/navigation-page/10-step-guide_en):
-  theoretical framework, data selection, normalization, weighting/aggregation và sensitivity;
-  không suy composite index là phép đo chất lượng văn học.
+  khung lý thuyết, chọn dữ liệu, chuẩn hóa, trọng số/tổng hợp và sensitivity. Composite index không đo chất
+  lượng văn học.
 - [Stack Overflow reputation](https://stackoverflow.com/help/whats-reputation),
   [vote correction](https://stackoverflow.com/help/serial-voting-reversed),
-  [removed account](https://stackoverflow.com/help/user-was-removed): cơ chế cộng/thu hồi và audit
-  là tham chiếu, không nhập quyền theo điểm, cap hay ngoại lệ deletion của nền tảng khác vào Vink.
-- Source inspection develop@91191186: persistence/endorsement.rs có accepted_order, version,
-  updated_at khi UPDATE, require_active ở transaction; persistence/account_deletion.rs có
-  accepted_at, reversal và standing effects. Chưa chứng minh updated_at là first endorsement event
-  hoặc timestamp eligibility đầy đủ; chưa audit account-age authority, toàn bộ migration/history.
+  [removed account](https://stackoverflow.com/help/user-was-removed): cơ chế cộng/thu hồi và audit chỉ là
+  tham chiếu; Vink không nhập quyền theo điểm, cap hay ngoại lệ deletion của nền tảng khác.
 
-## SR-01A: current rating candidates
+## SR-01A — So sánh hình dạng (lịch sử, dẫn tới Q26)
 
-I, C là số effective eligible entitlements của Thấm/Ưng, không raw source counts, không Follow.
-Giả định so sánh: baseline 1000, mốc 100 events mỗi thành phần = 1 đơn vị normalized, scale 400,
-w = weight Impact, weight Contribution = 1-w.
+I, C là số entitlement hiệu lực, không phải số đếm thô của nguồn. Cùng chuẩn f(0) = 0, f(100) = 1, trọng số
+Impact w = 0,6, R = 1000 + 400 × (w × f(I) + (1 − w) × f(C)):
 
-R = 1000 + 400 * (w * f(I) + (1-w) * f(C)).
+- log: f(x) = ln(1 + x/10)/ln 11;
+- shifted sqrt: f(x) = (√(1 + x/10) − 1)/(√11 − 1);
+- piecewise: f(x) = [3·min(x,10) + 0,6·min(max(x−10,0),90) + 0,15·min(max(x−100,0),900) + 0,05·max(x−1000,0)]/84.
 
-Ba hàm trên x >= 0, chọn cùng f(0)=0, f(100)=1 để không so sánh thang khác nhau:
-
-- log: f(x)=ln(1+x/10)/ln(11).
-- shifted sqrt: f(x)=(sqrt(1+x/10)-1)/(sqrt(11)-1).
-- piece: f(x)=[3 min(x,10)+0.6 min(max(x-10,0),90)+0.15 min(max(x-100,0),900)
-  +0.05 max(x-1000,0)]/84.
-
-Không hardcode các hằng số minh họa vào domain. K=10, reference=100 như nhau ở đây chỉ để
-isolate shape, chưa biết phân phối I/C thật, mốc cho mỗi thành phần có thể khác. Weights là
-trade-off normative sau normalization; không đồng nhất weight với tỷ lệ 1 Thấm/1 Ưng mọi mức.
-Scale 400 chỉ đơn vị hiển thị, không probability/Elo. Cả hai thành phần có thể thay thế phần nào
-cho nhau; không thêm điều kiện phải viết bài. Round một lần tại boundary hiển thị, chưa chốt
-precision, min/max hoặc tie trên unrounded score.
-
-### Synthetic comparison w=0.6
-
-| Profile giả lập | I | C | Log | Sqrt | Piece |
+| Hồ sơ tổng hợp | I | C | Log | Sqrt | Piece |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Mới | 10 | 5 | 1096 | 1058 | 1114 |
 | Chuyên sáng tác | 300 | 20 | 1417 | 1524 | 1394 |
 | Chuyên nhận xét | 20 | 300 | 1339 | 1391 | 1320 |
 | Cân bằng | 100 | 100 | 1400 | 1400 | 1400 |
 | Lâu năm | 1000 | 600 | 1736 | 2408 | 1929 |
-| Nhiều tương tác một chiều | 1000 | 0 | 1462 | 1938 | 1626 |
+| Một chiều | 1000 | 0 | 1462 | 1938 | 1626 |
 | Chỉ nhận xét | 0 | 300 | 1229 | 1315 | 1217 |
 | Chưa có ghi nhận | 0 | 0 | 1000 | 1000 | 1000 |
 
-### Sensitivity của log theo weights
+Sqrt thưởng mạnh cho khối lượng lớn; piecewise dễ audit nhưng có bước gãy; log giảm dần đều. Chủ sản phẩm
+chọn log (Q26) và 60:40 (Q25).
 
-| Profile | 50:50 | 60:40 | 70:30 | 80:20 |
-| --- | ---: | ---: | ---: | ---: |
-| Mới | 1092 | 1096 | 1101 | 1106 |
-| Chuyên sáng tác | 1378 | 1417 | 1456 | 1495 |
-| Chuyên nhận xét | 1378 | 1339 | 1300 | 1261 |
-| Cân bằng | 1400 | 1400 | 1400 | 1400 |
-| Lâu năm | 1728 | 1736 | 1745 | 1753 |
-| Nhiều tương tác một chiều | 1385 | 1462 | 1539 | 1616 |
-| Chỉ nhận xét | 1286 | 1229 | 1172 | 1115 |
-| Chưa có ghi nhận | 1000 | 1000 | 1000 | 1000 |
+## SR-01B — Tăng trưởng tách khỏi hiệu số rating (dẫn tới Q28)
 
-Ví dụ at 50:50, (300,20) và (20,300) bằng nhau; 80:20 chênh 234 điểm hiển thị. Tác giả nhiều
-Thấm một chiều (1000,0) vượt profile cân bằng (100,100) khi 60:40 nhưng không ở 50:50.
-Weights thay rank đáng kể, cần owner chọn giá trị sản phẩm sau khi calibrate.
+Cùng +10 I và +10 C từ mức đầu kỳ I = C = x:
 
-### Sensitivity của normalized log (w=0.6, reference=100)
-
-| k | Tăng khi I 0→1, C=0 (rounded delta) | Rating I=C=1000 |
-| --- | ---: | ---: |
-| 10 | 10 | 1770 |
-| 100 | 3 | 2384 |
-| 1000 | 3 | 3909 |
-
-k nhỏ làm điểm mới tăng nhanh hơn và nén khoảng cách ở mức cao; k lớn giảm độ cong.
-Thay reference hoặc k có thể đổi rank nếu hai thành phần có scale khác nhau. Không suy optimal từ 8 fixture.
-
-## SR-01B: growth phải tách khỏi delta current rating
-
-Q05/Q07/Q12/Q13/Q18: chỉ net eligible new community credits/withdrawals, bù trừ đúng entitlement
-trong cùng kỳ, không restoration/cutover/backfill. Week/month độc lập. Candidate so sánh:
-A: rating-based marginal growth dùng reference/baseline kỳ hoặc attribution cố định, xử lý phi tuyến
-và reversal/correction; cùng lượng đóng góp có thể ưu ái người mới.
-B: growth index fixed-unit G = 400*(w*dI/100 + (1-w)*dC/100), dI/dC là signed net growth units
-đã xử lý Q12, không phải raw current counter delta. Reference ở đây minh họa, có thể khác I/C.
-Với w=.6, mỗi 1 eligible net Thấm = 2.4 units, Ưng = 1.6 units. Tính precision trước khi làm tròn;
-không gọi G là mức tăng đúng của R. Version G cùng period policy; không trộn formula versions.
-So sánh cùng +10 I, +10 C từ baseline I=C=x (giả định không có lifecycle/restore/withdrawal):
-
-| x đầu kỳ | Log marginal | Sqrt marginal | Piece marginal | Fixed-unit G |
+| x đầu kỳ | Log marginal | Sqrt marginal | Piece marginal | Đơn vị cố định G |
 | ---: | ---: | ---: | ---: | ---: |
 | 0 | 116 | 72 | 143 | 40 |
 | 10 | 68 | 55 | 29 | 40 |
 | 100 | 15 | 25 | 7 | 40 |
 | 1000 | 2 | 9 | 2 | 40 |
 
-Candidate B dễ audit, công bằng hơn về cùng số đơn vị ghi nhận mới, không phụ thuộc seniority;
-đổi lại không bằng delta rating, cần chốt tên/contract với owner. Candidate A đúng tinh thần rating
-marginal nhưng phải chỉ rõ reference/ordering và bảo đảm bù trừ không tạo credit giả. Không áp dụng
-log trực tiếp lên signed delta (âm có thể ngoài domain); không cộng delta làm tròn theo event.
-Growth formula/scale chưa được chọn; positivity Q17 xác định theo precision contract được duyệt.
+Hiệu số rating ưu ái người mới và khó bù trừ đúng khi có rút/khôi phục. G cố định (2,4 mỗi Thấm, 1,6 mỗi Ưng
+ròng) không phụ thuộc thâm niên, dễ audit; đổi lại không bằng R(end) − R(start). Chủ sản phẩm chọn G (Q28) và
+máy credit Q41.
 
-## SR-01C: eligibility and abuse — historical alternatives
+## SR-01C — Eligibility và anti-abuse
 
-Age-only vs activity; age gate/WorkId dedup/log not anti-collusion. Concentrated actors can
-produce same rating as many distinct actors. Privacy differencing needs tests; no report-only
-deduction. Initial alternatives retained in earlier commits.
+Ngưỡng tuổi 7 ngày, dedup WorkId và hàm log không chống thông đồng: một nhóm nhỏ actor tập trung vẫn có thể
+tạo cùng điểm như nhiều actor khác nhau. Gate ≥ 3 actor net dương của Top Growth (Q43) giảm rủi ro một
+cặp thổi điểm nhưng không phải k-anonymity. Không tự trừ vì report; correction đi qua operator CLI (Q38).
+S05/S06 phải test differencing trên dữ liệu ẩn và concentration trên fixture.
 
-## Final review (28/11/2026; supersedes candidate choices)
+## SR-01D — Qualification cho `formula_version 1`
 
-Q25–28 selected normalized log, 60:40, 1000/400, half-up once and canonical unrounded rank;
-k=10/reference=100 synthetic candidate requiring numeric qualification. G=2.4*dI+1.6*dC exact tenths,
-Q41 credit/burn machine not rating delta. Q30/42 7d principal age, held maturity current-only,
-no fake legacy. Q43 >=3 distinct net-positive actors heuristic not k-anonymity. Q40 ledger + CLI
-correction, no offline concentration report. Q44 snapshot/reserve/exact rebuild fallback.
-Prior numeric tables remain historical comparisons, not open choices or signoff.
+Script: [`qualify.py`](evidence/reputation-sr01/qualify.py) (Python stdlib, Decimal 60 chữ số, seed cố định).
+Kết quả: [`results.json`](evidence/reputation-sr01/results.json). Chạy lại từ root:
+`python3 -I docs/development/evidence/reputation-sr01/qualify.py`. Hai lần chạy trên nhánh PR (base develop@b69f34bc) cho
+cùng SHA-256 `1481f4f7dfaa83c05ceddbd11412ceb3253386c0f02caea251bdcfc9168d24d8`.
 
-## Evidence và giới hạn
+### Hình dạng
 
-Calculated trực tiếp bằng JavaScript Number (IEEE-754), Math.round cho số dương minh họa;
-8 deterministic profiles × 3 formulas và 4 log weights, 4 baseline growth comparisons,
-3 k sensitivity, 30000 monotonic finite adjacent checks trên x=0..10000 (10,000 mỗi hàm)
-và checks f(0)=0, f(100)=1. PASS trong phạm vi các checks này; không chứng minh toàn miền hoặc
-deterministic Rust fixed precision. Reproduce theo biểu thức ở trên, không coi là production golden vectors.
-Không dùng user data, không fit tham số, không đo correlation thực tế, không benchmark PostgreSQL.
-Chưa chạy cargo decision validate, Quint, Kani, DB hoặc HTTP. Tách model/proof và runtime evidence.
+- f(0) = 0, f(100) = 1; f tăng ngặt và bước tăng giảm ngặt trên 0..10 000.
+- Thấm hợp lệ đầu tiên +10 điểm hiển thị, Ưng đầu tiên +6.
+- Ở biên I = C = 2^40 − 1, f ≈ 10,602 và R hiển thị 5241: không cần trần nghiệp vụ; `score_micros` nằm
+  trong i64 với biên rất rộng.
 
-Next S01: synthetic/local-only distributions, skew/sensitivity/precision/golden vectors, source coverage audit, privacy and state/correction/snapshot oracles. No prod access without separate grant. Exact payload/hash signoff pending, runtime NOT_RUN.
+### Độ chính xác
+
+| Phép kiểm | Kết quả |
+| --- | --- |
+| f64 (`log1p`/`log`) so với Decimal trên lưới I, C ∈ 0..999 (10^6 cặp) | 0 sai lệch `score_micros`, 0 sai lệch hiển thị |
+| R nguyên chính xác trên lưới | 4 cặp (I, C ∈ {0, 100}) |
+| Khoảng cách nhỏ nhất khác 0 của R × 10^6 tới số nguyên | 4,837 × 10^-7 tại (314, 885) |
+
+f64 qua được lưới với biên chỉ khoảng 2 ulp, và kết quả `ln` của libm có thể khác 1 ulp giữa nền tảng. Vì vậy
+K2 chọn số học nguyên fixed-point xác định cho đường canonical; f64 chỉ dùng chẩn đoán. S02 phải tái tạo
+đúng 32 golden vectors trong `results.json`, gồm 6 cặp có phần lẻ gần 0,5 nhất trên lưới 0..399
+(ví dụ (153, 141) → `1460500004`, hiển thị 1461; (283, 65) → `1472499987`, hiển thị 1472).
+
+### Phân phối tổng hợp
+
+Ba quần thể 20 000 thành viên (seed 600..602): 55% không có tín hiệu, 15% chỉ nhận Ưng, 15% chỉ được Thấm,
+15% cả hai; số đếm theo Pareto đuôi dày.
+
+| Seed | Chỉ baseline | p50 | p90 | p99 | Max | Top 100: chỉ nhận xét / chỉ sáng tác |
+| ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| 600 | 55,7% | 1000 | 1031 | 1161 | 1839 | 2 / 14 |
+| 601 | 56,0% | 1000 | 1031 | 1153 | 1760 | 3 / 14 |
+| 602 | 56,1% | 1000 | 1030 | 1149 | 1999 | 2 / 20 |
+
+Hơn nửa quần thể ở đúng 1000, nên Top Rating phải loại người chỉ có baseline (Q17). Người chỉ nhận xét vẫn
+vào Top 100 (Q11) nhưng ít hơn người chỉ sáng tác vì trọng số 60:40.
+
+### Sensitivity
+
+So với k = 10, reference = 100, w = 0,6 trên người có tín hiệu (min–max qua ba seed):
+
+| Biến thể | Spearman | Trùng Top 100 |
+| --- | --- | --- |
+| k = 5 | 0,9997–0,9998 | 93–97 |
+| k = 20 | 1,0000 | 94–97 |
+| reference = 50 | 1,0000 | 100 |
+| reference = 200 | 1,0000 | 100 |
+| w = 0,5 | 0,9402–0,9430 | 90–94 |
+| w = 0,7 | 0,9721–0,9730 | 93–97 |
+
+- reference chỉ nhân cả hai f với cùng hằng số: không đổi thứ hạng, chỉ đổi thang hiển thị. Giữ 100 để
+  “100 ghi nhận = +1 đơn vị chuẩn hóa” dễ giải thích.
+- k đổi độ cong và đảo vài vị trí ở đầu bảng; k = 10 cho điểm mới tăng rõ (+10/+6) mà không làm vài nghìn
+  ghi nhận vượt quá xa.
+- Trọng số là lựa chọn giá trị, ảnh hưởng thứ hạng nhiều nhất; Q25 đã chọn 60:40.
+
+Kết luận: k = 10, reference = 100 đủ điều kiện cho `formula_version 1`. Đây không phải tối ưu thực nghiệm; dữ
+liệu thật có thể dẫn tới version mới qua proposal mới.
+
+## Giới hạn
+
+Không dùng dữ liệu người dùng, không fit tham số, không đo correlation thật hay PostgreSQL. Các phân phối
+Pareto là giả định. Quint, Kani, PostgreSQL, HTTP và benchmark thuộc S02..S06.

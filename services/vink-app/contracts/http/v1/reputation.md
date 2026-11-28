@@ -1,22 +1,32 @@
-# Reputation API v1 — draft, not implemented
+# Reputation API v1 — dự thảo, chưa triển khai
 
-[PRD §19](../../../../../prd/requirements.md#19-điểm-vink-reputation-v1) /
-[domain](../../../../../docs/architecture/reputation.md) /
-[registry](../../../../../docs/development/reputation.md). Q01..44 product direction; routes/DTO/error mapping OPEN.
+[PRD §19](../../../../../prd/requirements.md#19-điểm-vink-reputation-v1) ·
+[đặc tả miền](../../../../../docs/architecture/reputation.md) ·
+[registry](../../../../../docs/development/reputation.md). Route, DTO và mã lỗi được chốt ở REP-S06 theo caller
+thật; trang này giữ các ràng buộc mà mọi lựa chọn phải thỏa.
 
-| Capability | Contract |
+## Năng lực
+
+| Năng lực | Ràng buộc |
 | --- | --- |
-| Current total | One ready integer Điểm Vink; true zero-fact baseline 1000, version/freshness/availability; PK projection, no raw components or voter data. |
-| Top Reputation | Eligible contribution (not baseline-only, comment-only allowed), open snapshot current as_of or closed as-of-end rating, never peak/current substitute. |
-| Top Growth | Fixed-unit signed net community credit Q41, exact tenths; >0 and >=3 distinct net-positive eligible actors after privacy/correction; no actor counts/IDs; independent calendar week/month. |
+| Điểm hiện hành của một principal | Một số nguyên “Điểm Vink” (half-up một lần từ `score_micros`), `formula_version`, độ tươi và trạng thái. Đọc projection theo khóa chính. Baseline 1000 chỉ khi thật sự chưa có ghi nhận hợp lệ. |
+| Top Rating (kỳ mở / kỳ đóng) | Người có ghi nhận hợp lệ (không chỉ baseline; người chỉ nhận Ưng được vào). Kỳ mở theo snapshot `as_of`; kỳ đóng theo điểm as-of end, không đỉnh, không điểm hiện tại. |
+| Top Growth (tuần / tháng) | Điểm tăng trưởng chính xác 0,1 từ máy credit Q41; G > 0 và ≥ 3 actor net dương sau privacy/correction. Tuần và tháng độc lập. |
 
-Top100 default20 max100 per page; canonical unrounded score desc PrincipalId asc. Calendar [start,end),
-Asia/Ho_Chi_Minh, snapshot id/generation/as_of, formula/policy/metric version, coverage/correction revision.
-First full week/month independently; no fake preactivation/partial period. Retain open + 52 closed weeks/12 months.
-Open snapshot target 5–10m not SLA; closed reserve 50 internal, exact full-population refill/rebuild if incomplete
-or ordering changes; no false-complete. Cursor bound snapshot/version/visibility, reject/restart stale.
-Guest/member same public visibility, current authority before limit/cache; withhold unsafe stale projection,
-suspended/deleted recipient omitted all periods. Privacy/deletion/correction may restate history; no raw admin evidence.
-Q38 authorized CLI only; no public writes, source counts unchanged. Q30/Q42 gate/maturity private.
-Distinguish disabled/unavailable/incomplete/expired/forbidden/deleted from true baseline or zero.
-No N+1/global rank/source aggregation per request. Exact signoff/qualification pending; HTTP/runtime NOT_RUN.
+## Ràng buộc chung
+
+- Top 100 mỗi bảng; trang mặc định 20, tối đa 100. Thứ tự: điểm canonical giảm dần, hòa thì PrincipalId
+  tăng dần.
+- Kỳ: [start, end) theo Asia/Ho_Chi_Minh; phản hồi mang snapshot id, generation, `as_of`, các version
+  (formula/policy/metric), coverage và correction revision.
+- Giữ kỳ mở + 52 tuần + 12 tháng đã đóng; kỳ ngoài phạm vi trả `expired`. Kỳ trước activation hoặc kỳ một
+  phần trả `incomplete`, không 0.
+- Cursor gắn snapshot, version và visibility generation; cursor cũ bị từ chối để client bắt đầu lại.
+- Khách và thành viên thấy cùng dữ liệu công khai. Gate privacy/standing/deletion hiện hành chạy trước limit
+  và cache; người nhận bị đình chỉ hoặc đã xóa bị bỏ khỏi mọi kỳ; snapshot không an toàn bị withhold.
+- Phân biệt `disabled`, `unavailable`, `incomplete`, `expired`, `forbidden`, `deleted` với baseline thật.
+- Không trả thành phần I/C, số actor, danh tính actor, tuổi principal hay bằng chứng correction.
+- Không có route ghi công khai. Correction chỉ qua operator CLI (Q38); số Thấm/Ưng của nguồn không đổi.
+- Không N+1, không rank toàn cục, không aggregate nguồn hay tính log lúc request.
+
+Trạng thái: `NOT_IMPLEMENTED`; HTTP chưa chạy.

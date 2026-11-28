@@ -5,73 +5,138 @@ revision = 1
 [content]
 kind = "product"
 domain = "reputation"
-title = "Điểm Vink V1 — hai thành phần, uy tín hiện hành và thống kê theo kỳ"
+title = "Điểm Vink V1 — hai thành phần, uy tín hiện hành, tăng trưởng theo kỳ và thống kê công khai"
 resolution = """
-Phạm vi nghiệp vụ #600, review 27–28/11/2026 (REP-Q01..44, product direction, exact signoff pending):
-- REP-Q01 = A: Impact từ Thấm nhận được trên tác phẩm; Contribution từ Ưng nhận được trên nhận xét. Không tính Follow. Một tổng điểm kiểu rating, không phải Elo đối đầu; công khai điểm tổng, chưa công khai thành phần.
-- REP-Q02 = A: ghi nhận Impact theo WorkId, cùng người Thấm nhiều revision chỉ tính một đơn vị hợp lệ; không sửa semantics endorsement neo RevisionId. Sửa thông thường không tự làm mất uy tín đã ghi nhận hợp lệ.
-- REP-Q03 = B: current eligible rating, lifecycle neutral growth, Q19/Q20/Q21/Q38/Q41 apply; no V1 decay.
-- REP-Q04 = A: tuần lịch thứ Hai–Chủ nhật và tháng lịch theo Asia/Ho_Chi_Minh; không phải rolling 7/30 ngày.
-- REP-Q05 = B: net community growth credit according to Q41, fixed-unit Q28, not rating delta; neutral events separate.
-- REP-Q06 = A: tổng điểm và thống kê tác giả uy tín cao/tăng nhanh theo tuần, tháng được công khai kể cả khách, chỉ đối với dữ liệu và hồ sơ đủ điều kiện; không lộ thành phần, private data hay cache cũ. Không mở quyền hoặc can thiệp ranking tác phẩm.
-- REP-Q07 = A refined Q36/Q41: only withdraw unburned active community credit; never debit baseline/maturity/burned or repeat after boundary.
-- REP-Q08 = A: đình chỉ toàn bộ tài khoản nhận điểm thì ẩn điểm công khai và loại khỏi mọi thống kê công khai trong thời gian đình chỉ, kể cả kỳ cũ. Giữ facts còn hợp lệ và đánh giá lại eligibility khi hết đình chỉ; không reset điểm hoặc tạo growth từ phục hồi standing. Hạn chế riêng đăng/bình luận không đồng nhất với đình chỉ toàn bộ; tương tác hợp lệ trước đình chỉ của actor theo Q14.
-- REP-Q09 = A: current/retained closed statistics Q15; no preactivation history; Q33/Q44 coverage/snapshots/current privacy.
-- REP-Q10 = A: open rating at current snapshot as_of, closed rating as-of end, not peak/current substitution; authoritative correction and privacy Q38/Q44.
-- REP-Q11 = A: người chỉ đóng góp nhận xét vẫn có điểm và được tham gia thống kê nếu đủ eligibility; không bắt buộc có tác phẩm công khai. Điều kiện vào bảng theo Q17; eligibility của tương tác theo Q16.
-- REP-Q12 = A refined Q41: same-period compensation, different-period burned credit cannot be granted or withdrawn again; week/month independent; neutral/correction separate.
-- REP-Q13 = A: lifecycle remove changes current, neutral community growth, restoration no new credit; privacy/deletion/correction can restate historical.
-- REP-Q14 = A: suspension actor preserves valid facts, DEL-05/verified invalidation authoritative and neutral community growth per Q20/Q38.
-- REP-Q15 = A: retention thống kê gồm kỳ hiện tại + 52 tuần đã kết thúc gần nhất và 12 tháng lịch đã kết thúc gần nhất (theo Q04). Hết phạm vi không phục vụ lịch sử và phải có bounded cleanup; không giả 0 khi expired/unknown. Không cam kết có đủ các kỳ trước activation nếu không có nguồn chứng minh. Retention aggregate khác entitlement/ledger/fence/audit/checkpoint cần cho current rating, dedup/replay/rebuild; purge tối thiểu và DEL/privacy thắng retention. Không suy quyền giữ PII hoặc lịch sử thô vô hạn.
-- REP-Q16 = B refined Q30/Q42: age-only 7*24h App principal, held maturity current-only, proof-backed event-time; source unchanged.
-- REP-Q17 = A refined Q43: Top Rating valid-only, Top Growth positive and >=3 distinct net-positive actors; current authority before limit, Q29/Q44.
-- REP-Q18 = A refined Q32/Q33: current proof-backed backfill; no fake preactivation history, first full period per calendar, baseline burned.
-## Quyết định sản phẩm
-- Q16=B, Q17=A, Q18=A đã ghi trong proposal r1 (lượt 6 ngày 27/11); tracker cũ chỉ đến Q15. Q30/Q42/Q43/Q33 dưới đây tinh chỉnh chúng.
-- Q19=A: public Thấm đếm revision hiện hành; Impact dedup actor+WorkId qua anchor hợp lệ. Superseded bình thường khác hidden_revision_id/anchor vi phạm; không đổi nguồn LVE.
-- Q20=A/A: DEL-05 actor deletion giảm current rating, không ghi âm community growth; closed aggregates chỉ giữ nếu privacy/deletion/correction cho phép. Q21=A: recipient deletion purge projection/index/cache cá nhân và loại mọi public statistics kể cả kỳ cũ; audit/fence hợp pháp tách riêng.
-- Q22: top-k API trong scope, UI/design/Web/CMP ngoài scope. Q23: xóa nhận xét theo Q13, emoji không tính, comment edit/anchor revision hoãn đến COM-10/LVE-FR-04.
-- Q24: synthetic/local only; không production/aggregate nếu không được cấp quyền riêng. Q25=60:40. Q26 normalized log (k=10, reference=100/component là candidate SR-01 để qualify). Q27 baseline 1000, scale 400, không trần nghiệp vụ, checked numeric bounds, half-up integer rating một lần; unavailable khác baseline. Q28 fixed-unit signed growth, G=2.4*dI+1.6*dC, exact tenths, versioned; không phải rating delta. Q29 Top 100, default page 20 max 100, canonical unrounded score desc, tie PrincipalId asc.
-- Q30=A: App principals.created_at + 7*24h elapsed UTC, không Identity contract/network mới. Q31/Q37: source interactions trước tuổi vẫn hợp lệ tại nguồn; nếu OFF trước maturity thì first qualified ON thật sau threshold có thể credit; no-op/retry không phải ON mới. Q42 thay phần “không bao giờ tính” đối với held interactions. Q32=B: accepted receipt transitions theo committed_version/order và authority, không đếm receipt/no-op trực tiếp, không dùng updated_at/tuổi hiện tại thay proof; unknown excluded + coverage. Q33=A: backfill current valid facts; không dựng kỳ trước activation; first full week/month riêng lịch tại boundary >= activation readiness, held tại boundary baseline burned; partial period không giả complete/zero.
-- Q34/Q38: authorized operator CLI, từng anchor/entitlement hoặc tập actor-recipient xác định tại watermark (không blanket ban tương lai); Reputation-only, source public counts unchanged. Evidence/reason/audit, dry-run/explicit apply, idempotency/invalidation fence, no resurrection. Recompute current + affected retained history từ toàn population eligible as-of, corrected revision/as_of, không community withdrawal giả; thiếu proof thì withhold. Không auto trừ do report, không admin UI/auto detection.
-- Q35: #601 là S01, hoàn thiện SSOT, synthetic/precision/source qualification, CLI validate và exact owner signoff trước runtime; giữ 6 slice tuần tự. Chưa tạo issue con ở lượt này.
-- Q36=A/Q41: xem state rule bên dưới; overrides phần xung đột Q07/Q12. Q39 public “Điểm Vink” (Reputation Rating), “Điểm tăng trưởng” (Growth Score); Impact/Contribution là thành phần Ảnh hưởng/Đóng góp nội bộ, không expose raw. Q40=A: minimized actor-recipient ledger + correction; no offline concentration dashboard V1.
+Phạm vi nghiệp vụ Epic #600 sau review 27–28/11/2026 (REP-Q01..Q44). Q41..Q44 thay phần xung đột
+của Q07, Q12, Q16..Q18 và Q36. Backend only; Design, Leptos Web và CMP thuộc epic khác.
 
-## Q41 — invariant credit (chọn, sửa Q07/Q12/Q36)
-Current selection/eligibility tách community credit; per entitlement có 2 state machines độc lập week/month:
-UNSEEN(0) -> ACTIVE(1) khi first eligible effective community ON trong covered period (+1);
-ACTIVE -> WITHDRAWN_PENDING(0, withdrawal period) khi voluntary effective OFF còn eligible (-1);
-ON lại cùng withdrawal period -> ACTIVE (+1 bù, không fresh credit);
-qua boundary vẫn OFF -> BURNED(0 terminal); ON/OFF sau burn = 0.
-Baseline/preactivation hoặc held maturity -> BURNED, current-only. No-op/duplicate/retry/rollback/stale và mất một anchor khi còn anchor hợp lệ không sinh delta.
-Net credit cuối - đầu kỳ = -1/0/+1 cho community transitions; lifetime net 0 hoặc 1 trước weight. Week/month độc lập, không cộng tuần suy tháng. Accepted event-time [start,end) Asia/Ho_Chi_Minh, đúng end thuộc kỳ mới; late/replay theo authoritative order và coverage.
-Neutral lifecycle (privacy/withdrawn/hidden/delete/DEL-05/formula/maturity/backfill/correction) không giả ON/OFF: park credit khi tạm ineligible, restore không grant mới; OFF khi ineligible retire/burn không trừ; terminal invalidation/deletion retire không resurrect. End-start oracle áp community state, không lấy effective eligibility làm credit. Privacy/deletion/verified correction có thể remove/restate historical contributions separately, versioned; không giữ unsafe signal chỉ để bảo toàn growth.
-Oracle: tuần 1 +1, tuần 2 -1, tuần 3 relike 0, tuần 4 unlike 0; nếu OFF/ON khác tuần cùng tháng thì month net 0. Model thêm same-period loops, multiple anchors, hidden/restore/retire, threshold/boundary race, late/retry/rollback, expiry.
+Tên và thành phần
+- Q01 = A, Q39: công khai một điểm tổng “Điểm Vink” (Reputation Rating) và “Điểm tăng trưởng”
+  (Growth Score). Hai thành phần nội bộ: Ảnh hưởng (Impact) từ Thấm nhận được trên tác phẩm và Đóng
+  góp (Contribution) từ Ưng nhận được trên nhận xét. Không tính Follow, lượt xem, lượt lưu, số bài
+  hay số nhận xét. Không phải Elo đối đầu; không trả thành phần thô.
+- Q02 = A, Q19 = A: Impact ghi nhận tối đa một đơn vị cho mỗi (người Thấm, WorkId) qua các revision
+  còn là anchor hợp lệ. Revision bị thay thế bình thường vẫn là anchor; revision bị ẩn
+  (hidden_revision_id) hoặc anchor vi phạm thì không. Số Thấm công khai của nguồn vẫn đếm revision
+  hiện hành; Reputation không đổi semantics LVE.
+- Q23: Contribution ghi nhận mỗi (người Ưng, CommentId). Xóa nhận xét theo Q13; emoji không tính;
+  sửa nhận xét và anchor revision của nhận xét hoãn tới COM-10/LVE-FR-04.
 
-## Q42 — maturity (chọn)
-Durable bounded job một lần/actor, effective_at=created_at+7 ngày, recheck held eligible facts as-of threshold và lifecycle/order fences; current rating được ghi nhận, growth burned cả lịch. OFF trước threshold không maturity; first real eligible ON sau threshold nếu chưa được ghi nhận có thể credit theo Q37. Không dùng processing time; no-op/race/replay không mất/nhân/hồi sinh; không network Identity. Kỳ chuyển tiếp Q33 độc lập tuần/tháng.
+Công thức
+- Q25 = 60:40, Q26 normalized log, Q27: R = 1000 + 400 × (0,6 × f(I) + 0,4 × f(C)) với
+  f(x) = ln(1 + x/10) / ln(1 + 100/10); k = 10 và reference = 100 cho mỗi thành phần
+  (formula_version 1). Không trần nghiệp vụ; kiểm biên số học. Xếp hạng theo điểm canonical chưa
+  làm tròn; hiển thị làm tròn half-up thành số nguyên đúng một lần. Thành viên chưa có ghi nhận hợp
+  lệ nhận đúng 1000; trạng thái unavailable/disabled khác 1000.
+- Q28: Điểm tăng trưởng là đơn vị cố định có dấu G = 2,4 × dI + 1,6 × dC, chính xác tới 0,1, có
+  version; không phải hiệu số rating.
+- Q29: Top 100 mỗi bảng; trang mặc định 20, tối đa 100; điểm canonical giảm dần, hòa thì PrincipalId
+  tăng dần.
+- Q24: hiệu chỉnh chỉ dùng dữ liệu tổng hợp/local; không đọc production hay số liệu tổng hợp thật
+  khi chưa có quyền riêng.
 
-## Q43 — Top Growth (chọn)
-Net weighted growth >0 AND >=3 distinct eligible actors mỗi actor có net-positive weighted community credit cho recipient trong kỳ, sau privacy/correction. Nhiều entitlement cùng actor chỉ count 1; unlike-only, zero, neutral/maturity/backfill/burned không count. Không expose actor IDs/count. Ngưỡng 3 là heuristic chưa có thực nghiệm, không bảo đảm k-anonymity/anti-collusion; test differencing. Không thêm gate cho Top Rating.
+Hiện hành và vòng đời
+- Q03 = B: điểm theo eligibility hiện hành; không decay ở V1.
+- Q13 = A: chuyển riêng tư, rút về, tác giả xóa hoặc admin gỡ nội dung đổi điểm hiện hành, không ghi
+  âm tăng trưởng cộng đồng; khôi phục không tạo tăng trưởng.
+- Q14 = A: đình chỉ actor không thu hồi Thấm/Ưng hợp lệ đã có; quyền nguồn vẫn chặn ghi mới.
+- Q20 = A/A: xóa tài khoản actor theo DEL-05 giảm điểm hiện hành của người nhận, không ghi âm tăng
+  trưởng; kỳ đã đóng giữ tổng chỉ khi privacy/deletion/correction cho phép.
+- Q21 = A: xóa tài khoản người nhận purge projection/index/cache cá nhân và loại khỏi mọi thống kê
+  công khai kể cả kỳ cũ; audit và fence hợp pháp tách riêng.
+- Q08 = A: đình chỉ toàn bộ người nhận ẩn điểm và loại khỏi mọi thống kê công khai kể cả kỳ cũ trong
+  thời gian đình chỉ; giữ facts hợp lệ, phục hồi không reset và không tạo tăng trưởng.
+- Q11 = A: người chỉ nhận Ưng vẫn có điểm và vào thống kê khi đủ điều kiện.
 
-## Q44 — snapshot (chọn có điều kiện correctness)
-Open top-k immutable snapshot generation/as_of, target 5–10 phút đo thực tế (không SLA); profile PK projection gần realtime. Closed top100+50 reserve/table/period, không dense member history; retain minimized ledger/checkpoint đủ exact as-of reconstruction toàn eligible population (kể cả member không biến động). Reserve chỉ optimization, không guarantee: >50 excluded, restore/outsider/correction đổi ordering hoặc thiếu candidates -> offline refill/rebuild từ toàn population, không false-complete/stale/unsafe. Nếu thiếu evidence mark incomplete/unavailable. Current privacy/standing/deletion gate trước limit/cursor, invalidate/withhold unsafe snapshot/cache ngay; cursor bound snapshot/version/visibility generation, reject/restart stale. Closed ordinary later score không đổi as-of-end; authoritative late/correction có version. Q15 retain 52 closed weeks/12 closed months + open; source/fence/audit retention tách, minimize/purge.
+Eligibility, trưởng thành và backfill
+- Q16 = B, Q30 = A: chỉ ghi nhận tương tác của actor có tuổi principal ≥ 7 × 24 giờ tính từ App
+  principals.created_at (UTC); không thêm contract hay lời gọi mạng tới Identity. Tương tác trước
+  ngưỡng vẫn hợp lệ ở nguồn.
+- Q42, Q31, Q37: tại created_at + 7 ngày, một job bền chạy một lần cho mỗi actor, ghi các tương tác
+  đang ON và còn hợp lệ vào điểm hiện hành (current-only; tăng trưởng của chúng burned ở cả tuần và
+  tháng). Tương tác đã OFF trước ngưỡng không được ghi; ON thật đầu tiên sau ngưỡng của entitlement
+  chưa từng được ghi nhận có thể tạo tăng trưởng. No-op/retry không phải ON mới; không dùng thời
+  điểm xử lý.
+- Q32 = B: chỉ chuyển trạng thái accepted có bằng chứng thứ tự và thời điểm (committed_version/order
+  và authority) mới vào lịch sử; không đếm receipt/no-op trực tiếp, không thay bằng updated_at hay
+  tuổi hiện tại. Không chứng minh được thì loại và ghi coverage.
+- Q18 = A, Q33 = A: backfill facts hợp lệ hiện hành vào điểm hiện hành; không dựng kỳ trước
+  activation. Kỳ tuần và kỳ tháng đầy đủ đầu tiên bắt đầu tại boundary riêng của mỗi lịch, không sớm
+  hơn lúc activation sẵn sàng; credit đang có tại boundary là baseline burned. Kỳ một phần không giả
+  đầy đủ hay bằng 0.
 
-Backend-only: PRD, Rust Domain/App, PostgreSQL, worker, read API, qualification. Design/Leptos Web/CMP tách epic. Không công khai runtime trước signoff và privacy/performance gate.
-OPEN_TECHNICAL: numeric log constants/precision qualification, source evidence/event-time order, retention/minimization, transactional schema, correction/rebuild, cursor/freshness and rollout. Comment edit deferred. No exact signoff or activation; do not reopen product choices absent conflicting evidence.
+Tăng trưởng theo kỳ
+- Q04 = A: tuần thứ Hai–Chủ nhật và tháng lịch theo Asia/Ho_Chi_Minh, khoảng [start, end); sự kiện
+  đúng end thuộc kỳ mới. Tuần và tháng độc lập, không cộng tuần ra tháng.
+- Q05 = B, Q07, Q12, Q36 = A, Q41: mỗi entitlement có hai máy trạng thái credit độc lập (tuần, tháng):
+  UNSEEN(0) → ACTIVE(1) với ON cộng đồng đủ điều kiện đầu tiên (+1);
+  ACTIVE → WITHDRAWN_PENDING(0) khi OFF tự nguyện lúc còn eligible (−1);
+  ON lại trong cùng kỳ rút → ACTIVE (+1 bù, không phải credit mới);
+  qua boundary vẫn OFF → BURNED(0, terminal); ON/OFF sau BURNED = 0.
+  Baseline/trước activation và held maturity vào thẳng BURNED (current-only).
+  Net credit mỗi kỳ ∈ {−1, 0, +1}; net trọn đời ∈ {0, 1} trước trọng số.
+- Sự kiện trung tính (riêng tư, rút về, ẩn, xóa, DEL-05, đổi công thức, maturity, backfill,
+  correction) không giả ON/OFF: ineligible tạm thời thì park credit, khôi phục không cấp mới; OFF khi
+  đang ineligible thì retire/burn không trừ; invalidation hoặc xóa terminal thì retire, không hồi
+  sinh. Privacy/deletion/correction đã xác minh có thể sửa lịch sử riêng và có version; không giữ tín
+  hiệu không an toàn chỉ để bảo toàn tăng trưởng.
+- Oracle: Thấm tuần 1 +1, bỏ tuần 2 −1, Thấm lại tuần 3 0, bỏ tuần 4 0; OFF và ON ở hai tuần khác
+  nhau của cùng tháng cho tháng net 0.
+- No-op, duplicate, retry, rollback, lệnh cũ và mất một anchor khi còn anchor hợp lệ không sinh
+  delta. Sự kiện đến muộn hoặc replay theo thứ tự của authority và coverage.
+
+Thống kê và snapshot
+- Q06 = A: điểm tổng và thống kê công khai cả với khách, chỉ cho hồ sơ đủ điều kiện; không mở quyền,
+  không ảnh hưởng ranking tác phẩm.
+- Q09 = A, Q10 = A: kỳ mở dùng snapshot hiện hành (as_of); kỳ đóng dùng điểm as-of end boundary,
+  không lấy đỉnh hay điểm hiện tại.
+- Q17 = A, Q43: Top Rating chỉ gồm người có ghi nhận hợp lệ (không chỉ baseline). Top Growth cần
+  G > 0 và ≥ 3 actor đủ điều kiện khác nhau, mỗi actor có net credit có trọng số dương cho người
+  nhận trong kỳ, sau privacy/correction. Nhiều entitlement của cùng actor tính một; không trả số actor
+  hay danh tính. Ngưỡng 3 là heuristic, không bảo đảm k-anonymity hay chống thông đồng. Top Rating
+  không có thêm gate này.
+- Q22: API top-k trong phạm vi; UI và design ngoài phạm vi.
+- Q44: snapshot top-k kỳ mở bất biến theo generation/as_of, mục tiêu 5–10 phút đo thực tế (không
+  SLA); điểm hồ sơ đọc projection theo khóa chính, gần realtime. Kỳ đóng lưu top 100 + 50 dự phòng
+  mỗi bảng, không lưu lịch sử dày từng thành viên; giữ ledger/checkpoint tối thiểu đủ dựng lại
+  chính xác as-of toàn bộ quần thể đủ điều kiện, kể cả thành viên không biến động. Hết dự phòng,
+  người ngoài được khôi phục hoặc correction đổi thứ tự thì dựng lại offline từ toàn quần thể;
+  thiếu bằng chứng thì đánh dấu incomplete/unavailable. Gate privacy/standing/deletion hiện hành
+  chạy trước limit/cursor; cursor gắn snapshot/version/visibility generation, cũ thì từ chối.
+- Q15 = A: giữ kỳ mở + 52 tuần + 12 tháng lịch đã đóng gần nhất; expiry theo boundary, cleanup
+  bounded, không giả 0 khi hết hạn hoặc không rõ. Retention nguồn/ledger/fence/audit tách riêng và
+  tối thiểu; privacy/deletion thắng retention.
+
+Correction và anti-abuse
+- Q34, Q38: chỉ operator CLI có thẩm quyền, theo từng anchor/entitlement hoặc tập actor–người nhận
+  xác định tại watermark (không cấm trước tương tác tương lai); chỉ tác động Reputation, số công
+  khai của nguồn giữ nguyên. Có bằng chứng, lý do, audit, dry-run rồi apply rõ ràng, idempotent, fence
+  invalidation và không hồi sinh. Tính lại điểm hiện hành và các kỳ còn giữ bị ảnh hưởng từ toàn quần
+  thể as-of, có correction revision; thiếu bằng chứng thì withhold. Không tự trừ vì report, không UI
+  admin, không tự phát hiện.
+- Q40 = A: ledger actor–người nhận tối thiểu + correction; không dashboard tập trung offline ở V1.
+
+Quy trình
+- Q35: #601 là REP-S01; sáu lát tuần tự S01..S06. Không công khai runtime trước signoff đúng
+  revision và gate privacy/performance.
 """
 rationale = """
-Nguồn: https://github.com/loveoverflowcom/vink/issues/600; lời chủ sản phẩm trong phiên review 27/11/2026:
+Nguồn: https://github.com/loveoverflowcom/vink/issues/600; lời chủ sản phẩm trong các lượt review:
 “EPIC #600 — Chốt sản phẩm lượt 1: Câu 1 = A, Câu 2 = A, Câu 3 = B. Ý kiến bổ sung: Có thống kê được các tác giả uy tín cao / tăng uy tín nhanh nhất trong tuần & tháng. Tiếp tục review các quyết định còn lại và chuẩn bị cập nhật SSOT.”
 “EPIC #600 — Chốt sản phẩm lượt 2: Câu 4 = A, Câu 5 = B, Câu 6 = A. Ý kiến bổ sung: Không có. Tiếp tục review và cập nhật SSOT.”
 “EPIC #600 — Chốt sản phẩm lượt 3: Câu 7 = A, Câu 8 = A, Câu 9 = A. Ý kiến bổ sung: Không có. Tiếp tục review và cập nhật SSOT trong PR #601.”
 “EPIC #600 — Chốt sản phẩm lượt 4: Câu 10 = A, Câu 11 = A, Câu 12 = A. Ý kiến bổ sung: Không có. Tiếp tục review và cập nhật SSOT trong PR #601.”
 “EPIC #600 — Chốt sản phẩm lượt 5: Câu 13 = A, Câu 14 = A, Câu 15 = A. Ý kiến bổ sung: Không có. Tiếp tục review và cập nhật SSOT trong PR #601.”
 “EPIC #600 — Chốt sản phẩm lượt 6: Câu 16 = B, Câu 17 = A, Câu 18 = A. Ý kiến bổ sung: Không có. Cập nhật SSOT trong PR #601 và chuyển sang review khoa học, công thức tính điểm.”
-28/11/2026 chủ sản phẩm: “Review lần cuối rồi tự đề xuất, tôi chấp nhận đề xuất bạn.” và “Log vào issue cũ hoặc mới và Pr đang có”. Q19..44 final review được ghi tại #600 và #601. Đây là chốt hướng nghiệp vụ, không phải signoff payload TOML exact revision/SHA-256; giữ PENDING.
+28/11/2026: “Review lần cuối rồi tự đề xuất, tôi chấp nhận đề xuất bạn.” và “Log vào issue cũ hoặc mới và Pr đang có”. Q19..Q44 là đề xuất cuối được ghi tại #600 và #601.
+SR-01 (docs/development/reputation-science.md) định lượng công thức trên dữ liệu tổng hợp: reference
+chỉ đổi thang hiển thị, k và trọng số đổi thứ hạng; xem bằng chứng tái lập được trong
+docs/development/evidence/reputation-sr01/. Các lời chọn trên là hướng nghiệp vụ; revision này giữ
+PENDING cho tới khi chủ sản phẩm signoff đúng revision và SHA-256.
 """
 requires = ["VDR-DECISION-SIGNOFF@r1"]
 related_ids = [
+    "COM-10",
     "DEL-05",
     "LVE-FR-01",
     "LVE-FR-04",
@@ -90,6 +155,7 @@ related_ids = [
     "REP-11",
     "REP-12",
     "REP-13",
+    "REP-14",
     "SAV-03",
     "SOC-PRIV-01",
 ]

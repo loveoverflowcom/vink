@@ -2,7 +2,7 @@
 
 ## Điểm Vink — Reputation (#600)
 
-[PRD §19](../../prd/requirements.md#19-điểm-vink-reputation-v1) · [đặc tả](../architecture/reputation.md) · [registry](reputation.md) · [API](../../services/vink-app/contracts/http/v1/reputation.md). Q01..44: Thấm/Ưng 60:40 log rating, Q41 fixed growth burn độc lập lịch, Q42 principal maturity 7d current-only, Top Growth >=3 net-positive actors, Q44 snapshot/reserve/exact rebuild, Q38 correction, Q15 retention, privacy fail closed. [SR-01](reputation-science.md). PENDING; runtime/evidence NOT_RUN. Backend-only, không đổi ranking tác phẩm/FE.
+[PRD §19](../../prd/requirements.md#19-điểm-vink-reputation-v1) · [đặc tả](../architecture/reputation.md) · [registry](reputation.md) · [SR-01](reputation-science.md) · [API dự thảo](../../services/vink-app/contracts/http/v1/reputation.md). Backend-only, `NOT_IMPLEMENTED`: hai proposal `PENDING`, sáu lát S01..S06. Kiểm hiện có: `cargo xtask decision validate` và script SR-01 tổng hợp; Quint/Kani/PostgreSQL/HTTP thuộc các lát sau.
 
 ## Semantic UI trên Web
 
