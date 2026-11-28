@@ -3384,38 +3384,64 @@ async function selectChevron(page) {
 }
 
 async function timestampPresentation(page) {
-  console.log('#213: real timezone conversion, no-JS fallback and hydration:');
-  const path=`${args.base}/tac-pham/${SAMPLE_WORK}`;
-  const html=await (await fetch(path)).text();
-  check(/<time[^>]*datetime="[^"]+"[^>]*>[^<]*UTC/.test(html), 'public SSR has a deterministic absolute instant with explicit UTC');
-  await page.send('Emulation.setScriptExecutionDisabled',{value:true});
+  const path = `${args.base}/tac-pham/${SAMPLE_WORK}`;
+  const selected = ".vk-work-byline__date time";
+  const html = await (await fetch(path)).text();
+  check(/<time[^>]*datetime="[^"]+"[^>]*>[^<]*UTC/.test(html), 'SSR gives a UTC label for the provider instant');
+  await page.send('Emulation.setScriptExecutionDisabled', {value:true});
   try {
     await page.goto(path);
-    check(await page.eval(`document.querySelector('.vk-work-byline__date time').textContent.includes('UTC')`), 'no-JS public byline retains the labelled UTC fallback');
-  } finally { await page.send('Emulation.setScriptExecutionDisabled',{value:false}); }
-  for (const zone of ['Pacific/Kiritimati','America/Los_Angeles']) {
-    await page.send('Emulation.setTimezoneOverride',{timezoneId:zone});
-    await page.goto(path);
-    await page.waitFor(`document.documentElement.dataset.hydrated==='true' && document.querySelector('.vk-work-byline__date time')?.textContent===new Intl.DateTimeFormat('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23',timeZoneName:'short'}).format(new Date(document.querySelector('.vk-work-byline__date time').dateTime))`, 'public local time after hydration');
-    const gate=new DraftGate(page);
-    const instants=['2026-11-01T23:30:00Z','2099-01-01T00:00:00Z','2026-02-30T08:30:00Z'];
-    gate.list={body:{drafts:instants.map((updated_at,i)=>({work_id:`88888888-8888-4888-8888-${String(i).padStart(12,'0')}`,title:'[Time] '+i,version:i+1,updated_at}))}};
-    await gate.enable();
-    try {
-      await page.goto(`${args.base}/ban-viet`);
-      await page.waitFor(`document.querySelectorAll('.vk-draft-row time').length===3`, 'timezone fixture');
-      check(await page.eval(`(() => {
-        const times=[...document.querySelectorAll('.vk-draft-row time')];
-        return times.every((t,i)=>t.dateTime===${JSON.stringify(instants)}[i] && t.title===t.dateTime) &&
-          times.slice(0,2).every(t=>t.textContent===new Intl.DateTimeFormat('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23',timeZoneName:'short'}).format(new Date(t.dateTime))) &&
-          times[2].textContent==='Thời gian không hợp lệ';
-      })()`), `${zone}: true conversion, future absolute time, invalid fallback and intact raw instant`);
-      check(await page.eval(`document.querySelector('.vk-draft-row time').textContent.includes('${zone==='Pacific/Kiritimati'?'02/11/2026':'01/11/2026'}')`), `${zone}: UTC-to-local day boundary`);
-      check(await page.eval(`(() => {const t=document.querySelector('.vk-draft-row time'), before=t.textContent, clock=Date.now; try {Date.now=()=>0; return t.textContent===before;} finally {Date.now=clock;}})()`), 'absolute display is independent of a relative/fake clock');
-      await page.capture(`time-${zone.replaceAll('/','-')}`,{scenario:'#213-absolute-device-zone',boundary:'Chrome Intl/device zone + synthetic draft instants'});
-    } finally { await gate.disable(); }
+    check(await page.eval(`document.querySelector('${selected}').textContent.includes('UTC')`), 'no-JS Reader keeps its labelled UTC time');
+  } finally { await page.send('Emulation.setScriptExecutionDisabled', {value:false}); }
+  const setup = await page.send('Page.addScriptToEvaluateOnNewDocument', {source:`{
+    window.testNow = Date.parse('2026-11-28T08:00:00Z');
+    Date.now = () => window.testNow;
+    const timers = window.minuteTimers = new Map();
+    const start = window.setInterval.bind(window), stop = window.clearInterval.bind(window);
+    window.setInterval = (fn, ms, ...args) => { const id = start(fn,ms,...args); if(ms===60000) timers.set(id,fn); return id; };
+    window.clearInterval = id => { timers.delete(id); stop(id); };
+  }`});
+  const event = '2026-11-27T18:30:00Z';
+  const stamps = [event, '2026-11-28T07:59:01Z','2099-01-01T00:00:00Z','2026-02-30T08:30:00Z','2026-11-28T07:59:01'];
+  try {
+    for (const [zone, expected, future] of [['Asia/Ho_Chi_Minh','13 giờ trước','07:00, 01/01/2099'],['America/Los_Angeles','Hôm qua','16:00, 31/12/2098']]) {
+      await page.send('Emulation.setTimezoneOverride',{timezoneId:zone});
+      await page.goto(path);
+      await page.waitFor(`document.documentElement.dataset.hydrated==='true' && document.querySelector('${selected}')?.title.includes('GMT')`, 'local Reader after hydration');
+      const button = '.vk-work-byline__date button';
+      await page.eval(`document.querySelector('${button}').focus()`);
+      await page.key('Enter');
+      check(await page.eval(`document.querySelector('${selected}').textContent===document.querySelector('${selected}').title && !document.querySelector('${button}').closest('a')`), 'keyboard reveals the exact instant outside the author link');
+      await page.key('Escape');
+      check(await page.eval(`document.activeElement===document.querySelector('${button}') && document.activeElement.getAttribute('aria-pressed')==='false'`),'Escape keeps focus on the timestamp');
+      const gate = new DraftGate(page);
+      gate.list = {body:{drafts:stamps.map((updated_at,i)=>({work_id:`88888888-8888-4888-8888-${String(i).padStart(12,'0')}`,title:'[Time] '+i,version:i+1,updated_at}))}};
+      await gate.enable();
+      try {
+        await page.goto(`${args.base}/ban-viet`);
+        const row = i => `document.querySelectorAll('.vk-draft-row')[${i}]`;
+        const time = i => `${row(i)}?.querySelector('time')`;
+        await page.waitFor(`${time(0)}?.textContent===${JSON.stringify(expected)} && ${time(1)}?.textContent==='Vừa xong'`, 'viewer calendar fixture');
+        check(await page.eval(`${time(0)}.dateTime===${JSON.stringify(event)} && ${time(2)}.textContent===${JSON.stringify(future)} && [3,4].every(i=>{const r=document.querySelectorAll('.vk-draft-row')[i];return !r.querySelector('time[datetime]') && r.textContent.includes('Thời gian không hợp lệ')})`), `${zone}: preserved source, future absolute time, invalid and naive input`);
+        const requests = gate.requests.length;
+        await page.eval(`${row(0)}.querySelector('a').focus(); window.originalRow=${row(0)}; window.testNow+=61000; for (const tick of minuteTimers.values()) tick()`);
+        await page.waitFor(`${time(1)}.textContent==='2 phút trước'`, 'one shared minute tick updates the label');
+        check(await page.eval(`minuteTimers.size===1 && originalRow===${row(0)} && originalRow.contains(document.activeElement)`) && gate.requests.length === requests,'idle tick retains row, focus and data without another GET');
+        await page.click('.vk-time-list-toggle');
+        await page.waitFor(`${time(0)}.textContent===${time(0)}.title`, 'list disclosure provides full time outside the editor link');
+        await page.key('Escape');
+        await page.eval("Object.defineProperty(document,'visibilityState',{configurable:true,value:'hidden'}); document.dispatchEvent(new Event('visibilitychange'))");
+        await page.waitFor('minuteTimers.size===0','hidden stops the presentation timer');
+        await page.send('Emulation.setTimezoneOverride',{timezoneId:zone==='America/Los_Angeles'?'Asia/Ho_Chi_Minh':'America/Los_Angeles'});
+        await page.eval("delete document.visibilityState; document.dispatchEvent(new Event('visibilitychange'))");
+        const resumed = expected==='Hôm qua'?'13 giờ trước':'Hôm qua';
+        await page.waitFor(`minuteTimers.size===1 && ${time(0)}.textContent===${JSON.stringify(resumed)}`, 'resume observes a new device zone');
+      } finally { await gate.disable(); }
+    }
+  } finally {
+    await page.send('Page.removeScriptToEvaluateOnNewDocument',{identifier:setup.identifier});
+    await page.send('Emulation.setTimezoneOverride',{timezoneId:''});
   }
-  await page.send('Emulation.setTimezoneOverride',{timezoneId:''});
 }
 
 async function draftR6Hierarchy(page) {
@@ -6850,8 +6876,7 @@ async function discussionR5Geometry(page, width, scale, scenario) {
         bylineRight: identity.parentElement.getBoundingClientRect().right };
     };
     const time = root.querySelector('time');
-    const relative = time.querySelector('[aria-hidden=true]');
-    const absolute = time.querySelector('.vk-ui-visually-hidden');
+    const disclosure = time.closest('button');
     const rect = e => { const r=e.getBoundingClientRect(); return {left:r.left, right:r.right}; };
     const controls = [...pattern.querySelectorAll('.vk-ui-toggle__control')];
     const luminance = color => {
@@ -6906,8 +6931,8 @@ async function discussionR5Geometry(page, width, scale, scenario) {
       surface:getComputedStyle(composer).backgroundColor,
       bodyDistinct:getComputedStyle(nameEl).fontFamily!==getComputedStyle(body).fontFamily
         && Number(getComputedStyle(nameEl).fontWeight)>Number(getComputedStyle(body).fontWeight),
-      time:!Number.isNaN(Date.parse(time.dateTime)) && absolute?.textContent===time.title
-        && !!relative?.textContent.trim() && relative.textContent!==time.title,
+      time:!Number.isNaN(Date.parse(time.dateTime)) && disclosure?.getAttribute('aria-label')?.includes(time.title)
+        && !!time.textContent.trim() && time.textContent!==time.title,
       rootSeg48:[rootEndorse, rootReply].every(b=>{const r=b.getBoundingClientRect();return r.width>=48 && r.height>=48;}),
       buttons:[...thread.querySelectorAll('button')].filter(b=>b.checkVisibility()).every(b=>{const r=b.getBoundingClientRect();return r.width>=44 && r.height>=44 && r.left>=0 && r.right<=innerWidth+1;})};
   })()`);
@@ -7146,6 +7171,24 @@ try {
   }
   else if (args.phase === 'discussion') await discussionPhase(page);
   else if (args.phase === 'appearance-shell') await appearanceShellPhase(page);
+  else if (args.phase === 'reader-saved-time') {
+    await page.viewport(1440, 900);
+    await page.send('Emulation.setTimezoneOverride', {timezoneId:'Asia/Ho_Chi_Minh'});
+    await page.send('Emulation.setEmulatedMedia', {features:[LIGHT_SYSTEM]});
+    await page.send('Page.addScriptToEvaluateOnNewDocument', {source:"Date.now = () => Date.parse('2026-11-29T00:00:00Z')"});
+    await page.goto(args.base + '/tac-pham/' + SAMPLE_WORK);
+    const saved = "document.querySelector('#save-work')";
+    await page.waitFor(saved + "?.hasAttribute('aria-pressed') && " + saved + ".getAttribute('aria-busy') !== 'true'", 'fixture membership');
+    if (await page.eval(saved + ".getAttribute('aria-pressed') === 'false'")) {
+      await page.click('#save-work');
+      await page.waitFor(saved + ".getAttribute('aria-pressed') === 'true'", 'saved Reader');
+      await page.reload();
+    }
+    await page.waitFor(saved + "?.getAttribute('aria-pressed') === 'true'", 'saved state after navigation');
+    await page.eval("scrollTo(0, 0)");
+    await page.capture('reader-saved-time', {scenario:'#619', target:'.vk-work-byline__date'});
+    console.log(await page.eval("({label:document.querySelector('.vk-work-byline__date time').innerText,instant:document.querySelector('.vk-work-byline__date time').dateTime,zone:Intl.DateTimeFormat().resolvedOptions().timeZone,now:Date.now()})"));
+  }
   else if (args.phase === 'desk') await deskPhase(page);
   else if (args.phase === 'editor') {
     await editorPhase(page);
@@ -7161,7 +7204,7 @@ try {
     await markdownReader(page, { args, check, textContrast });
   }
   else if (args.phase === 'auth') await authWeb(page, { args, check, openPage: (isolated) => openPage(cdp, isolated) });
-  else if (args.phase === 'notifications') await notifications(page, { args, check,
+  else if ((args.phase === 'notifications' || args.phase === 'notification-time')) await notifications(page, { args, check,
     checkBottomNavigation: async (page, route, scene) => {
       await bottomNavigationAnatomy(page, route, scene, true, eligibleBottomRoutes);
       await bottomNavigationAlignment(page, scene, 'Tài khoản', eligibleBottomRoutes);
@@ -7193,6 +7236,7 @@ try {
   else if (args.phase === 'desk-empty') await deskEmptyState(page, {args,check,DraftGate,textContrast});
   else if (args.phase === 'desk-guest' || args.phase === 'desk-guest-open') await deskGuest(page, {args,check}, args.phase === 'desk-guest-open');
   else if (args.phase === 'desk-empty-context') { await draftDashboard(page); await deskEmptyState(page, {args,check,DraftGate,textContrast}); }
+  else if (args.phase === 'timestamp') await timestampPresentation(page);
   else if (args.phase === 'desk-layout') { await draftDashboard(page); await draftR6Hierarchy(page); await timestampPresentation(page); await publicReading(page); }
   else if (args.phase === 'bottom-navigation') await bottomNavigationRegression(page);
   else if (args.phase === 'appearance') await adaptiveShell(page);

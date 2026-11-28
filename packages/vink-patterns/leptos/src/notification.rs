@@ -29,7 +29,7 @@ pub struct NotificationRowFacts {
     pub title: String,
     /// The authorized root/reply text and whether the adapter truncated it.
     pub excerpt: Option<(String, bool)>,
-    pub revision_label: Option<String>,
+    pub revision_instant: Option<String>,
     pub time_label: String,
     pub time_instant: Option<String>,
     pub action_required: bool,
@@ -50,10 +50,9 @@ impl NotificationRowFacts {
         if let Some(excerpt) = excerpt {
             parts.push(format!("Trích: {excerpt}"));
         }
-        if let Some(revision) = &self.revision_label {
-            parts.push(revision.clone());
+        if !self.time_label.is_empty() {
+            parts.push(self.time_label.clone());
         }
-        parts.push(self.time_label.clone());
         if self.action_required {
             parts.push("Cần xử lý".to_string());
         }
@@ -83,6 +82,7 @@ pub fn NotificationGroup(
 #[component]
 pub fn NotificationRow(
     facts: NotificationRowFacts,
+    #[prop(optional)] description_id: Option<String>,
     #[prop(optional)] on_activate: Option<Callback<MouseEvent>>,
 ) -> impl IntoView {
     let excerpt = facts
@@ -90,6 +90,7 @@ pub fn NotificationRow(
         .as_ref()
         .map(|(text, truncated)| format!("“{text}{}”", if *truncated { "…" } else { "" }));
     let name = facts.accessible_name(excerpt.as_deref());
+    let time_id = description_id.clone().unwrap_or_default();
     let leading = match facts.leading {
         NotificationLeading::People { people, glyph } => {
             let actors = if people.len() > 1 {
@@ -125,6 +126,7 @@ pub fn NotificationRow(
                 class="vk-notif-row__link"
                 href=facts.href
                 aria-label=name
+                aria-describedby=description_id
                 data-vink-managed-navigation=on_activate.is_some().then_some("")
                 on:click:capture=move |event| {
                     if let Some(activate) = on_activate {
@@ -141,8 +143,11 @@ pub fn NotificationRow(
                     <span class="vk-notif-row__title">{facts.title}</span>
                     {excerpt.map(|text| view! { <span class="vk-notif-row__excerpt">{text}</span> })}
                     <span class="vk-notif-row__meta">
-                        {facts.revision_label.map(|revision| view! { <span>{revision}" ·"</span> })}
-                        <time datetime=facts.time_instant>{facts.time_label}</time>
+                        {facts.revision_instant.map(|instant| view! { <span>"Bản " <crate::Timestamp instant mode=crate::TimeMode::Date /> " ·"</span> })}
+                        {match facts.time_instant {
+                            Some(instant) => view! { <crate::Timestamp instant description_id=time_id /> }.into_any(),
+                            None => facts.time_label.into_any(),
+                        }}
                         {facts.action_required.then(|| view! {
                             <span class="vk-notif-row__chip">"Cần xử lý"</span>
                         })}

@@ -473,6 +473,40 @@ async function inboxSessionStates(page, { args, check }, controlled) {
   await page.goto(args.base + '/');
 }
 
+async function notificationTime(page, {args,check}, controlled) {
+  const {rows, calls, state} = controlled;
+  const saved = rows.map(r => r.updated_at);
+  const pageSize = state.pageSize;
+  state.pageSize = rows.length;
+  const stamps = ['2026-11-28T07:50:00Z','2026-11-27T18:30:00Z','invalid','2026-12-02T08:00:00Z'];
+  stamps.forEach((t,i)=>rows[i].updated_at=t);
+  // LA 23:59 → 00:01. Drive only the real presentation timer; transport timers keep their cadence.
+  const setup = await page.send('Page.addScriptToEvaluateOnNewDocument',{source:`{
+    window.testNow = Date.parse('2026-11-28T07:59:00Z'); Date.now = () => testNow;
+    const start = window.setInterval.bind(window);
+    window.setInterval = (fn,ms,...args) => {if(ms===60000) window.minuteTick=fn;return start(fn,ms,...args);};
+  }`});
+  try {
+    await page.send('Emulation.setTimezoneOverride',{timezoneId:'America/Los_Angeles'});
+    await page.goto(args.base+'/thong-bao');
+    const list='main .vk-notif-group__list';
+    await page.waitFor(`document.querySelector('${list}')?.textContent.includes('9 phút trước') && document.querySelector('${list}').textContent.includes('Chưa rõ thời gian')`, 'valid, invalid and future inbox groups');
+    check(await page.eval(`document.querySelector('${list}').textContent.includes('Sắp tới') && !document.querySelector('${list} [datetime="invalid"]')`),'unknown and future instants have distinct groups');
+    const reads = calls.filter(c=>c.path===inbox || c.method==='POST').length;
+    await page.eval(`window.targetNotice=document.querySelector('${list} a'); targetNotice.focus({preventScroll:true}); window.testNow+=120000; minuteTick()`);
+    await page.waitFor(`targetNotice.querySelector('time:last-of-type') && targetNotice.innerText.includes('11 phút trước') && !document.querySelector('${list}').innerText.includes('Hôm nay')`, 'midnight regroups existing rows without a reload');
+    check(await page.eval(`document.activeElement===targetNotice && targetNotice.isConnected`) && calls.filter(c=>c.path===inbox || c.method==='POST').length===reads,'rollover retains focus and sends no inbox read, Seen or Read');
+    const ax=await page.send('Accessibility.getFullAXTree');
+    check(ax.nodes.some(n=>n.role?.value==='link' && n.description?.value?.includes('GMT-08:00')),'Chrome AX describes the linked notification with the full local time and offset');
+    await page.click('main .vk-time-list-toggle');
+    check(await page.eval(`targetNotice.innerText.includes('GMT-08:00') && !targetNotice.querySelector('button')`),'the list disclosure exposes the correct exact instant without activating the notice');
+  } finally {
+    saved.forEach((t,i)=>rows[i].updated_at=t); state.pageSize=pageSize;
+    await page.send('Page.removeScriptToEvaluateOnNewDocument',{identifier:setup.identifier});
+    await page.send('Emulation.setTimezoneOverride',{timezoneId:''});
+  }
+}
+
 export async function notifications(page, { args, check, checkBottomNavigation, checkSafeArea }) {
   const controlled = await fixture(page);
   const { state, calls, held } = controlled;
@@ -498,6 +532,9 @@ export async function notifications(page, { args, check, checkBottomNavigation, 
     return;
   }
 
+  await notificationTime(page, {args,check}, controlled);
+  if (args.phase === "notification-time") return;
+  state.seen = 0; calls.length = 0;
   await inboxSessionStates(page, { args, check }, controlled);
   // Keep the original popover assertions scoped to the fresh shell.
   calls.length = 0;

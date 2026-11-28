@@ -886,7 +886,7 @@ fn DraftListView(
                     </div>
                 }
             })}
-            <ul id="draft-results" class="vk-draft-rows grid gap-vk-3 p-0 [list-style:none] empty:hidden" aria-label="Tác phẩm đã tải" role="list">
+            <vink_patterns::TimeList show=Signal::derive(move || pages.with(|p| !p.drafts.is_empty()))><ul id="draft-results" class="vk-draft-rows grid gap-vk-3 p-0 [list-style:none] empty:hidden" aria-label="Tác phẩm đã tải" role="list">
                 <For each=move || pages.with(|p| p.drafts.clone())
                     key=|draft| draft.work_id.clone()
                     children=move |draft| {
@@ -908,7 +908,7 @@ fn DraftListView(
                             </li>
                         }
                     } />
-            </ul>
+            </ul></vink_patterns::TimeList>
             <div id="draft-continuation" class="vk-draft-continuation">
                 <Show when=move || page_error.get().is_some()>
                     <div id="draft-page-error" role="alert">

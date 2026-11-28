@@ -122,7 +122,9 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
 #[component]
 pub fn App() -> impl IntoView {
     provide_meta_context();
-    vink_ui::provide_motion_activity(vink_ui::document_visibility());
+    let visible = vink_ui::document_visibility();
+    vink_ui::provide_motion_activity(visible);
+    vink_patterns::provide_display_clock(visible);
     #[cfg(feature = "hydrate")]
     mark_hydrated();
     navigation::NavigationGuard::provide();

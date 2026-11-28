@@ -98,8 +98,10 @@ Overlay #notif-popover — dialog modal (OverlayLayer), neo #bell (đỉnh thẳ
       IconButton #pop-close "Đóng thông báo" (48)
     Region #pop-body — cuộn riêng, đệm 6/8/8
       Ghi chú ngoại tuyến hoặc lỗi đếm; “Thử lại” chỉ hiện khi số đếm cũ hoặc chưa tải được
-      Region #groups — NotificationGroup × (Hôm nay | 7 ngày qua | Cũ hơn)
-        List #list — NotificationRow × n
+      List #groups — hàng có key ổn định, tiêu đề ngày xen giữa theo lịch thiết bị
+        Hôm nay | 7 ngày qua | Cũ hơn; Sắp tới hoặc Chưa rõ thời gian nếu cần
+        NotificationRow × n
+      Toggle “Ngày giờ đầy đủ” sau danh sách
       Region #state — Skeleton | StatePanel(empty) | thông báo lỗi trên nền chung + Button “Thử lại”
       Region #load-more — Xem thêm | Chưa tải thêm được + Thử lại
     Link #pop-more "Mở trang Thông báo →" (khi còn next_cursor)
@@ -115,6 +117,7 @@ States: tải, trống, 503, stale, offline, tải thêm lỗi, đang đánh d�
 Interaction: mở → tải trang đầu → Seen(snapshot) → xác minh lại badge, dòng vẫn chưa đọc; bấm dòng → Read rồi tới đích;
   Double Check gửi MarkAllRead theo snapshot. Trạng thái chưa đọc giữ đến khi đọc lại.
   Tooltip và tên truy cập cùng dùng "Đánh dấu tất cả là đã đọc". Glyph 24 và vùng chạm ≥48 CSS px, nền trong suốt.
+  [Đồng hồ trình bày](human-time.md) cập nhật nhãn và nhóm ngày trong danh sách đang mở.
   Số mới cập nhật trên chuông. Lần mở kế tiếp lấy trang đầu mới. Danh sách đang mở giữ thứ tự, vị trí cuộn và mốc Seen.
   scale .92 → 1 (320 ms, ease.spatial); reduced-motion: hiện ngay
 Accessibility: role=dialog aria-modal aria-labelledby=#pt; danh sách ul/li, mỗi dòng một link

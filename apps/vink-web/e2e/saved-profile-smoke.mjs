@@ -1,4 +1,4 @@
-import { STANDING, cookies, fill, q, signOut } from './auth-smoke.mjs';
+import { STANDING, cookies, fabricate, fill, q, signOut } from './auth-smoke.mjs';
 import { captureRequest, holdAnswer } from './auth-browser-network.mjs';
 import { matchesAXButton } from './visual-evidence.mjs';
 
@@ -61,6 +61,27 @@ export async function savedProfileJourney(page, { args, check, ssr = false, lost
   check(list.status === 200 && list.cache === 'private, no-store' && list.body.items.some(row => row.work_id === WORK)
     && !('total' in list.body) && await page.eval(`${q('#profile-modes [aria-current=page]')}?.textContent.trim() === 'Đã lưu'`),
     '#389 owner list response is no-store and has no total, and navigation marks the current page');
+
+  // Replace only saved_at on the real membership response to distinguish calendar zones.
+  const sample = structuredClone(list.body);
+  sample.items.find(r => r.work_id === WORK).saved_at = '2026-11-27T18:30:00Z';
+  const release = await fabricate(page, 'GET', LIST, 200, sample);
+  const frozen = await page.send('Page.addScriptToEvaluateOnNewDocument',{source:"Date.now = () => Date.parse('2026-11-28T08:00:00Z')"});
+  try {
+    for (const [zone, label] of [['Asia/Ho_Chi_Minh','13 giờ trước'],['America/Los_Angeles','Hôm qua']]) {
+      await page.send('Emulation.setTimezoneOverride',{timezoneId:zone});
+      await page.goto(base + path);
+      const time = `document.querySelector('#saved-row-${WORK} time')`;
+      await page.waitFor(`${time}?.textContent === ${JSON.stringify(label)}`, 'saved_at in viewer calendar');
+      check(await page.eval(`${time}.dateTime==='2026-11-27T18:30:00Z' && !${time}.closest('a')`), zone + ' Saved keeps its own authoritative instant');
+    }
+  } finally {
+    await release();
+    await page.send('Page.removeScriptToEvaluateOnNewDocument',{identifier:frozen.identifier});
+    await page.send('Emulation.setTimezoneOverride',{timezoneId:''});
+    await page.goto(base + path);
+    await page.waitFor(q(open), 'return to actual membership');
+  }
 
   async function chooseMode(mode) {
     const wide = '#profile-mode-' + mode;

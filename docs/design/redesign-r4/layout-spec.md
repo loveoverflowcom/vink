@@ -106,7 +106,7 @@ Tham chiếu là hướng bố cục đã chọn trong #521. LayoutSpec R4.3 gi�
   Giữ mặt nền ô nhập và các trạng thái hover, pressed, focus-visible,
   forced-colors và reduced motion. [Search R5 #621](../search-r5.md#delta-khám-phá-621)
   quy định search pill và trạng thái không tìm thấy tác phẩm.
-- Một hàng/thẻ dùng thể loại và ngày công khai đầu (Asia/Ho_Chi_Minh khi xác định được), nhan đề,
+- Một hàng/thẻ dùng thể loại và ngày công khai đầu (ngày lịch thiết bị khi xác định được mốc đầu công khai), nhan đề,
   trích đoạn và byline với avatar tròn. Dòng thông tin dùng tertiary.
 - [#603](https://github.com/loveoverflowcom/vink/issues/603) thay phần lọc Web của DQ-07/10.
   Cuối hàng tab Tất cả có một IconButton Standard dùng FilterList. Khi thiếu chỗ, nút xuống hàng
@@ -186,7 +186,7 @@ chưa bắt đầu hoặc chưa tải được; bài riêng tư/ẩn giữ số 
 Thấm/Nhận xét chỉ hiển thị khi có bản công khai. Theo delta `D-02` (#323/#514), **bỏ hẳn** liên kết
 “Đọc” / “Đọc bản công khai” khỏi thẻ tác phẩm Bàn viết (không có nút, vùng giữ chỗ hay tab stop
 thay thế); giữ liên kết mở bản thảo của hàng. DQ-05 (giờ) và DQ-10 (dùng tertiary cho “Chờ duyệt”)
-vẫn `OPEN`: giữ giờ theo #213 và dùng `secondary-container` (không dùng tertiary) cho nhóm chờ duyệt.
+vẫn `OPEN` trong #410. Phần trình bày giờ áp dụng [chính sách Web #619](../human-time.md). Nhóm chờ duyệt tiếp tục dùng `secondary-container`.
 Xem [LayoutSpec Lượt xem r3](../work-views.md) và [delta R4.4](desk-moderation.md) cho chi tiết
 kiểm duyệt mở từ thẻ có ngữ cảnh.
 

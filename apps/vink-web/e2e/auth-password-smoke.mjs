@@ -1147,7 +1147,16 @@ export async function standalone(page, {args, check, openPage}) {
   const html = await documentResponse.text();
   check(documentResponse.ok && html.includes('<noscript>') && !html.includes(line),
     'direct Reader response is the static shell with the no-JS notice');
+  await page.send('Emulation.setTimezoneOverride',{timezoneId:'Pacific/Kiritimati'});
+  const pinned = await page.send('Page.addScriptToEvaluateOnNewDocument',{source:"Date.now = () => Date.parse('2099-01-01T00:00:00Z')"});
   await page.goto(reader);
+  await page.waitFor(`document.querySelector('.vk-work-byline__date time')?.title.includes('GMT+14:00')`, 'standalone viewer-local time');
+  check(await page.eval(`(() => {
+    const t=document.querySelector('.vk-work-byline__date time');
+    return t.textContent===new Intl.DateTimeFormat('vi-VN',{timeZone:'Pacific/Kiritimati'}).format(new Date(t.dateTime));
+  })()`), 'CSR renders the first public instant in the pinned viewer calendar');
+  await page.send('Page.removeScriptToEvaluateOnNewDocument',{identifier:pinned.identifier});
+  await page.send('Emulation.setTimezoneOverride',{timezoneId:''});
   await page.waitFor(`document.querySelector('.vk-document')?.textContent.includes(${JSON.stringify(line)})`,
     'Reader text from the scratch publication API');
   check(await page.eval(`performance.getEntriesByType('resource').some(e => new URL(e.name).pathname === '/api/v1/works/${work}/reader')`),

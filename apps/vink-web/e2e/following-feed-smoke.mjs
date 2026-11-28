@@ -353,7 +353,7 @@ export async function followingFeed(control, other, {base, openPage, check, hold
   await page.goto(base + FEED);
   await page.waitFor(`${ROWS}===12 && ${q('#feed-load-more')}`, 'direct reload reads the current Feed after republishing');
   const workFacts = await page.eval(`Array.from(document.querySelectorAll('#following-cards > li'), row => ({
-    id: row.dataset.workId, date: row.querySelector('time')?.dateTime,
+    zone: Intl.DateTimeFormat().resolvedOptions().timeZone, id: row.dataset.workId, date: row.querySelector('time')?.dateTime,
     label: row.querySelector('time')?.textContent, excerpt: row.querySelector('.vk-public-row__excerpt')?.textContent,
     space: getComputedStyle(row.querySelector('.vk-public-row__excerpt')).whiteSpace,
     metadata: row.querySelector('.vk-public-row__eyebrow')?.contains(row.querySelector('time')) &&
@@ -363,7 +363,7 @@ export async function followingFeed(control, other, {base, openPage, check, hold
     JSON.stringify(workFacts.map(row => row.id)) === JSON.stringify(expected.slice(0, 12).map(row => row.id)) &&
     workFacts.every((row, i) => row.metadata && Date.parse(row.date) === Date.parse(expected[i].first) &&
       Date.parse(row.date) !== Date.parse(expected[i].pointer) &&
-      row.label === new Intl.DateTimeFormat('vi-VN', {timeZone: 'Asia/Ho_Chi_Minh'}).format(new Date(row.date)) &&
+      row.label === new Intl.DateTimeFormat('vi-VN', {timeZone: row.zone}).format(new Date(row.date)) &&
       row.excerpt.includes('\nGió khuya lay giàn hoa.\n\n') && row.space === 'pre-wrap'),
     'PG exact facts drive order and dates after re-Follow and repost; poem lines and stanza are preserved');
   await layout(page, check, textContrast);

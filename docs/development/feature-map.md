@@ -234,7 +234,7 @@ rằng một vùng điều hướng có đúng một bộ link theo thứ tự T
 dock mở bằng nút hoặc “/” (không khi đang gõ ô khác), Escape/← đóng, bỏ chữ chưa gửi, trả focus về nút,
 giữ IME, SSR `/?q=…` mở sẵn dock với `q` và đóng bằng `#close-public-search`/Escape (trên desktop lẫn mobile, có hoặc không có `tag`) điều hướng về URL bỏ `q`/cursor và giữ thẻ đã áp dụng (#427 AC-03). Thẻ Khám phá R4.2 (#405, DQ-08/DQ-09): thẻ rời `bg-content`
 bo 20 cách 8 px (cả Tất cả, Đang theo dõi và chế độ Tác giả), dòng `Thể loại · ngày công khai đầu`
-màu `tertiary` theo múi giờ `Asia/Ho_Chi_Minh` ở mọi chế độ, giữ avatar tròn (#352), khách ở
+màu `tertiary` theo [ngày lịch của người xem](../design/human-time.md) ở mọi chế độ, giữ avatar tròn (#352), khách ở
 Đang theo dõi có nút filled “Đăng nhập”, không kết quả nhắc từ khóa kèm lối “Tìm tác giả “q””.
 
 [#522](https://github.com/loveoverflowcom/vink/issues/522) căn Search, Select và CTA trong header

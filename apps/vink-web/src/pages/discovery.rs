@@ -11,7 +11,7 @@ use crate::ui::search_dock::{SearchDockBack, SearchDockLauncher};
 use crate::ui::{
     adapters,
     empty_state::{EmptyArtwork, EmptyState},
-    patterns::{AuthorIdentity, TagChip, TagFacts, first_public_date_hcm},
+    patterns::{AuthorIdentity, TagChip, TagFacts},
 };
 use leptos::prelude::*;
 use leptos_meta::{Link, Meta, Title};
@@ -1158,10 +1158,10 @@ fn PublicResults(context: ExploreContext, live: public_reads::Live<WorkList>) ->
                                 <p class="[font-size:var(--vk-type-caption-size)] vk-muted vk-public-scope" class:vk-ui-visually-hidden=!show_inline_scope role="status" aria-atomic="true">
                                     {move || format!("Trang này: {} tác phẩm", works.read().len())}
                                 </p>
-                                <ul class=EXPLORE_WORK_LIST_CLASS role="list">
+                                <vink_patterns::TimeList><ul class=EXPLORE_WORK_LIST_CLASS role="list">
                                     <For each=move || works.with(|works| works.iter().map(|work| work.work_id.clone()).collect::<Vec<_>>()) key=Clone::clone
                                         children=move |work_id| view! { <ResultRow work_id data cached_unverified context=context.clone() /> } />
-                                </ul>
+                                </ul></vink_patterns::TimeList>
                             }.into_any()
                         }}
                         <nav class="vk-public-pagination flex-wrap gap-vk-4 [margin-block:var(--vk-space-6)]" aria-label="Trang kết quả">
@@ -1242,12 +1242,10 @@ fn WorkCardRow(
                 let excerpt = work.excerpt.clone();
                 #[cfg(feature = "browser")]
                 let following = context.mode == ExploreMode::Following;
-                // R4.2 (#405, DQ-08): show first-public date in Asia/Ho_Chi_Minh across all modes.
-                let date = work.first_published_at.as_deref().and_then(|instant| {
-                    first_public_date_hcm(instant).map(|label| view! {
-                        <time class="vk-feed-date" datetime=instant.to_owned() title="Công khai lần đầu">{label}</time>
-                    })
-                });
+                let date = work.first_published_at.as_ref()
+                    .filter(|s| vink_patterns::timestamp_millis(s).is_some())
+                    .map(|instant| view! { <vink_patterns::Timestamp class="vk-feed-date" context="Công khai lần đầu"
+                        instant=instant.clone() mode=vink_patterns::TimeMode::Date /> });
                 let separate_metadata = primary_tag.is_some() && date.is_some();
                 #[cfg(feature = "browser")]
                 let author_return = work.work_id.clone();
@@ -1652,7 +1650,7 @@ mod tests {
         assert!(
             home_html.contains(" · ")
                 && home_html.contains("datetime=\"2026-10-28T18:00:00Z\"")
-                && home_html.contains(">29/10/2026</time>"),
+                && home_html.contains(">28/10/2026, 18:00 UTC</time>"),
             "DQ-08 first-public date renders on Tất cả SSR: {home_html}"
         );
         assert!(!home_html.contains("<mark"), "{home_html}");

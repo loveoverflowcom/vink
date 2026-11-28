@@ -135,12 +135,9 @@ pub(super) fn refresh(session: Session) {
 }
 
 fn challenge_expiry(response: crate::contract::ChallengeSent) -> Result<Reply, AuthError> {
-    let at = js_sys::Date::parse(&response.expires_at);
-    if at.is_finite() {
-        Ok(Reply::Challenge(at as Millis))
-    } else {
-        Err(AuthError::Unexpected { status: 202 })
-    }
+    vink_patterns::timestamp_millis(&response.expires_at)
+        .map(Reply::Challenge)
+        .ok_or(AuthError::Unexpected { status: 202 })
 }
 
 fn accepted_session(state: crate::contract::SessionState) -> Result<Reply, AuthError> {

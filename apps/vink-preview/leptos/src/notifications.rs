@@ -193,7 +193,7 @@ fn people_row(item: &Value, glyph: IconName, action: &str) -> NotificationRowFac
         title: string(&item["target"]["work_title"]).unwrap_or_default(),
         excerpt: string(&item["excerpt"]["text"])
             .map(|text| (text, item["excerpt"]["truncated"] == true)),
-        revision_label: None,
+        revision_instant: None,
         time_label: "2 giờ".into(),
         time_instant: string(&item["updated_at"]),
         action_required: item["summary"]["action_required"] == true,
@@ -230,8 +230,7 @@ fn decision_row(item: &Value, unread: bool) -> NotificationRowFacts {
         action: action.into(),
         title: string(&item["work_title"]).unwrap_or_else(|| "Tác phẩm không còn hiển thị".into()),
         excerpt: None,
-        revision_label: (item["kind"] == "work_moderation_decision")
-            .then(|| "Bản 20 tháng 11".into()),
+        revision_instant: string(&item["revision_created_at"]),
         time_label: "2 giờ".into(),
         time_instant: string(&item["decided_at"]),
         action_required: item["action_required"] == true,
