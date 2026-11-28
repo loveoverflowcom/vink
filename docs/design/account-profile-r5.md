@@ -12,8 +12,8 @@ dùng dữ liệu minh họa. Product dùng token Vink và dữ liệu của phi
 | A2 Cài đặt | Hàng phẳng, icon trung tính cùng trục. Quyền riêng tư là link toàn hàng với chevron dẫn tới section của form. Tên đăng nhập và mật khẩu có chevron theo trạng thái disclosure. Email hiển thị địa chỉ đã xác minh. [Giao diện](me-preferences-r1-209.md#giao-diện-thành-viên-413-576) là nhóm con, Đăng xuất là nút chữ. [Xóa tài khoản](account-deletion.md) mở vùng quản lý riêng. |
 | R1 Đầu trang | Một Back về Tài khoản. Pill có chữ trên desktop, tròn 48 CSS px trên mobile. Link về entry của Tài khoản có sẵn khi mở trang trực tiếp. |
 | R2 Nội dung | Avatar chữ từ phiên đã xác minh, Bút danh với trợ giúp ngắn, địa chỉ cạnh action Thiết lập/Đổi địa chỉ, Giới thiệu với ô nhiều dòng. |
-| R3 Quyền riêng tư | Sáu giá trị độc lập, gồm hai cặp list/count. Label và giá trị xếp lại khi thiếu chỗ. Quyền đã khóa có lý do. Cảnh báo hiện ngay sau khi chọn thu hẹp quyền. |
-| R4 Lưu | Một submit trong footer để giữ đường đến Lưu trên viewport thấp. Lưu, lỗi, Đối chiếu lại và conflict dùng owner hiện có. |
+| R3 Quyền riêng tư | Sáu giá trị độc lập, gồm hai cặp list/count. Label và giá trị xếp lại khi thiếu chỗ. Quyền đã khóa có lý do. Khi chọn thu hẹp quyền, hàng hiện tên trường, hệ quả, Hủy và nút xác nhận. Chỉ xác nhận mới bắt đầu lưu. |
+| R4 Chốt từng trường (#609, DESIGN_PROPOSED) | Bút danh chốt khi rời ô hoặc Enter. Giới thiệu chốt khi rời ô hoặc Ctrl/Cmd+Enter. Escape khôi phục phần chưa chốt. Mỗi trường hiện chờ, đối chiếu, lỗi hoặc xung đột tại chỗ. Bỏ footer Lưu của R5 ban đầu. |
 
 Back là link nội bộ với focus return của Product. Nháp được khôi phục trong cùng phiên.
 Dialog Handle giữ focus, quota và cảnh báo tại quyết định. Chrome hỗ trợ picker có icon và dấu
@@ -52,3 +52,7 @@ tiếp tục theo phiên và điều hướng R5.
 | Bàn viết, Reader, Thông báo, Khám phá | Back có guard, overlay, history hoặc khôi phục vị trí theo từng hành trình. |
 | Auth, editor format, Desk, discovery filters | Các control dùng variant hiện hành. Giao diện giữ RadioGroup, theme/text/rail và storage scope theo thành viên. |
 | Microcopy | [PR #586](https://github.com/loveoverflowcom/vink/pull/586) là draft khi bắt đầu. Copy Bút danh, Giới thiệu, Thiết lập và Lưu trong các vùng R5 tương thích với PR đó. Auth và Following theo PR #586. |
+
+## Chỉnh từng trường (#609)
+
+CHOICE-01 (DESIGN_PROPOSED) dùng xác nhận hai bước ngay dưới hàng đang đổi. Hủy hoặc Escape trả focus về lựa chọn. PUT vẫn mang đủ hồ sơ và version đã xác nhận. Chỉ trường vừa chốt được đưa vào lệnh. Khi rời trang, người dùng có thể giữ nháp trong cùng phiên. API Handle và quy tắc SOC-OPEN-01 tiếp tục do owner hiện hành quản lý.

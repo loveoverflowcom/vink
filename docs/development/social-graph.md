@@ -145,7 +145,7 @@ hồ sơ tác giả.
   độc lập. [Hợp đồng và fixtures](../../services/vink-app/contracts/http/v1/social-graph.md#hồ-sơ-và-bút-danh-292293)
   định nghĩa cả projection công khai lẫn phiên bản được chủ sửa.
 - **Web.** [Tôi → Chỉnh hồ sơ](../../apps/vink-web/src/pages/profile.rs) giữ nháp trong RAM
-  của generation đang xác nhận. Scope riêng dừng ngay khi nghe dấu hiệu đổi cookie. Sau lost
+  của generation đang xác nhận. Theo [#609](../design/account-profile-r5.md), mỗi lần chốt đưa riêng một trường vào PUT với phiên bản đã xác nhận. Các trường còn đang gõ giữ nguyên. Khi gặp phiên bản mới, khác trường được gộp, cùng trường có giá trị khác nhau cần người dùng chọn. Scope riêng dừng ngay khi nghe dấu hiệu đổi cookie. Sau lost
   ACK, đọc trạng thái đúng scope rồi so version và payload. [Hồ sơ công khai](../../apps/vink-web/src/pages/handle.rs)
   đưa Bio và danh sách bài vào cùng read. Focus, Back và thông báo đổi hồ sơ làm mới quyền
   đọc. Generation của read loại response đã cũ. READ-02 tính thêm byte của attribution,

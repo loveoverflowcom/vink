@@ -198,3 +198,6 @@ pub(crate) fn observe_changes(on_change: impl Fn() + 'static) {
 pub(crate) mod browser;
 #[cfg(feature = "browser")]
 pub(crate) mod privacy;
+
+#[cfg(any(feature = "browser", test))]
+mod inline;
