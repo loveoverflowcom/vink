@@ -1,0 +1,324 @@
+{
+  "baseline": {
+    "cold": {
+      "native": [
+        11.9,
+        13.9
+      ],
+      "rich": null,
+      "activationMs": null,
+      "maxRuntimeRequestsBeforeInteraction": 0,
+      "maxRuntimeLoadsPerDocument": 0
+    },
+    "warm": {
+      "native": [
+        9.6,
+        10.5
+      ],
+      "rich": null,
+      "activationMs": null,
+      "maxRuntimeRequestsBeforeInteraction": 0,
+      "maxRuntimeLoadsPerDocument": 0
+    },
+    "input": {
+      "inputMs": [
+        2.8,
+        3.3
+      ],
+      "raf": [
+        14.8,
+        17.2
+      ],
+      "post": [
+        16.4,
+        18
+      ]
+    },
+    "caretFrame": [
+      14.9,
+      16.6
+    ],
+    "measuredTypingRequests": 0,
+    "layoutShiftNoRecentInput": 0.01364,
+    "layoutShiftWithRecentInput": 0,
+    "longTasksMsWholeFinalDocument": [
+      90
+    ],
+    "frameBaselinePeriodMs": 16.6,
+    "frameIntervals": 546,
+    "estimatedMissedFrames": 0,
+    "lifecycle": {
+      "before": {
+        "nodes": 593,
+        "documents": 3,
+        "listeners": 81,
+        "heapBytes": 2352944,
+        "composerHosts": 0,
+        "editorViews": 0
+      },
+      "reopened": {
+        "nodes": 705,
+        "documents": 4,
+        "listeners": 86,
+        "heapBytes": 2438504,
+        "composerHosts": 1,
+        "editorViews": 0
+      },
+      "after": {
+        "nodes": 511,
+        "documents": 4,
+        "listeners": 82,
+        "heapBytes": 2640984,
+        "composerHosts": 0,
+        "editorViews": 0
+      }
+    },
+    "bundle": {
+      "artifact": "target/site/pkg/vink-editor.js",
+      "sha256": "13ee833bc09b693de00ed8f26f6472dc65674c1c10403dc2b803ad46c0a65ac9",
+      "raw": 370168,
+      "gzip": 125847,
+      "brotli": 107560
+    },
+    "desk": {
+      "cold": [
+        49.4,
+        61
+      ],
+      "warm": [
+        37.7,
+        39.6
+      ],
+      "typing": [
+        0.8,
+        1.6
+      ],
+      "caret": [
+        0.3,
+        0.6
+      ],
+      "nextFrameMs": [
+        14.8,
+        15.6
+      ],
+      "afterFrameTaskMs": [
+        15.9,
+        16.9
+      ],
+      "lifecycle": {
+        "remainingViews": 0,
+        "remainingHosts": 0,
+        "staleCallbacks": 0
+      }
+    },
+    "synthetic": {
+      "10000": {
+        "typing": [
+          0.3,
+          0.6
+        ],
+        "caret": [
+          0.5,
+          1.2
+        ]
+      },
+      "50000": {
+        "typing": [
+          0.3,
+          0.4
+        ],
+        "caret": [
+          0.4,
+          0.5
+        ]
+      },
+      "100000": {
+        "typing": [
+          0.3,
+          0.5
+        ],
+        "caret": [
+          0.4,
+          0.6
+        ]
+      },
+      "200000": {
+        "typing": [
+          0.5,
+          0.7
+        ],
+        "caret": [
+          0.3,
+          0.4
+        ]
+      }
+    }
+  },
+  "final": {
+    "cold": {
+      "native": [
+        14.3,
+        14.9
+      ],
+      "rich": [
+        203.2,
+        212.3
+      ],
+      "activationMs": [
+        20.7,
+        22.6
+      ],
+      "maxRuntimeRequestsBeforeInteraction": 0,
+      "maxRuntimeLoadsPerDocument": 1
+    },
+    "warm": {
+      "native": [
+        12.6,
+        13.9
+      ],
+      "rich": [
+        201.4,
+        202.4
+      ],
+      "activationMs": [
+        24.5,
+        25
+      ],
+      "maxRuntimeRequestsBeforeInteraction": 0,
+      "maxRuntimeLoadsPerDocument": 1
+    },
+    "input": {
+      "inputMs": [
+        3.2,
+        4.1
+      ],
+      "raf": [
+        15.3,
+        16.9
+      ],
+      "post": [
+        16.9,
+        18.5
+      ]
+    },
+    "caretFrame": [
+      15.6,
+      16.5
+    ],
+    "measuredTypingRequests": 0,
+    "layoutShiftNoRecentInput": 0,
+    "layoutShiftWithRecentInput": 0.21432,
+    "longTasksMsWholeFinalDocument": [
+      145
+    ],
+    "frameBaselinePeriodMs": 16.7,
+    "frameIntervals": 567,
+    "estimatedMissedFrames": 0,
+    "lifecycle": {
+      "before": {
+        "nodes": 658,
+        "documents": 3,
+        "listeners": 88,
+        "heapBytes": 2462716,
+        "composerHosts": 0,
+        "editorViews": 0
+      },
+      "reopened": {
+        "nodes": 850,
+        "documents": 4,
+        "listeners": 147,
+        "heapBytes": 4112356,
+        "composerHosts": 1,
+        "editorViews": 1
+      },
+      "after": {
+        "nodes": 440,
+        "documents": 4,
+        "listeners": 78,
+        "heapBytes": 4200188,
+        "composerHosts": 0,
+        "editorViews": 0
+      }
+    },
+    "bundle": {
+      "artifact": "target/site/pkg/vink-editor.js",
+      "sha256": "cc6e96aca03f717d8e50fee41dec301ad8af5ac2ab91c7c0f0b79a39b80bfba7",
+      "raw": 370762,
+      "gzip": 126042,
+      "brotli": 107677
+    },
+    "desk": {
+      "cold": [
+        49.1,
+        60.2
+      ],
+      "warm": [
+        38,
+        40.3
+      ],
+      "typing": [
+        0.6,
+        1.5
+      ],
+      "caret": [
+        0.3,
+        0.6
+      ],
+      "nextFrameMs": [
+        13.9,
+        16.1
+      ],
+      "afterFrameTaskMs": [
+        15.7,
+        17.5
+      ],
+      "lifecycle": {
+        "remainingViews": 0,
+        "remainingHosts": 0,
+        "staleCallbacks": 0
+      }
+    },
+    "synthetic": {
+      "10000": {
+        "typing": [
+          0.3,
+          0.4
+        ],
+        "caret": [
+          0.5,
+          0.8
+        ]
+      },
+      "50000": {
+        "typing": [
+          0.3,
+          0.5
+        ],
+        "caret": [
+          0.4,
+          0.5
+        ]
+      },
+      "100000": {
+        "typing": [
+          0.3,
+          0.5
+        ],
+        "caret": [
+          0.4,
+          0.6
+        ]
+      },
+      "200000": {
+        "typing": [
+          0.5,
+          0.7
+        ],
+        "caret": [
+          0.3,
+          0.5
+        ]
+      }
+    }
+  }
+}

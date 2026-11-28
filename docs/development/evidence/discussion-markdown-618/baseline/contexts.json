@@ -18,19 +18,10 @@
     "textScaleLane": "default-100",
     "boundary": null,
     "source": {
-      "sourceSHA": "3bbeefb11e10cc4d49d09781c1b5ea901d888cb5",
-      "dirty": true,
-      "dirtyInputs": [
-        {
-          "status": "M",
-          "path": "apps/vink-web/e2e/reader-auth-smoke.mjs"
-        },
-        {
-          "status": "??",
-          "path": "apps/vink-web/e2e/comment-budget.mjs"
-        }
-      ],
-      "sourceFingerprint": "45c9af9cd350e802e748f5c44535be461fd1ee4086770f6b9c350656c432e660"
+      "sourceSHA": "438dc409002a2db5c1016f8a446d484f041ee701",
+      "dirty": false,
+      "dirtyInputs": [],
+      "sourceFingerprint": "a469a725373843931e1f85be20fef8f927024c563320f4073b08889a7c71d383"
     },
     "png": {
       "width": 390,
@@ -352,10 +343,10 @@
         }
       ]
     },
-    "captured_at": "2026-11-28T04:02:52.689Z",
+    "captured_at": "2026-11-28T05:36:53.283Z",
     "evidence": {
-      "build": "3bbeefb11e10cc4d49d09781c1b5ea901d888cb5",
-      "dirty": "M apps/vink-web/e2e/reader-auth-smoke.mjs\n?? apps/vink-web/e2e/comment-budget.mjs",
+      "build": "438dc409002a2db5c1016f8a446d484f041ee701",
+      "dirty": "?? docs/development/evidence/discussion-markdown-618/",
       "target": "#feedback-heading",
       "textScaleLane": "default-100"
     }
@@ -379,19 +370,10 @@
     "textScaleLane": "default-100",
     "boundary": null,
     "source": {
-      "sourceSHA": "3bbeefb11e10cc4d49d09781c1b5ea901d888cb5",
-      "dirty": true,
-      "dirtyInputs": [
-        {
-          "status": "M",
-          "path": "apps/vink-web/e2e/reader-auth-smoke.mjs"
-        },
-        {
-          "status": "??",
-          "path": "apps/vink-web/e2e/comment-budget.mjs"
-        }
-      ],
-      "sourceFingerprint": "45c9af9cd350e802e748f5c44535be461fd1ee4086770f6b9c350656c432e660"
+      "sourceSHA": "438dc409002a2db5c1016f8a446d484f041ee701",
+      "dirty": false,
+      "dirtyInputs": [],
+      "sourceFingerprint": "a469a725373843931e1f85be20fef8f927024c563320f4073b08889a7c71d383"
     },
     "png": {
       "width": 390,
@@ -713,10 +695,10 @@
         }
       ]
     },
-    "captured_at": "2026-11-28T04:03:08.735Z",
+    "captured_at": "2026-11-28T05:37:09.779Z",
     "evidence": {
-      "build": "3bbeefb11e10cc4d49d09781c1b5ea901d888cb5",
-      "dirty": "M apps/vink-web/e2e/reader-auth-smoke.mjs\n?? apps/vink-web/e2e/comment-budget.mjs",
+      "build": "438dc409002a2db5c1016f8a446d484f041ee701",
+      "dirty": "?? docs/development/evidence/discussion-markdown-618/",
       "target": "#root-composer",
       "textScaleLane": "default-100"
     }

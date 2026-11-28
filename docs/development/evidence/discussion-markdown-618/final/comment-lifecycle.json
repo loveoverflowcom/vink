@@ -1,0 +1,72 @@
+{
+  "cycles": 40,
+  "before": {
+    "documents": 11,
+    "nodes": 2111,
+    "jsEventListeners": 180
+  },
+  "heapBefore": {
+    "usedSize": 7491936,
+    "totalSize": 13565952,
+    "embedderHeapUsedSize": 4175248,
+    "backingStorageSize": 585998
+  },
+  "viewCount": 1,
+  "after": {
+    "documents": 4,
+    "nodes": 1039,
+    "jsEventListeners": 103
+  },
+  "heapAfter": {
+    "usedSize": 5121392,
+    "totalSize": 5996544,
+    "embedderHeapUsedSize": 4018136,
+    "backingStorageSize": 537015
+  },
+  "textbox": {
+    "name": {
+      "type": "computedString",
+      "value": "Viết phản hồi",
+      "sources": [
+        {
+          "type": "relatedElement",
+          "value": {
+            "type": "computedString",
+            "value": "Viết phản hồi"
+          },
+          "attribute": "aria-labelledby",
+          "attributeValue": {
+            "type": "idrefList",
+            "value": "reply-composer-3ac70000-0000-4000-8000-000000000002-rich-label",
+            "relatedNodes": [
+              {
+                "backendDOMNodeId": 7212,
+                "idref": "reply-composer-3ac70000-0000-4000-8000-000000000002-rich-label",
+                "text": "Viết phản hồi"
+              }
+            ]
+          }
+        },
+        {
+          "type": "attribute",
+          "attribute": "aria-label",
+          "superseded": true
+        },
+        {
+          "type": "placeholder",
+          "attribute": "aria-placeholder",
+          "superseded": true
+        },
+        {
+          "type": "attribute",
+          "attribute": "title",
+          "superseded": true
+        }
+      ]
+    },
+    "description": {
+      "type": "computedString",
+      "value": "Trả lời Người viết khác (dữ liệu phát triển)"
+    }
+  }
+}
