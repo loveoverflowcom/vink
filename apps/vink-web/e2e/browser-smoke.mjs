@@ -3438,12 +3438,13 @@ async function draftR6Hierarchy(page) {
       const rows=[...document.querySelectorAll('.vk-draft-row__link')], list=document.querySelector('#draft-results');
       return !document.querySelector('#resume, #resume-title-toggle') && document.documentElement.scrollWidth<=innerWidth &&
         getComputedStyle(list).backgroundColor==='rgba(0, 0, 0, 0)' && rows.every((row,i)=>
-          getComputedStyle(row.closest('.vk-author-work')).backgroundColor==='rgba(0, 0, 0, 0)' &&
+          getComputedStyle(row.closest('.vk-author-work')).backgroundColor!=='rgba(0, 0, 0, 0)' &&
+          getComputedStyle(row.closest('.vk-author-work')).borderRadius==='20px' &&
           row.getAttribute('href')==='/ban-viet/'+${JSON.stringify(cards)}[i].work_id &&
           row.querySelector('.vk-draft-row__title').textContent===${JSON.stringify(cards)}[i].title &&
           !row.textContent.includes('Phiên bản') && getComputedStyle(row).paddingLeft===getComputedStyle(row).paddingRight &&
           row.querySelectorAll('a,button,input').length===0);
-    })()`), `#213 ${width}/${scale}/${theme}: no resume, flat row surfaces, full Unicode titles and exact IDs (#593)`);
+    })()`), `#213 ${width}/${scale}/${theme}: quiet rounded row surfaces, no resume, full Unicode titles and exact IDs (#614)`);
     await page.eval(`document.querySelector('#drafts').scrollIntoView({block:'start'})`);
     await page.capture(`r6-list-${width}-${scale}-${theme}`);
     await textContrast(page, theme, 'desk');
