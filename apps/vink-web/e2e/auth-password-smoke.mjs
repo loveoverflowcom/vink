@@ -1301,6 +1301,12 @@ export async function standalone(page, {args, check, openPage}) {
   await page.click('#profile-bio-policy-confirm');
   await page.waitFor("document.activeElement?.id==='profile-bio-policy-row' && !document.querySelector('select#profile-bio-policy')",
     'confirmation retains focus at the newly locked privacy row');
+  await fill(page,'#profile-pen-name',author.data.pen_name);
+  await page.key('Enter');
+  await page.waitFor(`${q('#profile-pen-name-feedback')}?.textContent.includes('Đã lưu')`,
+    'restore the fixture author name before the second-account public profile journey');
+  check((await read(page,'/api/v1/me/profile')).data.pen_name===author.data.pen_name,
+    'original public author fixture restored through the inline UI');
   await page.click('#profile-back');
   await page.waitFor("document.activeElement?.id === 'edit-profile-link'", 'CSR Back restores the account entry');
   const authorPath = '/@' + author.data.handle;
