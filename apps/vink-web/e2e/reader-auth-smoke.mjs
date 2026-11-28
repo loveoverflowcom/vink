@@ -86,6 +86,16 @@ export async function contextualReaderAuth(owner, { args, check, openPage, seen 
       && ${q(ROOT_EDITOR)}.readOnly && !${q(ROOT_EDITOR)}.disabled && !!${q('#comments-mode[data-mode-kind=author-closed] :is([role=status])')}`),
       '#328 a closed discussion keeps a selectable read-only draft and offers neither sign-in nor Send');
 
+    check(await page.eval(`(async () => {
+      const ssr = new DOMParser().parseFromString(await (await fetch(location.pathname)).text(), 'text/html');
+      return [ssr, document].every(doc =>
+        doc.querySelector('.vk-comment-markdown strong')?.textContent === 'Khổ đầu' &&
+        doc.querySelector('.vk-comment-markdown em')?.textContent === 'Khổ sau' &&
+        !doc.querySelector('.vk-comment-markdown h1') &&
+        doc.querySelector('#comment-3ac70000-0000-4000-8000-000000000008 .vk-discussion-body')?.textContent === '**Giữ dấu**'
+      ) && !performance.getEntriesByType('resource').some(e => e.name.endsWith('/vink-editor.js'));
+    })()`), 'SSR and hydrated closed Reader render public Markdown root and reply and literal plain, zero editor');
+
     // Full Web runs Discovery first, so its newer publications may fill the first page.
     // Use an actual search result for the seeded Reader rather than assuming feed order.
     await page.goto(args.base + '/?q=' + encodeURIComponent('Mưa trên phố cũ'));

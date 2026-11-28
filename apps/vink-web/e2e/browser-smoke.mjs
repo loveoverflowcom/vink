@@ -6645,6 +6645,10 @@ async function standaloneDiscussionReply(cdp) {
     fixture.work_id = SAMPLE_WORK;
     const rootId = fixture.roots[0].root.comment.comment_id;
     const reads = `/api/v1/works/${SAMPLE_WORK}/discussion`;
+    fixture.roots[0].root.comment.body_format = 'markdown';
+    fixture.roots[0].root.comment.body = '# **Khổ đầu**';
+    fixture.roots[0].preview[0].body_format = 'markdown';
+    fixture.roots[0].preview[0].body = '_Khổ sau_';
     // Only the discussion projection is supplied by the contract fixture. The
     // Reader, guest Session and Auth dialog run through the real standalone host.
     const release = await fabricate(page, 'GET', reads + '/public', 200, fixture);
@@ -6652,6 +6656,8 @@ async function standaloneDiscussionReply(cdp) {
     await page.waitFor(`document.querySelector('#reply-to-${rootId}') &&
       document.querySelector('#reader-auth')?.dataset.standing === 'anonymous'`, '#616 CSR loaded a guest reply target');
     await release();
+    check(await page.eval("document.querySelector('.vk-comment-markdown strong')?.textContent === 'Khổ đầu' && document.querySelector('.vk-comment-markdown em')?.textContent === 'Khổ sau' && !document.querySelector('.vk-comment-markdown h1')"),
+      'standalone CSR renders the compact public root and reply from the format-aware contract');
     const posts = captureRequest(page, 'POST', reads + '/comments');
     try {
       const editor = '#reply-composer-' + rootId;

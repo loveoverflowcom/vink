@@ -25,4 +25,16 @@ INSERT INTO publications (work_id, revision_id, generation, published_at)
 VALUES ('3ac70000-0000-4000-8000-000000000003', '3ac70000-0000-4000-8000-000000000004', 1, now());
 INSERT INTO discussion_threads (id, work_id, comments_open)
 VALUES ('3ac70000-0000-4000-8000-000000000005', '3ac70000-0000-4000-8000-000000000003', false);
+-- Public read-only examples on the separate closed work. The measured guest route is unchanged.
+INSERT INTO comments (id, thread_id, kind, root_id, root_kind, replied_to_reply, author_id,
+                      body_format, body, review, moderation_version, admission_policy, admission_reason)
+VALUES
+ ('3ac70000-0000-4000-8000-000000000006','3ac70000-0000-4000-8000-000000000005','root',NULL,NULL,false,
+  '22222222-2222-4222-8222-222222222222','markdown','# **Khổ đầu**','pending',1,'premoderation.v1','policy_premoderation'),
+ ('3ac70000-0000-4000-8000-000000000007','3ac70000-0000-4000-8000-000000000005','reply','3ac70000-0000-4000-8000-000000000006','root',false,
+  '11111111-1111-4111-8111-111111111111','markdown','_Khổ sau_','pending',1,'premoderation.v1','policy_premoderation'),
+ ('3ac70000-0000-4000-8000-000000000008','3ac70000-0000-4000-8000-000000000005','root',NULL,NULL,false,
+  '22222222-2222-4222-8222-222222222222','plain','**Giữ dấu**','pending',1,'premoderation.v1','policy_premoderation');
+UPDATE comments SET review='approved', moderation_version=2
+WHERE thread_id='3ac70000-0000-4000-8000-000000000005';
 COMMIT;
