@@ -2118,8 +2118,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                 />
             </header>
             <div class="vk-editor-workspace">
-                <article id="editor-paper" class="vk-editor-paper rounded-vk-card bg-vk-bg-content"
-                    data-submission-title=move || issues.get().title_missing.then_some("")
+                <article id="editor-paper" class="vk-editor-paper rounded-vk-card bg-vk-bg-content [&_#draft-title-label]:sr-only"
                     data-submission-body=move || (issues.get().body_missing || (format.get() == DocumentFormatDto::Markdown && issues.get().title_missing)).then_some("")>
                     <Show when=move || format.get() == DocumentFormatDto::Markdown>
                         <div

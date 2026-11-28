@@ -160,10 +160,13 @@ export async function editorPaperFirst(page, { args, check, editorTarget, fitsEd
   check((await page.draft(workId)).title===title,'subsequent explicit save still persists the same draft');
 }
 
-// #526: measure the live field and its gutter mark on the same mounted editor before/after focus.
+// #526/#613: measure focus and geometry on the same mounted editor.
 export async function writingFocus(page, { check, setEditorScene, shift, format, filled = false }) {
   const fields = format === 'markdown' ? ['.cm-content'] : ['#draft-title', '.cm-content'];
-  const scenes = filled ? [[390, 150, 'light'], [320, 200, 'dark']] : [[1440, 100, 'dark'], [1440, 100, 'light']];
+  const tablet = format === 'default' ? [[834, 100, 'light'], [834, 100, 'dark']] : [];
+  const scenes = filled
+    ? [[390, 150, 'light'], [320, 200, 'dark'], ...tablet]
+    : [[1440, 100, 'dark'], [1440, 100, 'light'], ...tablet];
   const previous = await page.eval("({theme: document.documentElement.dataset.theme, size: document.documentElement.style.fontSize})");
   const { nodes } = await page.send('Accessibility.getFullAXTree');
   for (const label of format === 'markdown' ? ['Nội dung'] : ['Tiêu đề', 'Nội dung']) {
@@ -171,7 +174,7 @@ export async function writingFocus(page, { check, setEditorScene, shift, format,
   }
   try {
     for (const [width, scale, theme] of scenes) {
-      await setEditorScene(page, { width, height: 900, scale, theme });
+      await setEditorScene(page, { width, height: width === 834 ? 1112 : 900, scale, theme });
       for (const selector of fields) {
         const title = selector === '#draft-title';
         const host = title ? '.vk-ui-field__control' : '.vk-editor-body';
@@ -184,27 +187,53 @@ export async function writingFocus(page, { check, setEditorScene, shift, format,
           const mark = getComputedStyle(host, '::before');
           const nodes = [host, field, field.closest('.cm-editor')].filter(Boolean);
           const styles = nodes.map(n => getComputedStyle(n));
+          const style = styles[1];
+          const label = document.querySelector('${title ? '#draft-title-label' : '.vk-editor-paper .vk-field__label'}');
+          const measure = document.querySelector('.vk-editor-title-measure > span');
+          const fontKeys = ['fontFamily', 'fontSize', 'fontWeight', 'lineHeight'];
           return {
             focused: document.activeElement === field,
-            geometry: [field, document.querySelector('${title ? '#draft-title-label' : '.vk-editor-paper .vk-field__label'}')].map(rect),
-            quiet: styles.every(s => (s.outlineStyle === 'none' || s.outlineWidth === '0px') &&
-              s.borderTopWidth === '0px' && s.boxShadow === 'none'),
+            geometry: [field, label].map(rect),
+            borderless: styles.every(s => (s.outlineStyle === 'none' || s.outlineWidth === '0px') &&
+              s.borderTopWidth === '0px'),
             fills: styles.map(s => s.backgroundColor),
-            mark: mark.content !== 'none' && parseFloat(mark.width) >= 2 && parseFloat(mark.height) >= 12,
-            ink: mark.backgroundColor,
+            mark: mark.content !== 'none',
+            markSize: [parseFloat(mark.width), parseFloat(mark.height)],
+            underline: style.backgroundImage.startsWith('linear-gradient'),
+            underlineSize: style.backgroundSize.split(' ').map(parseFloat),
+            ink: ${title} ? style.backgroundImage : mark.backgroundColor,
             paper: getComputedStyle(host.closest('.vk-editor-paper')).backgroundColor,
-            caret: getComputedStyle(field).caretColor
+            caret: style.caretColor,
+            metrics: ${title} && {
+              font: style.fontFamily,
+              size: parseFloat(style.fontSize),
+              weight: Number(style.fontWeight),
+              lineHeight: parseFloat(style.lineHeight),
+              contentHeight: field.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom),
+              sameAsMeasure: fontKeys.every(key => style[key] === getComputedStyle(measure)[key]),
+              nativeLabel: field.labels[0] === label && getComputedStyle(label).clipPath !== 'none',
+            },
           };
         })()`);
         await page.eval('document.activeElement.blur()');
         const idle = await measure();
         await page.click(selector);
         const active = await measure();
-        const name = `writing-${format}-${title ? 'title' : 'body'}-${width}-${scale}-${theme}`;
-        check(active.focused && !idle.mark && active.mark && active.quiet &&
+        const name = `writing-${format}-${title ? 'title' : 'body'}-${filled ? 'filled' : 'empty'}-${width}-${scale}-${theme}`;
+        const hasCue = sight => title
+          ? sight.underline && sight.underlineSize[0] === 32 * scale / 100 && sight.underlineSize[1] >= 2 && !sight.mark
+          : sight.mark && sight.markSize[0] >= 2 && sight.markSize[1] >= 12 && !sight.underline;
+        check(active.focused && !idle.mark && !idle.underline && hasCue(active) && active.borderless &&
           JSON.stringify(active.fills) === JSON.stringify(idle.fills) &&
           active.geometry.flat().every((n, i) => Math.abs(n - idle.geometry.flat()[i]) <= 1),
-        name + ': pointer reveals a local mark with stable label, text bounds and surface ' + JSON.stringify({idle, active}));
+        name + ': pointer reveals one focus cue with stable text bounds and surface ' + JSON.stringify({idle, active}));
+        if (title) {
+          const { metrics } = active;
+          check(metrics.nativeLabel && metrics.font.includes('Literata') && metrics.size === 28 * scale / 100 &&
+            metrics.weight === 600 && Math.abs(metrics.lineHeight / metrics.size - 1.3) < 0.01 &&
+            metrics.contentHeight + 1 >= metrics.lineHeight && metrics.sameAsMeasure,
+          name + ': native title label and room for the heading line box ' + JSON.stringify(metrics));
+        }
         const luminance = css => css.match(/[\d.]+/g).slice(0, 3).map(Number)
           .map(n => n / 255).map(v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)
           .reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
@@ -216,7 +245,12 @@ export async function writingFocus(page, { check, setEditorScene, shift, format,
         check(!(await measure()).focused, name + ': Tab leaves writing surface');
         await page.key('Tab', shift);
         const keyboard = await measure();
-        check(keyboard.focused && keyboard.mark && keyboard.quiet, name + ': Shift+Tab returns to a visible local mark');
+        check(keyboard.focused && hasCue(keyboard) && keyboard.borderless, name + ': Shift+Tab returns to a visible focus cue');
+        if (title && filled) {
+          await page.key('ArrowLeft');
+          check(await page.eval("document.activeElement.id === 'draft-title' && document.activeElement.selectionStart === document.activeElement.selectionEnd"),
+            name + ': ArrowLeft leaves a collapsed native caret');
+        }
         await page.capture(name, {scenario: 'Writing canvas keyboard focus', target: selector,
           textScaleLane:'dom-override-geometry-only', geometry: keyboard});
       }

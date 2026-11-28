@@ -989,8 +989,13 @@ a {
 }
 
 .vk-editor-paper > .vk-ui-field { margin: 0; }
-.vk-editor-paper :is(#draft-title, .vk-editor-title-measure > span) { font-family: var(--vk-font-reading); font-size: var(--vk-text-draft-title); font-weight: var(--vk-type-headline-weight); line-height: var(--vk-type-headline-line-height); }
-.vk-editor-paper :is(#draft-title-label, .vk-field__label) {
+.vk-editor-paper :is(#draft-title, .vk-editor-title-measure > span) {
+  font-family: var(--vk-font-reading);
+  font-size: var(--vk-text-draft-title);
+  font-weight: var(--vk-type-page-title-weight);
+  line-height: var(--vk-type-page-title-line-height);
+}
+.vk-editor-paper .vk-field__label {
   color: var(--vk-on-surface-variant);
   font-size: var(--vk-type-caption-size);
   line-height: var(--vk-type-caption-line-height);
@@ -998,16 +1003,22 @@ a {
 
 .vk-editor-paper #draft-title {
   background: transparent;
+  padding-block: var(--vk-space-2);
   padding-inline: 0;
   caret-color: var(--vk-primary);
 }
 
-/* Only the two writing surfaces trade their normal ring for a mark in the paper gutter.
-   The native field continues to own its invalid and forced-colors outlines. */
 @media (forced-colors: none) {
-  .vk-editor-paper #draft-title:focus:not([aria-invalid="true"]) { outline: 0; }
+  /* Keep a steady focus cue while the native caret blinks. Text inputs can also
+     match :focus-visible after a click. The shared field owns both outline fallbacks. */
+  .vk-editor-paper #draft-title:focus:not([aria-invalid="true"]) {
+    outline: none;
+    background: linear-gradient(var(--vk-focus-ring), var(--vk-focus-ring))
+      left var(--vk-space-1) bottom var(--vk-space-1) /
+      var(--vk-space-8) var(--vk-size-focus-ring) no-repeat;
+  }
 
-  .vk-editor-paper .vk-ui-field__control:has(> #draft-title:focus)::before,
+  /* A zero-net-height sticky marker stays beside long text as the document scrolls. */
   .vk-editor-body:focus-within::before {
     content: "";
     pointer-events: none;
@@ -1015,15 +1026,6 @@ a {
     block-size: var(--vk-space-4);
     border-radius: var(--vk-radius-full);
     background: var(--vk-focus-ring);
-  }
-
-  .vk-editor-paper .vk-ui-field__control:has(> #draft-title:focus)::before {
-    position: absolute;
-    inset-inline-start: calc(-1 * var(--vk-space-2));
-  }
-
-  /* A zero-net-height sticky marker stays beside long text as the document scrolls. */
-  .vk-editor-body:focus-within::before {
     display: block;
     position: sticky;
     inset-block-start: var(--vk-space-2);
@@ -1037,12 +1039,10 @@ a {
 #submission-body-errors p { margin: 0; }
 #submission-body-errors[hidden], #submission-summary[hidden] { display: none; }
 @media (forced-colors: none) {
-  #editor-paper[data-submission-title] .vk-ui-field__control:has(> #draft-title),
   #editor-paper[data-submission-body] .vk-editor-body:focus-within {
     position: relative;
     outline: none;
   }
-  #editor-paper[data-submission-title] .vk-ui-field__control:has(> #draft-title:focus)::before,
   #editor-paper[data-submission-body] .vk-editor-body:focus-within::before {
     content: "";
     position: absolute;
