@@ -920,6 +920,7 @@ async fn decision_details_are_private_to_the_owner_and_the_writer(pool: PgPool) 
     assert_eq!(own.status, StatusCode::OK, "{}", own.body);
     assert_eq!(own.body["outcome"], "rejected");
     assert_eq!(own.body["comment_body"], "Bị từ chối");
+    assert_eq!(own.body["body_format"], "plain");
     assert_eq!(
         own.body["reason"]["message"],
         "Lời lẽ công kích cá nhân (dữ liệu kiểm thử)."
@@ -929,6 +930,7 @@ async fn decision_details_are_private_to_the_owner_and_the_writer(pool: PgPool) 
     let gone = get_as(&f, &path(removed, 3), r2, SESSION).await;
     assert_eq!(gone.body["outcome"], "removed");
     assert_eq!(gone.body["comment_body"], Value::Null);
+    assert_eq!(gone.body["body_format"], Value::Null);
     assert!(!gone.body.to_string().contains("Thân bị gỡ"));
     // The approval version of the same comment is not an adverse decision.
     assert_eq!(

@@ -3,7 +3,7 @@ import { holdAnswer } from './auth-browser-network.mjs';
 import { writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 
-export async function richDiscussion(page,{args,check,rootId,workId}) {
+export async function richDiscussion(page,{args,check,rootId,workId,browserContextId}) {
   const endpoint='/api/v1/works/'+workId+'/discussion';
   const root='#root-composer', reply='#reply-composer-'+rootId;
   const source = async selector => page.eval('document.querySelector('+JSON.stringify(selector)+').value');
@@ -30,11 +30,20 @@ export async function richDiscussion(page,{args,check,rootId,workId}) {
       await page.key('z',page.mod);
       await page.waitFor("document.querySelector('#root-composer').value===''",'undo '+kind);
     }
+    for (const [key, markers] of [['b', '****'], ['i', '**']]) {
+      await page.key(key, page.mod);
+      check(await source(root) === markers, 'keyboard shortcut ' + key);
+      await page.key('z', page.mod);
+      check(await source(root) === '', 'keyboard undo ' + key);
+      await page.key('Z', page.mod | 8);
+      check(await source(root) === markers, 'keyboard redo ' + key);
+      await page.key('z', page.mod);
+    }
     await page.send('Input.imeSetComposition',{text:'đ',selectionStart:1,selectionEnd:1});
     check(await page.eval("document.querySelector('#root-composer-send').getAttribute('aria-disabled')==='true'"),'CDP composing blocks send');
     await enter('đêm');
     await page.key('Enter');
-    await page.send('Browser.grantPermissions',{permissions:['clipboardReadWrite','clipboardSanitizedWrite'],origin:args.base});
+    await page.cdp.send('Browser.grantPermissions',{browserContextId,permissions:['clipboardReadWrite','clipboardSanitizedWrite'],origin:args.base});
     await page.eval("navigator.clipboard.writeText('**Mưa** 👩‍💻')");
     for(const type of ['rawKeyDown','keyUp']) await page.send('Input.dispatchKeyEvent',{type,key:'v',code:'KeyV',modifiers:page.mod,windowsVirtualKeyCode:86,nativeVirtualKeyCode:86,...(type==='rawKeyDown'?{commands:['Paste']}:{})});
     await page.waitFor("document.querySelector('#root-composer').value.includes('**Mưa**')",'real clipboard paste to Comment');

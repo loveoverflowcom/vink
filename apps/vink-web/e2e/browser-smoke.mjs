@@ -110,6 +110,8 @@ const KEYS = {
   ArrowDown: { code: 'ArrowDown', keyCode: 40 },
   ArrowLeft: { code: 'ArrowLeft', keyCode: 37 },
   ArrowRight: { code: 'ArrowRight', keyCode: 39 },
+  b: { code: 'KeyB', keyCode: 66 },
+  i: { code: 'KeyI', keyCode: 73 },
   s: { code: 'KeyS', keyCode: 83 },
   z: { code: 'KeyZ', keyCode: 90 },
   Z: { code: 'KeyZ', keyCode: 90 },

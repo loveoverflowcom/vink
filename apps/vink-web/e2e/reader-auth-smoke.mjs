@@ -454,7 +454,7 @@ export async function contextualReaderAuth(owner, { args, check, openPage, seen 
       const stored = JSON.stringify([Object.entries(localStorage), Object.entries(sessionStorage), history.state, location.href]);
       return !stored.includes(${JSON.stringify(ROOT_TEXT.split('\n')[0])}) && !stored.includes(${JSON.stringify(REPLY_TEXT.split('\n')[0])});
     })()`) && page.errors.length === 0, '#328 no draft in browser storage or history and no console exceptions');
-    await richDiscussion(page,{args,check,rootId:ROOT,workId:WORK});
+    await richDiscussion(page,{args,check,rootId:ROOT,workId:WORK,browserContextId});
     penRequests.close();
     confirmations.close();
     comments.close();

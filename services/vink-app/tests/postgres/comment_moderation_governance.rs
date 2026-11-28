@@ -1066,6 +1066,13 @@ async fn schema_provenance_atomicity_history_and_upgrade_backout(pool: PgPool) {
     else {
         panic!("expected grant");
     };
+    // This test isolates the governance upgrade/backout while submitting through today's writer.
+    sqlx::raw_sql(include_str!(
+        "../../migrations/20261206000000_comment_body_format.sql"
+    ))
+    .execute(&pool)
+    .await
+    .unwrap();
     legacy_standing_fixture(&pool).await;
     let legacy_comment = post(&vink, other(), None, "Duyệt trước nâng cấp").await;
     sqlx::query("UPDATE comments SET review = 'approved', moderation_version = 2 WHERE id = $1")
